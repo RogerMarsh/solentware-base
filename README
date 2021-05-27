@@ -1,6 +1,6 @@
-==================================
-Database Record definition classes
-==================================
+=========================================================================
+A bitmapped record number database interface for various database engines
+=========================================================================
 
 .. contents::
 
@@ -8,20 +8,11 @@ Database Record definition classes
 Description
 ===========
 
-This package provides a record-level API to a variety of database engines in the style of `bsddb3`_ cursors.
+A record number database is seen as a set of fixed size segments, and an existence bitmap is associated with each segment which contains any records.  The idea is from Model 204 (Rocket Software).
 
-A record contains a key and a value, (key, value) say.  Indexes contain records which invert this as (F(value), key).  F() would return a substring of value for example.
+Where an index value refers to many records in a segment these references are encoded as a bitmap or a list of record numbers, in a single <index value> : <bitmap or list> record, rather than as many <index value> : <record number> records.  When 'many' is small a list is favoured to save the space needed for large numbers of unset bits.
 
-The value could be a pickled class instance, or perhaps more safely a string which can be evaluated by the ast.literal_eval function.
-
-Interfaces exist for:
-
-* `bsddb3`_
-* `DPT`_
-* `sqlite3`_
-* `apsw`_
-
-At least one of the database engines supported by these interfaces must be installed.
+The interfaces provided by the apsw, bitbase, bsddb, bsddb3, dptdb, and sqlite3, Python modules are supported.
 
 
 Installation Instructions
@@ -39,37 +30,15 @@ You may need to give the path and version of Python depending on your system's c
 
    For example
 
-      C:\\Python33\\python setup.py install
+      C:\\Python36\\python setup.py install
 
          on Microsoft Windows or
 
-      python3.3 setup.py install
+      python3.6 setup.py install
 
          on Unix-like systems.
 
-Use `Python`_ 3.3 or later.
-
-
-Notes
-=====
-
-The `sqlite3`_ interface was added because sqlite3 became the only database engine supporting ordered keys included in the Python distribution when bsddb was dropped at Python 3.
-
-I have not yet succeeded in building `bsddb3`_ on Microsoft Windows.  I assume this package will work with bsddb3 on Microsoft Windows.
-
-`DPT`_ is Microsoft Windows only.  It is included because it represents record sets in indexes using bitmaps when efficient to do so, and uses bitmaps to do boolean logic on record sets.
-
-
-Restrictions
-============
-
-Python 3.4 and 3.5 are removed from runtime dependencies because delete record unittest results using Python's sqlite3 interface to Sqlite 3 are erratic.
-
-The equivalent unittest results using the apsw interface to Sqlite 3 are both identical and not erratic for Python 3.3, 3.4, and 3.5
+Use `Python`_ 3.6 or later.
 
 
 .. _`Python`: https://python.org
-.. _`bsddb3`: https://pypi.python.org/pypi/bsddb3
-.. _`DPT`: http://solentware.co.uk/components.html
-.. _`sqlite3`: https://github.com/ghaering/pysqlite
-.. _`apsw`: https://github.com/rogerbinns/apsw
