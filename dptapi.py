@@ -29,7 +29,7 @@ if not _platform_win32:
 
 from dptdb import dptapi
 
-from dptbase import DPTbase, DPTbaseRoot, DPTbaseError
+from dptbase import DPTbase, DPTbaseRecord, DPTbaseError
 from api.constants import FLT, INV, UAE, ORD, ONM, SPT
 from api.constants import BSIZE, BRECPPG, BRESERVE, BREUSE
 from api.constants import DSIZE, DRESERVE, DPGSRES
@@ -82,13 +82,12 @@ class DPTapi(DPTbase):
         bsddb in dbapi.py.
         
         """
-        self.open_context()
-        return
+        return self.open_context()
 
     def use_deferred_update_process(self, **kargs):
-        """Return True False or None
+        """Return module name or None
 
-        For DPT there are application specific issues.
+        **kargs - soak up any arguments other database engines need.
 
         """
         raise DPTapiError, 'use_deferred_update_process not implemented'
@@ -98,7 +97,7 @@ class DPTapi(DPTbase):
         return DPTapiRoot(name, fname, dptfile, sfi)
 
 
-class DPTapiRoot(DPTbaseRoot):
+class DPTapiRoot(DPTbaseRecord):
 
     """Provide record level access to a DPT file in non-deferred update mode.
 
@@ -127,12 +126,10 @@ class DPTapiRoot(DPTbaseRoot):
         
         """
         super(DPTapiRoot, self).open_root(db)
-        #test FISTAT != x'20'
         db._dbserv.Allocate(
             self._ddname,
             self._file,
             dptapi.FILEDISP_COND)
         cs = dptapi.APIContextSpecification(self._ddname)
         self._opencontext = db._dbserv.OpenContext(cs)
-        return True
             

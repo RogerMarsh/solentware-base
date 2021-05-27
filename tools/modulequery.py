@@ -27,15 +27,19 @@ def database_modules_in_default_preference_order():
     Callers are expected to use the first module in the returned tuple that is
     available according to the return value from installed_database_modules.
 
-    The default assumes that dpt, a third party module, is to be used if
-    available.  The bsddb modules are preferred over sqlite3 because bsddb is
-    not in core Python version 3 and bsddb3 is a third-party module.
+    The default assumes that the third party modules dpt and bsddb3 are to be
+    used, preferring dpt, if available.  These modules have to be obtained and
+    installed separately from Python and each other.
+    
+    The bsddb module is not includes in Python 3.  The sqlite3 module is
+    included in Python 2.5 and later. Subject to these conditions sqlite3 is
+    preferred to bsddb.  Often installing these two modules is optional.
 
     """
     if sys.platform == 'win32':
-        return ('dptdb', 'bsddb', 'bsddb3', 'sqlite3')
+        return ('dptdb', 'bsddb3', 'sqlite3', 'bsddb')
     else:
-        return ('bsddb', 'bsddb3', 'sqlite3')
+        return ('bsddb3', 'sqlite3', 'bsddb')
 
 
 def supported_database_modules():
@@ -49,7 +53,7 @@ def supported_database_modules():
     return dict(
         bsddb=False,
         bsddb3=False,
-        sqlite3=None,
+        sqlite3=False,
         dptdb=True,
         )
 
@@ -126,7 +130,5 @@ def existing_databases(folder, filespec, bsddb_before_bsddb3=True):
 
 def _bsddb_preference(mapping, bsddb_before_bsddb3):
     """Adjust mapping to honour bsddb_before_bsddb3 preference"""
-    if bsddb_before_bsddb3 is not None:
-        if mapping['bsddb'] and mapping['bsddb3']:
-            mapping['bsddb'] = mapping['bsddb'] and bsddb_before_bsddb3
-            mapping['bsddb3'] = mapping['bsddb3'] and not bsddb_before_bsddb3
+    if mapping['bsddb'] and mapping['bsddb3']:
+        mapping['bsddb'] = False

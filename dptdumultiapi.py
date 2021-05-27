@@ -17,7 +17,7 @@ List of classes
 
 DPTdumultiapiError - Exceptions
 DPTdumultiapi - DPT database definition and multi-step deferred update API
-DPTdumultiapiRoot - DPT record level access in multi-step deferred update mode
+DPTdumultiapiRecord - DPT record level access in multi-step deferred update mode
 _DPTdumultiDeferBase - Sort control details for field
 _DPTdumultiNoPadNoCRLF - Sort and write_merged_files_to_seqfile methods
 _DPTdumultiNoPadNoCRLFOrdChar - Ordered Character data getter
@@ -39,15 +39,17 @@ from heapq import heapify, heappop, heappush
 
 from dptdb import dptapi
 
-from dptbase import DPTbase, DPTbaseRoot
-from api.constants import FLT, INV, UAE, ORD, ONM, SPT
-from api.constants import BSIZE, BRECPPG, BRESERVE, BREUSE
-from api.constants import DSIZE, DRESERVE, DPGSRES
-from api.constants import FILEORG, DEFAULT, EO, RRN, SUPPORTED_FILEORGS
-from api.constants import DDNAME, FILE, FILEDESC, FOLDER, FIELDS
-from api.constants import PRIMARY, SECONDARY, DEFER
-from api.constants import DPT_DEFER_FOLDER, DPT_DU_SEQNUM, DPT_SYSDU_FOLDER
-from api.constants import TAPEA, TAPEN
+from dptduapi import DPTduapi, DPTduapiRecord
+from api.constants import (
+    FLT, INV, UAE, ORD, ONM, SPT,
+    BSIZE, BRECPPG, BRESERVE, BREUSE,
+    DSIZE, DRESERVE, DPGSRES,
+    FILEORG, DEFAULT, EO, RRN, SUPPORTED_FILEORGS,
+    DDNAME, FILE, FILEDESC, FOLDER, FIELDS,
+    PRIMARY, SECONDARY, DEFER,
+    DPT_DEFER_FOLDER,
+    TAPEA, TAPEN,
+    )
 
 DU_AUDIT_LINE = 'DU'
 
@@ -68,7 +70,7 @@ class DPTdumultiapiError(DatabaseError):
     pass
 
 
-class DPTdumultiapi(DPTbase):
+class DPTdumultiapi(DPTduapi):
     
     """Support multi-step deferred updates on DPT database.
 
@@ -92,13 +94,10 @@ class DPTdumultiapi(DPTbase):
 
     Methods overridden:
 
-    close_context
-    create_default_parms - create parms.ini files
-    delete_instance - raise exception
-    do_deferred_updates - apply deferred updates (should be an addition?)
-    edit_instance - raise exception
-    make_cursor - raise exception
-    make_root - use DPTdumultiapiRoot to open file
+    close_context - close database and sequential files
+    do_deferred_updates - apply deferred updates using custom sort
+    make_root - use DPTdumultiapiRecord to open file
+    open_context_allocated
 
     Methods extended:
 
@@ -120,14 +119,9 @@ class DPTdumultiapi(DPTbase):
         **kargs = DPT database system parameters
 
         """
-        try:
-            dptfolder = os.path.abspath(DPTfolder)
-        except:
-            msg = ' '.join(['Main folder name', str(DPTfolder),
-                            'is not valid'])
-            raise DPTdumultiapiError, msg
-        
-        if deferfolder == None:
+        super(DPTdumultiapi, self).__init__(DPTfiles, DPTfolder, **kargs)
+
+        if deferfolder is None:
             deferfolder = DPT_DEFER_FOLDER
         try:
             self._deferfolder = os.path.abspath(
@@ -137,20 +131,6 @@ class DPTdumultiapi(DPTbase):
                             'is not valid'])
             raise DPTdumultiapiError, msg
         
-        #The database system parameters. DPT assumes reasonable defaults
-        #for any values sought in self._dptkargs.
-        #At Python26+ need to convert unicode to str for DPT
-        dptsys = str(kargs.get(
-            DPT_SYSDU_FOLDER, os.path.join(dptfolder, DPT_SYSDU_FOLDER)))
-        username = str(kargs.get('username', 'dptapi'))
-
-        super(DPTdumultiapi, self).__init__(
-            DPTfiles,
-            DPTfolder,
-            dptsys=dptsys,
-            username=username,
-            **kargs)
-
         #Files to be updated in multi-step deferred update mode
         self._deferupdatefiles = kargs.get('deferupdatefiles', dict())
         for duf in self._deferupdatefiles:
@@ -160,44 +140,49 @@ class DPTdumultiapi(DPTbase):
                 raise DPTdumultiapiError, msg
         
     def close_context(self):
-        """Close all DPT files."""
-        if self._dbserv == None:
+        """Close all DPT files and multi-step specific sequential files."""
+        if self._dbserv is None:
             return
         for dd in self._dptfiles:
             self._dptfiles[dd].close(self._dbserv, self._sfserv)
-
-    def create_default_parms(self):
-        """Create default parms.ini file."""
-        if not os.path.exists(self._parms):
-            pf = file(self._parms, 'w')
-            try:
-                pf.write("RCVOPT=X'00' " + os.linesep)
-                pf.write("MAXBUF=100 " + os.linesep)
-            finally:
-                pf.close()
-                
-    def delete_instance(self, dbname, instance):
-        raise DPTdumultiapiError, 'delete_instance not implemented'
 
     def do_deferred_updates(self):
         """Apply deferred updates."""
         for dd in self._deferupdatefiles:
             self._dptfiles[dd].do_nopad_noCRLF_deferred_updates(
                 self._dbserv, self._deferfolder)
-
         try:
             os.rmdir(self._deferfolder)
         except:
             pass
 
-    def edit_instance(self, dbname, instance):
-        raise DPTdumultiapiError, 'edit_instance not implemented'
-
-    def make_cursor(self, dbname):
-        raise DPTdumultiapiError, 'make_cursor not implemented'
-
     def make_root(self, name, fname, dptfile, sfi):
-        return DPTdumultiapiRoot(name, fname, dptfile, sfi)
+        """DPT file interface customised for multi-step deferred update"""
+        return DPTdumultiapiRecord(name, fname, dptfile, sfi)
+
+    def open_context_allocated(self, files=()):
+        """Open all files in multi-step deferred update mode.
+
+        Intended use is to open files to examine file status, or perhaps the
+        equivalent of DPT command VIEW TABLES, when the database is closed as
+        far as the application subclass of DPTbase is concerned.
+
+        It is assumed that the Database Services object exists and that an
+        earlier call to OpenContext_DUMulti has been made.
+
+        """
+        # It is assumed a call to OpenContext_DUMulti was made earlier.
+        for dd in files:
+            if dd in self._dptfiles:
+                root = self._dptfiles[dd]
+                self._dbserv.Allocate(
+                    root._ddname,
+                    root._file,
+                    FILEDISP_OLD)
+                cs = APIContextSpecification(root._ddname)
+                # It is wrong to call OpenContext_DUMulti here, even if it has
+                # not been called earlier.
+                root._opencontext = self._dbserv.OpenContext(cs)
 
 
 class _DPTdumultiDeferBase(object):
@@ -209,7 +194,7 @@ class _DPTdumultiDeferBase(object):
     be processed by ApplyDeferredUpdates (DPT API) to update the database.
 
     _DPTdumultiDeferBase supports deferred updates for a field on a file.
-    Note that self._dptfieldid is set in DPTdumultiapiRoot.open_root().
+    Note that self._dptfieldid is set in DPTdumultiapiRecord.open_root().
     This class should not be used directly. Use the appropriate
     subclass instead. The attributes and methods in this class are
     used by more than one, but not necessarily all, subclasses.
@@ -331,7 +316,7 @@ class _DPTdumultiNoPadNoCRLF(_DPTdumultiDeferBase):
             heapify(record)
             for f in sources[:256]:
                 r = GetNextRecord(f)
-                if r == None:
+                if r is None:
                     del sources[sources.index(f)]
                     self.delete_sort_file(f)
                 else:
@@ -341,7 +326,7 @@ class _DPTdumultiNoPadNoCRLF(_DPTdumultiDeferBase):
                 wr, f = heappop(record)
                 outfile.write(wr[-1])
                 r = GetNextRecord(f)
-                if r == None:
+                if r is None:
                     del sources[sources.index(f)]
                     self.delete_sort_file(f)
                     more = len(record) > 0
@@ -436,7 +421,7 @@ class _DPTdumultiNoPadNoCRLFOrdNum(_DPTdumultiNoPadNoCRLF):
             _rmFile.read_nopad_noCRLF_ord_num)
 
 
-class DPTdumultiapiRoot(DPTbaseRoot):
+class DPTdumultiapiRecord(DPTduapiRecord):
 
     """Provide multi-step deferred update sort processing for DPT file.
 
@@ -453,12 +438,11 @@ class DPTdumultiapiRoot(DPTbaseRoot):
 
     Methods overridden:
 
-    delete_instance - not implemented in DPT for deferred updates.
-    edit_instance - not implemented in DPT for deferred updates.
-    make_cursor - not supported by this class.
+    None
 
     Methods extended:
 
+    __init__
     close - close the sequential file containing deferred updates.
     open_root - open DPT file in multi-step mode and create temporary sort
     folders.
@@ -469,7 +453,7 @@ class DPTdumultiapiRoot(DPTbaseRoot):
     
     def __init__(self, name, fname, dptdesc, sfi):
         """Extend to include deferred update sequential file definition"""
-        super(DPTdumultiapiRoot, self).__init__(
+        super(DPTdumultiapiRecord, self).__init__(
             name,
             fname,
             dptdesc,
@@ -490,7 +474,7 @@ class DPTdumultiapiRoot(DPTbaseRoot):
 
     def close(self, dbserv, sfserv):
         """Extend close to Free the sequential files."""
-        super(DPTdumultiapiRoot, self).close(dbserv)
+        super(DPTdumultiapiRecord, self).close(dbserv)
         try:
             sfserv.Free(self._seqfilealpha)
         except:
@@ -499,9 +483,6 @@ class DPTdumultiapiRoot(DPTbaseRoot):
             sfserv.Free(self._seqfilenumeric)
         except:
             pass
-
-    def delete_instance(self, dbname, instance):
-        raise DPTdumultiapiError, 'delete_instance not implemented'
 
     def do_nopad_noCRLF_deferred_updates(self, dbserv, dbfolder):
         """Apply deferred updates from NOPAD|NOCRLF sequential files.
@@ -701,12 +682,6 @@ class DPTdumultiapiRoot(DPTbaseRoot):
         for s in self._secondary:
             self._duclass[s] = None
 
-    def edit_instance(self, dbname, instance):
-        raise DPTdumultiapiError, 'edit_instance not implemented'
-
-    def make_cursor(self, dbname):
-        raise DPTdumultiapiError, 'make_cursor not implemented'
-
     def open_root(self, db):
         """Extend to open file in multi-step mode.
 
@@ -721,12 +696,10 @@ class DPTdumultiapiRoot(DPTbaseRoot):
 
         """
         if self._name not in db._deferupdatefiles:
-            return True
+            return
 
-        super(DPTdumultiapiRoot, self).open_root(db)
+        super(DPTduapiRecord, self).open_root(db)
 
-        #test FISTAT != x'20'
-        
         #get list of fields whose updates can be deferred
         self._dufields = []
         for s in self._secondary:
@@ -736,7 +709,7 @@ class DPTdumultiapiRoot(DPTbaseRoot):
             if self._fields[f][ONM]:
                 self._dufields.append(s)
         if not self._dufields:
-            return True
+            return
         
         try:
             os.mkdir(db._deferfolder)
@@ -813,11 +786,10 @@ class DPTdumultiapiRoot(DPTbaseRoot):
                         atts.IsOrdNum())
             fac.Advance(1)
         self._opencontext.CloseFieldAttCursor(fac)
-        return True
 
     def reset_defer_limit(self):
         """Set defer record limit to default class limit"""
-        self.set_defer_limit(DPTdumultiapiRoot._defer_read_limit)
+        self.set_defer_limit(DPTdumultiapiRecord._defer_read_limit)
 
     def set_defer_limit(self, limit):
         """Set defer record limit for comparison with record number."""

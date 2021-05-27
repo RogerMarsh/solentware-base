@@ -9,7 +9,7 @@ done using the same method names where possible.  DPT provides more complex
 index manipulation.  Use the DPT API directly for this at the expense of
 compatibility with bsddb.
 
-The DPTbaseRoot.open_root method creates a file but does not leave it open
+The DPTbaseRecord.open_root method creates a file but does not leave it open
 for record level access.  Subclasses in this package extend the open_root
 method to open files for deferred update or non-deferred update.  Non-deferred
 updates are recoverable and can be backed out.  Deferred updates are not but
@@ -25,8 +25,8 @@ List of classes
 
 DPTbaseError - Exceptions
 DPTbase - DPT database definition and API
-_DPTbaseRoot - DPT file definition and file level access
-DPTbaseRoot - DPT record level access
+DPTbaseFile - DPT file definition and file level access
+DPTbaseRecord - DPT record level access
 CursorDPT - Define cursor on file and access methods
 _CursorDPT - DPT record set and direct value set access
 
@@ -44,23 +44,28 @@ if not _platform_win32:
 import os
 import os.path
 import subprocess
-from heapq import heapify, heappop, heappush
 
 from dptdb import dptapi
 
-from api.database import Database, Cursor
-from api.database import decode_record_number, encode_record_number
-from api.constants import FLT, INV, UAE, ORD, ONM, SPT
-from api.constants import BSIZE, BRECPPG, BRESERVE, BREUSE
-from api.constants import DSIZE, DRESERVE, DPGSRES
-from api.constants import FILEORG, DEFAULT, EO, RRN, SUPPORTED_FILEORGS
-from api.constants import MANDATORY_FILEATTS, FILEATTS
-from api.constants import PRIMARY_FIELDATTS, SECONDARY_FIELDATTS
-from api.constants import DDNAME, FILE, FILEDESC, FOLDER, FIELDS
-from api.constants import PRIMARY, SECONDARY, DEFER
-from api.constants import BTOD_FACTOR, DEFAULT_RECORDS
-from api.constants import DPT_DEFER_FOLDER, DPT_DU_SEQNUM, DPT_SYS_FOLDER
+from api.database import (
+    Database, Cursor, decode_record_number, encode_record_number,
+    )
+from api.constants import (
+    FLT, INV, UAE, ORD, ONM, SPT,
+    BSIZE, BRECPPG, BRESERVE, BREUSE,
+    DSIZE, DRESERVE, DPGSRES,
+    FILEORG, DEFAULT, EO, RRN, SUPPORTED_FILEORGS,
+    MANDATORY_FILEATTS, FILEATTS,
+    PRIMARY_FIELDATTS, SECONDARY_FIELDATTS, DPT_FIELDATTS,
+    DDNAME, FILE, FILEDESC, FOLDER, FIELDS,
+    PRIMARY, SECONDARY, DEFER,
+    BTOD_FACTOR, BTOD_CONSTANT, DEFAULT_RECORDS, DEFAULT_INCREASE_FACTOR,
+    DPT_DEFER_FOLDER, DPT_DU_SEQNUM, DPT_SYS_FOLDER,
+    )
 from basesup.gui.dptfilesize import get_sizes_for_new_files
+
+file_parameter_list = (
+    'BHIGHPG', 'BSIZE', 'DPGSRES', 'DPGSUSED', 'DRESERVE', 'DSIZE', 'FIFLAGS')
 
 
 class DPTbaseError(DatabaseError):
@@ -88,6 +93,7 @@ class DPTbase(Database):
     create_default_parms
     do_deferred_updates
     get_database_instance
+    open_context_allocated
     set_defer_update
     unset_defer_update
     __del__
@@ -96,11 +102,12 @@ class DPTbase(Database):
     Methods overridden:
 
     __init__
+    backout
     close_context
     close_database
     commit
     close_internal_cursors
-    dpt_db_compatibility_hack
+    db_compatibility_hack
     delete_instance
     edit_instance
     exists
@@ -108,6 +115,8 @@ class DPTbase(Database):
     make_cursor
     get_database_folder
     get_database
+    get_database_increase
+    get_database_parameters
     get_first_primary_key_for_index_key
     get_primary_record
     make_internal_cursors
@@ -218,7 +227,7 @@ class DPTbase(Database):
             else:
                 folder = DPTfiles[dd].get(FOLDER, None)
                 filename = DPTfiles[dd].get(FILE, None)
-                if folder == None:
+                if folder is None:
                     folder = dptfolder
                 try:
                     folder = os.path.abspath(folder)
@@ -247,16 +256,22 @@ class DPTbase(Database):
         self._dptfiles = dptfiles
         self._dptfolder = DPTfolder
 
+    def backout(self):
+        """Backout updates on all DPT files."""
+        if self._dbserv:
+            if self._dbserv.UpdateIsInProgress():
+                self._dbserv.Backout()
+            
     def close_context(self):
         """Close all DPT files."""
-        if self._dbserv == None:
+        if self._dbserv is None:
             return
         for dd in self._dptfiles:
             self._dptfiles[dd].close(self._dbserv)
 
     def close_database(self):
         """Close all DPT files and shut down database services."""
-        if self._dbserv == None:
+        if self._dbserv is None:
             return
         self.close_context()
         try:
@@ -275,11 +290,11 @@ class DPTbase(Database):
     def commit(self):
         """Commit updates on all DPT files."""
         if self._dbserv:
-            if not self._dbserv.UpdateIsInProgress():
+            if self._dbserv.UpdateIsInProgress():
                 self._dbserv.Commit()
             
-    def dpt_db_compatibility_hack(self, record, srkey):
-        """Convert to (key, value) format returned by DB access.
+    def db_compatibility_hack(self, record, srkey):
+        """Convert to (key, value) format returned by Berkeley DB access.
 
         DPT is compatible with the conventions for Berkeley DB RECNO databases
         except for a Berkeley DB index where the primary key is not held as
@@ -295,10 +310,10 @@ class DPTbase(Database):
 
         """
         key, value = record
-        if value != None:
-            return record
-        else:
+        if value is None:
             return (key, decode_record_number(srkey))
+        else:
+            return record
 
     def create_default_parms(self):
         """Create default parms.ini file."""
@@ -421,43 +436,38 @@ class DPTbase(Database):
         """Return True for compatibility with Berkeley DB subclass."""
         return True
     
-    def increase_database_size(self):
-        """Increase file sizes if files nearly full"""
-        vr = self._dbserv.Core().GetViewerResetter()
-        for k, v in self._dptfiles.iteritems():
-            dbo = v.get_database()
-            if dbo is not None:
-                extents = v.get_extents()
-                first_b_extent = extents.front()
-                full = (first_b_extent * 9) / 10
-                b_size = vr.ViewAsInt('BSIZE', dbo)
-                b_used = vr.ViewAsInt('BHIGHPG', dbo)
-                d_size = vr.ViewAsInt('DSIZE', dbo)
-                d_used = vr.ViewAsInt('DPGSUSED', dbo)
-                increase_b = b_size - b_used < full
-                increase_d = d_size - d_used < full * v._btod_factor
-                if len(extents) % 2:
-                    if increase_b or increase_d:
-                        dbo.Increase(first_b_extent, False)
-                        dbo.Increase(
-                            int(round(first_b_extent * v._btod_factor)),
-                            True)
-                elif increase_b or increase_d:
-                    dbo.Increase(
-                        int(round(first_b_extent * v._btod_factor)),
-                        True)
-                    dbo.Increase(first_b_extent, False)
+    def increase_database_size(self, files=None):
+        """Increase file sizes if files nearly full
+
+        files = {'name':(table_b_count, table_d_count), ...}.
+        
+        Method increase_file_size will treat the two numbers as record counts
+        and increase Table B and Table D, if necessary, to hold these numbers
+        of extra records using the sizing parameters in the FileSpec instance
+        for the database.  The value None for a file, "{..., 'name':None, ...}"
+        means apply the default increase from the file specification.
+
+        """
+        if files is None:
+            files = dict()
+        for file_ in files:
+            if file_ in self._dptfiles:
+                self._dptfiles[file_].increase_file_size(
+                    self._dbserv,
+                    sizing_record_counts=files[file_])
 
     def initial_database_size(self):
-        """Set initial file sizes as specified in dialogues"""
-        return get_sizes_for_new_files(self)
+        """Set initial file sizes as specified in file descriptions"""
+        for v in self._dptfiles.itervalues():
+            v.initial_file_size()
+        return True
 
     def is_primary(self, dbname, dbfield):
         """Return True if dbfield is primary field (or not secondary)."""
         return self._dptfiles[dbname].is_field_primary(dbfield)
 
     def is_primary_recno(self, dbname):
-        """Return True for compatibility with Berkeley DB subclass.
+        """Return True for compatibility with Berkeley DB.
 
         DPT record number is equivalent to Berkeley DB primary key.
 
@@ -484,7 +494,7 @@ class DPTbase(Database):
 
         self.create_default_parms()
                 
-        if self._dbserv == None:
+        if self._dbserv is None:
             # #SEQTEMP and checkpoint.ckp placed in self._dptsysfolder'
             cwd = os.getcwd()
             os.chdir(os.path.abspath(self._dptsysfolder))
@@ -497,12 +507,7 @@ class DPTbase(Database):
             os.chdir(cwd)
             
         for dd in self._dptfiles:
-            if not self._dptfiles[dd].open_root(self):
-                self.close()
-                msg = ' '.join(['All files closed after attempt to create',
-                                'a file without giving a description'])
-                raise DPTbaseError, msg
-        self.increase_database_size()
+            self._dptfiles[dd].open_root(self)
         return True
 
     def get_packed_key(self, dbname, instance):
@@ -548,17 +553,71 @@ class DPTbase(Database):
     def __del__(self):
         """Close files and destroy APIDatabaseServices object."""
 
-        if self._dbserv == None:
+        if self._dbserv is None:
             return
 
         self.close_database()
 
     def make_root(self, name, fname, dptfile, sfi):
 
-        return DPTbaseRoot(name, fname, dptfile, sfi)
+        return DPTbaseRecord(name, fname, dptfile, sfi)
+
+    def get_database_parameters(self, files=None):
+        """Return file parameters infomation for file names in files."""
+        if files is None:
+            files = ()
+        sizes = {}
+        for f in files:
+            if f in self._dptfiles:
+                sizes[f] = self._dptfiles[f].get_file_parameters(self._dbserv)
+        return sizes
+
+    def get_database_increase(self, files=None):
+        """Return required file increases for file names in files."""
+        if files is None:
+            files = ()
+        increases = {}
+        for file_ in files:
+            if file_ in self._dptfiles:
+                increases[file_] = self._dptfiles[file_].get_tables_increase(
+                    self._dbserv,
+                    sizing_record_counts=files[file_])
+        return increases
+
+    def open_context_normal(self, files=()):
+        """Open all files in normal mode.
+
+        Intended use is to open files to examine file status, or perhaps the
+        equivalent of DPT command VIEW TABLES, when the database is closed as
+        far as the application subclass of DPTbase is concerned.
+
+        It is assumed that the Database Services object exists.
+
+        """
+        for dd in files:
+            if dd in self._dptfiles:
+                root = self._dptfiles[dd]
+                self._dbserv.Allocate(
+                    root._ddname,
+                    root._file,
+                    FILEDISP_OLD)
+                cs = APIContextSpecification(root._ddname)
+                root._opencontext = self._dbserv.OpenContext(cs)
+
+    def open_context_allocated(self, files=()):
+        """Open all files in normal mode.
+
+        Intended use is to open files to examine file status, or perhaps the
+        equivalent of DPT command VIEW TABLES, when the database is closed as
+        far as the application subclass of DPTbase is concerned.
+
+        It is assumed that the Database Services object exists.
+
+        """
+        self.open_context_normal(self, files=files)
 
 
-class _DPTbaseRoot(object):
+class DPTbaseFile(object):
 
     """Provide file level access to a DPT file.
 
@@ -582,9 +641,16 @@ class _DPTbaseRoot(object):
 
     Methods added:
 
+    calculate_table_b_increase
+    calculate_table_d_increase
     close
     create_files
     get_extents
+    get_file_parameters
+    get_tables_increase
+    increase_file_size
+    increase_size_of_full_file  -  right place?
+    initial_file_size
     is_field_primary
     open_root
     open_folders
@@ -607,6 +673,8 @@ class _DPTbaseRoot(object):
         dptdesc = field description for data file
 
         """
+        super(DPTbaseFile, self).__init__()
+
         primary = dptdesc.get(PRIMARY, name[0].upper() + name[1:])
         
         if primary not in dptdesc[FIELDS]:
@@ -626,7 +694,9 @@ class _DPTbaseRoot(object):
         self._opencontext = None
         self._pyappend = dict()
         self._btod_factor = dptdesc[BTOD_FACTOR]
+        self._btod_constant = dptdesc[BTOD_CONSTANT]
         self._default_records = dptdesc[DEFAULT_RECORDS]
+        self._default_increase_factor = dptdesc[DEFAULT_INCREASE_FACTOR]
 
         # Functions to convert numeric keys to string representation.
         # By default base 256 with the least significant digit at the right.
@@ -652,7 +722,7 @@ class _DPTbaseRoot(object):
                     raise DPTbaseError, msg
 
                 secondary = dptdesc[SECONDARY][s]
-                if secondary == None:
+                if secondary is None:
                     secondary = s[0].upper() + s[1:]
 
                 if secondary == primary:
@@ -671,7 +741,7 @@ class _DPTbaseRoot(object):
                 self._secondary[s] = secondary
             
         filedesc = dptdesc.get(FILEDESC, None)
-        if filedesc != None:
+        if filedesc is not None:
             if not isinstance(filedesc, dict):
                 msg = ' '.join(['Description of file', repr(self._ddname),
                                 'must be a dictionary or "None"'])
@@ -743,7 +813,7 @@ class _DPTbaseRoot(object):
                 fieldatts = SECONDARY_FIELDATTS
             self._fields[fieldname] = fieldatts.copy()
             description = fields[fieldname]
-            if description == None:
+            if description is None:
                 description = dict()
             if not isinstance(description, dict):
                 msg = ' '.join(['Attributes for field', fieldname,
@@ -772,7 +842,8 @@ class _DPTbaseRoot(object):
                                         'is invalid'])
                         raise DPTbaseError, msg
                     
-                self._fields[fieldname][attr] = description[attr]
+                if attr in DPT_FIELDATTS:
+                    self._fields[fieldname][attr] = description[attr]
 
             if self._fields[fieldname][ONM]:
                 self._pyappend[fieldname] = dptapi.pyAppendDouble
@@ -849,19 +920,29 @@ class _DPTbaseRoot(object):
         self._opencontext.ShowTableExtents(extents)
         return extents
 
+    def get_file_parameters(self, dbserv):
+        """Get current values of selected file parameters."""
+        vr = dbserv.Core().GetViewerResetter()
+        fp = dict()
+        fp['FISTAT'] = (
+            vr.ViewAsInt('FISTAT', self._opencontext),
+            vr.View('FISTAT', self._opencontext),
+            )
+        for p in file_parameter_list:
+            fp[p] = vr.ViewAsInt(p, self._opencontext)
+        for p in (dptapi.FIFLAGS_FULL_TABLEB, dptapi.FIFLAGS_FULL_TABLED):
+            fp[p] = bool(fp['FIFLAGS'] & p)
+        return fp
+
     def is_field_primary(self, dbfield):
         """Return true if field is primary (not secondary test used)."""
         return dbfield not in self._secondary
 
     def open_root(self, db):
         """Open file after creating it if necessary."""
-
         self.open_folders()
-            
-        #test FISTAT != x'20' if file exists
         if not os.path.exists(self._file):
             self.create_files(db._dbserv)
-        return True
             
     def open_folders(self):
         """Create folder hierarchy to file location if necessary."""
@@ -878,8 +959,180 @@ class _DPTbaseRoot(object):
                 msg = ' '.join([pathname, 'exists but is not a file'])
                 raise DPTbaseError, msg
             
+    def initial_file_size(self):
+        """Set initial file size as specified in file description"""
+        if not os.path.exists(self._file):
+            f = self._filedesc
+            if f[BSIZE] is None:
+                records = self._default_records
+                bsize = int(round(records / f[BRECPPG]))
+                if bsize * f[BRECPPG] < records:
+                    bsize += 1
+                dsize = int(round(bsize * self._btod_factor) +
+                            self._btod_constant)
+                f[BSIZE] = bsize
+                f[DSIZE] = dsize
+        return True
 
-class DPTbaseRoot(_DPTbaseRoot):
+    def increase_file_size(self, dbserv, sizing_record_counts=None):
+        """Increase file size if file nearly full"""
+        if self._opencontext is not None:
+            table_B_needed, table_D_needed = self.get_tables_increase(
+                dbserv, sizing_record_counts=sizing_record_counts)
+            if len(self.get_extents()) % 2:
+                if table_B_needed:
+                    self._opencontext.Increase(table_B_needed, False)
+                if table_D_needed:
+                    self._opencontext.Increase(table_D_needed, True)
+            elif table_D_needed:
+                self._opencontext.Increase(table_D_needed, True)
+                if table_B_needed:
+                    self._opencontext.Increase(table_B_needed, False)
+            elif table_B_needed:
+                self._opencontext.Increase(table_B_needed, False)
+
+    def increase_size_of_full_file(self, dbserv, size_before, size_filled):
+        """Increase file size taking file full into account.
+
+        Intended for use when the required size to do a deferred update has
+        been estimated and the update fills a file.  Make Table B and, or,
+        Table D free space at least 20% bigger before trying again.
+
+        It is the caller's responsibility to manage the backups needed, and
+        the collection of 'view tables' information, to enable effective use
+        of this method.
+
+        """
+        b_diff_imp = size_filled['BSIZE'] - size_before['BSIZE']
+        d_diff_imp = size_filled['DSIZE'] - size_before['DSIZE']
+        b_spare = size_before['BSIZE'] - max((0, size_before['BHIGHPG']))
+        d_spare = size_before['DSIZE'] - size_before['DPGSUSED']
+        b_filled = size_filled['FIFLAGS'] & dptapi.FIFLAGS_FULL_TABLEB
+        d_filled = size_filled['FIFLAGS'] & dptapi.FIFLAGS_FULL_TABLED
+        deferred = size_filled['FISTAT'][0] == dptapi.FISTAT_DEFERRED_UPDATES
+        if b_filled:
+            b_increase = ((((b_diff_imp + b_spare) * 6) / 5))
+            d_increase = max(
+                ((((d_diff_imp + d_spare) * 6) / 5)),
+                b_increase * self._btod_factor - d_spare)
+        elif d_filled:
+            b_increase = b_diff_imp
+            d_increase = max(
+                ((((d_diff_imp + d_spare) * 6) / 5)),
+                b_increase * self._btod_factor - d_spare)
+        elif deferred:
+            b_increase = b_diff_imp
+            d_increase = d_diff_imp
+        else:
+            b_increase = 0
+            d_increase = 0
+        if b_increase > 0 and d_increase > 0:
+            if len(self.get_extents()) % 2:
+                self._opencontext.Increase(b_increase, False)
+                self._opencontext.Increase(d_increase, True)
+            else:
+                self._opencontext.Increase(d_increase, True)
+                self._opencontext.Increase(b_increase, False)
+        elif b_increase > 0:
+            self._opencontext.Increase(b_increase, False)
+        elif d_increase > 0:
+            self._opencontext.Increase(d_increase, True)
+        return
+
+    def calculate_table_b_increase(
+        self,
+        unused=None,
+        increase=None,
+        ):
+        """Return the number of pages to add to DPT file data area.
+
+        unused - current spare pages in Table B or None
+        increase - number of extra records or None
+
+        """
+        if unused is not None:
+            unused = unused * self._filedesc[BRECPPG]
+        if unused is None:
+            if increase is not None:
+                return increase
+        elif increase is not None:
+            if increase > unused:
+                return increase
+        increase =  int((1 + self._default_records) *
+                        self._default_increase_factor)
+        if unused is None:
+            return increase
+        elif increase > unused:
+            return increase - unused
+        return 0
+
+    def calculate_table_d_increase(
+        self,
+        unused=None,
+        increase=None,
+        table_b_increase=None,
+        ):
+        """Return the number of pages to add to DPT file index area.
+
+        unused - current spare pages in Table D or None
+        increase - number of extra records or None
+        table_b_increase - increase index to match extra data pages if not None
+
+        """
+        if unused is not None:
+            unused = (unused * self._filedesc[BRECPPG]) / self._btod_factor
+        if table_b_increase is None:
+            if unused is None:
+                if increase is not None:
+                    return increase
+            elif increase is not None:
+                if increase > unused:
+                    return increase
+            increase =  int((1 + self._default_records) *
+                            self._default_increase_factor)
+            if unused is not None:
+                if increase > unused:
+                    return increase - unused
+        else:
+            increase = int(table_b_increase * self._filedesc[BRECPPG])
+            if unused is not None:
+                if increase > unused:
+                    return increase
+        if unused is None:
+            return increase
+        return 0
+
+    def get_tables_increase(self, dbserv, sizing_record_counts=None):
+        """Return tuple (Table B, Table D) increase needed or None"""
+        if self._opencontext is not None:
+            fp = self.get_file_parameters(dbserv)
+            b_size, b_used, d_size, d_used = (
+                fp['BSIZE'],
+                max(0, fp['BHIGHPG']),
+                fp['DSIZE'],
+                fp['DPGSUSED'])
+            if sizing_record_counts is None:
+                increase_record_counts = (
+                    self.calculate_table_b_increase(unused=(b_size - b_used)),
+                    self.calculate_table_d_increase(unused=(d_size - d_used)),
+                    )
+            else:
+                increase_record_counts = (
+                    self.calculate_table_b_increase(
+                        unused=(b_size - b_used),
+                        increase=sizing_record_counts[0]),
+                    self.calculate_table_d_increase(
+                        unused=(d_size - d_used),
+                        increase=sizing_record_counts[1]),
+                    )
+            return (
+                increase_record_counts[0] / self._filedesc[BRECPPG],
+                ((increase_record_counts[1] * self._btod_factor)
+                 / self._filedesc[BRECPPG]),
+                )
+
+
+class DPTbaseRecord(DPTbaseFile):
 
     """Provide record level access to a DPT file.
 
@@ -909,6 +1162,9 @@ class DPTbaseRoot(_DPTbaseRoot):
     foundset_all_records
     foundset_field_equals_value
     foundset_record_number
+    foundset_records_before_record_number
+    foundset_records_not_before_record_number
+    foundset_recordset_before_record_number
 
     Methods overridden:
 
@@ -927,7 +1183,7 @@ class DPTbaseRoot(_DPTbaseRoot):
         See base class for argument descriptions.
 
         """
-        super(DPTbaseRoot, self).__init__(name, fname, dptdesc)
+        super(DPTbaseRecord, self).__init__(name, fname, dptdesc)
         
         #Permanent instances for efficient file updates
         self._fieldvalue = dptapi.APIFieldValue()
@@ -952,7 +1208,7 @@ class DPTbaseRoot(_DPTbaseRoot):
         for d in self._sources.keys():
             d.close()
         self._sources.clear()
-        super(DPTbaseRoot, self).close(dbserv)
+        super(DPTbaseRecord, self).close(dbserv)
         
     def delete_instance(self, instance):
         """Delete the record containing the instance.
@@ -1132,7 +1388,7 @@ class DPTbaseRoot(_DPTbaseRoot):
     
     def get_primary_record(self, key):
         """Return the instance given the record number in key."""
-        if key == None:
+        if key is None:
             return None
         fs = self.foundset_record_number(key)
         rsc = fs.OpenCursor()
@@ -1250,6 +1506,40 @@ class DPTbaseRoot(_DPTbaseRoot):
                 dptapi.FD_SINGLEREC,
                 recnum))
 
+    def foundset_records_before_record_number(self, recnum):
+        """Return APIFoundset containing records before recnum in file.
+
+        Provided for convenience of CursorDPT class.
+
+        """
+        return self._opencontext.FindRecords(
+            dptapi.APIFindSpecification(
+                dptapi.FD_NOT_POINT,
+                recnum))
+
+    def foundset_records_not_before_record_number(self, recnum):
+        """Return APIFoundset containing records at and after recnum in file.
+
+        Provided for convenience of CursorDPT class.
+
+        """
+        return self._opencontext.FindRecords(
+            dptapi.APIFindSpecification(
+                dptapi.FD_POINT,
+                recnum))
+
+    def foundset_recordset_before_record_number(self, recnum, recordset):
+        """Return APIFoundset containing records before recnum in recordset.
+
+        Provided for convenience of CursorDPT class.
+
+        """
+        return self._opencontext.FindRecords(
+            dptapi.APIFindSpecification(
+                dptapi.FD_NOT_POINT,
+                recnum),
+            recordset)
+
 
 class CursorDPT(Cursor):
 
@@ -1264,8 +1554,11 @@ class CursorDPT(Cursor):
 
     __init__
     close
+    count_records
     database_cursor_exists
     first
+    get_position_of_record
+    get_record_at_position
     last
     set_partial_key
     nearest
@@ -1309,20 +1602,212 @@ class CursorDPT(Cursor):
             self._cursor = None
         self._partial = None
 
+    def count_records(self):
+        """return record count or None if cursor is not usable"""
+        cursor = self._cursor
+        fieldname = cursor._fieldname
+        dptdb = cursor._dptdb
+        context = dptdb.get_database()
+        if cursor._nonorderedfield:
+            foundset = cursor.foundset_all_records()
+            count = foundset.Count()
+            context.DestroyRecordSet(foundset)
+        else:
+            dvcursor = context.OpenDirectValueCursor(
+                dptapi.APIFindValuesSpecification(fieldname))
+            dvcursor.SetDirection(dptapi.CURSOR_ASCENDING)
+            if self._partial is not None:
+                dvcursor.SetRestriction_Pattern(''.join((self._partial, '*')))
+            games = context.CreateRecordList()
+            dvcursor.GotoFirst()
+            while dvcursor.Accessible():
+                foundset = cursor.foundset_field_equals_value(
+                    dvcursor.GetCurrentValue())
+                games.Place(foundset)
+                context.DestroyRecordSet(foundset)
+                dvcursor.Advance(1)
+            context.CloseDirectValueCursor(dvcursor)
+            count = games.Count()
+            context.DestroyRecordSet(games)
+        return count
+
     def database_cursor_exists(self):
         """Return True if database cursor exists and False otherwise"""
         return bool(self._cursor)
 
     def first(self):
         """Return first record taking partial key into account."""
-        if self._partial == None:
+        if self._partial is None:
             return self._get_record(self._cursor.first())
         else:
             return self.nearest(self._partial)
 
+    def get_position_of_record(self, key=None):
+        """return position of record in file or 0 (zero)"""
+        if key is None:
+            return 0
+        cursor = self._cursor
+        fieldname = cursor._fieldname
+        dptdb = cursor._dptdb
+        context = dptdb.get_database()
+        if cursor._nonorderedfield:
+            foundset = cursor.foundset_records_before_record_number(key[0])
+            count = foundset.Count()
+            context.DestroyRecordSet(foundset)
+            return count
+        else:
+            sk, rn = key
+            dvcursor = context.OpenDirectValueCursor(
+                dptapi.APIFindValuesSpecification(fieldname))
+            dvcursor.SetDirection(dptapi.CURSOR_ASCENDING)
+            if self._partial is not None:
+                dvcursor.SetRestriction_Pattern(''.join((self._partial, '*')))
+            games = context.CreateRecordList()
+            dvcursor.GotoFirst()
+            while dvcursor.Accessible():
+                cv = dvcursor.GetCurrentValue()
+                foundset = cursor.foundset_field_equals_value(cv)
+                if cv.ExtractString() >= sk:
+                    if cv.ExtractString() == sk:
+                        fs = cursor.foundset_recordset_before_record_number(
+                            rn, foundset)
+                        games.Place(fs)
+                        context.DestroyRecordSet(fs)
+                    context.DestroyRecordSet(foundset)
+                    break
+                games.Place(foundset)
+                context.DestroyRecordSet(foundset)
+                dvcursor.Advance(1)
+            context.CloseDirectValueCursor(dvcursor)
+            count = games.Count()
+            context.DestroyRecordSet(games)
+            return count
+
+    def get_record_at_position(self, position=None):
+        """return record for positionth record in file or None"""
+        if position is None:
+            return None
+        backwardscan = bool(position < 0)
+        cursor = self._cursor
+        fieldname = cursor._fieldname
+        dptdb = cursor._dptdb
+        context = dptdb.get_database()
+        if self._cursor._nonorderedfield:
+            # it is simpler, and just as efficient, to do forward scans always
+            fs = cursor.foundset_all_records()
+            c = fs.Count()
+            if backwardscan:
+                position = c + position
+            rsc = fs.OpenCursor()
+            if position > c:
+                if backwardscan:
+                    rsc.GotoFirst()
+                else:
+                    rsc.GotoLast()
+                if not rsc.Accessible():
+                    fs.CloseCursor(rsc)
+                    context.DestroyRecordSet(fs)
+                    return None
+                r = rsc.AccessCurrentRecordForRead()
+                record = (
+                    r.RecNum(),
+                    cursor._join_primary_field_occs(r))
+                fs.CloseCursor(rsc)
+                context.DestroyRecordSet(fs)
+                return record
+            rsc.GotoLast()
+            if not rsc.Accessible():
+                fs.CloseCursor(rsc)
+                context.DestroyRecordSet(fs)
+                return None
+            highrecnum = rsc.LastAdvancedRecNum()
+            fs.CloseCursor(rsc)
+            context.DestroyRecordSet(fs)
+            fs = cursor.foundset_records_before_record_number(position)
+            c = fs.Count()
+            if c > position:
+                rsc = fs.OpenCursor()
+                rsc.GotoLast()
+                if not rsc.Accessible():
+                    fs.CloseCursor(rsc)
+                    context.DestroyRecordSet(fs)
+                    return None
+                r = rsc.AccessCurrentRecordForRead()
+                record = (
+                    r.RecNum(),
+                    cursor._join_primary_field_occs(r))
+                fs.CloseCursor(rsc)
+                context.DestroyRecordSet(fs)
+                return record
+            context.DestroyRecordSet(fs)
+            fs = cursor.foundset_records_not_before_record_number(position)
+            rsc = fs.OpenCursor()
+            rsc.GotoFirst()
+            while c < position:
+                if not rsc.Accessible():
+                    fs.CloseCursor(rsc)
+                    context.DestroyRecordSet(fs)
+                    return None
+                rsc.Advance(1)
+                c += 1
+            r = rsc.AccessCurrentRecordForRead()
+            record = (
+                r.RecNum(),
+                cursor._join_primary_field_occs(r))
+            fs.CloseCursor(rsc)
+            context.DestroyRecordSet(fs)
+            return record
+        else:
+            # it is more efficient to scan from the nearest edge of the file
+            dvc = context.OpenDirectValueCursor(
+                dptapi.APIFindValuesSpecification(fieldname))
+            if backwardscan:
+                dvc.SetDirection(dptapi.CURSOR_DESCENDING)
+                position = -1 - position
+            else:
+                dvc.SetDirection(dptapi.CURSOR_ASCENDING)
+            if self._partial is not None:
+                dvc.SetRestriction_Pattern(''.join((self._partial, '*')))
+            count = 0
+            record = None
+            dvc.GotoFirst()
+            while dvc.Accessible():
+                cv = dvc.GetCurrentValue()
+                fs = cursor.foundset_field_equals_value(cv)
+                c = fs.Count()
+                count += c
+                if count > position:
+                    rsc = fs.OpenCursor()
+                    if backwardscan:
+                        step = count - position - c - 1
+                        rsc.GotoLast()
+                    else:
+                        step = position - count + c
+                        rsc.GotoFirst()
+                    if not rsc.Accessible():
+                        fs.CloseCursor(rsc)
+                        context.DestroyRecordSet(fs)
+                        record = None
+                        break
+                    rsc.Advance(step)
+                    if not rsc.Accessible():
+                        fs.CloseCursor(rsc)
+                        context.DestroyRecordSet(fs)
+                        record = None
+                        break
+                    r = rsc.AccessCurrentRecordForRead()
+                    record = (cv.ExtractString(), r.RecNum())
+                    fs.CloseCursor(rsc)
+                    context.DestroyRecordSet(fs)
+                    break
+                context.DestroyRecordSet(fs)
+                dvc.Advance(1)
+            context.CloseDirectValueCursor(dvc)
+            return record
+
     def last(self):
         """Return last record taking partial key into account."""
-        if self._partial == None:
+        if self._partial is None:
             return self._get_record(self._cursor.last())
         else:
             k = list(self._partial)
@@ -1346,7 +1831,7 @@ class CursorDPT(Cursor):
 
     def _get_record(self, record):
         """Return record matching key or partial key or None if no match."""
-        if self._partial != None:
+        if self._partial is not None:
             try:
                 key, value = record
                 if not key.startswith(self._partial):
@@ -1383,7 +1868,7 @@ class CursorDPT(Cursor):
 
         """
         key, value = record
-        if self._partial != None:
+        if self._partial is not None:
             if not key.startswith(self._partial):
                 return None
         if self._cursor._nonorderedfield:
@@ -1409,6 +1894,12 @@ class _CursorDPT(object):
     __del__
     close
     first
+    foundset_all_records
+    foundset_field_equals_value
+    foundset_record_number
+    foundset_records_before_record_number
+    foundset_records_not_before_record_number
+    foundset_recordset_before_record_number
     last
     next
     prev
@@ -1455,9 +1946,9 @@ class _CursorDPT(object):
         self._fieldname = None
         self._nonorderedfield = None
 
-        if not isinstance(dptdb, DPTbaseRoot):
+        if not isinstance(dptdb, DPTbaseRecord):
             msg = ' '.join(['The database object must be a',
-                            ''.join([DPTbaseRoot.__name__, ',']),
+                            ''.join([DPTbaseRecord.__name__, ',']),
                             'or a subclass, instance.'])
             raise DPTbaseError, msg
         if fieldname not in dptdb._fields:
@@ -1481,6 +1972,12 @@ class _CursorDPT(object):
         self._fieldname = fieldname
         self._nonorderedfield = (fieldname == dptdb._primary)
 
+        # self._foundset is over-used but currently safe and resolving this
+        # makes _delete_foundset_on_close_cursor redundant. Safe because
+        # self._partial in CursorRS instances is None always.
+        # self._foundset must be this instance's scratch set and a separate
+        # permanent reference for recordset, if not None, kept for use by
+        # foundset_all_records and similar methods.
         if self._nonorderedfield:
             #A record set cursor.
             if recordset:
@@ -1516,7 +2013,7 @@ class _CursorDPT(object):
 
     def first(self):
         """Return (key, value) or None."""
-        if self._dvcursor != None:
+        if self._dvcursor is not None:
             self._new_value_context()
             self._first_by_value()
             r = self._rscursor.AccessCurrentRecordForRead()
@@ -1533,14 +2030,14 @@ class _CursorDPT(object):
                     r.RecNum(),
                     self._join_primary_field_occs(r))
             except AttributeError:
-                if self._rscursor == None:
+                if self._rscursor is None:
                     return None
                 else:
                     raise
 
     def last(self):
         """Return (key, value) or None."""
-        if self._dvcursor != None:
+        if self._dvcursor is not None:
             self._new_value_context()
             self._last_by_value()
             r = self._rscursor.AccessCurrentRecordForRead()
@@ -1557,7 +2054,7 @@ class _CursorDPT(object):
                     r.RecNum(),
                     self._join_primary_field_occs(r))
             except AttributeError:
-                if self._rscursor == None:
+                if self._rscursor is None:
                     return None
                 else:
                     raise
@@ -1569,7 +2066,7 @@ class _CursorDPT(object):
             rsc.Advance(1)
             if rsc.Accessible():
                 r = self._rscursor.AccessCurrentRecordForRead()
-                if self._dvcursor == None:
+                if self._dvcursor is None:
                     return (
                         r.RecNum(),
                         self._join_primary_field_occs(r))
@@ -1578,12 +2075,12 @@ class _CursorDPT(object):
                         self._dvcursor.GetCurrentValue().ExtractString(),
                         r.RecNum())
         except AttributeError:
-            if rsc == None:
+            if rsc is None:
                 return None
             else:
                 raise
 
-        if self._dvcursor != None:
+        if self._dvcursor is not None:
             context = self._dptdb.get_database()
             while not self._rscursor.Accessible():
                 self._dvcursor.Advance(1)
@@ -1615,7 +2112,7 @@ class _CursorDPT(object):
             rsc.Advance(-1)
             if rsc.Accessible():
                 r = self._rscursor.AccessCurrentRecordForRead()
-                if self._dvcursor == None:
+                if self._dvcursor is None:
                     return (
                         r.RecNum(),
                         self._join_primary_field_occs(r))
@@ -1624,12 +2121,12 @@ class _CursorDPT(object):
                         self._dvcursor.GetCurrentValue().ExtractString(),
                         r.RecNum())
         except AttributeError:
-            if rsc == None:
+            if rsc is None:
                 return None
             else:
                 raise
 
-        if self._dvcursor != None:
+        if self._dvcursor is not None:
             context = self._dptdb.get_database()
             while not self._rscursor.Accessible():
                 self._dvcursor.Advance(-1)
@@ -1665,7 +2162,7 @@ class _CursorDPT(object):
             key = -1 # (first + last) < key * 2
         if self._nonorderedfield:
             self._foundset = self._dptdb.foundset_all_records(self._fieldname)
-        elif self._dvcursor != None:
+        elif self._dvcursor is not None:
             self._foundset = self._dptdb.foundset_field_equals_value(
                 self._fieldname,
                 self._dvcursor.GetCurrentValue())
@@ -1726,7 +2223,7 @@ class _CursorDPT(object):
                         self._join_primary_field_occs(r))
                 rsc.Advance(adv)
         except AttributeError:
-            if rsc == None:
+            if rsc is None:
                 return None
             else:
                 raise
@@ -1748,7 +2245,7 @@ class _CursorDPT(object):
         Range end is not supported in this method for compatibility.
 
         """
-        if self._dvcursor == None:
+        if self._dvcursor is None:
             return self.set(key)
 
         dvc = self._dvcursor
@@ -1757,7 +2254,7 @@ class _CursorDPT(object):
             dvc.SetRestriction_LoLimit(self._dptdb._fieldvalue, True)
             dvc.GotoFirst()
         except AttributeError:
-            if dvc == None:
+            if dvc is None:
                 return None
             else:
                 raise
@@ -1819,7 +2316,7 @@ class _CursorDPT(object):
                 else:
                     npos = None
         except AttributeError:
-            if dvc == None:
+            if dvc is None:
                 return None
             else:
                 raise
@@ -1853,6 +2350,82 @@ class _CursorDPT(object):
         self._first_by_value()
 
         return None
+
+    def foundset_all_records(self):
+        """Return APIFoundset containing all records on DPT file."""
+        # self._foundset is over-used but currently safe and resolving this
+        # makes _delete_foundset_on_close_cursor redundant
+        if self._delete_foundset_on_close_cursor:
+            return self._dptdb.foundset_all_records(self._fieldname)
+        return self._dptdb.get_database().FindRecords(
+            dptapi.APIFindSpecification(
+                self._fieldname,
+                dptapi.FD_ALLRECS,
+                dptapi.APIFieldValue('')),
+            self._foundset)
+
+    def foundset_field_equals_value(self, value):
+        """Return APIFoundset with records where fieldname contains value."""
+        # self._foundset is over-used but currently safe and resolving this
+        # makes _delete_foundset_on_close_cursor redundant
+        if self._delete_foundset_on_close_cursor:
+            return self._dptdb.foundset_field_equals_value(
+                self._fieldname, value)
+        return self._dptdb.get_database().FindRecords(
+            dptapi.APIFindSpecification(
+                self._fieldname,
+                dptapi.FD_EQ,
+                dptapi.APIFieldValue(value)),
+            self._foundset)
+
+    def foundset_record_number(self, recnum):
+        """Return APIFoundset containing record with record number recnum."""
+        # self._foundset is over-used but currently safe and resolving this
+        # makes _delete_foundset_on_close_cursor redundant
+        if self._delete_foundset_on_close_cursor:
+            return self._dptdb.foundset_record_number(recnum)
+        return self._dptdb.get_database().FindRecords(
+            dptapi.APIFindSpecification(
+                dptapi.FD_SINGLEREC,
+                recnum),
+            self._foundset)
+
+    def foundset_records_before_record_number(self, recnum):
+        """Return APIFoundset containing records before recnum in file."""
+        # self._foundset is over-used but currently safe and resolving this
+        # makes _delete_foundset_on_close_cursor redundant
+        if self._delete_foundset_on_close_cursor:
+            return self._dptdb.foundset_records_before_record_number(recnum)
+        return self._dptdb.get_database().FindRecords(
+            dptapi.APIFindSpecification(
+                dptapi.FD_NOT_POINT,
+                recnum),
+            self._foundset)
+
+    def foundset_records_not_before_record_number(self, recnum):
+        """Return APIFoundset containing records at and after recnum in file."""
+        # self._foundset is over-used but currently safe and resolving this
+        # makes _delete_foundset_on_close_cursor redundant
+        if self._delete_foundset_on_close_cursor:
+            return self._dptdb.foundset_records_not_before_record_number(recnum)
+        return self._dptdb.get_database().FindRecords(
+            dptapi.APIFindSpecification(
+                dptapi.FD_POINT,
+                recnum),
+            self._foundset)
+
+    def foundset_recordset_before_record_number(self, recnum, recordset):
+        """Return APIFoundset containing records before recnum in recordset."""
+        # self._foundset is over-used but currently safe and resolving this
+        # makes _delete_foundset_on_close_cursor redundant
+        if self._delete_foundset_on_close_cursor:
+            return self._dptdb.foundset_recordset_before_record_number(
+                recnum, recordset)
+        return self._dptdb.get_database().FindRecords(
+            dptapi.APIFindSpecification(
+                dptapi.FD_NOT_POINT,
+                recnum),
+            recordset)
 
     def _first(self):
         """Position record set cursor at first available record.

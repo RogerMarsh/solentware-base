@@ -4,4 +4,3 @@
 
 """basesup package
 """
-_basesup_version = '0.5'

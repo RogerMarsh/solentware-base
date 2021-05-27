@@ -43,11 +43,12 @@ class Database(object):
 
     Methods added:
 
+    backout
     close_context
     close_database
     commit
     close_internal_cursors
-    dpt_db_compatibility_hack
+    db_compatibility_hack
     delete_instance
     edit_instance
     exists
@@ -80,6 +81,10 @@ class Database(object):
     def __init__(self):
         super(Database, self).__init__()
     
+    def backout(self):
+        """return None"""
+        raise DatabaseError, 'backout not implemented'
+
     def close_context(self):
         """return None"""
         raise DatabaseError, 'close_context not implemented'
@@ -96,9 +101,9 @@ class Database(object):
         """return True or False"""
         raise DatabaseError, 'close_internal_cursors not implemented'
 
-    def dpt_db_compatibility_hack(self, record, srkey):
+    def db_compatibility_hack(self, record, srkey):
         """return None"""
-        raise DatabaseError, 'dpt_db_compatibility_hack not implemented'
+        raise DatabaseError, 'db_compatibility_hack not implemented'
 
     def delete_instance(self, dbname, instance):
         """return None"""
@@ -189,7 +194,7 @@ class Database(object):
         raise DatabaseError, 'put_instance not implemented'
 
     def use_deferred_update_process(self, **kargs):
-        """return True False or None"""
+        """Return module name or None"""
         raise DatabaseError, 'use_deferred_update_process not implemented'
 
 
@@ -204,8 +209,11 @@ class Cursor(object):
     Methods added:
 
     close
+    count_records
     database_cursor_exists
     first
+    get_position_of_record
+    get_record_at_position
     last
     nearest
     next
@@ -225,6 +233,7 @@ class Cursor(object):
     bsddb methods that may be provided by subclasses:
 
     close
+    count
     current
     first
     last
@@ -244,6 +253,10 @@ class Cursor(object):
         """return None"""
         raise DatabaseError, 'close not implemented'
 
+    def count_records(self):
+        """return record count or None"""
+        raise DatabaseError, 'count_records not implemented'
+
     def database_cursor_exists(self):
         """return True if cursor exists or False"""
         raise DatabaseError, 'database_cursor_exists not implemented'
@@ -251,6 +264,14 @@ class Cursor(object):
     def first(self):
         """return (key, value) or None"""
         raise DatabaseError, 'first not implemented'
+
+    def get_position_of_record(self, key=None):
+        """return position of record in file or 0 (zero)"""
+        raise DatabaseError, 'get_position_of_record not implemented'
+
+    def get_record_at_position(self, position=None):
+        """return record for positionth record in file or None"""
+        raise DatabaseError, 'get_record_at_position not implemented'
 
     def last(self):
         """return (key, value) or None"""

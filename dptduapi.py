@@ -14,7 +14,7 @@ List of classes
 
 DPTduapiError - Exceptions
 DPTduapi - DPT database definition and single-step deferred update API
-DPTduapiRoot - DPT record level access in single-step deferred update mode
+DPTduapiRecord - DPT record level access in single-step deferred update mode
 
 """
 
@@ -31,12 +31,14 @@ import os
 
 from dptdb import dptapi
 
-from dptbase import DPTbase, DPTbaseRoot, DPTbaseError
-from api.constants import FLT, INV, UAE, ORD, ONM, SPT
-from api.constants import BSIZE, BRECPPG, BRESERVE, BREUSE
-from api.constants import DSIZE, DRESERVE, DPGSRES
-from api.constants import FILEORG
-from api.constants import DPT_SYSDU_FOLDER
+from dptbase import DPTbase, DPTbaseRecord, DPTbaseError
+from api.constants import (
+    FLT, INV, UAE, ORD, ONM, SPT,
+    BSIZE, BRECPPG, BRESERVE, BREUSE,
+    DSIZE, DRESERVE, DPGSRES,
+    FILEORG,
+    DPT_SYS_FOLDER, DPT_SYSDU_FOLDER,
+    )
 
 
 class DPTduapiError(DPTbaseError):
@@ -71,8 +73,9 @@ class DPTduapi(DPTbase):
     do_deferred_updates - raise exception
     edit_instance - raise exception
     make_cursor - raise exception
-    use_deferred_update_process - ??????????
-    make_root - use DPTduapiRoot to open file
+    make_root - use DPTduapiRecord to open file
+    open_context_allocated
+    use_deferred_update_process - raise exception
 
     Methods extended:
 
@@ -104,7 +107,8 @@ class DPTduapi(DPTbase):
         #for any values sought in self._dptkargs.
         #At Python26+ need to convert unicode to str for DPT
         dptsys = str(kargs.get(
-            DPT_SYSDU_FOLDER, os.path.join(dptfolder, DPT_SYSDU_FOLDER)))
+            DPT_SYSDU_FOLDER,
+            os.path.join(dptfolder, DPT_SYS_FOLDER, DPT_SYS_FOLDER)))
         username = str(kargs.get('username', 'dptapi'))
 
         super(DPTduapi, self).__init__(
@@ -140,11 +144,31 @@ class DPTduapi(DPTbase):
         raise DPTduapiError, 'Query use of du when in deferred update mode'
 
     def make_root(self, name, fname, dptfile, sfi):
+        """DPT file interface customised for single-step deferred update"""
+        return DPTduapiRecord(name, fname, dptfile, sfi)
 
-        return DPTduapiRoot(name, fname, dptfile, sfi)
+    def open_context_allocated(self, files=()):
+        """Open all files in single-step deferred update mode.
+
+        Intended use is to open files to examine file status, or perhaps the
+        equivalent of DPT command VIEW TABLES, when the database is closed as
+        far as the application subclass of DPTbase is concerned.
+
+        It is assumed that the Database Services object exists.
+
+        """
+        for dd in files:
+            if dd in self._dptfiles:
+                root = self._dptfiles[dd]
+                self._dbserv.Allocate(
+                    root._ddname,
+                    root._file,
+                    dptapi.FILEDISP_OLD)
+                cs = dptapi.APIContextSpecification(root._ddname)
+                root._opencontext = self._dbserv.OpenContext_DUSingle(cs)
 
 
-class DPTduapiRoot(DPTbaseRoot):
+class DPTduapiRecord(DPTbaseRecord):
 
     """Provide single-step deferred update sort processing for DPT file.
 
@@ -177,14 +201,11 @@ class DPTduapiRoot(DPTbaseRoot):
 
     def open_root(self, db):
         """Extend to open file in single-step mode."""
-        super(DPTduapiRoot, self).open_root(db)
-            
-        #test FISTAT != x'20'
+        super(DPTduapiRecord, self).open_root(db)
         db._dbserv.Allocate(
             self._ddname,
             self._file,
             dptapi.FILEDISP_COND)
         cs = dptapi.APIContextSpecification(self._ddname)
         self._opencontext = db._dbserv.OpenContext_DUSingle(cs)
-        return True
             

@@ -8,31 +8,42 @@ List of classes
 
 DBapiError - Exceptions
 DBapi - Define database and file and record level access methods
-_DBapiRoot - File level access to each file in database (Open, Close)
-DBapiRoot - Record level access to each file in database
+DBapiFile - File level access to each file in database (Open, Close)
+DBapiRecord - Record level access to each file in database
 CursorDB - Define cursor on file and access methods
 
 """
 
-from heapq import heapify, heappop, heappush
 import os
+import subprocess
+
+import sys
+_platform_win32 = sys.platform == 'win32'
+del sys
 
 # bsddb removed from Python 3.n
 try:
-    from bsddb.db import DB_KEYLAST, DB_CURRENT, DB_DUP, DB_DUPSORT
-    from bsddb.db import DB_BTREE, DB_HASH, DB_RECNO, DB_UNKNOWN
-    from bsddb.db import DBEnv, DB, DB_CREATE, DB_FAST_STAT, DBKeyExistError
+    from bsddb3.db import (
+        DB_KEYLAST, DB_CURRENT, DB_DUP, DB_DUPSORT,
+        DB_BTREE, DB_HASH, DB_RECNO, DB_UNKNOWN,
+        DBEnv, DB, DB_CREATE, DB_FAST_STAT, DBKeyExistError,
+        )
 except ImportError:
-    from bsddb3.db import DB_KEYLAST, DB_CURRENT, DB_DUP, DB_DUPSORT
-    from bsddb3.db import DB_BTREE, DB_HASH, DB_RECNO, DB_UNKNOWN
-    from bsddb3.db import DBEnv, DB, DB_CREATE, DB_FAST_STAT, DBKeyExistError
+    from bsddb.db import (
+        DB_KEYLAST, DB_CURRENT, DB_DUP, DB_DUPSORT,
+        DB_BTREE, DB_HASH, DB_RECNO, DB_UNKNOWN,
+        DBEnv, DB, DB_CREATE, DB_FAST_STAT, DBKeyExistError,
+        )
 
-from api.database import DatabaseError, Database, Cursor
-from api.database import decode_record_number, encode_record_number
-from api.shelf import Shelf, ShelfString, DEFAULT_SEGMENTSIZE
-from api.constants import DB_DEFER_FOLDER, SECONDARY_FOLDER
-from api.constants import PRIMARY, SECONDARY, FILE, HASH_DUPSORT, BTREE_DUPSORT
-from api.constants import DUP, BTREE, HASH, RECNO, DUPSORT
+from api.database import (
+    DatabaseError, Database, Cursor,
+    decode_record_number, encode_record_number,
+    )
+from api.constants import (
+    DB_DEFER_FOLDER, SECONDARY_FOLDER,
+    PRIMARY, SECONDARY, FILE, HASH_DUPSORT, BTREE_DUPSORT,
+    DUP, BTREE, HASH, RECNO, DUPSORT,
+    )
 
 _DB_CONST_MAP = {
     DUP:DB_DUP, BTREE:DB_BTREE, HASH:DB_HASH,
@@ -68,20 +79,20 @@ class DBapi(Database):
 
     do_deferred_updates
     files_exist
-    reset_defer_limit
-    set_defer_limit
+    increase_database_size
+    initial_database_size
     set_defer_update
     unset_defer_update
-    _get_deferable_update_files
 
     Methods overridden:
 
     __init__
+    backout
     close_context
     close_database
     commit
     close_internal_cursors
-    dpt_db_compatibility_hack
+    db_compatibility_hack
     delete_instance
     edit_instance
     exists
@@ -107,11 +118,6 @@ class DBapi(Database):
     None
     
     """
-
-    # Number of records that can be collected for deferred update before
-    # applying to file. Depends on memory available.
-    # Call set_defer_limit to set an appropriate value for each file.
-    _defer_record_limit = DEFAULT_SEGMENTSIZE
 
     def __init__(self,
                  DBhome,
@@ -154,11 +160,11 @@ class DBapi(Database):
                 fileperdb = True
                 break
 
-        if defercontrol == None:
+        if defercontrol is None:
             defercontrol = DB_DEFER_FOLDER
             
         if fileperdb:
-            if secondarydir == None:
+            if secondarydir is None:
                 secondarydir = SECONDARY_FOLDER
 
         basefile = os.path.basename(DBhome)
@@ -168,7 +174,7 @@ class DBapi(Database):
 
         for n in DBnames:
             f = DBnames[n].setdefault(PRIMARY, n)
-            if f == None:
+            if f is None:
                 DBnames[n][PRIMARY] = n
                 f = n
             if f in DBfiles:
@@ -183,7 +189,7 @@ class DBapi(Database):
         for n in DBnames:
             sec = DBnames[n].setdefault(SECONDARY, dict())
             for s in sec:
-                if sec[s] == None:
+                if sec[s] is None:
                     sec[s] = s
                 f = sec[s]
                 if f in DBfiles:
@@ -213,8 +219,8 @@ class DBapi(Database):
         # A secondary name may be a primary name if a loop is not made.
         self._associate = dict()
         
-        # DBapiRoot objects, containing the DB object, for all DB names
-        # {name:DBapiRoot instance, ...}
+        # DBapiRecord objects, containing the DB object, for all DB names
+        # {name:DBapiRecord instance, ...}
         self._main = dict()
         
         # Home directory for the DBenv
@@ -299,11 +305,19 @@ class DBapi(Database):
         # Count of records with deferred updates pending.
         self._defer_record_count = 0
 
+    def backout(self):
+        """Do nothing.  Added for compatibility with DPT.
+
+        The transaction control available in Berkeley DB is not used.
+
+        """
+        return
+
     def close_context(self):
         """Close main and deferred update databases and environment."""
         for n in self._main:
             self._main[n].close()
-        if self._dbenv != None:
+        if self._dbenv is not None:
             self._dbenv.close()
             self._dbenv = None
 
@@ -322,7 +336,7 @@ class DBapi(Database):
         Default all.
 
         """
-        if dbsets == None:
+        if dbsets is None:
             dbsets = self._associate
         elif isinstance(dbsets, str):
             dbsets = [dbsets]
@@ -345,7 +359,7 @@ class DBapi(Database):
         """
         return
 
-    def dpt_db_compatibility_hack(self, record, srkey):
+    def db_compatibility_hack(self, record, srkey):
         """Convert record and return in (key, value) format.
         
         Do nothing as record is in (key, value) format on Berkeley DB.
@@ -387,34 +401,44 @@ class DBapi(Database):
             for v in srindex[secondary]:
                 main[db[secondary]].delete(v, deletekey)
 
-    def do_deferred_updates(self):
-        """Do deferred updates for DBapi."""
+    def do_deferred_updates(self, pyscript, filepath):
+        """Invoke a deferred update process and wait for it to finish.
 
-        self.make_internal_cursors()
+        pyscript is the script to do the deferred update.
+        filepath is a file or a sequence of files containing updates.
 
-        for m in self._main:
-            if self._main[m].deferclass is not None:
-                if len(self._main[m].deferclass.deferbuffer):
-                    self._main[m].sort_and_write()
+        """
+        if _platform_win32:
+            args = ['pythonw']
+        else:
+            args = ['python']
+        
+        if not os.path.isfile(pyscript):
+            msg = ' '.join([repr(pyscript),
+                            'is not an existing file'])
+            raise DBapiError, msg
 
-        for m in self._main:
-            if self._main[m].deferclass is not None:
-                self._main[m].dump_secondary()
+        args.append(pyscript)
+        
+        try:
+            if os.path.exists(filepath):
+                paths = (filepath,)
+            else:
+                msg = ' '.join([repr(filepath),
+                                'is not an existing file'])
+                raise DBapiError, msg
+        except:
+            paths = tuple(filepath)
+            for fp in paths:
+                if not os.path.isfile(fp):
+                    msg = ' '.join([repr(fp),
+                                    'is not an existing file'])
+                    raise DBapiError, msg
 
-        for m in self._main:
-            if self._main[m].deferclass is not None:
-                self._main[m].new_secondary(self._dbenv, self._home)
+        args.append(os.path.abspath(self._home))
+        args.extend(paths)
 
-        for m in self._main:
-            if self._main[m].deferclass is not None:
-                self._main[m].merge_update()
-
-        for m in self._main:
-            if self._main[m].deferclass is not None:
-                self._main[m].tidy_up_after_merge_update(
-                    self._home, self._defercontrol)
-
-        self.close_internal_cursors()
+        return subprocess.Popen(args)
 
     def edit_instance(self, dbset, instance):
         """Edit an existing instance on databases in dbset.
@@ -457,7 +481,7 @@ class DBapi(Database):
         if oldkey != newkey:
             main[db[dbset]].delete(oldkey, instance.srvalue)
             key = main[db[dbset]].put(newkey, instance.newrecord.srvalue)
-            if key != None:
+            if key is not None:
                 # put was append to record number database and
                 # returned the new primary key. Adjust record key
                 # for secondary updates.
@@ -567,14 +591,15 @@ class DBapi(Database):
 
         try:
             dbobj = self._main[self._associate[dbset][dbname]]
+            db_engine_cursor = dbobj._db_engine_cursor
             if self.is_primary_recno(dbset):
-                if dbobj._cursor != None:
-                    return decode_record_number(dbobj._cursor.set(key)[1])
+                if db_engine_cursor is not None:
+                    return decode_record_number(db_engine_cursor.set(key)[1])
                 else:
                     return decode_record_number(dbobj._object.get(key))
             else:
-                if dbobj._cursor != None:
-                    return dbobj._cursor.set(key)[1]
+                if db_engine_cursor is not None:
+                    return db_engine_cursor.set(key)[1]
                 else:
                     return dbobj._object.get(key)
         except:
@@ -584,8 +609,8 @@ class DBapi(Database):
         """Return primary record (key, value) given primary key on dbset."""
         try:
             dbobj = self._main[self._associate[dbset][dbset]]
-            if dbobj._cursor != None:
-                return dbobj._cursor.set(key)
+            if dbobj._db_engine_cursor is not None:
+                return dbobj._db_engine_cursor.set(key)
             else:
                 return (key, dbobj._object.get(key))
         except:
@@ -594,12 +619,12 @@ class DBapi(Database):
     def make_internal_cursors(self, dbsets=None):
         """Create a cursor on each DB in dbsets and return True.  Default all.
         
-        If the DBapiRoot already has a cursor use that.  These cursors are
+        If the DBapiRecord already has a cursor use that.  These cursors are
         used by delete_instance edit_instance and put_instance and other DBapi
         methods.  Consider using make_cursor instead to avoid interference.
         
         """
-        if dbsets == None:
+        if dbsets is None:
             dbsets = self._associate
         elif isinstance(dbsets, str):
             dbsets = [dbsets]
@@ -618,16 +643,13 @@ class DBapi(Database):
         """Return True if dbname is primary database in dbset."""
         return self._main[self._associate[dbset][dbname]]._dbprimary
 
-
     def is_primary_recno(self, dbset):
         """Return True if primary DB in dbset is RECNO."""
         return self._main[self._associate[dbset][dbset]]._dbtype == DB_RECNO
 
-
     def is_recno(self, dbset, dbname):
         """Return True if DB dbname in dbset is RECNO."""
         return self._main[self._associate[dbset][dbname]]._dbtype == DB_RECNO
-
 
     def open_context(self):
         """Open all DBs."""
@@ -642,18 +664,15 @@ class DBapi(Database):
             except:
                 pass
         
-        try:
-            gbytes = self._DBenvironment.get('gbytes', 0)
-            bytes = self._DBenvironment.get('bytes', 0)
-            flags = self._DBenvironment.get('flags', 0)
-            self._dbenv = DBEnv()
-            if gbytes or bytes:
-                self._dbenv.set_cachesize(gbytes, bytes)
-            self._dbenv.open(self._home, flags)
-            for p in self._main:
-                self._main[p].open_root(self._dbenv)
-        except:
-            raise DBapiError, 'Open ' + self._home
+        gbytes = self._DBenvironment.get('gbytes', 0)
+        bytes_ = self._DBenvironment.get('bytes', 0)
+        flags = self._DBenvironment.get('flags', 0)
+        self._dbenv = DBEnv()
+        if gbytes or bytes_:
+            self._dbenv.set_cachesize(gbytes, bytes_)
+        self._dbenv.open(self._home, flags)
+        for p in self._main:
+            self._main[p].open_root(self._dbenv)
         return True
 
     def get_packed_key(self, dbset, instance):
@@ -698,20 +717,15 @@ class DBapi(Database):
         """
         if self.is_primary_recno(dbset):
             putkey = instance.key.pack()
-            dodurecno = self._defer_record_count >= self._defer_record_limit
-            if dodurecno:
-                self._defer_record_count = 0
-            self._defer_record_count += 1
         else:
             putkey = instance.packed_key()
-            dodurecno = False
         instance.set_packed_value_and_indexes()
         
         db = self._associate[dbset]
         main = self._main
 
         key = main[db[dbset]].put(putkey, instance.srvalue)
-        if key != None:
+        if key is not None:
             # put was append to record number database and
             # returned the new primary key. Adjust record key
             # for secondary updates.
@@ -730,130 +744,49 @@ class DBapi(Database):
                 if secondary in pcb:
                     pcb[secondary](instance, srindex[secondary])
                 continue
-            if main[db[secondary]].deferclass is not None:
-                if dodurecno:
-                    main[db[secondary]].deferclass.sort_index()
-                for v in srindex[secondary]:
-                    main[db[secondary]].defer_put(v, putkey)
-            else:
-                for v in srindex[secondary]:
-                    main[db[secondary]].put(v, putkey)
-
-    def reset_defer_limit(self):
-        """Set defer record limit to default class limit"""
-        self.set_defer_limit(DBapi._defer_record_limit)
-
-    def set_defer_limit(self, limit):
-        """Set defer record limit."""
-        self._defer_record_limit = limit
+            for v in srindex[secondary]:
+                main[db[secondary]].put(v, putkey)
 
     def set_defer_update(self, db=None, duallowed=False):
-        """Set deferred update for db DBs and return duallowed. Default all."""
-        defer = self._get_deferable_update_files(db)
-        if not defer:
-            return duallowed
+        """Close files before doing deferred updates.
 
-        try:
-            os.mkdir(os.path.join(
-                self._home, self._defercontrol))
-        except:
-            msg = ' '.join((
-                'Create defer update folder',
-                ' '.join((self._home, self._defercontrol)),
-                'fails'))
-            raise DBapiError, msg
-
-        for d in defer:
-            if self._main[self._associate[d][d]]._dbtype == DB_RECNO:
-                defaultshelf = Shelf
-            else:
-                defaultshelf = ShelfString
-            for s in self._associate[d]:
-                f = self._main[self._associate[d][s]]
-                if not f._dbprimary:
-                    if f.deferclass is None:
-                        f.deferclass = defaultshelf()
-                        deferfolder = os.path.join(
-                            self._home,
-                            self._defercontrol,
-                            self._associate[d][s])
-                        try:
-                            os.mkdir(deferfolder)
-                        except:
-                            msg = ' '.join((
-                                'Create defer update folder',
-                                deferfolder,
-                                'fails'))
-                            raise DBapiError, msg
-                        f.deferclass.set_defer_folder(deferfolder)
+        Replace the original Berkeley DB version with a DPT look-alike.
+        It is the same code but implementation of close_context ie different
+        because the database engines are different.  Most of the code in the
+        earlier set_defer_update will move to the subprocess.
+        
+        """
+        self.close_context()
         return duallowed
-            
+
     def unset_defer_update(self, db=None):
         """Unset deferred update for db DBs. Default all."""
-        defer = self._get_deferable_update_files(db)
-        if not defer:
-            return
-        for d in self._associate:
-            for s in self._associate[d]:
-                f = self._main[self._associate[d][s]]
-                if not f._dbprimary:
-                    if f.deferclass is not None:
-                        try:
-                            os.rmdir(os.path.join(
-                                self._home,
-                                self._defercontrol,
-                                self._associate[d][s]))
-                        except:
-                            pass
-                        f.deferclass = None
-        try:
-            os.rmdir(os.path.join(
-                self._home,
-                self._defercontrol))
-        except:
-            pass
+        # Original method moved to dbduapi.py
+        return self.open_context()
 
     def use_deferred_update_process(self, **kargs):
-        """Return True
-
-        For Berkeley DB there is no difference (that matters)
+        """Return module name or None
 
         **kargs - soak up any arguments other database engines need.
 
         """
-        return True
+        raise DBapiError, 'use_deferred_update_process not implemented'
 
-    def _get_deferable_update_files(self, db):
-        """Return dictionary of databases in db whose updates are deferable."""
-        deferable = False
-        for d in self._main:
-            if not self._main[d]._dbprimary:
-                deferable = True
-                break
-        if not deferable:
-            return False
-        
-        if isinstance(db, str):
-            db = [db]
-        elif not isinstance(db, (list, tuple, dict)):
-            db = self._associate.keys()
-        dbadd = dict()
-        for d in db:
-            if d in self._associate:
-                dbadd[d] = []
-                for s in self._associate[d]:
-                    if s != d:
-                        dbadd[d].append(self._associate[d][s])
-        return dbadd
-            
     def make_root(
         self, dbfile, dbname, dbtype, primary, dupsort, value_is_recno):
 
-        return DBapiRoot(
+        return DBapiRecord(
             dbfile, dbname, dbtype, primary, dupsort, value_is_recno)
 
+    def initial_database_size(self):
+        """Do nothing and return True as method exists for DPT compatibility"""
+        return True
+
+    def increase_database_size(self, **ka):
+        """Do nothing because method exists for DPT compatibility"""
+
             
-class _DBapiRoot(object):
+class DBapiFile(object):
     
     """Define a DB file with a cursor and open_root and close methods.
 
@@ -886,10 +819,10 @@ class _DBapiRoot(object):
         limit=maximum bytes for each defer update sequential file
         
         """
-        super(_DBapiRoot, self).__init__()
+        super(DBapiFile, self).__init__()
 
         self._object = None
-        self._cursor = None
+        self._db_engine_cursor = None
         self._dbfolder, self._dbfile = os.path.split(dbfile)
         self._dbname = dbname
         self._dbtype = dbtype
@@ -900,7 +833,7 @@ class _DBapiRoot(object):
     def close(self):
         """Close DB and cursor."""
         self.close_root_cursor()
-        if self._object != None:
+        if self._object is not None:
             self._object.close()
             self._object = None
 
@@ -909,18 +842,18 @@ class _DBapiRoot(object):
         Create cursor on DB.
         
         This is the cursor used by delete put and replace so a
-        reference is kept in self._cursor. It is better to use
+        reference is kept in self._db_engine_cursor. It is better to use
         DBapi.make_cursor to get a cursor for other purposes.
         
         """
-        if self._cursor is None:
-            self._cursor = self._object.cursor()
+        if self._db_engine_cursor is None:
+            self._db_engine_cursor = self._object.cursor()
 
     def close_root_cursor(self):
         """Close cursor associated with DB."""
-        if self._cursor is not None:
-            self._cursor.close()
-            self._cursor = None
+        if self._db_engine_cursor is not None:
+            self._db_engine_cursor.close()
+            self._db_engine_cursor = None
 
     def open_root(self, dbenv):
         """Open DB in dbenv."""
@@ -936,26 +869,19 @@ class _DBapiRoot(object):
             self.make_root_cursor()
         except:
             self._object = None
-            raise DBapiError, 'Open ' + self._dbname + ' in ' + self._dbfile
+            raise
 
 
-class DBapiRoot(_DBapiRoot):
+class DBapiRecord(DBapiFile):
     
     """Define a DB file with record access and deferred update methods.
 
     Methods added:
 
-    defer_put
     delete
-    dump_secondary
     make_cursor
-    merge_update
-    new_secondary
     put
-    put_deferred
     replace
-    sort_and_write
-    tidy_up_after_merge_update
 
     Methods overridden:
 
@@ -976,12 +902,10 @@ class DBapiRoot(_DBapiRoot):
         See superclass for other arguments
         
         """
-        super(DBapiRoot, self).__init__(
+        super(DBapiRecord, self).__init__(
             dbfile, dbname, dbtype, primary, dupsort, value_is_recno)
 
         self._dbputDB = self._dbprimary and not self._dbdupsort
-        self._defercount = 0
-        self.deferclass = None
         self._clientcursors = dict()
     
     def close(self):
@@ -989,46 +913,22 @@ class DBapiRoot(_DBapiRoot):
         for c in self._clientcursors.keys():
             c.close()
         self._clientcursors.clear()
-
-        super(DBapiRoot, self).close()
-
-    def defer_put(self, key, value):
-        """Write key and value to sequential file for database."""
-        self.deferclass.defer_put(key, value)
+        super(DBapiRecord, self).close()
 
     def delete(self, key, value):
         """Delete (key, value) from database."""
         try:
             if self._dbputDB:
-                if self._cursor.set(key):
-                    self._cursor.delete()
+                if self._db_engine_cursor.set(key):
+                    self._db_engine_cursor.delete()
             elif self._value_is_recno:
-                if self._cursor.set_both(key, encode_record_number(value)):
-                    self._cursor.delete()
-            elif self._cursor.set_both(key, value):
-                self._cursor.delete()
+                if self._db_engine_cursor.set_both(
+                    key, encode_record_number(value)):
+                    self._db_engine_cursor.delete()
+            elif self._db_engine_cursor.set_both(key, value):
+                self._db_engine_cursor.delete()
         except:
             pass
-
-    def dump_secondary(self):
-        """Copy existing secondary db to sequential file."""
-        c = self._cursor
-        r = c.first()
-        try:
-            current_segment = decode_record_number(r[1]) / DEFAULT_SEGMENTSIZE
-        except:
-            current_segment = None
-        while r:
-            k, v = r
-            vi = decode_record_number(v)
-            s = vi / DEFAULT_SEGMENTSIZE
-            if s != current_segment:
-                self.deferclass.sort_index()
-                current_segment = s
-            self.deferclass.defer_put(k, vi)
-            r = c.next()
-        if current_segment is not None:
-            self.deferclass.sort_index()
 
     def make_cursor(self, dbobject, keyrange):
         """Create a cursor on the dbobject positiioned at start of keyrange."""
@@ -1036,27 +936,6 @@ class DBapiRoot(_DBapiRoot):
         if c:
             self._clientcursors[c] = True
         return c
-
-    def merge_update(self):
-        """Do merge updates to database file from sources.
-        
-        The sources are assumed to be sorted.  Function insort from
-        module bisect may be a better alternative to the functions
-        from module heapq.
-        
-        """
-        self.deferclass.flush_index(self.put_deferred)
-
-    def new_secondary(self, dbenv, home):
-        """Delete secondary DB and open a new one in same environment."""
-        self.close()
-        db = DB()
-        db.remove(os.path.join(
-            home,
-            self._dbfolder,
-            self._dbfile))
-        del db
-        self.open_root(dbenv)
 
     def put(self, key, value):
         """Put (key, value) on database and return key for new RECNO records.
@@ -1075,7 +954,8 @@ class DBapiRoot(_DBapiRoot):
 
         if self._value_is_recno:
             try:
-                self._cursor.put(key, encode_record_number(value), DB_KEYLAST)
+                self._db_engine_cursor.put(
+                    key, encode_record_number(value), DB_KEYLAST)
             except DBKeyExistError:
                 # Application may legitimately do duplicate updates (-30996)
                 # to a sorted secondary database for DPT compatibility.
@@ -1083,26 +963,7 @@ class DBapiRoot(_DBapiRoot):
             except:
                 raise
         else:
-            self._cursor.put(key, value, DB_KEYLAST)
-
-    def put_deferred(self, key, value):
-        """Put (key, value) on database.
-        
-        The cursor put method is used because updating secondary DB.
-        value is still the integer version of primary key for recno dbs
-        
-        """
-        if self._value_is_recno:
-            try:
-                self._cursor.put(key, encode_record_number(value), DB_KEYLAST)
-            except DBKeyExistError:
-                # Application may legitimately do duplicate updates (-30996)
-                # to a sorted secondary database for DPT compatibility.
-                pass
-            except:
-                raise
-        else:
-            self._cursor.put(key, value, DB_KEYLAST)
+            self._db_engine_cursor.put(key, value, DB_KEYLAST)
 
     def replace(self, key, oldvalue, newvalue):
         """Replace (key, oldvalue) with (key, newvalue) on DB.
@@ -1112,34 +973,17 @@ class DBapiRoot(_DBapiRoot):
         """
         try:
             if self._dbputDB:
-                if self._cursor.set(key):
-                    self._cursor.put(key, newvalue, DB_CURRENT)
+                if self._db_engine_cursor.set(key):
+                    self._db_engine_cursor.put(key, newvalue, DB_CURRENT)
             elif self._value_is_recno:
-                if self._cursor.set_both(key, encode_record_number(oldvalue)):
-                    self._cursor.put(
+                if self._db_engine_cursor.set_both(
+                    key, encode_record_number(oldvalue)):
+                    self._db_engine_cursor.put(
                         key, encode_record_number(newvalue), DB_CURRENT)
-            elif self._cursor.set_both(key, oldvalue):
-                self._cursor.put(key, newvalue, DB_CURRENT)
+            elif self._db_engine_cursor.set_both(key, oldvalue):
+                self._db_engine_cursor.put(key, newvalue, DB_CURRENT)
         except:
             pass
-
-    def sort_and_write(self):
-        """Sort the deferred updates before writing to sequential file."""
-        self.deferclass.sort_index()
-
-    def tidy_up_after_merge_update(self, home, defercontrol):
-        """Delete defer update files and control records."""
-        self.deferclass.delete_shelve()
-        folder = os.path.join(
-            home,
-            defercontrol,
-            self._dbfile)
-        paths = os.listdir(folder)
-        for p in paths:
-            try:
-                os.remove(os.path.join(folder, p))
-            except:
-                pass
 
 
 class CursorDB(Cursor):
@@ -1154,8 +998,11 @@ class CursorDB(Cursor):
 
     __init__
     close
+    count_records
     database_cursor_exists
     first
+    get_position_of_record
+    get_record_at_position
     last
     nearest
     next
@@ -1176,7 +1023,7 @@ class CursorDB(Cursor):
         self._dbset = dbset
         self._partial = None
 
-        if dbset._object != None:
+        if dbset._object is not None:
             self._cursor = dbset._object.cursor()
 
     def close(self):
@@ -1193,22 +1040,166 @@ class CursorDB(Cursor):
         self._dbset = None
         self._partial = None
 
+    def count_records(self):
+        """return record count or None if cursor is not usable"""
+        if self._dbset._dbtype == DB_RECNO:
+            return self._dbset._object.stat(flags=DB_FAST_STAT)['ndata']
+        elif self._partial is None:
+            count = 0
+            r = self._cursor.first()
+            while r:
+                count += self._cursor.count()
+                r = self._cursor.next_nodup()
+            return count
+        else:
+            count = 0
+            r = self._cursor.set_range(self._partial)
+            while r:
+                if not r[0].startswith(self._partial):
+                    break
+                count += self._cursor.count()
+                r = self._cursor.next_nodup()
+            return count
+
     def database_cursor_exists(self):
         """Return True if database cursor exists and False otherwise"""
         return bool(self._cursor)
 
     def first(self):
         """Return first record taking partial key into account"""
-        if self._partial == None:
+        if self._partial is None:
             return self._get_record(self._cursor.first())
         elif self._partial == False:
             return None
         else:
             return self.nearest(self._partial)
 
+    def get_position_of_record(self, key=None):
+        """return position of record in file or 0 (zero)"""
+        if key is None:
+            return 0
+        start = self._cursor.first
+        step_nodup = self._cursor.next_nodup
+        step = self._cursor.next
+        stepback = self._cursor.prev_nodup
+        keycount = self._cursor.count
+        position = 0
+        k = key[0]
+        if self._dbset._dbtype == DB_RECNO:
+            r = start()
+            while r:
+                if r[0] >= k:
+                    break
+                position += 1
+                r = step()
+            return position
+        elif not self._partial:
+            r = start()
+            while r:
+                if r[0] > k:
+                    break
+                elif r[0] == k:
+                    while r:
+                        if r > key:
+                            break
+                        position += 1
+                        r = step()
+                    break
+                position += keycount()
+                r = step_nodup()
+            return position
+        else:
+            r = self._cursor.set_range(self._partial)
+            while r:
+                if not r[0].startswith(self._partial):
+                    break
+                if r[0] > k:
+                    break
+                elif r[0] == k:
+                    while r:
+                        if not r[0].startswith(self._partial):
+                            break
+                        if r > key:
+                            break
+                        position += 1
+                        r = step()
+                    break
+                position += keycount()
+                r = step_nodup()
+            return position
+
+    def get_record_at_position(self, position=None):
+        """return record for positionth record in file or None"""
+        if position is None:
+            return None
+        if position < 0:
+            start = self._cursor.last
+            step_nodup = self._cursor.prev_nodup
+            step = self._cursor.prev
+            stepback = self._cursor.next_nodup
+            position = -1 - position
+        else:
+            start = self._cursor.first
+            step_nodup = self._cursor.next_nodup
+            step = self._cursor.next
+            stepback = self._cursor.prev_nodup
+        keycount = self._cursor.count
+        if self._dbset._dbtype == DB_RECNO:
+            count = 0
+            r = start()
+            while r:
+                count += 1
+                if count > position:
+                    break
+                r = step()
+            if r is not None:
+                return r
+        elif not self._partial:
+            count = 0
+            r = start()
+            while r:
+                count += keycount()
+                if count > position:
+                    r = stepback()
+                    count -= keycount()
+                    if r is None:
+                        r = start()
+                    while r:
+                        count += 1
+                        if count > position:
+                            break
+                        r = step()
+                    break
+                r = step_nodup()
+            if r is not None:
+                return (r[0], decode_record_number(r[1]))
+        else:
+            count = 0
+            r = self._cursor.set_range(self._partial)
+            while r:
+                if not r[0].startswith(self._partial):
+                    break
+                count += keycount()
+                if count > position:
+                    r = stepback()
+                    count -= keycount()
+                    if r is None:
+                        r = start()
+                    while r:
+                        if not r[0].startswith(self._partial):
+                            break
+                        count += 1
+                        if count > position:
+                            break
+                        r = step()
+                    break
+                r = step_nodup()
+            if r is not None:
+                return (r[0], decode_record_number(r[1]))
+
     def last(self):
         """Return last record taking partial key into account"""
-        if self._partial == None:
+        if self._partial is None:
             return self._get_record(self._cursor.last())
         elif self._partial == False:
             return None
@@ -1228,7 +1219,7 @@ class CursorDB(Cursor):
 
     def _get_record(self, record):
         """Return record matching key or partial key or None if no match."""
-        if self._partial == None:
+        if self._partial is None:
             #return record
             if self._dbset._value_is_recno:
                 try:
@@ -1288,7 +1279,7 @@ class CursorDB(Cursor):
         if self._partial == False:
             return None
         key, value = record
-        if self._partial != None:
+        if self._partial is not None:
             if not key.startswith(self._partial):
                 return None
         if self._dbset._dbtype == DB_RECNO:

@@ -1,0 +1,35 @@
+To install the basesup package type
+
+python setup.py install
+
+at the command prompt with setup.py in the current directory.
+
+
+This is basesup-0.8
+
+
+Dependencies:
+
+Python 2.6 or Python 2.7 installed.
+
+and at least one of
+
+sqlite3 package
+bsddb package
+bsddb3 package from www.jcea.es
+dptdb version 0.4 package from www.solentware.co.uk (source from www.dptoolkit.com) if using Microsoft Windows.
+
+
+Notes:
+
+The sqlite3 package is distributed as part of Python but may have to be installed separately.
+
+The bsddb package is distributed as part of Python 2.3 through 2.7 but may have to be installed separately.
+
+The dptdb package must be the one for the version of Python.
+
+
+Contact:
+
+roger.marsh@solentware.co.uk
+

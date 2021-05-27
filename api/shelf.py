@@ -23,9 +23,9 @@ import heapq
 
 # bsddb removed from Python 3.n
 try:
-    import bsddb
-except:
     import bsddb3 as bsddb
+except:
+    import bsddb
 
 INTEGERSIZE = 32  # 32 bit integers
 BITMASK = [1 << x for x in range(INTEGERSIZE - 1)]

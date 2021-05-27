@@ -824,6 +824,7 @@ class Record(object):
         picklevalue==True - pickle value before storing on database record
         
         """
+        super(Record, self).__init__()
         if issubclass(keyclass, Key):
             self.key = keyclass()
         else:
