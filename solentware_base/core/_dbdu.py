@@ -2,8 +2,8 @@
 # Copyright (c) 2019 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""Access a SQLite database created from a FileSpec() definition with either
-the apsw or sqlite3 modules.
+"""Access a Berkeley database created from a FileSpec() definition with the
+bsddb3 module.
 
 """
 
@@ -61,6 +61,7 @@ class Database(_databasedu.Database):
         self.initial_high_segment = {}
         self.existence_bit_maps = {}
         self.value_segments = {} # was values in secondarydu.Secondary
+        self._int_to_bytes = None
 
     def database_cursor(self, file, field, keyrange=None):
         raise DatabaseError('database_cursor not implemented')
@@ -107,6 +108,8 @@ class Database(_databasedu.Database):
                 self.merge(file, secondary)
 
     def set_defer_update(self):
+        self._int_to_bytes = [n.to_bytes(2, byteorder='big')
+                              for n in range(SegmentSize.db_segment_size)]
         self.start_transaction()
         for file in self.specification:
             c = self.table[file][0].cursor()
@@ -127,6 +130,7 @@ class Database(_databasedu.Database):
         
     def unset_defer_update(self):
         """Unset deferred update for db DBs. Default all."""
+        self._int_to_bytes = None
         for file in self.specification:
             self.high_segment[file] = None
             self.first_chunk[file] = None
@@ -288,10 +292,7 @@ class Database(_databasedu.Database):
             return
 
         # Lookup table is much quicker, and noticeable, in bulk use.
-        # Big enough to discard when done.
-        int_to_bytes = [n.to_bytes(2, byteorder='big')
-                        for n in range(SegmentSize.db_segment_size)]
-        #bytes_to_int = {b:e for e, b in enumerate(int_to_bytes)}
+        int_to_bytes = self._int_to_bytes
 
         segvalues = self.value_segments[file][field]
 
@@ -310,10 +311,6 @@ class Database(_databasedu.Database):
                     ]
             elif isinstance(v, int):
                 segvalues[k] = [1, v]
-
-        # Discard lookup tables.
-        del int_to_bytes
-        #del bytes_to_int
 
         # New records go into temporary databases, one for each segment, except
         # when filling the segment which was high when this update started. 

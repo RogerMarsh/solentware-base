@@ -84,6 +84,12 @@ class Database(_dpt.Database):
     def _dptfileclass(self):
         return _DPTFile
 
+    def set_defer_update(self):
+        """Do nothing.  Provided for compatibility with other engines."""
+        
+    def unset_defer_update(self):
+        """Do nothing.  Provided for compatibility with other engines."""
+
 
 class _DPTFile(_dpt._DPTFile):
     """This class is used to access files in a DPT database.

@@ -11,12 +11,16 @@ See www.dptoolkit.com for details of DPT (No longer exists.  The database
 interface part of DPT is available at www.solentware.co.uk)
 
 """
-# Module names of supported database engines.
+# Module names of supported database engines (<module>.__name__).
 BSDDB_MODULE = 'bsddb'
 BSDDB3_MODULE = 'bsddb3'
 DPT_MODULE = 'dptdb.dptapi'
 SQLITE3_MODULE = 'sqlite3'
 APSW_MODULE = 'apsw'
+UNQLITE_MODULE = 'unqlite'
+VEDIS_MODULE = 'vedis'
+GNU_MODULE = 'dbm.gnu'
+NDBM_MODULE = 'dbm.ndbm'
 
 SQLITE_VALUE_COLUMN = 'Value'
 # Notes on SQLITE_VALUE_COLUMN from a Berkeley DB perspective.
@@ -57,10 +61,15 @@ SQLITE_RECORDS_COLUMN = 'RecordNumbers'
 ACCESS_METHOD = 'access_method'
 
 # Access methods for Berkeley DB databases.
+# (UnQLite and Vedis use BTREE and HASH too.)
 BTREE = 'btree'
 HASH = 'hash'
 RECNO = 'recno'
 
+# Branching factor for BTrees in UnQLite and Vedis databases.
+BRANCHING_FACTOR = 'branching_factor'
+
+# DPT file and field attributes. (SQLite3 uses FLT too.)
 BLOB = 'blob'
 FLT = 'float'
 INV = 'invisible'
@@ -79,6 +88,7 @@ FILEORG = 'fileorg'
 DEFAULT = -1
 EO = 0
 RRN = 36
+
 SUPPORTED_FILEORGS = (EO, RRN)
 MANDATORY_FILEATTS = {
     BSIZE: (int, type(None)),
@@ -94,6 +104,7 @@ SECONDARY_FIELDATTS = {
     ONM: False,
     SPT: 50,
     ACCESS_METHOD: BTREE, # HASH is the other supported value.
+    BRANCHING_FACTOR: 50,
     }
 PRIMARY_FIELDATTS = {
     FLT: False,
@@ -107,6 +118,7 @@ PRIMARY_FIELDATTS = {
 DB_FIELDATTS = {ACCESS_METHOD}
 DPT_FIELDATTS = {FLT, INV, UAE, ORD, ONM, SPT}
 SQLITE3_FIELDATTS = {FLT}
+NOSQL_FIELDATTS = {BRANCHING_FACTOR, ACCESS_METHOD}
 FILEATTS = {
     BSIZE: None,
     BRECPPG: None,
@@ -169,9 +181,20 @@ SEGMENT_HEADER_LENGTH = 6
 SUBFILE_DELIMITER = '_'
 
 # Constants defined for bitbases (without descriptions so far).
+# (UnQLite, Vedis, dbm.gnu, and dbm.ndbm, use many of these too.)
 EXISTENCE_BITMAP_SUFFIX = SUBFILE_DELIMITER + 'ebm'
 SEGMENT_SUFFIX = SUBFILE_DELIMITER + 'segment'
 CONTROL_FILE = SUBFILE_DELIMITER * 3 + 'control'
 DEFAULT_SEGMENT_SIZE_BYTES = 4000
 SPECIFICATION_KEY = b'_specification'
 SEGMENT_SIZE_BYTES_KEY = b'_segment_size_bytes'
+
+# Constants defined for UnQLite and Vedis databases.  dbm.gnu and dbm.ndbm are
+# added to this list later.
+FREED_RECORD_NUMBER_SEGMENTS_SUFFIX = SUBFILE_DELIMITER + 'freed'
+HIGH_TREE_NODE = SUBFILE_DELIMITER + 'high_tree_node'
+SEGMENT_KEY_SUFFIX = '0'
+SEGMENT_VALUE_SUFFIX = '1'
+TREE_NODE_SUFFIX = '2'
+LIST_BYTES = 'L'
+BITMAP_BYTES = 'B'

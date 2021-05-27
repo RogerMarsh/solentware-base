@@ -61,7 +61,11 @@ class SegmentSize:
     def db_segment_size_bytes(self):
         """The byte size of a segment.
 
-        Either 4096, the default, or 8192.
+        By default 4096, or a value set between 500 and 8192, or 16 intended
+        for testing.  The sibling database engine modules use the value set in
+        constants.DEFAULT_SEGMENT_SIZE_BYTES (4000) as the default and call the
+        setter as part of their initialisation to make it so.
+        
         """
         return self._db_segment_size_bytes
 

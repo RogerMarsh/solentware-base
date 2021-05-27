@@ -75,10 +75,11 @@ class RecordsetSegmentInt:
         """Return position of recnum in segment counting records that exist."""
         return 0 if recnum < self._record_number else 1
 
-    def get_record_number_at_position(self, position, forward=True):
+    def get_record_number_at_position(self, position):
         """Return record number at position from start or end of segment."""
-        return self._record_number + (self._segment_number *
-                                      SegmentSize.db_segment_size)
+        if position in (0, -1):
+            return self._record_number + (self._segment_number *
+                                          SegmentSize.db_segment_size)
 
     def last(self):
         """Return last record in segment."""
@@ -241,27 +242,19 @@ class RecordsetSegmentBitarray:
         """Return position of recnum in segment counting records that exist."""
         return bisect_left(self._bitarray.search(SINGLEBIT), recnum)
 
-    def get_record_number_at_position(self, position, forward=True):
-        """Return record number at position from start or end of segment.
+    def get_record_number_at_position(self, position):
+        """Return record number at position in segment.
 
-        position is >= 0 and counts from the right-hand end of the sequence,
-        rather than the normal sequence[0] and sequence[-1] idiom.
+        segment[0] means return record number for first set bit in segment,
+        segment[-1] means return record number for last set bit in segment,
 
         """
-        if forward:
-            try:
-                record = self._bitarray.search(SINGLEBIT, position)[-position]
-                return (record + (self._segment_number *
-                                  SegmentSize.db_segment_size))
-            except ValueError:
-                return None
-        else:
-            try:
-                record = self._bitarray.search(SINGLEBIT)[-position-1]
-                return (record + (self._segment_number *
-                                  SegmentSize.db_segment_size))
-            except ValueError:
-                return None
+        try:
+            record = self._bitarray.search(SINGLEBIT)[position]
+            return (record + (self._segment_number *
+                              SegmentSize.db_segment_size))
+        except IndexError:
+            return None
 
     def last(self):
         """Return last record in segment."""
@@ -521,22 +514,18 @@ class RecordsetSegmentList:
     def get_position_of_record_number(self, recnum):
         """Return position of recnum in segment counting records that exist."""
         try:
-            return self._list.index(recnum) + 1
+            return self._list.index(recnum)# + 1
         except ValueError:
-            return len([e for e in self._list if recnum >= e])
+            return len([e for e in self._list if recnum > e])#= e])
 
-    def get_record_number_at_position(self, position, forward=True):
+    def get_record_number_at_position(self, position):
         """Return record number at position from start or end of segment."""
-        if forward:
-            # Surely [-position] should be [position]?
-            # Maybe not, one place in appsuites is coded for it being this way.
+        try:
             return (
-                self._list[-position] +
+                self._list[position] +
                 (self._segment_number * SegmentSize.db_segment_size))
-        else:
-            return (
-                self._list[len(self._list) - position - 1] +
-                (self._segment_number * SegmentSize.db_segment_size))
+        except IndexError:
+            return None
 
     def last(self):
         """Return last record in segment."""
@@ -836,17 +825,24 @@ class _Recordset:
 
     def get_record_number_at_position(self, position):
         """Return record number at position from start or end of recordset."""
-        p = 0
-        rp = abs(position) - 1 if position < 0 else position
-        # Change this to use _sorted_segnums to reference segments?
-        for s, rseg in sorted(self._rs_segments.items(), reverse=position<0):
-            c = rseg.count_records()
-            if p + c > rp:
-                return rseg.get_record_number_at_position(
-                    rp-p, forward=position>=0)
-            else:
-                p += c
-        return None
+        c = 0
+        segments = self.rs_segments
+        if position < 0:
+            for s in reversed(self.sorted_segnums):
+                segcount = segments[s].count_records()
+                c -= segcount
+                if c > position:
+                    continue
+                c += segcount
+                return segments[s].get_record_number_at_position(position - c)
+        else:
+            for s in self.sorted_segnums:
+                segcount = segments[s].count_records()
+                c += segcount
+                if c <= position:
+                    continue
+                c -= segcount
+                return segments[s].get_record_number_at_position(position - c)
 
     def insort_left_nodup(self, segment):
         """Insert item in sorted order without duplicating entries."""
@@ -1175,10 +1171,6 @@ class RecordsetCursor(cursor.Cursor):
     def get_record_at_position(self, position=None):
         """return record for positionth record in file or None."""
         try:
-            if position > 0:
-                position = self._dbset.count_records() - position - 1
-            else:
-                position = -position
             return self._get_record(
                 self._dbset.get_record_number_at_position(position))
         except IndexError:

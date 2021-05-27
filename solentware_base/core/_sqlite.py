@@ -166,7 +166,6 @@ class Database(_database.Database):
 
         # The ___control table should be present already if the file exists.
         if self.database_file is not None:
-            db_create = not os.path.exists(self.database_file)
             dbenv = dbe.Connection(self.database_file)
             cursor = dbenv.cursor()
             statement = ' '.join((
@@ -176,38 +175,22 @@ class Database(_database.Database):
                 CONTROL_FILE,
                 'where', CONTROL_FILE, '== ?',
                 ))
-            rsk = None
             try:
                 cursor.execute(statement, (SPECIFICATION_KEY,))
                 rsk = cursor.fetchall()
             except Exception as exception:
-                if not db_create:
-                    raise DatabaseError(str(exception))
-            rssbk = None
+                rsk = None
             try:
                 cursor.execute(statement, (SEGMENT_SIZE_BYTES_KEY,))
                 rssbk = cursor.fetchall()
             except Exception as exception:
-                if not db_create:
-                    raise DatabaseError(str(exception))
-            if rsk is None and rssbk is None:
-                if not db_create:
-                    raise DatabaseError(''.join((
-                        'Neither specification nor segment size recorded ',
-                        'in database')))
-            elif rsk is None:
-                raise DatabaseError('No specification recorded in database')
-            elif rssbk is None:
-                raise DatabaseError('No segment size recorded in database')
-            else:
+                rssbk = None
+            if rsk is not None and rssbk is not None:
                 spec_from_db = literal_eval(rsk[0][0])
                 if self._use_specification_items is not None:
                     spec_from_db = {k:v for k, v in spec_from_db.items()
                                     if k in self._use_specification_items}
-                if spec_from_db != self.specification:
-                    raise DatabaseError(
-                        ''.join(('Specification recorded in database is not ',
-                                 'the one used attemping to open database')))
+                self.specification.is_consistent_with(spec_from_db)
                 segment_size = literal_eval(rssbk[0][0])
                 if self._real_segment_size_bytes is not False:
                     self.segment_size_bytes = self._real_segment_size_bytes
@@ -217,10 +200,13 @@ class Database(_database.Database):
                     raise self.SegmentSizeError(
                         ''.join(('Segment size recorded in database is not ',
                                  'the one used attemping to open database')))
+            elif rsk is None and rssbk is not None:
+                raise DatabaseError('No specification recorded in database')
+            elif rsk is not None and rssbk is None:
+                raise DatabaseError('No segment size recorded in database')
         else:
             dbenv = dbe.Connection(':memory:')
             cursor = dbenv.cursor()
-            db_create = True
             
         self.set_segment_size()
         create_table = 'create table if not exists'
@@ -231,6 +217,19 @@ class Database(_database.Database):
             files = self.specification.keys()
         self.start_transaction()
         cursor = self.dbenv.cursor()
+        self.table[CONTROL_FILE] = CONTROL_FILE
+        statement = ' '.join((
+            create_table, CONTROL_FILE,
+            '(',
+            CONTROL_FILE, ',',
+            SQLITE_VALUE_COLUMN, ',',
+            'primary key',
+            '(',
+            CONTROL_FILE, ',',
+            SQLITE_VALUE_COLUMN,
+            ') )',
+            ))
+        cursor.execute(statement)
         for file, specification in self.specification.items():
             if file not in files:
                 continue
@@ -252,19 +251,6 @@ class Database(_database.Database):
                 '(',
                 SQLITE_RECORDS_COLUMN,
                 ')',
-                ))
-            cursor.execute(statement)
-            self.table[CONTROL_FILE] = CONTROL_FILE
-            statement = ' '.join((
-                create_table, CONTROL_FILE,
-                '(',
-                CONTROL_FILE, ',',
-                SQLITE_VALUE_COLUMN, ',',
-                'primary key',
-                '(',
-                CONTROL_FILE, ',',
-                SQLITE_VALUE_COLUMN,
-                ') )',
                 ))
             cursor.execute(statement)
             for field in fields:
@@ -293,23 +279,24 @@ class Database(_database.Database):
                     ')',
                     ))
                 cursor.execute(statement)
-        if db_create and files:
-            statement = ' '.join((
-                'insert into',
-                CONTROL_FILE,
-                '(',
-                CONTROL_FILE, ',',
-                SQLITE_VALUE_COLUMN,
-                ')',
-                'values ( ? , ? )',
-                ))
-            cursor.execute(
-                statement,
-                (SPECIFICATION_KEY, repr(self.specification)))
-            cursor.execute(
-                statement,
-                (SEGMENT_SIZE_BYTES_KEY,
-                 repr(self.segment_size_bytes)))
+        if self.database_file is not None:
+            if rsk is None and rssbk is None:
+                statement = ' '.join((
+                    'insert into',
+                    CONTROL_FILE,
+                    '(',
+                    CONTROL_FILE, ',',
+                    SQLITE_VALUE_COLUMN,
+                    ')',
+                    'values ( ? , ? )',
+                    ))
+                cursor.execute(
+                    statement,
+                    (SPECIFICATION_KEY, repr(self.specification)))
+                cursor.execute(
+                    statement,
+                    (SEGMENT_SIZE_BYTES_KEY,
+                     repr(self.segment_size_bytes)))
         self.commit()
 
     def close_database_contexts(self, files=None):
@@ -344,6 +331,12 @@ class Database(_database.Database):
         self.close_database_contexts()
 
     def put(self, file, key, value):
+        # _database.Database.put_instance() decides if a deleted record number
+        # is reused before calling the put() method of a subclass.
+        # So _sqlite.Database.put() does what it is told to do.  Deleted records
+        # have to exist as stubs to be indexed as available for reuse: hence
+        # 'insert or replace' rather than 'insert'.  The replace option allows
+        # possibility of overwriting existing records by ignoring put_instance.
         assert file in self.specification
         cursor = self.dbenv.cursor()
         try:
@@ -364,8 +357,8 @@ class Database(_database.Database):
                 # The original 'update' version is probably correct!
                 # Especially if it succeeds only if SQLITE_VALUE_COLUMN has been
                 # set to 'null' by a previous delete (to indicate which rowids
-                # may be re-used).
-                # The bsddb3 version is then wrong to allow arbitrary inserts.
+                # may be re-used).  The original's where clause is wrong and
+                # should check 'SQLITE_VALUE_COLUMN = null' too.
                 statement = ' '.join((
                     'insert or replace into',
                     self.table[file][0],
@@ -503,11 +496,17 @@ class Database(_database.Database):
                 cursor.close()
         while len(ebmc.freed_record_number_pages):
             s = ebmc.freed_record_number_pages[0]
+
+            # Do not reuse record number on segment of high record number.
+            if s == ebmc.segment_count - 1:
+                return None
+
             lfrns = ebmc.read_exists_segment(s, self.dbenv)
             if lfrns is None:
 
-                # Do not reuse record number on segment of high record number
-                return None
+                # Segment does not exist now.
+                ebmc.freed_record_number_pages.remove(s)
+                continue
 
             try:
                 first_zero_bit = lfrns.index(False, 0 if s else 1)
@@ -533,6 +532,7 @@ class Database(_database.Database):
         else:
             return None
 
+    # high_record will become high_record_number to fit changed get_high_record.
     def note_freed_record_number_segment(
         self, dbset, segment, record_number_in_segment, high_record):
         try:
@@ -618,6 +618,8 @@ class Database(_database.Database):
                 segment + 1, ebm.tobytes(), self.dbenv)
         return segment, record_number
 
+    # Change to return just the record number, and the name to fit.
+    # Only used in one place, and it is extra work to get the data in_nosql.
     def get_high_record(self, file):
         statement = ' '.join((
             'select',
@@ -701,6 +703,9 @@ class Database(_database.Database):
             None,
             records=record_number.to_bytes(2, byteorder='big')
             ) | existing_segment
+        count = seg.count_records()
+        if count == existing_segment.count_records():
+            return
         if not isinstance(existing_segment, RecordsetSegmentBitarray):
             seg = seg.normalize()
         if s[2] > 1:
@@ -1023,7 +1028,7 @@ class Database(_database.Database):
         cursor = self.dbenv.cursor()
         try:
             for record in cursor.execute(statement, values):
-                if rn in record[1]:
+                if rn in RecordsetSegmentBitarray(s, key, records=record[1]):
                     rs[s] = RecordsetSegmentList(
                         s, None, records=rn.to_bytes(2, byteorder='big'))
         finally:
@@ -1095,7 +1100,7 @@ class Database(_database.Database):
                         b = b'\x00' * so + b[so:]
                 if keyend is not None:
                     if (s == segment_end and
-                        recnum_start < SegmentSize.db_segment_size_bytes - 1):
+                        recnum_start < SegmentSize.db_segment_size - 1):
                         eo, eb = divmod(recnum_end, 8)
                         b = (b[:eo+1] +
                              b'\x00' * (
@@ -1103,10 +1108,10 @@ class Database(_database.Database):
                 rs[s] = RecordsetSegmentBitarray(s, None, records=b)
             if so is not None:
                 for i in range(so * 8, so * 8 + sb):
-                    rs[segment_start][(s, i)] = False
+                    rs[segment_start][(segment_start, i)] = False
             if eo is not None:
                 for i in range(eo * 8 + eb, (eo + 1) * 8):
-                    rs[segment_end][(s, i)] = False
+                    rs[segment_end][(segment_end, i)] = False
         finally:
             cursor.close()
         return rs
@@ -1651,18 +1656,12 @@ class Cursor(cursor.Cursor):
     def __init__(self, dbset, table=None, file=None, keyrange=None, **kargs):
         """Define a cursor on the underlying database engine dbset."""
         super().__init__(dbset)
-        self._most_recent_row_read = False
         self._cursor = dbset.cursor()
         self._table = table
         self._file = file
         self._current_segment = None
         self._current_segment_number = None
         self._current_record_number_in_segment = None
-
-    def close(self):
-        """Delete database cursor then delegate to superclass close() method."""
-        self._most_recent_row_read = False
-        super().close()
 
     def get_converted_partial(self):
         """return self._partial as it would be held on database."""
@@ -1702,7 +1701,13 @@ class CursorPrimary(Cursor):
 
     def __init__(self, dbset, ebm=None, **kargs):
         super().__init__(dbset, **kargs)
+        self._most_recent_row_read = False
         self._ebm = ebm
+
+    def close(self):
+        """Delete database cursor then delegate to superclass close() method."""
+        self._most_recent_row_read = False
+        super().close()
 
     def count_records(self):
         """return record count or None if cursor is not usable."""
@@ -2018,11 +2023,10 @@ class CursorSecondary(Cursor):
                 'limit 1',
                 ))
             values = (self.get_converted_partial_with_wildcard(),)
-        self._most_recent_row_read = self._cursor.execute(
-            statement, values).fetchone()
-        if self._most_recent_row_read is None:
+        row = self._cursor.execute(statement, values).fetchone()
+        if row is None:
             return None
-        return self.set_current_segment(self._most_recent_row_read).first()
+        return self.set_current_segment(row).first()
 
     def get_position_of_record(self, record=None):
         """Return position of record in file or 0 (zero)."""
@@ -2096,8 +2100,6 @@ class CursorSecondary(Cursor):
 
         # Start at first or last record whichever is likely closer to position
         if position < 0:
-            is_step_forward = False
-            position = -1 - position
             if not self.get_partial():
                 statement = ' '.join((
                     'select',
@@ -2129,7 +2131,6 @@ class CursorSecondary(Cursor):
                     ))
                 values = (self.get_converted_partial_with_wildcard(),)
         else:
-            is_step_forward = True
             if not self.get_partial():
                 statement = ' '.join((
                     'select',
@@ -2162,29 +2163,50 @@ class CursorSecondary(Cursor):
         # Get record at position relative to start point
         db_segment_size_bytes = SegmentSize.db_segment_size_bytes
         count = 0
-        for r in self._cursor.execute(statement, values):
-            count += r[2]
-            if count < position:
-                continue
-            count -= position
-            if r[2] == 1:
-                segment = RecordsetSegmentInt(
-                    r[1],
-                    None,
-                    records=r[3].to_bytes(2, byteorder='big'))
-            else:
-                bs = self.get_segment_records(r[3])
-                if len(bs) == db_segment_size_bytes:
-                    segment = RecordsetSegmentBitarray(r[1], None, records=bs)
+        if position < 0:
+            for r in self._cursor.execute(statement, values):
+                count -= r[2]
+                if count > position:
+                    continue
+                if r[2] == 1:
+                    segment = RecordsetSegmentInt(
+                        r[1],
+                        None,
+                        records=r[3].to_bytes(2, byteorder='big'))
                 else:
-                    segment = RecordsetSegmentList(r[1], None, records=bs)
-            if not is_step_forward:
-                count = r[2] - count
-            record_number = segment.get_record_number_at_position(
-                count, is_step_forward)
-            if record_number is not None:
-                return r[0], record_number
-            break
+                    bs = self.get_segment_records(r[3])
+                    if len(bs) == db_segment_size_bytes:
+                        segment = RecordsetSegmentBitarray(
+                            r[1], None, records=bs)
+                    else:
+                        segment = RecordsetSegmentList(r[1], None, records=bs)
+                record_number = segment.get_record_number_at_position(
+                    position - count - r[2])
+                if record_number is not None:
+                    return r[0], record_number
+                break
+        else:
+            for r in self._cursor.execute(statement, values):
+                count += r[2]
+                if count <= position:
+                    continue
+                if r[2] == 1:
+                    segment = RecordsetSegmentInt(
+                        r[1],
+                        None,
+                        records=r[3].to_bytes(2, byteorder='big'))
+                else:
+                    bs = self.get_segment_records(r[3])
+                    if len(bs) == db_segment_size_bytes:
+                        segment = RecordsetSegmentBitarray(
+                            r[1], None, records=bs)
+                    else:
+                        segment = RecordsetSegmentList(r[1], None, records=bs)
+                record_number = segment.get_record_number_at_position(
+                    position - count + r[2])
+                if record_number is not None:
+                    return r[0], record_number
+                break
         return None
 
     def last(self):
@@ -2223,11 +2245,10 @@ class CursorSecondary(Cursor):
                 'limit 1',
                 ))
             values = (self.get_converted_partial_with_wildcard(),)
-        self._most_recent_row_read = self._cursor.execute(
-            statement, values).fetchone()
-        if self._most_recent_row_read is None:
+        row = self._cursor.execute(statement, values).fetchone()
+        if row is None:
             return None
-        return self.set_current_segment(self._most_recent_row_read).last()
+        return self.set_current_segment(row).last()
 
     def nearest(self, key):
         """Return nearest record to key taking partial key into account."""
@@ -2266,17 +2287,16 @@ class CursorSecondary(Cursor):
                 'limit 1',
                 ))
             values = (self.get_converted_partial_with_wildcard(), key)
-        self._most_recent_row_read = self._cursor.execute(
-            statement, values).fetchone()
-        if self._most_recent_row_read is None:
+        row = self._cursor.execute(statement, values).fetchone()
+        if row is None:
             return None
-        return self.set_current_segment(self._most_recent_row_read).first()
+        return self.set_current_segment(row).first()
 
     def next(self):
         """Return next record taking partial key into account."""
-        if self._most_recent_row_read is False:
+        if self._current_segment is None:
             return self.first()
-        elif self._most_recent_row_read is None:
+        if self.get_partial() is False:
             return None
         record = self._current_segment.next()
         if record is not None:
@@ -2298,9 +2318,8 @@ class CursorSecondary(Cursor):
                 'limit 1',
                 ))
             values = (self._current_segment._key, self._current_segment_number)
-            self._most_recent_row_read = self._cursor.execute(
-                statement, values).fetchone()
-            if self._most_recent_row_read is None:
+            row = self._cursor.execute(statement, values).fetchone()
+            if row is None:
                 statement = ' '.join((
                     'select',
                     self._field, ',',
@@ -2316,10 +2335,7 @@ class CursorSecondary(Cursor):
                     'limit 1',
                     ))
                 values = (self._current_segment._key,)
-                self._most_recent_row_read = self._cursor.execute(
-                    statement, values).fetchone()
-        elif self.get_partial() is False:
-            return None
+                row = self._cursor.execute(statement, values).fetchone()
         else:
             statement = ' '.join((
                 'select',
@@ -2342,9 +2358,8 @@ class CursorSecondary(Cursor):
                 self._current_segment._key,
                 self._current_segment_number,
                 )
-            self._most_recent_row_read = self._cursor.execute(
-                statement, values).fetchone()
-            if self._most_recent_row_read is None:
+            row = self._cursor.execute(statement, values).fetchone()
+            if row is None:
                 statement = ' '.join((
                     'select',
                     self._field, ',',
@@ -2364,17 +2379,16 @@ class CursorSecondary(Cursor):
                     self.get_converted_partial_with_wildcard(),
                     self._current_segment._key,
                     )
-                self._most_recent_row_read = self._cursor.execute(
-                    statement, values).fetchone()
-        if self._most_recent_row_read is None:
+                row = self._cursor.execute(statement, values).fetchone()
+        if row is None:
             return None
-        return self.set_current_segment(self._most_recent_row_read).first()
+        return self.set_current_segment(row).first()
 
     def prev(self):
         """Return previous record taking partial key into account."""
-        if self._most_recent_row_read is False:
+        if self._current_segment is None:
             return self.last()
-        elif self._most_recent_row_read is None:
+        if self.get_partial() is False:
             return None
         record = self._current_segment.prev()
         if record is not None:
@@ -2397,9 +2411,8 @@ class CursorSecondary(Cursor):
                 'limit 1',
                 ))
             values = (self._current_segment._key, self._current_segment_number)
-            self._most_recent_row_read = self._cursor.execute(
-                statement, values).fetchone()
-            if self._most_recent_row_read is None:
+            row = self._cursor.execute(statement, values).fetchone()
+            if row is None:
                 statement = ' '.join((
                     'select',
                     self._field, ',',
@@ -2416,10 +2429,7 @@ class CursorSecondary(Cursor):
                     'limit 1',
                     ))
                 values = (self._current_segment._key,)
-                self._most_recent_row_read = self._cursor.execute(
-                    statement, values).fetchone()
-        elif self.get_partial() is False:
-            return None
+                row = self._cursor.execute(statement, values).fetchone()
         else:
             statement = ' '.join((
                 'select',
@@ -2443,9 +2453,8 @@ class CursorSecondary(Cursor):
                 self._current_segment._key,
                 self._current_segment_number,
                 )
-            self._most_recent_row_read = self._cursor.execute(
-                statement, values).fetchone()
-            if self._most_recent_row_read is None:
+            row = self._cursor.execute(statement, values).fetchone()
+            if row is None:
                 statement = ' '.join((
                     'select',
                     self._field, ',',
@@ -2466,11 +2475,10 @@ class CursorSecondary(Cursor):
                     self.get_converted_partial_with_wildcard(),
                     self._current_segment._key,
                     )
-                self._most_recent_row_read = self._cursor.execute(
-                    statement, values).fetchone()
-        if self._most_recent_row_read is None:
+                row = self._cursor.execute(statement, values).fetchone()
+        if row is None:
             return None
-        return self.set_current_segment(self._most_recent_row_read).last()
+        return self.set_current_segment(row).last()
 
     def setat(self, record):
         """Return current record after positioning cursor at record.
@@ -2538,12 +2546,13 @@ class CursorSecondary(Cursor):
             return None
         self._current_segment = segment
         self._current_segment_number = row[1]
-        self._most_recent_row_read = row
         return segment.setat(record[1])
 
     def set_partial_key(self, partial):
-        """Set partial key."""
+        """Set partial key and mark current segment as None."""
         self._partial = partial
+        self._current_segment = None
+        self._current_segment_number = None
 
     def _get_segment(self, key, segment_number, count, record_number):
         if count == 1:
@@ -2667,15 +2676,10 @@ class RecordsetCursor(RecordsetCursor):
 
 class ExistenceBitmapControl(_database.ExistenceBitmapControl):
     
-    """Keep track of segments in an existence bit map that contain freed record
-    numbers that can be reused.
-
-    The list of existence bit map segments containing freed record numbers
-    is cached.
-    """
+    """Access existence bit map for file in database."""
 
     def __init__(self, file, database):
-        """Note file whose existence bitmap record number re-use is managed.
+        """Note file whose existence bitmap is managed.
         """
         super().__init__(file, database)
         self.ebm_table = SUBFILE_DELIMITER.join((self._file,
@@ -2701,14 +2705,14 @@ class ExistenceBitmapControl(_database.ExistenceBitmapControl):
             cursor.close()
 
     def read_exists_segment(self, segment_number, dbenv):
-
-        # Return existence bit map for segment_number if not high segment.
-        # record keys are 1-based but segment_numbers are 0-based
-        if segment_number < self.segment_count - 1:
-            ebm = Bitarray()
+        # Return existence bit map for segment_number.
+        # record keys are 1-based but segment_numbers are 0-based.
+        ebm = Bitarray()
+        try:
             ebm.frombytes(self.get_ebm_segment(segment_number + 1, dbenv))
-            return ebm
-        return None
+        except TypeError:
+            return None
+        return ebm
 
     def get_ebm_segment(self, key, dbenv):
         statement = ' '.join((

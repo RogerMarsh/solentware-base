@@ -35,6 +35,9 @@ from .constants import (
     PRIMARY_FIELDATTS,
     SECONDARY_FIELDATTS,
     SPT,
+    ACCESS_METHOD,
+    HASH,
+    BTREE,
     )
 
 
@@ -395,3 +398,70 @@ class FileSpec(dict):
                 pathnames[fname] = name
 
             definitions.add(primary)
+
+    def is_consistent_with(self, specification):
+        """Raise FileSpecError if specification is not consistent with self.
+
+        The specification is expected to be one stored with a database.
+
+        In particular the access method for fields in the database version is
+        allowed to be different from the version in self, by being BTREE rather
+        than HASH.
+        """
+        # Compare specification with reference version in self to allow field
+        # access methods to differ.  Specification can say, or imply by
+        # default, BTREE while reference version can say HASH instead.
+        # (Matters for _db and _nosql modules.)
+        if self == specification:
+            return
+        sdbspec = sorted([s for s in specification])
+        ssspec = sorted([s for s in self])
+        if sdbspec != ssspec:
+            raise FileSpecError(
+                ''.join(
+                    ('Specification does not have same files as defined in ',
+                     'this FileSpec')))
+        msgdh = ''.join(
+            ('Specification does not have same detail headings for each file ',
+             'as defined in this FileSpec'))
+        msgd = ''.join(
+            ('Specification does not have same detail for each file as ',
+             'defined in this FileSpec'))
+        msgfield = ''.join(
+            ('Specification does not have same fields for each file as ',
+             'defined in this FileSpec'))
+        msgam = ''.join(
+            ('Specification does not have same descriptions for each field ',
+             'in each file as defined in this FileSpec'))
+        for dbs, ss in zip(sdbspec, ssspec):
+            sdbs = sorted(s for s in specification[dbs])
+            sss = sorted(s for s in self[ss])
+            if sdbs != sss:
+                raise FileSpecError(msgdh)
+            for dbsd in sdbs:
+                if dbsd != FIELDS:
+                    if (specification[dbs][dbsd] != self[ss][dbsd]):
+                        raise FileSpecError(msgd)
+                    continue
+                sdbsf = specification[dbs][dbsd]
+                sssf = self[dbs][dbsd]
+                if sorted(sdbsf) != sorted(sssf):
+                    raise FileSpecError(msgfield)
+                for fn in sdbsf:
+                    if sdbsf[fn] == sssf[fn]:
+                        continue
+                    dbfp = sdbsf[fn].copy()
+                    sfp = sssf[fn].copy()
+                    if ACCESS_METHOD in dbfp:
+                        del dbfp[ACCESS_METHOD]
+                    if ACCESS_METHOD in sfp:
+                        del sfp[ACCESS_METHOD]
+                    if dbfp != sfp:
+                        raise FileSpecError(msgam)
+                    dbfpam = sdbsf[fn].get(ACCESS_METHOD, BTREE)
+                    sfpam = sssf[fn].get(ACCESS_METHOD, BTREE)
+                    if dbfpam == sfpam:
+                        continue
+                    if dbfpam == BTREE and sfpam == HASH:
+                        continue
+                    raise FileSpecError(msgam)

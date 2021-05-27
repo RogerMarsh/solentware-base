@@ -9,8 +9,6 @@ methods.  The _dpt module's versions of these methods are too different to
 justify making _dpt.Database a subclass of _database.Database.
 
 """
-from copy import deepcopy
-
 from .segmentsize import SegmentSize
 from .find import Find
 from .where import Where
@@ -321,7 +319,7 @@ class Database:
 
 class ExistenceBitmapControl:
     
-    """Base class for managing re-use of existence bitmap record numbers.
+    """Base class for managing existence bitmap of file in database.
 
     Note the primary or secondary database instance to be managed.
 

@@ -55,6 +55,7 @@ class Database(_databasedu.Database):
         self.initial_high_segment = {}
         self.existence_bit_maps = {}
         self.value_segments = {} # was values in secondarydu.Secondary
+        self._int_to_bytes = None
             
     # This method is uncommented if deferred updates are done without a journal
     # and without synchronous updates.  See pragmas in set_defer_update and
@@ -109,6 +110,9 @@ class Database(_databasedu.Database):
         # Timings when adding to an empty database suggest the sqlite3 version
         # would be a little slower than the bsddb3 version.
 
+        self._int_to_bytes = [n.to_bytes(2, byteorder='big')
+                              for n in range(SegmentSize.db_segment_size)]
+
         # Comment these if the 'do-nothing' override of commit() is commented.
         #self.dbenv.cursor().execute('pragma journal_mode = off')
         #self.dbenv.cursor().execute('pragma synchronous = off')
@@ -137,6 +141,7 @@ class Database(_databasedu.Database):
     def unset_defer_update(self):
         """Tidy-up at end of deferred update run."""
 
+        self._int_to_bytes = None
         for file in self.specification:
             self.high_segment[file] = None
             self.first_chunk[file] = None
@@ -182,10 +187,7 @@ class Database(_databasedu.Database):
             return
 
         # Lookup table is much quicker, and noticeable, in bulk use.
-        # Big enough to discard when done.
-        int_to_bytes = [n.to_bytes(2, byteorder='big')
-                        for n in range(SegmentSize.db_segment_size)]
-        #bytes_to_int = {b:e for e, b in enumerate(int_to_bytes)}
+        int_to_bytes = self._int_to_bytes
 
         segvalues = self.value_segments[file][field]
 
@@ -204,10 +206,6 @@ class Database(_databasedu.Database):
                     ]
             elif isinstance(v, int):
                 segvalues[k] = [1, v]
-
-        # Discard lookup tables.
-        del int_to_bytes
-        #del bytes_to_int
 
         # New records go into temporary databases, one for each segment, except
         # when filling the segment which was high when this update started. 
