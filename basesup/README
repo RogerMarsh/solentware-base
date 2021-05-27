@@ -1,0 +1,39 @@
+The basesup package provides an interface for storing serialized Python class instances on a database.
+
+It also contains workarounds for Tk functions not implemented in Tkinter.
+
+The databases store pickled class instances with multiple indexes.
+
+The three line Howto for using this package is:
+
+Define a database in a subclass of Filespec (filespec.py)
+Define record descriptions in subclasses of Record (record.py)
+Access a database using a subclass of DBapi (dbapi.py) or DPTapi (dptapi.py)
+
+
+Notes:
+
+This package supports DPT (www.dptoolkit.com) and Berkeley DB (www.oracle.com)
+database engines.
+
+DPT databases and Berkeley DB RECNO databases are interchangeable in this
+API in the sense that application code written for one can be transplanted
+to the other by importing the relevant module for the database engine API.
+
+There are two interfaces available to Berkeley DB: bsddb in Python 2 distributions and the third party package bsddb3.
+
+
+Known Problems:
+
+The Tkinter workarounds do not really belong in this package.  But this is the lowest package in the dependency chain that needs them.
+
+
+To do:
+
+Support the sqlite3 package provided in Python distributions.  The bsddb package, which implements the interface to Berkeley DB, is removed at Python 3.0 and sqlite3 is the most similar package.  The dbm-style database engines are not suitable because they do not support accessing records in sorted key order.
+
+
+Contact:
+
+roger.marsh@solentware.co.uk
+
