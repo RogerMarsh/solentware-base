@@ -10,7 +10,7 @@ from copy import copy, deepcopy
 from .. import dptbase
 
 
-class DPTbase(unittest.TestCase):
+class Database(unittest.TestCase):
 
     def setUp(self):
         pass
@@ -31,7 +31,7 @@ class DPTbase(unittest.TestCase):
         msg = 'Failure of this test invalidates all other tests'
 
 
-class DPTbaseFile(unittest.TestCase):
+class DPTFile(unittest.TestCase):
 
     def setUp(self):
         pass
@@ -52,7 +52,7 @@ class DPTbaseFile(unittest.TestCase):
         msg = 'Failure of this test invalidates all other tests'
 
 
-class DPTbaseRecord(unittest.TestCase):
+class DPTRecord(unittest.TestCase):
 
     def setUp(self):
         pass
@@ -73,7 +73,7 @@ class DPTbaseRecord(unittest.TestCase):
         msg = 'Failure of this test invalidates all other tests'
 
 
-class CursorDPT(unittest.TestCase):
+class Cursor(unittest.TestCase):
 
     def setUp(self):
         pass
@@ -115,29 +115,11 @@ class _CursorDPT(unittest.TestCase):
         msg = 'Failure of this test invalidates all other tests'
 
 
-def suite__dpt():
-    return unittest.TestLoader().loadTestsFromTestCase(DPTbase)
-
-
-def suite__dptf():
-    return unittest.TestLoader().loadTestsFromTestCase(DPTbaseFile)
-
-
-def suite__dptr():
-    return unittest.TestLoader().loadTestsFromTestCase(DPTbaseRecord)
-
-
-def suite__cdpt():
-    return unittest.TestLoader().loadTestsFromTestCase(CursorDPT)
-
-
-def suite___cdpt():
-    return unittest.TestLoader().loadTestsFromTestCase(_CursorDPT)
-
-
 if __name__ == '__main__':
-    unittest.TextTestRunner(verbosity=2).run(suite__dpt())
-    unittest.TextTestRunner(verbosity=2).run(suite__dptf())
-    unittest.TextTestRunner(verbosity=2).run(suite__dptr())
-    unittest.TextTestRunner(verbosity=2).run(suite__cdpt())
-    unittest.TextTestRunner(verbosity=2).run(suite___cdpt())
+    runner = unittest.TextTestRunner
+    loader = unittest.defaultTestLoader.loadTestsFromTestCase
+    runner().run(loader(Database))
+    runner().run(loader(DPTFile))
+    runner().run(loader(DPTRecord))
+    runner().run(loader(Cursor))
+    runner().run(loader(_CursorDPT))

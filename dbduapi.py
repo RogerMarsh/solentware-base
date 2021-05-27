@@ -2,1164 +2,607 @@
 # Copyright (c) 2007 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""Provide DB file access in custom deferred update mode.
+"""
+A database API for bulk insertion of records, implemented using bsddb3,
+where indicies are represented as lists or bitmaps of record numbers.
+    
+bsddb3 is an interface to Berkeley DB.
 
-List of classes
+The Primary and Secondary classes modify the behaviour of dbapi.Primary and
+dbapi.Secondary to defer index updates and prevent record deletion and
+amendment.
 
-DBduapiError - Exceptions
-DBduapi - Deferred update API without file segment support
-DBbitduapi - Deferred update API with file segment support
-DBbitduPrimary
-DBbitduSecondary
-_DBduapi - Methods common to DBduapi and DBbitduapi including _DBapi overrides
-_DBduSecondary
-DBduSecondary - Deferred update record level access to each secondary file
+The DBduapi class configures it's superclass, dbapi.Database, to use the
+Primary and Secondary classes.
+
+Transactions are not supported.
 
 """
 
-import os
 import heapq
+import collections
 
-from .api.bytebit import Bitarray
+from .api.bytebit import Bitarray, SINGLEBIT
 
 # bsddb removed from Python 3.n
 try:
-    from bsddb3.db import DB, DB_KEYLAST, DB_RECNO, DBKeyExistError
+    from bsddb3.db import (
+        DB, DB_CREATE, DB_KEYLAST, DB_CURRENT, DB_DUPSORT, DB_BTREE, DB_HASH,
+        DBKeyExistError)
 except ImportError:
-    from bsddb.db import DB, DB_KEYLAST, DB_RECNO, DBKeyExistError
+    from bsddb.db import (
+        DB, DB_CREATE, DB_KEYLAST, DB_CURRENT, DB_DUPSORT, DB_BTREE, DB_HASH,
+        DBKeyExistError)
 
-from .dbapi import (
-    _DBapi,
-    DBPrimary,
-    DBbitPrimary,
-    DBSecondary,
-    DBapiError,
-    EMPTY_BITARRAY,
-    DBbitControlFile,
-    )
+from . import dbapi
 
-from .api.shelf import Shelf, ShelfString, DEFAULT_SEGMENTSIZE
 from .api.constants import (
-    USE_BYTES,
     DB_DEFER_FOLDER,
-    DB_SEGMENT_SIZE,
-    DB_CONVERSION_LIMIT,
-    DB_TOP_RECORD_NUMBER_IN_SEGMENT,
     SECONDARY,
     PRIMARY,
     LENGTH_SEGMENT_BITARRAY_REFERENCE,
     LENGTH_SEGMENT_LIST_REFERENCE,
+    ACCESS_METHOD,
+    HASH,
+    SUBFILE_DELIMITER,
     )
 
+from .api.segmentsize import SegmentSize
 
-class DBduapiError(DBapiError):
+from .api.database import DatabaseError
+from .api.recordset import (
+    RecordsetSegmentBitarray,
+    RecordsetSegmentInt,
+    RecordsetSegmentList,
+    )
+from .api import primarydu
+from .api import secondarydu
+from .api import databasedu
+
+
+class DBduapiError(dbapi.DBapiError):
     pass
 
 
-class _DBduapi(object):
+class DBduapi(databasedu.Database, dbapi.Database):
     
-    """Methods common to DBduapi and DBbitduapi.
+    """Access database with bsddb3.  See superclass for *args and **kargs.
+    
+    bsddb3 is an interface to Berkeley DB.
+    
+    Primary instances are used to do bulk data insertions, and
+    Secondary instances are used to update indicies for the bulk data
+    insertions.
 
-    Methods added:
+    There will be one Primary instance for each Berkeley DB primary
+    database, used approximately like a SQLite table.
 
-    get_deferred_update_folder
-    reset_defer_limit
-    set_defer_limit
-    _get_deferable_update_files
+    There will be one Secondary instance for each Berkeley DB secondary
+    database, used approximately like a SQLite3 index.
 
-    Methods overridden:
-
-    delete_instance - raise exception
-    do_deferred_updates
-    edit_instance - raise exception
-    make_cursor - raise exception
-    put_instance
-    use_deferred_update_process - raise exception
-    set_defer_update
-    unset_defer_update
-
-    Methods extended:
-
-    None
+    Primary and secondary terminology comes from Berkeley DB documentation but
+    the association technique is not used.
     
     """
-    
-    # Number of records that can be collected for deferred update before
-    # applying to file. Depends on memory available.
-    # Call set_defer_limit to set an appropriate value for each file.
-    _defer_record_limit = DEFAULT_SEGMENTSIZE
-
-    def do_deferred_updates(self):
-        """Do deferred updates for DBapi."""
-
-        secondaries = [m for m in self._main if not self._main[m].is_primary()]
-
-        for m in secondaries:
-            if self._main[m].deferclass is not None:
-                if len(self._main[m].deferclass.deferbuffer):
-                    self._main[m].sort_and_write()
-
-        for m in secondaries:
-            if self._main[m].deferclass is not None:
-                #self._main[m].dump_secondary()
-                pass
-
-        for m in secondaries:
-            if self._main[m].deferclass is not None:
-                #self._main[m].new_secondary(
-                #    self._dbenv, self.get_database_folder())
-                pass
-
-        for m in secondaries:
-            if self._main[m].deferclass is not None:
-                self._main[m].merge_update()
-
-        for m in secondaries:
-            if self._main[m].deferclass is not None:
-                self._main[m].tidy_up_after_merge_update(
-                    self.get_database_folder(), self._deferfolder)
-
-        for m in secondaries:
-            if self._main[m].deferclass is not None:
-                self._main[m].close()
-
-    def put_instance(self, dbset, instance):
-        """Put new instance on database dbset.
-        
-        Puts may be direct or deferred while callbacks handle subsidiary
-        databases and non-standard inverted indexes.  Deferred updates are
-        controlled by counting the calls to put_instance and comparing with
-        self._defer_record_limit.
-        
-        """
-        putkey = instance.key.pack()
-        dodurecno = self._defer_record_count >= _DBduapi._defer_record_limit
-        if dodurecno:
-            self._defer_record_count = 0
-        self._defer_record_count += 1
-        instance.set_packed_value_and_indexes()
-        
-        db = self._associate[dbset]
-        main = self._main
-
-        key = main[db[dbset]].put(putkey, instance.srvalue.encode())
-        if key is not None:
-            # put was append to record number database and
-            # returned the new primary key. Adjust record key
-            # for secondary updates.
-            instance.key.load(key)
-            putkey = key
-        instance.srkey = self.encode_record_number(putkey)
-        convertedkey = putkey
-
-        srindex = instance.srindex
-        pcb = instance._putcallbacks
-        for secondary in srindex:
-            if secondary not in db:
-                if secondary in pcb:
-                    pcb[secondary](instance, srindex[secondary])
-                continue
-            if main[db[secondary]].deferclass is not None:
-                if dodurecno:
-                    main[db[secondary]].sort_and_write()
-                for v in srindex[secondary]:
-                    main[db[secondary]].defer_put(v.encode(), convertedkey)
-            else:
-                for v in srindex[secondary]:
-                    main[db[secondary]].put(v.encode(), convertedkey)
-
-    def reset_defer_limit(self):
-        """Set defer record limit to default class limit"""
-        self.set_defer_limit(DBapi._defer_record_limit)
-
-    def set_defer_limit(self, limit):
-        """Set defer record limit."""
-        self._defer_record_limit = limit
-
-    def set_defer_update(self, db=None, duallowed=False):
-        """Set deferred update for db DBs and return duallowed. Default all."""
-        defer = self._get_deferable_update_files(db)
-        if not defer:
-            return duallowed
-
-        try:
-            os.mkdir(os.path.join(
-                self.get_database_folder(), self._deferfolder))
-        except:
-            msg = ' '.join((
-                'Create defer update folder',
-                ' '.join((self.get_database_folder(), self._deferfolder)),
-                'fails'))
-            # raise hangs the process (leave dbdefer directory in existence)
-            raise DBapiError(msg)
-
-        for d in defer:
-            if self._main[self._associate[d][d]].is_recno():
-                defaultshelf = Shelf
-            else:
-                defaultshelf = ShelfString
-            for s in self._associate[d]:
-                f = self._main[self._associate[d][s]]
-                if not f.is_primary():
-                    if f.deferclass is None:
-                        f.deferclass = defaultshelf()
-                        deferfolder = os.path.join(
-                            self.get_database_folder(),
-                            self._deferfolder,
-                            f.get_database_file())
-                        try:
-                            os.mkdir(deferfolder)
-                        except:
-                            msg = ' '.join((
-                                'Create defer update folder',
-                                deferfolder,
-                                'fails'))
-                            raise DBapiError(msg)
-                        f.deferclass.set_defer_folder(deferfolder)
-        return duallowed
-            
-    def unset_defer_update(self, db=None):
-        """Unset deferred update for db DBs. Default all."""
-        defer = self._get_deferable_update_files(db)
-        if not defer:
-            return
-        for d in self._associate:
-            for s in self._associate[d]:
-                f = self._main[self._associate[d][s]]
-                if not f.is_primary():
-                    if f.deferclass is not None:
-                        try:
-                            os.rmdir(os.path.join(
-                                self.get_database_folder(),
-                                self._deferfolder,
-                                f.get_database_file()))
-                        except:
-                            pass
-                        f.deferclass = None
-        try:
-            os.rmdir(os.path.join(
-                self.get_database_folder(),
-                self._deferfolder))
-        except:
-            pass
-
-    def _get_deferable_update_files(self, db):
-        """Return dictionary of databases in db whose updates are deferable."""
-        deferable = False
-        for d in self._main:
-            if not self._main[d].is_primary():
-                deferable = True
-                break
-        if not deferable:
-            return False
-        
-        if isinstance(db, str):
-            db = [db]
-        elif not isinstance(db, (list, tuple, dict)):
-            db = list(self._associate.keys())
-        dbadd = dict()
-        for d in db:
-            if d in self._associate:
-                dbadd[d] = []
-                for s in self._associate[d]:
-                    if s != d:
-                        dbadd[d].append(self._associate[d][s])
-        return dbadd
-            
-    def delete_instance(self, dbset, instance):
-        raise DBduapiError('delete_instance not implemented')
-
-    def edit_instance(self, dbset, instance):
-        raise DBduapiError('edit_instance not implemented')
-
-    def make_cursor(self, dbset, dbname, keyrange=None):
-        raise DBduapiError('make_cursor not implemented')
-
-    def use_deferred_update_process(self, **kargs):
-        raise DBduapiError('Query use of du when in deferred update mode')
-
-    def get_deferred_update_folder(self):
-        """return deferred database update folder name"""
-        return self._deferfolder
-
-
-class DBduapi(_DBduapi, _DBapi):
-    
-    """Support custom deferred updates on DB database.
-
-    Extend and override DBapi methods for custom deferred update.
-    __init__ is extended to provide control structures for deferred update.
-    DB does not support edit and delete operations in deferred update so
-    edit_instance and delete_instance methods raise exceptions.
-    This class is not intended for general processing so the make_cursor
-    method raises an exception.
-
-    Methods added:
-
-    None
-
-    Methods overridden:
-
-    None
-
-    Methods extended:
-
-    __init__
-    
-    """
-
-    def __init__(self, *args, deferfolder=None, **kargs):
-        """Define database structure.  See superclass for *args and **kargs.
-
-        deferfolder = folder for deferred updates (default DB_DEFER_FOLDER)
-        
-        """
-        super(DBduapi, self).__init__(DBPrimary, DBduSecondary, *args, **kargs)
-        
-        if deferfolder is None:
-            deferfolder = DB_DEFER_FOLDER
-        
-        # Name of deferred update DB folder
-        self._deferfolder = deferfolder
-        
-        # Count of records with deferred updates pending.
-        self._defer_record_count = 0
-
-
-class _DBduSecondary(DBSecondary):
-
-    """Provide custom deferred update sort processing for DB file.
-
-    This class creates attributes added for deferred update.
-
-    Methods added:
-
-    None
-
-    Methods overridden:
-
-    None
-
-    Methods extended:
-
-    __init__
-    
-    """
-
-    def __init__(self, *args):
-        """Define a DB file in deferred update mode"""
-        super(_DBduSecondary, self).__init__(*args)
-
-        self._defercount = 0
-        self.deferclass = None
-
-
-class DBduSecondary(_DBduSecondary):
-
-    """Provide custom deferred update sort processing for DB file.
-
-    This class disables methods not appropriate to deferred update.
-
-    Methods added:
-
-    defer_put
-    dump_secondary
-    merge_update
-    new_secondary
-    put_deferred
-    sort_and_write
-    tidy_up_after_merge_update
-
-    Methods overridden:
-
-    delete - not implemented in DB for deferred updates.
-    replace - not implemented in DB for deferred updates.
-    make_cursor - not supported by this class.
-
-    Methods extended:
-
-    None
-    
-    """
-    
-    def defer_put(self, key, value):
-        """Write key and value to sequential file for database."""
-        self.deferclass.defer_put(key, value)
-
-    def dump_secondary(self):
-        """Copy existing secondary db to sequential file."""
-        c = self._object.cursor()
-        r = c.first()
-        try:
-            current_segment = (
-                self.decode_record_number(r[1]) // DEFAULT_SEGMENTSIZE)
-        except:
-            current_segment = None
-        while r:
-            k, v = r
-            vi = self.decode_record_number(v)
-            s = vi // DEFAULT_SEGMENTSIZE
-            if s != current_segment:
-                self.deferclass.sort_index()
-                current_segment = s
-            self.deferclass.defer_put(k, vi)
-            r = c.next()
-        if current_segment is not None:
-            self.deferclass.sort_index()
-        c.close()
-
-    def merge_update(self):
-        """Do merge updates to database file from sources.
-        
-        The sources are assumed to be sorted.  Function insort from
-        module bisect may be a better alternative to the functions
-        from module heapq.
-        
-        """
-        self.deferclass.flush_index(self.put_deferred)
-
-    def new_secondary(self, dbenv, home):
-        """Delete secondary DB and open a new one in same environment."""
-        self.close()
-        db = DB()
-        db.remove(os.path.join(
-            home,
-            self.get_database_file()))
-        del db
-        self.open_root(dbenv)
-
-    def put_deferred(self, key, value):
-        """Put (key, value) on database.
-        
-        The cursor put method is used because updating secondary DB.
-        value is still the integer version of primary key for recno dbs
-        
-        """
-        if self.is_value_recno():
-            try:
-                self._object.cursor().put(
-                    key, self.encode_record_number(value), DB_KEYLAST)
-            except DBKeyExistError:
-                # Application may legitimately do duplicate updates (-30996)
-                # to a sorted secondary database for DPT compatibility.
-                pass
-            except:
-                raise
-        else:
-            self._object.cursor().put(key, value, DB_KEYLAST)
-
-    def sort_and_write(self):
-        """Sort the deferred updates before writing to sequential file."""
-        self.deferclass.sort_index()
-
-    def tidy_up_after_merge_update(self, home, deferfolder):
-        """Delete defer update files and control records."""
-        self.deferclass.delete_shelve()
-        folder = os.path.join(
-            home,
-            deferfolder,
-            self.get_database_file())
-        paths = os.listdir(folder)
-        for p in paths:
-            try:
-                os.remove(os.path.join(folder, p))
-            except:
-                pass
-
-    def delete(self, key, value):
-        raise DBduapiError('delete not implemented')
-
-    def replace(self, key, oldvalue, newvalue):
-        raise DBduapiError('replace not implemented')
-
-    def make_cursor(self, dbobject, keyrange):
-        raise DBduapiError('make_cursor not implemented')
-
-
-class DBbitduapi(_DBduapi, _DBapi):
-    
-    """Support custom deferred updates on DB database.
-
-    Extend and override DBapi methods for custom deferred update.
-    __init__ is extended to provide control structures for deferred update.
-    DB does not support edit and delete operations in deferred update so
-    edit_instance and delete_instance methods raise exceptions.
-    This class is not intended for general processing so the make_cursor
-    method raises an exception.
-
-    Methods added:
-
-    do_segment_deferred_updates
-
-    Methods overridden:
-
-    delete_instance - raise exception
-    do_deferred_updates
-    edit_instance - raise exception
-    make_cursor - raise exception
-    put_instance
-    use_deferred_update_process - raise exception
-    set_defer_update
-    unset_defer_update
-
-    Methods extended:
-
-    __init__
-    close_context
-    open_context
-    
-    """
-
-    def __init__(self, DBnames, *args, deferfolder=None, **kargs):
-        """Define database structure.  See superclass for *args and **kargs.
-
-        deferfolder = folder for deferred updates (default DB_DEFER_FOLDER)
-        
-        """
-        super(DBbitduapi, self).__init__(
-            DBbitduPrimary, DBbitduSecondary, DBnames, *args, **kargs)
-        self._control = DBbitControlFile()
-        for n in DBnames:
-            self._main[DBnames[n][PRIMARY]].set_control_database(self._control)
+    # Override in subclasses if more frequent deferred update is required.
+    deferred_update_points = frozenset([SegmentSize.db_segment_size - 1])
+
+    def __init__(self, database_specification, *args, deferfolder=None, **kargs):
+        """Use Primary and Secondary classes."""
+        super().__init__(
+            Primary, Secondary, database_specification, *args, **kargs)
+        self._control = dbapi.ControlFile(database_instance=self)
+        m = self.database_definition
+        for n in database_specification:
+            m[n].primary.set_control_database(self._control)
             # Segment database updates are done in do_segment_deferred_updates
-            # and do_deferred_updates, not in the temporary secondary databases
-            # that collect the index values.  No need to link these for access
-            # to segment databases like in non-deferred updates.
-            for s in DBnames[n][SECONDARY].values():
-                self._main[s].set_primary_database(
-                    self._main[DBnames[n][PRIMARY]])
-        
-        if deferfolder is None:
-            deferfolder = DB_DEFER_FOLDER
-        
-        # Name of deferred update DB folder
-        self._deferfolder = deferfolder
-        
-        # Database definition to create temporary deferred update secondaries
-        self._dbnames = DBnames
+            # and do_final_segment_deferred_updates, not in the temporary
+            # secondary databases that collect the index values.  No need to
+            # link these for access to segment databases like in non-deferred
+            # updates.
+            for k, v in database_specification[n][SECONDARY].items():
+                m[n].associate(k).set_primary_database(m[n].primary)
 
-    def put_instance(self, dbset, instance):
-        """Put new instance on database dbset.
-        
-        This method assumes all primary databases are DB_RECNO and enough
-        memory is available to do a segemnt at a time.
-        
-        """
-        putkey = instance.key.pack()
-        instance.set_packed_value_and_indexes()
-        
-        db = self._associate[dbset]
-        main = self._main
-
-        if putkey != 0:
-            # reuse record number is not allowed
-            raise DBduapiError('Cannot reuse record number in deferred update.')
-        key = main[db[dbset]].put(putkey, instance.srvalue.encode())
-        if key is not None:
-            # put was append to record number database and
-            # returned the new primary key. Adjust record key
-            # for secondary updates.
-            instance.key.load(key)
-            putkey = key
-        instance.srkey = self.encode_record_number(putkey)
-
-        srindex = instance.srindex
-        segment, record_number = divmod(putkey, DB_SEGMENT_SIZE)
-        main[db[dbset]].defer_put(segment, record_number)
-        pcb = instance._putcallbacks
-        for secondary in srindex:
-            if secondary not in db:
-                if secondary in pcb:
-                    pcb[secondary](instance, srindex[secondary])
-                continue
-            for v in srindex[secondary]:
-                main[db[secondary]].defer_put(
-                    v.encode(), segment, record_number)
-        if record_number == DB_TOP_RECORD_NUMBER_IN_SEGMENT:
-            self.do_segment_deferred_updates(main, main[db[dbset]], segment)
-
-    def do_segment_deferred_updates(self, main, dbassoc, segment):
+    def do_segment_deferred_updates(self, primarydb, segment, offset, db=None):
         """Do deferred updates for segment filled during run."""
-        dbassoc.write_existence_bit_map(segment)
-        defer = self._get_deferable_update_files(None)
-        if not defer:
-            return
-        secondaries = {m for m in main if not main[m].is_primary()}
-        for d in defer:
-            for s in self._associate[d]:
-                secondary = self._associate[d][s]
-                if secondary not in secondaries:
-                    continue
-                df = DBbitduSecondary(
-                    os.path.join(
-                        self._deferfolder,
-                        main[secondary].get_database_file(),
-                        str(segment)),
-                    self._dbnames[d],
-                    self._dbnames[d][SECONDARY][s])
-                df.open_root(self._dbenv)
-                df.sort_and_write(
-                    segment,
-                    dbassoc.get_segment_list_database(),
-                    dbassoc.get_segment_bits_database(),
-                    main[secondary].values,
-                    dbassoc.get_control_secondary(),
-                    )
-                df.close()
-
-    def set_defer_update(self, db=None, duallowed=False):
-        """Set deferred update for db DBs and return duallowed. Default all."""
+        primarydb.write_existence_bit_map(segment)
         defer = self._get_deferable_update_files(db)
         if not defer:
-            return duallowed
-
-        try:
-            os.mkdir(os.path.join(
-                self.get_database_folder(), self._deferfolder))
-        except:
-            msg = ' '.join((
-                'Create defer update folder',
-                ' '.join((self.get_database_folder(), self._deferfolder)),
-                'fails'))
-            # raise hangs the process (leave dbdefer directory in existence)
-            raise DBapiError(msg)
-
+            return
+        main = self.database_definition
         for d in defer:
-            for s in self._associate[d]:
-                f = self._main[self._associate[d][s]]
-                if not f.is_primary():
-                    deferfolder = os.path.join(
-                        self.get_database_folder(),
-                        self._deferfolder,
-                        f.get_database_file())
-                    try:
-                        os.mkdir(deferfolder)
-                    except:
-                        msg = ' '.join((
-                            'Create defer update folder',
-                            deferfolder,
-                            'fails'))
-                        raise DBapiError(msg)
-        return duallowed
+            for s in main[d].secondary.values():
+                if not s.is_primary():
+                    s.sort_and_write(self.dbservices, segment)
+            if offset == max(self.deferred_update_points):
+                main[d].primary.first_chunk = True
+            elif offset == min(self.deferred_update_points):
+                main[d].primary.first_chunk = False
+                main[d].primary.high_segment = segment
 
-    def do_deferred_updates(self, db=None):
+    def do_final_segment_deferred_updates(self, db=None):
         """Do deferred updates for partially filled final segment."""
         defer = self._get_deferable_update_files(db)
         if not defer:
             return
 
         # Write the final deferred segment database for each index
+        main = self.database_definition
         for d in defer:
-            assoc = self._associate[d]
-            segment, record_number = divmod(
-                self._main[assoc[d]]._object.cursor().last()[0],
-                DB_SEGMENT_SIZE)
-            if record_number == DB_TOP_RECORD_NUMBER_IN_SEGMENT:
-                continue # Assume the call in put_instance did deferred updates
-            self._main[assoc[d]].write_existence_bit_map(segment)
-            for s in assoc:
-                f = self._main[assoc[s]]
-                if not f.is_primary():
-                    df = DBbitduSecondary(
-                        os.path.join(
-                            self._deferfolder,
-                            f.get_database_file(),
-                            str(segment)),
-                        self._dbnames[d],
-                        self._dbnames[d][SECONDARY][s])
-                    df.open_root(self._dbenv)
-                    df.sort_and_write(
-                        segment,
-                        self._main[assoc[d]].get_segment_list_database(),
-                        self._main[assoc[d]].get_segment_bits_database(),
-                        f.values,
-                        self._main[assoc[d]].get_control_secondary(),
-                        )
-                    df.close()
-        
-        # Move index databases to deferred update folder and create empty ones
-        for d in defer:
-            for s in self._associate[d]:
-                f = self._main[self._associate[d][s]]
-                if not f.is_primary():
-                    f.close()
-                    old_name = os.path.join(
-                        self.get_database_folder(),
-                        f.get_database_file())
-                    new_name = os.path.join(
-                        self.get_database_folder(),
-                        self._deferfolder,
-                        f.get_database_file(),
-                        f.get_database_file())
-                    os.rename(old_name, new_name)
-        
-        # Update the new empty index databases from the deferred update folder
-        def do_merge():
-            """Merge dv nv segments into new and write then return new dv."""
-            # In general multiple segments for a key should be collected and
-            # merged once. This implementation assumes sufficient memory is
-            # available to build all indexes for a segment without using swap
-            # space.
-            # same index value and segment number so merge
-            # fittest is to combine dv and nv, bind to dv, and
-            # defer put to next pass round loop
-            # for now ignore earlier entry
-            #f._object.cursor().put(dk, dv, DB_KEYLAST)
-            if len(dv) == LENGTH_SEGMENT_BITARRAY_REFERENCE:
-                # both segments could be bitarray
-                newseg = get_bits_segment(dv)
-                oldcount = newseg.count()
-                if len(nv) == LENGTH_SEGMENT_BITARRAY_REFERENCE:
-                    newseg |= get_bits_segment(nv)
-                elif len(nv) == LENGTH_SEGMENT_LIST_REFERENCE:
-                    for r in get_list_segment(nv):
-                        newseg[r] = True
-                else:
-                    newseg[get_recnum_segment(nv)] = True
-                count = newseg.count()
-            elif len(nv) == LENGTH_SEGMENT_BITARRAY_REFERENCE:
-                # the other segment is not bitarray
-                newseg = get_bits_segment(nv)
-                oldcount = newseg.count()
-                if len(dv) == LENGTH_SEGMENT_LIST_REFERENCE:
-                    for r in get_list_segment(nv):
-                        newseg[r] = True
-                else:
-                    newseg[get_recnum_segment(nv)] = True
-                count = newseg.count()
-            elif len(dv) == LENGTH_SEGMENT_LIST_REFERENCE:
-                # both segments could be list but not bitarray
-                newseg = get_list_segment(dv)
-                oldcount = len(newseg)
-                if len(nv) == LENGTH_SEGMENT_LIST_REFERENCE:
-                    newseg.extend(get_list_segment(nv))
-                else:
-                    newseg.extend(get_recnum_segment(nv))
-                if len(newseg) > DB_CONVERSION_LIMIT:
-                    seg = EMPTY_BITARRAY.copy()
-                    for rn in newseg:
-                        seg[rn] = True
-                    newseg = seg
-                    count = newseg.count()
-                else:
-                    count = len(newseg)
-            elif len(nv) == LENGTH_SEGMENT_LIST_REFERENCE:
-                # the other segment is record number
-                newseg = get_list_segment(nv)
-                oldcount = len(newseg)
-                newseg.extend(get_recnum_segment(dv))
-                if len(newseg) > DB_CONVERSION_LIMIT:
-                    seg = EMPTY_BITARRAY.copy()
-                    for rn in newseg:
-                        seg[rn] = True
-                    newseg = seg
-                    count = newseg.count()
-                else:
-                    count = len(newseg)
-            else:
-                # both segments are record number
-                # assume DB_CONVERSION_LIMIT > 1
-                newseg = get_recnum_segment(dv)
-                oldcount = len(newseg)
-                newseg.extend(get_recnum_segment(dv))
-                count = len(newseg)
-            if count > DB_CONVERSION_LIMIT:
-                # see line 1942 in dbapi.py (define method in dbapi?)
-                srn = f.get_primary_database(
-                    ).get_control_secondary().get_freed_bits_page()
-                if srn == 0:
-                    srn = f.get_primary_segment_bits(
-                        ).append(newseg.tobytes())
-                else:
-                    f.get_primary_segment_bits().put(srn, newseg.tobytes())
-                return b''.join(
-                    (dv[:4],
-                     count.to_bytes(3, byteorder='big'),
-                     srn.to_bytes(4, byteorder='big')))
-            else:
-                # see line 1852 in dbapi.py (define method in dbapi?)
-                srn = f.get_primary_database(
-                    ).get_control_secondary().get_freed_list_page()
-                if srn == 0:
-                    srn = f.get_primary_segment_list().append(
-                        b''.join(
-                            [rn.to_bytes(2, byteorder='big')
-                             for rn in sorted(newseg)]))
-                else:
-                    f.get_primary_segment_list().put(
-                        srn,
-                        b''.join(
-                            [rn.to_bytes(2, byteorder='big')
-                             for rn in sorted(newseg)]))
-                return b''.join(
-                    (dv[:4],
-                     count.to_bytes(2, byteorder='big'),
-                     srn.to_bytes(4, byteorder='big')))
-        
-        def get_bits_segment(sv):
-            """Return bitarray for segment number in sv and free segment."""
-            # see line 1972 in dbapi.py (define method in dbapi?)
-            srn_bits = int.from_bytes(sv[7:], byteorder='big')
-            bs = f.get_primary_segment_bits().get(srn_bits)
-            if bs is None:
-                raise DatabaseError('Segment record missing')
-            # stub call to put srn_bits on reuse stack
-            f.get_primary_database().get_control_secondary(
-                ).note_freed_bits_page(srn_bits)
-            # ok if reuse bitmap but not if reuse stack
-            f.get_primary_segment_bits().delete(srn_bits)
-            recnums = Bitarray()
-            recnums.frombytes(bs)
-            return recnums
-        
-        def get_list_segment(sv):
-            """Return list for segment number in sv and free segment."""
-            # see line 1925 in dbapi.py (define method in dbapi?)
-            srn_list = int.from_bytes(sv[6:], byteorder='big')
-            bs = f.get_primary_segment_list().get(srn_list)
-            if bs is None:
-                raise DatabaseError('Segment record missing')
-            # stub call to put srn_list on reuse stack
-            f.get_primary_database().get_control_secondary(
-                ).note_freed_list_page(srn_list)
-            # ok if reuse bitmap but not if reuse stack
-            f.get_primary_segment_list().delete(srn_list)
-            recnums = [int.from_bytes(bs[i:i+2], byteorder='big')
-                       for i in range(0, len(bs), 2)]
-            return recnums
-        
-        def get_recnum_segment(sv):
-            """Return list for segment number in sv."""
-            # see line 1989 in dbapi.py (define method in dbapi?)
-            return [int.from_bytes(sv[4:], byteorder='big')]
-        
-        heapify = heapq.heapify
-        heappop = heapq.heappop
-        heappush = heapq.heappush
-        updates = []
-        heapify(updates)
-        for d in defer:
-            for s in self._associate[d]:
-                f = self._main[self._associate[d][s]]
-                if not f.is_primary():
-                    f.open_root(self._dbenv)
-                    deferred = dict()
-                    cursors = dict()
-                    for fn in os.listdir(
-                        os.path.join(
-                            self.get_database_folder(),
-                            self._deferfolder,
-                            f.get_database_file())):
-                        deferred[fn] = DB(self._dbenv)
-                        deferred[fn].open(
-                            os.path.join(
-                                self._deferfolder,
-                                f.get_database_file(),
-                                fn),
-                            f._dbname)
-                        cursors[fn] = deferred[fn].cursor()
-                    for c in cursors.values():
-                        try:
-                            k, v = c.first()
-                            heappush(updates, (k, v, c))
-                        except:
-                            c.close()
-                            deferred[fn].close()
-                    udlen = len(updates)
-                    if len(updates):
-                        dk, dv, c = heappop(updates)
-                        try:
-                            k, v = c.next()
-                            heappush(updates, (k, v, c))
-                        except:
-                            c.close()
-                            deferred[fn].close()
-                    cursor = f._object.cursor()
-                    while len(updates):
-                        nk, nv, c = heappop(updates)
-                        try:
-                            k, v = c.next()
-                            heappush(updates, (k, v, c))
-                        except:
-                            c.close()
-                            deferred[fn].close()
-                        if dk != nk:
-                            # different index values
-                            cursor.put(dk, dv, DB_KEYLAST)
-                            dk, dv = nk, nv
-                        elif dv[:4] != nv[:4]:
-                            # different segments in order for same index value
-                            cursor.put(dk, dv, DB_KEYLAST)
-                            dk, dv = nk, nv
-                        else:
-                            # same index value and segment number
-                            dv = do_merge()
-                    if udlen:
-                        cursor.put(dk, dv, DB_KEYLAST)
-                    cursor.close()
-            
-        # Delete deferred segment databases, and moved old one, for each index
-        for d in defer:
-            for s in self._associate[d]:
-                f = self._main[self._associate[d][s]]
-                if not f.is_primary():
-                    for fn in os.listdir(
-                        os.path.join(
-                            self.get_database_folder(),
-                            self._deferfolder,
-                            f.get_database_file())):
-                        try:
-                            os.remove(
-                                os.path.join(
-                                    self.get_database_folder(),
-                                    self._deferfolder,
-                                    f.get_database_file(),
-                                    fn))
-                        except:
-                            pass
+            primary = main[d].primary
+            c = primary.table_link.cursor()
+            try:
+                segment, record_number = divmod(
+                    c.last()[0],
+                    SegmentSize.db_segment_size)
+            except TypeError:
 
+                # Assume deferred update to an empty file with nothing.
+                continue
+
+            finally:
+                c.close()
+            if record_number in self.deferred_update_points:
+                continue # Assume put_instance did deferred updates
+            primary.write_existence_bit_map(segment)
+            for s in main[d].secondary.values():
+                if not s.is_primary():
+                    s.sort_and_write(self.dbservices, segment)
+                    s.merge(self.dbservices)
+
+    def reset_defer_limit(self):
+        """Do nothing - DPT compatibility."""
+
+    def set_defer_limit(self, limit):
+        """Do nothing - DPT compatibility."""
+
+    def set_defer_update(self, db=None, duallowed=False):
+        """Set deferred update for db DBs and return duallowed. Default all."""
+        defer = self._get_deferable_update_files(db)
+        if not defer:
+            return
+        main = self.database_definition
+        for d in defer:
+            t = main[d].primary
+            c = t.table_link.cursor()
+            try:
+                high_record = c.last()
+            finally:
+                c.close()
+            if high_record is not None:
+                segment, record = divmod(high_record[0],
+                                         SegmentSize.db_segment_size)
+                t.high_segment = segment
+                t.first_chunk = record < min(self.deferred_update_points)
+                continue
+            t.high_segment = None
+            t.first_chunk = None
+        return duallowed
+        
     def unset_defer_update(self, db=None):
         """Unset deferred update for db DBs. Default all."""
         defer = self._get_deferable_update_files(db)
         if not defer:
             return
+        main = self.database_definition
         for d in defer:
-            for s in self._associate[d]:
-                f = self._main[self._associate[d][s]]
-                if not f.is_primary():
-                    try:
-                        os.rmdir(os.path.join(
-                            self.get_database_folder(),
-                            self._deferfolder,
-                            f.get_database_file()))
-                    except:
-                        pass
-        try:
-            os.rmdir(os.path.join(
-                self.get_database_folder(),
-                self._deferfolder))
-        except:
-            pass
+            main[d].primary.high_segment = None
+            main[d].primary.first_chunk = None
 
-    def close_context(self):
-        """Close main and deferred update databases and environment."""
-        self._control.close()
-        super(DBbitduapi, self).close_context()
+    def start_transaction(self):
+        """Do nothing.  Deferred updates are not done within transactions.
 
-    def open_context(self):
-        """Open all DBs."""
-        super(DBbitduapi, self).open_context()
-        self._control.open_root(self._dbenv)
-        return True
+        self._dbtxn is assumed to be None.  The txn argument in all bsddb3
+        calls in this module is allowed to default to None because these
+        updates must be done outside any transactions.
+        """
 
 
-class DBbitduPrimary(DBbitPrimary):
+class Primary(primarydu.Primary, dbapi.Primary):
 
-    """Provide custom deferred update sort processing for DB file.
+    """Add methods for deferred update processing to dbapi.Primary.
 
-    This class disables methods not appropriate to deferred update.
-
-    Methods added:
-
-    defer_put
-    write_existence_bit_map
-
-    Methods overridden:
-
-    None
-
-    Methods extended:
-
-    __init__
-    
+    Primary database updates are done directly, but the existence bitmap
+    updates are deferred (along with secondary database updates) until the
+    next deferred update point usually when the last record has been added
+    to a segment.
     """
-
-    def __init__(self, *args):
-        """Define a DB file in deferred update mode"""
-        super(DBbitduPrimary, self).__init__(*args)
-        self.existence_bit_maps = dict()
-
-    def defer_put(self, segment, record_number):
-        """Add bit to existence bit map for new record and defer update."""
-        try:
-            # Assume cached segment existence bit map exists
-            self.existence_bit_maps[segment][record_number] = True
-        except KeyError:
-            # Get the segment existence bit map from database
-            ebmb = self.get_existence_bits_database().get(segment + 1)
-            if ebmb is None:
-                # It does not exist so create a new empty one
-                ebm = EMPTY_BITARRAY.copy()
-            else:
-                # It does exist so convert database representation to bitarray
-                ebm = Bitarray()
-                ebm.frombytes(ebmb)
-            # Set bit for record number and add segment to cache
-            ebm[record_number] = True
-            self.existence_bit_maps[segment] = ebm
 
     def write_existence_bit_map(self, segment):
         """Write the existence bit map for segment."""
         self.get_existence_bits_database().put(
             segment + 1, self.existence_bit_maps[segment].tobytes())
 
-
-class DBbitduSecondary(DBSecondary):
-
-    """Provide custom deferred update sort processing for DB file.
-
-    This class disables methods not appropriate to deferred update.
-
-    Methods added:
-
-    defer_put
-    dump_secondary
-    get_primary_database
-    get_primary_segment_bits
-    get_primary_segment_list
-    merge_update
-    new_secondary
-    put_deferred
-    set_primary_database
-    sort_and_write
-    tidy_up_after_merge_update
-
-    Methods overridden:
-
-    delete
-    make_cursor
-    replace
-
-    Methods extended:
-
-    __init__
-    
-    """
-
-    # __init__ added for build and test.  Remove when done.
-    # Lots copied late from DBbitSecondaryFile to avoid changing superclass.
-    # See notes in sort_and_write method.
-    def __init__(self, *args):
-        """Define a DB file in deferred update mode"""
-        super(DBbitduSecondary, self).__init__(*args)
-        self.values = dict()
-        self._primary_database = None
-    
-    def defer_put(self, key, segment, record_number):
-        """Add record_number to cached segment for key."""
-        values = self.values.get(key)
-        if values is None:
-            self.values[key] = record_number.to_bytes(
-                length=2, byteorder='big')
-        elif isinstance(values, bytes):
-            self.values[key] = [values]
-            self.values[key].append(
-                record_number.to_bytes(length=2, byteorder='big'))
-        elif isinstance(values, list):
-            values.append(record_number.to_bytes(length=2, byteorder='big'))
-            if len(values) > DB_CONVERSION_LIMIT:
-                v = self.values[key] = EMPTY_BITARRAY.copy()
-                for rn in values:
-                    v[int.from_bytes(rn, byteorder='big')] = True
-                v[record_number] = True
-        else:
-            values[record_number] = True
-
-    def dump_secondary(self):
-        """Do nothing - compatibility with DBduSecondary."""
-        pass
-
-    def merge_update(self):
-        """Do nothing - compatibility with DBduSecondary."""
-        pass
-
-    def new_secondary(self, dbenv, home):
-        """Do nothing - compatibility with DBduSecondary."""
-        pass
-
-    def put_deferred(self, key, value):
-        """Put (key, value) on database.
-        
-        The cursor put method is used because updating secondary DB.
-        value is still the integer version of primary key for recno dbs
-        
-        """
-        self._object.cursor().put(key, value, DB_KEYLAST)
-
-    def sort_and_write(self, segment, listdb, bitsdb, segvalues, filecontrol):
-        """Sort the segment deferred updates before writing to database."""
-        # Should any joining of segments be done here.  Deferred updates will
-        # almost certainly start in the middle of a segment when the database
-        # already contains records.
-        # Probably.
-        # But that means passing in a cursor to the secondary database, and
-        # right now a set_range(...) next_nodup() prev() sequence is needed to
-        # find the segment reference.  If a version of this database engine is
-        # using just one index record per value, rather than one index record
-        # per segment per value, it may well get done that way.  An extra level
-        # of indirection is involved, but may make counting records faster.
-        # For now it is simpler to do this in do_deferred_updates method with
-        # maybe more wasted space.
-        seg_bytes = segment.to_bytes(length=4, byteorder='big')
-        for k in sorted(segvalues):
-            v = segvalues[k]
-            if isinstance(v, list):
-                length_bytes = len(v).to_bytes(length=2, byteorder='big')
-                segpage = filecontrol.get_freed_list_page()
-                if segpage == 0:
-                    segpage = listdb.append(b''.join(v))
-                else:
-                    listdb.put(segpage, b''.join(v))
-                segvalues[k] = b''.join(
-                    (seg_bytes,
-                     length_bytes,
-                     segpage.to_bytes(length=4, byteorder='big'),
-                     ))
-            elif isinstance(v, Bitarray):
-                length_bytes = v.count().to_bytes(length=3, byteorder='big')
-                segpage = filecontrol.get_freed_bits_page()
-                if segpage == 0:
-                    segpage = bitsdb.append(v.tobytes())
-                else:
-                    bitsdb.put(segpage, v.tobytes())
-                segvalues[k] = b''.join(
-                    (seg_bytes,
-                     length_bytes,
-                     segpage.to_bytes(length=4, byteorder='big'),
-                     ))
-            elif isinstance(v, bytes):
-                segvalues[k] = b''.join((seg_bytes, v))
-        for k in sorted(segvalues):
-            self.put_deferred(k, segvalues[k])
-        segvalues.clear()
-
-    def tidy_up_after_merge_update(self, home, deferfolder):
-        """Do nothing - compatibility with DBduSecondary."""
-        pass
-
-    def delete(self, key, value):
-        raise DBduapiError('delete not implemented')
-
-    def replace(self, key, oldvalue, newvalue):
-        raise DBduapiError('replace not implemented')
-
     def make_cursor(self, dbobject, keyrange):
         raise DBduapiError('make_cursor not implemented')
 
-    # Start copied from DBbitSecondaryFile
-    def set_primary_database(self, database):
-        """Set reference to primary database to access segment databases."""
-        self._primary_database = database
+    # Hack for primarydu.Primary.defer_put
+    def _get_existence_bits(self, segment):
+        return self.get_existence_bits_database().get(segment + 1)
 
-    def get_primary_database(self):
-        """Set reference to primary database to access segment databases."""
-        return self._primary_database
 
-    def get_primary_segment_bits(self):
-        """Return the segment bitmap database of primary database."""
-        return self._primary_database.get_segment_bits_database()
+class Secondary(secondarydu.Secondary, dbapi.Secondary):
 
-    def get_primary_segment_list(self):
-        """Return the segment list database of primary database."""
-        return self._primary_database.get_segment_list_database()
-    # End copied from DBbitSecondaryFile
+    """Add methods for deferred update processing to dbapi.Secondary.
+
+    Secondary database updates are deferred by doing them to a sequence of
+    temporary secondary databases, one per deferred update point, followed by
+    merging the temporary databases into the secondary databases after all
+    updates to the associated primary database are done.
+    """
+
+    def defer_put(self, key, *args):
+        """Encode key and delegate to superclass."""
+        super().defer_put(key.encode(), *args)
+
+    def new_deferred_root(self, dbenv):
+        """Make new DB in dbenv for deferred updates and close current one."""
+        self.table_connection_list.append(DB(dbenv))
+        if len(self.table_connection_list) > 2:
+            try:
+                self.table_connection_list[-2].close()
+            except:
+                pass
+        try:
+            self.table_connection_list[-1].set_flags(DB_DUPSORT)
+            self.table_connection_list[-1].open(
+                SUBFILE_DELIMITER.join(
+                    (str(len(self.table_connection_list) - 1), self._dataname)),
+                self._keyvalueset_name,
+                DB_HASH if self._fieldatts[ACCESS_METHOD] == HASH else DB_BTREE,
+                DB_CREATE)
+        except:
+            for o in self.table_connection_list[1:]:
+                try:
+                    o.close()
+                except:
+                    pass
+            self.close()
+            raise
+
+    def sort_and_write(self, dbenv, segment):
+        """Sort the segment deferred updates before writing to database."""
+        gpsb = self.get_primary_segment_bits()
+        gpsl = self.get_primary_segment_list()
+        gpd = self.get_primary_database()
+        note_freed_bits_page = gpd.get_control_secondary().note_freed_bits_page
+        note_freed_list_page = gpd.get_control_secondary().note_freed_list_page
+        get_freed_bits_page = gpd.get_control_secondary().get_freed_bits_page
+        get_freed_list_page = gpd.get_control_secondary().get_freed_list_page
+
+        # Lookup table is much quicker, and noticeable, in bulk use.
+        # Big enough to discard when done.
+        int_to_bytes = [n.to_bytes(2, byteorder='big')
+                        for n in range(SegmentSize.db_segment_size)]
+        #bytes_to_int = {b:e for e, b in enumerate(int_to_bytes)}
+
+        segvalues = self.values
+
+        # Prepare to wrap the record numbers in an appropriate Segment class.
+        for k in segvalues:
+            v = segvalues[k]
+            if isinstance(v, list):
+                segvalues[k] = [
+                    len(v),
+                    b''.join([int_to_bytes[n] for n in v]),
+                    ]
+            elif isinstance(v, Bitarray):
+                segvalues[k] = [
+                    v.count(),
+                    v.tobytes(),
+                    ]
+            elif isinstance(v, int):
+                segvalues[k] = [1, v]
+
+        # Discard lookup tables.
+        del int_to_bytes
+        #del bytes_to_int
+
+        # New records go into temporary databases, one for each segment.
+        if gpd.first_chunk:
+            self.new_deferred_root(dbenv)
+
+        # The low segment in the import may have to be merged with an existing
+        # high segment on the database, or the current segment in the import
+        # may be done in chunks of less than a complete segment.
+        # Note the difference between this code, and the similar code in modules
+        # sqlite3duapi.py and apswduapi.py: the Berkeley DB code updates the
+        # main index directly if an entry already exists, but the Sqlite code
+        # always updates a temporary table and merges into the main table later.
+        # Here cursor_high binds to database (table_connection_list[0]) only if
+        # it is the only table.
+        cursor_new = self.table_connection_list[-1].cursor()
+        try:
+            if gpd.high_segment == segment or not gpd.first_chunk:
+                if self._fieldatts[ACCESS_METHOD] == HASH:
+                    segkeys = tuple(segvalues)
+                else:
+                    segkeys = sorted(segvalues)
+                cursor_high = self.table_connection_list[-1].cursor()
+                try:
+                    for k in segkeys:
+
+                        # Get high existing segment for value.
+                        if not cursor_high.set(k):
+
+                            # No segments for this index value.
+                            continue
+
+                        if not cursor_high.next_nodup():
+                            v = cursor_high.last()[1]
+                        else:
+                            v = cursor_high.prev()[1]
+                        if segment != int.from_bytes(v[:4], byteorder='big'):
+
+                            # No records exist in high segment for this index
+                            # value.
+                            continue
+
+                        # len(v)==6 : record (segment, record number) (4b, 2b)
+                        # len(v)==10:
+                        #     list (segment, count, reference) (4b, 2b, 4b)
+                        # len(v)==11:
+                        #     bitarray (segment, count, reference (4b, 3b, 4b)
+                        # Combined with the value from segvalues the result
+                        # will be a list or bitarray.
+                        current_segment = self.populate_segment((v[:4], v[4:]))
+                        seg = (
+                            self.make_segment(k, segment, *segvalues[k]
+                                              ) | current_segment).normalize()
+                        if len(v) == LENGTH_SEGMENT_BITARRAY_REFERENCE:
+                            current_count = int.from_bytes(v[4:7], 'big')
+                        elif len(v) == LENGTH_SEGMENT_LIST_REFERENCE:
+                            current_count = int.from_bytes(v[4:6], 'big')
+                        else:
+                            current_count = 1
+                        new_count = segvalues[k][0] + current_count
+
+                        if isinstance(seg, RecordsetSegmentBitarray):
+                            if isinstance(current_segment,
+                                          RecordsetSegmentList):
+                                note_freed_list_page(
+                                    int.from_bytes(v[-4:], 'big'))
+                                gpsl.delete(int.from_bytes(v[-4:], 'big'))
+                                srn_bits = get_freed_bits_page()
+                                if srn_bits == 0:
+                                    srn_bits = gpsb.append(seg.tobytes())
+                                else:
+                                    gpsb.put(srn_bits, seg.tobytes())
+                                cursor_high.delete()
+                                cursor_high.put(
+                                    k,
+                                    b''.join(
+                                        (v[:4],
+                                         new_count.to_bytes(
+                                             3, byteorder='big'),
+                                         srn_bits.to_bytes(
+                                             4, byteorder='big'))),
+                                    DB_KEYLAST)
+                            elif isinstance(current_segment,
+                                            RecordsetSegmentInt):
+                                srn_bits = get_freed_bits_page()
+                                if srn_bits == 0:
+                                    srn_bits = gpsb.append(seg.tobytes())
+                                else:
+                                    gpsb.put(srn_bits, seg.tobytes())
+                                cursor_new.put(
+                                    k,
+                                    b''.join(
+                                        (v[:4],
+                                         new_count.to_bytes(
+                                             3, byteorder='big'),
+                                         srn_bits.to_bytes(
+                                             4, byteorder='big'))),
+                                    DB_KEYLAST)
+                            else:
+                                gpsb.put(int.from_bytes(v[-4:], 'big'),
+                                         seg.tobytes())
+                                cursor_high.delete()
+                                cursor_high.put(
+                                    k,
+                                    b''.join(
+                                        (v[:4],
+                                         new_count.to_bytes(
+                                             3, byteorder='big'),
+                                         v[-4:])),
+                                    DB_KEYLAST)
+                        elif isinstance(seg, RecordsetSegmentList):
+                            if isinstance(current_segment, RecordsetSegmentInt):
+                                srn_list = get_freed_list_page()
+                                if srn_list == 0:
+                                    srn_list = gpsl.append(seg.tobytes())
+                                else:
+                                    gpsl.put(srn_list, seg.tobytes())
+                                cursor_new.put(
+                                    k,
+                                    b''.join(
+                                        (v[:4],
+                                         new_count.to_bytes(
+                                             2, byteorder='big'),
+                                         srn_list.to_bytes(
+                                             4, byteorder='big'))),
+                                    DB_KEYLAST)
+                            else:
+                                gpsl.put(int.from_bytes(v[-4:], 'big'),
+                                         seg.tobytes())
+                                cursor_high.delete()
+                                cursor_high.put(
+                                    k,
+                                    b''.join(
+                                        (v[:4],
+                                         new_count.to_bytes(
+                                             2, byteorder='big'),
+                                         v[-4:])),
+                                    DB_KEYLAST)
+                        else:
+                            raise DBduapiError('Unexpected segment type')
+
+                        # Delete segment so it is not processed again as a new
+                        # segment.
+                        del segvalues[k]
+
+                finally:
+                    cursor_high.close()
+                del cursor_high
+                del segkeys
+
+            # Add the new segments in segvalues
+            segment_bytes = segment.to_bytes(4, byteorder='big')
+            if self._fieldatts[ACCESS_METHOD] == HASH:
+                segkeys = tuple(segvalues)
+            else:
+                segkeys = sorted(segvalues)
+            ducl = SegmentSize.db_upper_conversion_limit
+            for k in segkeys:
+                count, records = segvalues[k]
+                del segvalues[k]
+                if count > ducl:
+                    srn_bits = get_freed_bits_page()
+                    if srn_bits == 0:
+                        srn_bits = gpsb.append(records)
+                    else:
+                        gpsb.put(srn_bits, records)
+                    cursor_new.put(
+                        k,
+                        b''.join(
+                            (segment_bytes,
+                             count.to_bytes(3, byteorder='big'),
+                             srn_bits.to_bytes(4, byteorder='big'))),
+                        DB_KEYLAST)
+                elif count > 1:
+                    srn_list = get_freed_list_page()
+                    if srn_list == 0:
+                        srn_list = gpsl.append(records)
+                    else:
+                        gpsl.put(srn_list, records)
+                    cursor_new.put(
+                        k,
+                        b''.join(
+                            (segment_bytes,
+                             count.to_bytes(2, byteorder='big'),
+                             srn_list.to_bytes(4, byteorder='big'))),
+                        DB_KEYLAST)
+                else:
+                    cursor_new.put(
+                        k,
+                        b''.join(
+                            (segment_bytes,
+                             records.to_bytes(2, byteorder='big'))),
+                        DB_KEYLAST)
+
+        finally:
+            cursor_new.close()
+            #self.table_connection_list[-1].close() # multi-chunk segments
+
+        # Flush buffers to avoid 'missing record' exception in populate_segment
+        # calls in later multi-chunk updates on same segment.  Not known to be
+        # needed generally yet.
+        self.get_primary_segment_list().sync()
+        self.get_primary_segment_bits().sync()
+
+    def merge(self, dbenv):
+        """Merge the segment deferred updates into database."""
+
+        # Any deferred updates?
+        if len(self.table_connection_list) == 1:
+            return
+
+        # Rename existing index and create new empty one.
+        # Open the old and new index, and all the deferred update indexes.
+        # Use open_root() to create the new index, but the others must exist.
+        f, d = self.table_link.get_dbname()
+        self.table_link.close()
+        dbenv.dbrename(f, None, newname=SUBFILE_DELIMITER.join(('0', f)))
+        dudbc = len(self.table_connection_list) - 1
+        self.open_root(dbenv)
+        for i in range(dudbc):
+            self.table_connection_list.append(DB(dbenv))
+            self.table_connection_list[-1].set_flags(DB_DUPSORT)
+            self.table_connection_list[-1].open(
+                SUBFILE_DELIMITER.join(
+                    (str(len(self.table_connection_list) - 1), f)),
+                d,
+                DB_HASH if self._fieldatts[ACCESS_METHOD] == HASH else DB_BTREE)
+        self.table_connection_list.insert(1, DB(dbenv))
+        self.table_connection_list[1].set_flags(DB_DUPSORT)
+        self.table_connection_list[1].open(
+            SUBFILE_DELIMITER.join(('0', f)),
+            d,
+            DB_HASH if self._fieldatts[ACCESS_METHOD] == HASH else DB_BTREE)
+
+        # Write the entries from the old index and deferred update indexes to
+        # the new index in sort order: otherwise might as well have written the
+        # index entries direct to the old index rather than to the deferred
+        # update indexes.
+        # Assume at least 65536 records in each index. (segment_sort_scale)
+        # But OS ought to make the buffering done here a waste of time.
+        db_deferred = self.table_connection_list[1:]
+        db_buffers = []
+        db_cursors = []
+        for dbo in db_deferred:
+            db_buffers.append(collections.deque())
+            db_cursors.append(dbo.cursor())
+        try:
+            length_limit = int(
+                SegmentSize.segment_sort_scale // max(1, len(db_buffers)))
+            for e, buffer in enumerate(db_buffers):
+                c = db_cursors[e]
+                while len(buffer) < length_limit:
+                    r = c.next()
+                    buffer.append(r)
+                try:
+                    while buffer[-1] is None:
+                        buffer.pop()
+                except IndexError:
+                    c.close()
+                    db_cursors[e] = None
+                    f, d = db_deferred[e].get_dbname()
+                    db_deferred[e].close()
+                    dbenv.dbremove(f)
+                    del f, d
+                del buffer
+                del c
+                del r
+            updates = []
+            heapq.heapify(updates)
+            heappop = heapq.heappop
+            heappush = heapq.heappush
+            for e, buffer in enumerate(db_buffers):
+                if buffer:
+                    heappush(updates, (buffer.popleft(), e))
+            cursor = self.table_link.cursor()
+            try:
+                while len(updates):
+                    record, e = heappop(updates)
+                    cursor.put(record[0], record[1], DB_KEYLAST)
+                    buffer = db_buffers[e]
+                    if not buffer:
+                        c = db_cursors[e]
+                        if c is None:
+                            continue
+                        while len(buffer) < length_limit:
+                            r = c.next()
+                            buffer.append(r)
+                        try:
+                            while buffer[-1] is None:
+                                buffer.pop()
+                        except IndexError:
+                            c.close()
+                            db_cursors[e] = None
+                            f, d = db_deferred[e].get_dbname()
+                            db_deferred[e].close()
+                            dbenv.dbremove(f)
+                            del f, d
+                            continue
+                        del c
+                        del r
+                    heappush(updates, (buffer.popleft(), e))
+            finally:
+                cursor.close()
+        finally:
+            for c in db_cursors:
+                if c:
+                    c.close()
+
+    def make_cursor(self, dbobject, keyrange):
+        raise DBduapiError('make_cursor not implemented')

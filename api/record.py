@@ -2,32 +2,13 @@
 # Copyright 2008 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""Base classes for record definitions.
+"""Base classes for record definitions where a record consists of a key and a
+value.
 
-A record consists of key and value.  Key can be string or integer.  Value
-must be string.
+Key can be string or integer.  Value must be string.
 
 Originally written for use with Berkeley DB.  Beware if using with some
 other database system.
-
-List of classes
-
-Key - key is pickled instance
-KeyData - key is string or integer (attribute name is data)
-KeydBaseIII - key is integer (attribute name is recno)
-KeyDict - key is pickled instance.__dict__
-KeyList - key is pickled sorted list of instance attribute values
-KeyText - key is integer (attribute name is line)
-
-Record - contains a Key() and a Value() by default.
-RecorddBaseIII - contains a KeydBaseIII() and a Value() by default.
-RecordText - contains a KeyText() and a ValueText() by default.
-
-Value - value is pickled instance
-ValueData - value is string (attribute name is data)
-ValueDict - value is pickled instance.__dict__
-ValueList - value is pickled sorted list of instance attribute values
-ValueText - value is string (attribute name is text)
 
 Simple (default) use case is
 r = Record(keyclass=Key, valueclass=Value)
@@ -38,31 +19,11 @@ Subclasses of Record will have different defaults.
 
 from pickle import dumps, loads
 from ast import literal_eval
-import collections
 
 
 class Key(object):
 
     """Define key and methods for comparison and conversion to database format.
-
-    Methods added:
-
-    load
-    pack
-
-    Methods overridden:
-
-    __eq__
-    __ge__
-    __gt__
-    __le__
-    __lt__
-    __ne__
-
-    Methods extended:
-
-    __init__
-    
     """
 
     def __init__(self):
@@ -81,7 +42,7 @@ class Key(object):
         self.pack()
 
         """
-        self.__dict__ = literal_eval(value)
+        self.__dict__ = literal_eval(key)
 
     def pack(self):
         """Return repr(self.__dict__).
@@ -201,20 +162,6 @@ class Key(object):
 class KeyData(Key):
 
     """Define key and methods for a string or integer key.
-
-    Methods added:
-
-    None
-
-    Methods overridden:
-
-    load
-    pack
-
-    Methods extended:
-
-    __init__
-    
     """
 
     def __init__(self):
@@ -234,137 +181,18 @@ class KeyData(Key):
 class KeydBaseIII(KeyData):
 
     """Define key and methods for a dBaseIII record key.
-
-    Methods added:
-
-    None
-
-    Methods overridden:
-
-    None
-
-    Methods extended:
-
-    None
-    
     """
-        
-
-class KeyDict(Key):
-
-    """Define key and methods for a pickled instance __dict__ key.
-
-    Methods added:
-
-    None
-
-    Methods overridden:
-
-    load
-    pack
-
-    Methods extended:
-
-    None
-    
-    """
-
-
-class KeyList(Key):
-
-    """Define key and methods for a pickled ordered list of attributes key.
-
-    Methods added:
-
-    None
-
-    Methods overridden:
-
-    load
-    pack
-
-    Methods extended:
-
-    __init__
-    
-    Example use
-    class K(KeyList):
-        attributes = dict(a1=list, a2=None)
-        _attribute_order = tuple(sorted(attributes.keys()))
-
-    """
-    
-    attributes = dict()
-    _attribute_order = tuple()
-    
-    def __init__(self, attributes=None):
-
-        super(KeyList, self).__init__()
-        
-        attributes = self.attributes
-        if isinstance(attributes, dict):
-            for a in attributes:
-                if isinstance(attributes[a], collections.Callable):
-                    setattr(self, a, attributes[a]())
-            else:
-                setattr(self, a, attributes[a])
-
-    def load(self, key):
-        
-        try:
-            for a, v in zip(self._attribute_order, literal_eval(key)):
-                self.__dict__[a] = v
-        except:
-            self.__dict__ = dict()
-
-    def pack(self):
-
-        return repr([self.__dict__.get(a) for a in self._attribute_order])
 
 
 class KeyText(KeyData):
 
     """Define key and methods for a text file line number key.
-
-    Methods added:
-
-    None
-
-    Methods overridden:
-
-    None
-
-    Methods extended:
-
-    None
-    
     """
         
 
 class Value(object):
 
     """Define value and comparison and conversion to database format methods.
-
-    Methods added:
-
-    load
-    pack
-    pack_value
-
-    Methods overridden:
-
-    __eq__
-    __ge__
-    __gt__
-    __le__
-    __lt__
-    __ne__
-
-    Methods extended:
-
-    __init__
-    
-    Notes
 
     Subclasses must extend pack method to populate indexes.  Subclasses should
     override the pack_value method to change the way values are stored on
@@ -519,26 +347,29 @@ class Value(object):
             if s[i] != o[i]:
                 return True
         return False
+
+    def get_field_value(self, fieldname, occurrence=0):
+        """Return the value of a field, or None if field is not in __dict__.
+
+        Added to support Find and Where classes.
+
+        """
+        return self.__dict__.get(fieldname, None)
+
+    def get_field_values(self, fieldname):
+        """Return tuple of field values for fieldname.
+
+        Added to support Find and Where classes.
+
+        """
+        values = self.get_field_value(fieldname)
+        if values is not None:
+            return values,
     
 
 class ValueData(Value):
 
     """Define value and methods for string or integer data.
-
-    Methods added:
-
-    None
-
-    Methods overridden:
-
-    load
-    pack_value
-
-    Methods extended:
-
-    __init__
-    
-    Notes
 
     Subclasses must extend inherited pack method to populate indexes.
 
@@ -571,21 +402,6 @@ class ValueDict(Value):
 
     """Define value and methods for a pickled instance __dict__ value.
 
-    Methods added:
-
-    None
-
-    Methods overridden:
-
-    load
-    pack_value
-
-    Methods extended:
-
-    None
-    
-    Notes
-
     Subclasses must extend inherited pack method to populate indexes.
 
     """
@@ -594,21 +410,6 @@ class ValueDict(Value):
 class ValueList(Value):
 
     """Define value and methods for a pickled ordered list of attributes value.
-
-    Methods added:
-
-    None
-
-    Methods overridden:
-
-    load
-    pack_value
-
-    Methods extended:
-
-    __init__
-    
-    Notes
 
     This class should not be used directly.  Rather define a subclass and
     and set it's class attributes 'attributes' and '_attribute_order' to
@@ -652,30 +453,37 @@ class ValueList(Value):
         attributes = self.attributes
         if isinstance(attributes, dict):
             for a in attributes:
-                if isinstance(attributes[a], collections.Callable):
+                if callable(attributes[a]):
                     setattr(self, a, attributes[a]())
                 else:
                     setattr(self, a, attributes[a])
+
+    def get_field_value(self, fieldname, occurrence=0):
+        """Return value of a field occurrence, the first by default.
+
+        Added to support Find and Where classes.
+
+        """
+        occurences = self.__dict__.get(fieldname, None)
+        if not occurrences:
+            return None
+        try:
+            return occurrences[occurrence]
+        except IndexError:
+            return None
+
+    def get_field_values(self, fieldname):
+        """Return tuple of field values for fieldname.
+
+        Added to support Find and Where classes.
+
+        """
+        return tuple(self.__dict__.get(fieldname, ()))
         
 
 class ValueText(Value):
 
     """Define value and methods for a line from a text file value.
-
-    Methods added:
-
-    None
-
-    Methods overridden:
-
-    load
-    pack_value
-
-    Methods extended:
-
-    None
-    
-    Notes
 
     Subclasses must extend inherited pack method to populate indexes.
 
@@ -693,48 +501,6 @@ class ValueText(Value):
 class Record(object):
     
     """Define record and database interface.
-    
-    Methods added:
-
-    clone
-    delete_record
-    edit_record
-    empty
-    get_primary_key_from_index_record
-    get_keys
-    get_srvalue
-    get_srvalue_as_bytes
-    get_srvalue_as_str
-    load_instance
-    load_key
-    load_record
-    load_value
-    set_packed_value_and_indexes
-    put_record
-    set_database
-    packed_key
-    packed_value
-
-    Methods overridden:
-
-    __init__
-    __eq__
-    __ge__
-    __gt__
-    __le__
-    __lt__
-    __ne__
-
-    Methods extended:
-
-    None
-    
-    Class Attributes
-
-    _deletecallbacks - callbacks to delete records on subsidiary files
-    _putcallbacks - callbacks to add records on subsidiary files
-
-    Notes
 
     Subclasses of Record manage the storage and retrieval of data using
     values managed by subclasses of Value and keys managed by subclasses
@@ -775,11 +541,15 @@ class Record(object):
         
         """
         super(Record, self).__init__()
-        if issubclass(keyclass, Key):
+        if keyclass is None:
+            self.key = KeyData()
+        elif issubclass(keyclass, Key):
             self.key = keyclass()
         else:
             self.key = Key()
-        if issubclass(valueclass, Value):
+        if valueclass is None:
+            self.value = Value()
+        elif issubclass(valueclass, Value):
             self.value = valueclass()
         else:
             self.value = Value()
@@ -791,11 +561,11 @@ class Record(object):
         self.srindex = None
 
     def __eq__(self, other):
-        """Return (self.key == other.key and self.value == other.value)"""
+        """Return (self.key == other.key and self.value == other.value)."""
         return self.key == other.key and self.value == other.value
     
     def __ge__(self, other):
-        """Return (s.key > o.key or (s.key == s.key and s.value >= o.value))"""
+        """Return (s.key > o.key or (s.key == s.key and s.value >= o.value))."""
         if self.key > other.key:
             return True
         if self.key == other.key:
@@ -804,7 +574,7 @@ class Record(object):
         return False
     
     def __gt__(self, other):
-        """Return (s.key > o.key or (s.key == s.key and s.value > o.value))"""
+        """Return (s.key > o.key or (s.key == s.key and s.value > o.value))."""
         if self.key > other.key:
             return True
         if self.key == other.key:
@@ -813,7 +583,7 @@ class Record(object):
         return False
 
     def __le__(self, other):
-        """Return (s.key < o.key or (s.key == s.key and s.value <= o.value))"""
+        """Return (s.key < o.key or (s.key == s.key and s.value <= o.value))."""
         if self.key < other.key:
             return True
         if self.key == other.key:
@@ -822,7 +592,7 @@ class Record(object):
         return False
     
     def __lt__(self, other):
-        """Return (s.key < o.key or (s.key == s.key and s.value < o.value))"""
+        """Return (s.key < o.key or (s.key == s.key and s.value < o.value))."""
         if self.key < other.key:
             return True
         if self.key == other.key:
@@ -831,7 +601,7 @@ class Record(object):
         return False
     
     def __ne__(self, other):
-        """Return (self.key != other.key or self.value != other.value)"""
+        """Return (self.key != other.key or self.value != other.value)."""
         return self.key != other.key or self.value != other.value
     
     def clone(self):
@@ -864,7 +634,10 @@ class Record(object):
                 dbset,
                 self)
             # Needing self.newrecord = None makes the technique suspect
-            self.newrecord = None
+            # Changing the 'newobject' conditionals in DataGrid.on_data_change
+            # allows this statement to be removed leaving the new record data
+            # available in post-commit callbacks.
+            #self.newrecord = None
         else:
             database.delete_instance(
                 dbset,
@@ -919,8 +692,7 @@ class Record(object):
             if partial != None:
                 return []
             elif datasource.primary:
-                return [(self.key.__dict__[datasource.dbname],
-                         self.srvalue)]
+                return [(self.key.recno, self.srvalue)]
             else:
                 return [(self.value.__dict__[datasource.dbname], self.srkey)]
         except:
@@ -1001,45 +773,29 @@ class Record(object):
         return (v, i)
 
     def get_srvalue(self):
-        """Return self.srvalue in format associated with database engine."""
+        """Apply ast.literal_eval to self.srvalue and return created object."""
         return literal_eval(self.srvalue)
 
-    def get_srvalue_as_str(self):
-        """Return self.srvalue in str format.
+    def get_field_value(self, fieldname, occurrence=0):
+        """Return value of a field occurrence, the first by default.
 
-        The record instance can exist without being associated with a database.
-        This method converts srvalue to str unconditionally.
-
-        """
-        return literal_eval(self.srvalue)
-
-    def get_srvalue_as_bytes(self):
-        """Return self.srvalue in bytes format.
-
-        The record instance can exist without being associated with a database.
-        This method converts srvalue to bytes unconditionally.
+        Added to support Find and Where classes.
 
         """
-        return self.srvalue
+        return self.value.get_field_value(fieldname, occurrence=occurrence)
+
+    def get_field_values(self, fieldname):
+        """Return tuple of field values for fieldname.
+
+        Added to support Find and Where classes.
+
+        """
+        return self.value.get_field_values(fieldname)
 
 
 class RecorddBaseIII(Record):
 
-    """Define a dBaseIII record
-
-    Methods added:
-
-    None
-
-    Methods overridden:
-
-    None
-
-    Methods extended:
-
-    __init__
-    
-    Notes
+    """Define a dBaseIII record.
 
     .ndx files are not supported. Files are read-only.
 
@@ -1048,7 +804,7 @@ class RecorddBaseIII(Record):
 
     """
     
-    def __init__(self, keyclass=None, valueclass=None):
+    def __init__(self, keyclass=None, valueclass=None, **k):
         """Initialize dBaseIII record instance."""
         if not issubclass(keyclass, KeydBaseIII):
             keyclass = KeydBaseIII
@@ -1066,48 +822,16 @@ class RecorddBaseIII(Record):
         return (v.encode('utf8'), i)
 
     def get_srvalue(self):
-        """Return self.srvalue in format associated with database engine"""
-        if self.database.is_engine_uses_str():
-            return self.srvalue.decode('iso-8859-1')
-        else:
-            return self.srvalue
+        """Return self.srvalue, assumed to be a bytes object."""
 
-    def get_srvalue_as_str(self):
-        """Return self.srvalue in str format.
-
-        The record instance can exist without being associated with a database.
-        This method converts srvalue to str unconditionally.
-
-        """
-        return self.srvalue.decode('iso-8859-1')
-
-    def get_srvalue_as_bytes(self):
-        """Return self.srvalue in bytes format.
-
-        The record instance can exist without being associated with a database.
-        This method converts srvalue to bytes unconditionally.
-
-        """
+        # Wrong, but the is_engine_uses_bytes() test caused this to happen
+        # given Database.engine_uses_bytes_or_str was not overridden.
         return self.srvalue
 
 
 class RecordText(Record):
 
-    """Define a text record
-
-    Methods added:
-
-    None
-
-    Methods overridden:
-
-    None
-
-    Methods extended:
-
-    __init__
-    
-    Notes
+    """Define a text record.
 
     Records are newline delimited on text file. Files are read-only.
 
@@ -1117,7 +841,7 @@ class RecordText(Record):
 
     """
 
-    def __init__(self, keyclass=None, valueclass=None):
+    def __init__(self, keyclass=None, valueclass=None, **k):
         """Initialize dBaseIII record instance."""
         if not issubclass(keyclass, KeyText):
             keyclass = KeyText
@@ -1133,33 +857,9 @@ class RecordText(Record):
         return self.value.pack()
 
     def get_srvalue(self):
-        """Return self.srvalue in format associated with database engine."""
-        if self.database.is_engine_uses_bytes():
-            return self.srvalue.decode('utf8')
-        else:
-            return self.srvalue
+        """Return self.srvalue, assumed to be a bytes object."""
 
-    def get_srvalue_as_str(self):
-        """Return self.srvalue in str format.
-
-        The record instance can exist without being associated with a database.
-        This method converts srvalue to str unconditionally.
-
-        """
-        if isinstance(self.srvalue, bytes):
-            return self.srvalue.decode('utf8')
-        else:
-            return self.srvalue
-
-    def get_srvalue_as_bytes(self):
-        """Return self.srvalue in bytes format.
-
-        The record instance can exist without being associated with a database.
-        This method converts srvalue to bytes unconditionally.
-
-        """
-        if isinstance(self.srvalue, str):
-            return self.srvalue.encode('utf8')
-        else:
-            return self.srvalue
+        # Wrong, but the is_engine_uses_bytes() test caused this to happen
+        # given Database.engine_uses_bytes_or_str was not overridden.
+        return self.srvalue
 

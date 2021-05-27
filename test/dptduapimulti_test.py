@@ -31,7 +31,7 @@ class DPTdumultiapi(unittest.TestCase):
         msg = 'Failure of this test invalidates all other tests'
 
 
-class DPTdumultiapiRecord(unittest.TestCase):
+class DPTRecord(unittest.TestCase):
 
     def setUp(self):
         pass
@@ -162,7 +162,7 @@ def suite__dpt():
 
 
 def suite__dptr():
-    return unittest.TestLoader().loadTestsFromTestCase(DPTdumultiapiRecord)
+    return unittest.TestLoader().loadTestsFromTestCase(DPTRecord)
 
 
 def suite___dptdb():

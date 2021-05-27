@@ -1,1 +1,0 @@
-'''basesup.tools.test package'''

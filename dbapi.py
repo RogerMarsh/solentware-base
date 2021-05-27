@@ -2,56 +2,45 @@
 # Copyright 2008 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""Object database using Berkeley DB.
+"""
+A database API, implemented using bsddb3, where indicies are represented as
+lists or bitmaps of record numbers.
 
-List of classes
+bsddb3 is an interface to Berkeley DB.
 
-CursorDB - Define cursor on file and access methods
-CursorDBbit - Extend CursorDB for segmented databases
-CursorDBbitPrimary - Extend CursorDBbit for primary segmented databases
-CursorDBbitSecondary - Extend CursorDBbit for secondary segmented databases
-CursorDBPrimary - Extend CursorDB for primary databases
-CursorDBSecondary - Extend CursorDB for secondary databases
-_DatabaseEncoders
-DBapiError - Exceptions
-_DBapi - Define database and file and record level access methods
-DBapi - _DBapi without file segment support
-DBFile - File level access to each file in database (Open, Close)
-DBPrimary - Record level access to each primary file in database
-DBPrimaryFile
-DBSecondary - Record level access to each secondary file in database
-DBSecondaryFile
-DBbitapi - Add file segment support to _DBapi using bit mapped record numbers
-DBbitControlFile - File and record level access to file control data
-DBbitPrimaryFile
-DBbitSecondaryFile
-DBbitPrimary
-DBbitSecondary
-DBExistenceBitMap
-DBSegment - File level access to inverted record numbers
-DBSegmentBits - Represent sets of record numbers with bit maps
-DBSegmentList - Represent sets of record numbers with lists
-FileControl - Freed resource data (segment and record numbers) for a file
-FileControlPrimary - Freed resource data (record numbers) for a file
-FileControlSecondary - Freed resource data (list or bit map segments) for a file
+The database contains Berkeley DB primary databases, each with a set of
+Berkeley DB secondary databases, where the associations are implied by the
+behaviour of the Primary and Secondary classes.  The 'DB.associate' method
+of Berkeley DB is not used.
 
-Segmented databases take account of the local density of values per key on
-secondary databases.  A primary database, always RECNO, is seen as a sequence
-of fixed size intervals called segments.  Secondary databases have zero or one
-keys per segment for each key.  The value associated with each segment key is a
-number, a list of numbers, or a bit map, representing the record numbers in the
-segment referenced by the key.  The absence of a segment key means the key has
-no values in that segment.  Bit maps are fixed length and record lists are
-variable length.  The maximum byte size of a list is less than or equal to the
-byte size of a bit map.
+Primary databases use the Recno access method, and secondary databases use the
+Btree or Hash access methods.  (Switching an application which uses the Hash
+access method to any of apswapi, sqlite3api, and dptapi, is fine but the access
+method will be like Btree.)
 
-Idea taken from DPT, an emulation of Model 204 which runs on Microsoft Windows.
+The Primary and Secondary classes emulate the bitmapped record numbers used
+by DPT's database engine.  The values in a secondary database are one of:
+
+(<segment number>, <record number in segment>, <record count>)
+(<segment number>, <list of record numbers in segment>, <record count>)
+(<segment number>, <bitmap of record numbers in segment>, <record count>)
+
+depending on how many record numbers need to be noted in the segment.
+
+Bitmaps are fixed size but lists vary in size to fit the number of records.
+
+The DBapi class configures it's superclass, Database, to use the Primary and
+Secondary classes.
+
+Transactions are supported but cannot be nested.
 
 """
 
 import os
 import subprocess
 from ast import literal_eval
+import bisect
+import re
 
 import sys
 _platform_win32 = sys.platform == 'win32'
@@ -59,8 +48,6 @@ _python_version = '.'.join(
     (str(sys.version_info[0]), 
      str(sys.version_info[1])))
 del sys
-
-from .api.bytebit import Bitarray, SINGLEBIT
 
 # bsddb removed from Python 3.n
 try:
@@ -78,98 +65,89 @@ except ImportError:
         DBKeyExistError, DBNotFoundError,
         )
 
-from .api.database import (
-    DatabaseError,
-    Database,
-    Cursor,
-    SegmentBitarray,
-    SegmentInt,
-    SegmentList,
-    Recordset,
-    EMPTY_BITARRAY,
+from .api.bytebit import Bitarray, SINGLEBIT
+from .api import database
+from .api import cursor
+from .api.recordset import (
+    RecordsetSegmentBitarray,
+    RecordsetSegmentInt,
+    RecordsetSegmentList,
+    RecordsetCursor,
     )
 from .api.constants import (
     DB_DEFER_FOLDER, SECONDARY_FOLDER,
-    PRIMARY, SECONDARY, FILE, HASH_DUPSORT, BTREE_DUPSORT,
-    PRIMARY_FIELDATTS, SECONDARY_FIELDATTS, DB_FIELDATTS,
-    DUP, BTREE, HASH, RECNO, DUPSORT,
-    FIELDS, SPT, KEY_VALUE,
-    USE_BYTES,
-    DB_SEGMENT_SIZE_BYTES,
-    DB_SEGMENT_SIZE,
+    PRIMARY, SECONDARY, FILE,
+    DB_FIELDATTS,
+    ACCESS_METHOD, HASH,
+    FIELDS,
     LENGTH_SEGMENT_BITARRAY_REFERENCE,
     LENGTH_SEGMENT_LIST_REFERENCE,
-    DB_CONVERSION_LIMIT,
+    LENGTH_SEGMENT_RECORD_REFERENCE,
     SUBFILE_DELIMITER,
     )
+from .api.segmentsize import SegmentSize
+from .api import definition
+from .api import segment
+from .api import controlfile
+from .api import file
+from .api import primaryfile
+from .api import secondaryfile
+from .api import primary
+from .api import secondary
 
-_DB_CONST_MAP = {
-    DUP: DB_DUP, BTREE: DB_BTREE, HASH: DB_HASH,
-    RECNO: DB_RECNO, DUPSORT: DB_DUPSORT,
-    HASH_DUPSORT: (DB_HASH, DB_DUPSORT),
-    BTREE_DUPSORT: (DB_BTREE, DB_DUPSORT),
-    }
 
-
-class DBapiError(DatabaseError):
+class DBapiError(database.DatabaseError):
     pass
 
         
-class _DatabaseEncoders(object):
+class _DatabaseEncoders:
     
     """Define default record key encoder and decoder.
-
-    Methods added:
-
-    decode_record_number
-    encode_record_number
-    is_engine_uses_bytes
-    is_engine_uses_str
-
-    Methods overridden:
-
-    None
-
-    Methods extended:
-
-    None
-    
     """
 
     def encode_record_number(self, key):
-        """Return base 256 string for integer with left-end most significant.
+        """Return repr(key).encode() because this is bsddb3 version of method.
 
-        Typically used to convert Berkeley DB primary key to secondary index
-        format.
+        Typically used to convert primary key to secondary index format,
+        using Berkeley DB terminology.
         
         """
         return repr(key).encode()
 
     def decode_record_number(self, skey):
-        """Return integer from base 256 string with left-end most significant.
+        """Return literal_eval(skey.decode()) because this is bsddb3 version.
 
-        Typically used to convert Berkeley DB primary key held on secondary
-        index.
+        Typically used to convert DB primary key held on secondary index,
+        using Berkeley DB terminology, to integer.
 
         """
         return literal_eval(skey.decode())
 
     def encode_record_selector(self, key):
-        """Return base 256 string for integer with left-end most significant.
+        """Return key.encode() because this is bsddb3 version of method.
 
-        Typically used to convert Berkeley DB primary key to secondary index
-        format.
+        Typically used to convert a secondary index key value to database
+        engine format, using Berkeley DB terminology.
+        
+        """
+        return key.encode()
+
+    def encode_record_key(self, key):
+        """Return key.encode() because this is bsddb3 version of method.
+        
+        Specifically when comparing the key of a record read from database with
+        the key used to find it.
         
         """
         return key.encode()
 
 
-class _DBapi(Database, _DatabaseEncoders):
+class Database(database.Database, _DatabaseEncoders):
     
-    """Define a Berkeley DB database structure.
+    """Access database with bsddb3.
     
     Primary databases are created as DB_RECNO.
-    Secondary databases are DB_BTREE with DB_DUPSORT set.
+    Secondary databases are DB_BTREE or DB_HASH both with DB_DUPSORT set.
 
     Primary and secondary terminology comes from Berkeley DB documentation but
     the association technique is not used.
@@ -183,198 +161,101 @@ class _DBapi(Database, _DatabaseEncoders):
     Secondary databases are supported by two DB_RECNO databases, one for lists
     of record numbers and one for bitmap representations of record numbers. The
     reference is the key into the relevant DB_RECNO database.
-
-    Methods added:
-
-    allocate_and_open_contexts
-    cede_contexts_to_process
-    close_contexts
-    do_database_task
-    do_deferred_updates
-    files_exist
-    file_records_under
-    get_database_instance
-    increase_database_size
-    initial_database_size
-    make_recordset_all
-    make_recordset_key
-    make_recordset_key_range
-    make_recordset_key_startswith
-    open_contexts
-    recordset_for_segment
-    repair_cursor
-    set_defer_update
-    unset_defer_update
-
-    Methods overridden:
-
-    backout
-    close_context
-    close_database
-    commit
-    db_compatibility_hack
-    decode_as_primary_key
-    delete_instance
-    edit_instance
-    encode_primary_key
-    exists
-    get_database
-    get_database_folder
-    get_first_primary_key_for_index_key
-    get_packed_key
-    get_primary_record
-    is_primary
-    is_primary_recno
-    is_recno
-    database_cursor
-    open_context
-    put_instance
-    start_transaction
-    use_deferred_update_process
-
-    Methods extended:
-
-    __init__
     
     """
-
-    # Database engine uses bytes.
-    # If a str is passed it is encoded using iso-8859-1.
-    engine_uses_bytes_or_str = USE_BYTES
 
     def __init__(
         self,
         primary_class,
         secondary_class,
-        DBnames,
-        DBhome,
+        database_specification,
+        databasefolder,
         DBenvironment,
         *args,
         **kwargs):
-        """Define database structure.
-        
-        DBhome = full path for database directory
-        DBnames = {name:{primary:name,
-                         secondary:{name:name...},
-                         }, ...}
-        DBenvironment = {<DB property>:<value>, ...}
-        primary_class = class implementing access to primary databases
-        secondary_class = class implementing access to secondary databases
+        """Define database using bsddb3.
 
+        primary_class - a subclass of Primary.
+        secondary_class - a subclass of Secondary.
+        database_specification - a FileSpec instance.
+        databasefolder - folder containing the database.
+        DBenvironment - flags for DBEnv.
+        *args - absorb positional arguments for other database engines.
+        **kwargs - arguments for self.make_root() call.
         """
-        super(_DBapi, self).__init__(*args, **kwargs)
-        # The DBenv object
-        self._dbenv = None
+        super().__init__(database_specification, databasefolder, **kwargs)
+        
+        # The active transaction object
+        self._dbtxn = None
         
         # Parameters for setting up the DBenv object
         self._DBenvironment = DBenvironment
-            
-        basefile = os.path.basename(DBhome)
 
-        # Map db names to file names relative to DBhome (+ suffix)
-        DBfiles = dict()
+        # database_specification processing
+        definitions = dict()
+        for name, specification in self.database_specification.items():
+            definitions[name] = self.make_root(
+                dbset=name,
+                specification=specification,
+                field_name_converter=self.database_specification.field_name,
+                primary_class=primary_class,
+                secondary_class=secondary_class,
+                **kwargs)
 
-        for n in DBnames:
-            f = DBnames[n].setdefault(PRIMARY, n)
-            if f is None:
-                DBnames[n][PRIMARY] = n
-                f = n
-            if f in DBfiles:
-                msg = ' '.join(['DB name', f, 'requested for primary name',
-                                n, 'is already specified'])
-                raise DBapiError(msg)
-            if SUBFILE_DELIMITER in f:
-                raise DBapiError(''.join(
-                    ('Primary file name ',
-                     f,
-                     ' contains "',
-                     SUBFILE_DELIMITER,
-                     '", which is not allowed.',
-                     )))
-            DBfiles[f] = f
-
-        for n in DBnames:
-            sec = DBnames[n].setdefault(SECONDARY, dict())
-            for s in sec:
-                if sec[s] is None:
-                    sec[s] = DBnames.field_name(s)
-                f = sec[s]
-                if f in DBfiles:
-                    msg = ' '.join(['DB name', f, 'requested for secondary',
-                                    'name', s, 'in primary name', n,
-                                    'is already specified'])
-                    raise DBapiError(msg)
-                DBfiles[f] = SUBFILE_DELIMITER.join((n, f))
-
-        # Associate primary and secondary DBs by name.
-        # {secondary name:primary name, ...,
-        #  primary name:[secondary name, ...], ...}
-        # A secondary name may be a primary name if a loop is not made.
-        self._associate = dict()
+        # The database definition from database_specification after validation
+        self._dbdef = definitions
         
-        # DBbitapiRecord objects, containing the DB object, for all DB names
-        # {name:DBbitapiRecord instance, ...}
-        self._main = dict()
-        
-        # Home directory for the DBenv
-        self._home = DBhome
-        
-        # Set up primary databases in DBnames.
-        for n in DBnames:
-            f = DBnames[n][PRIMARY]
-            self._main[f] = primary_class(
-                DBfiles[f],
-                DBnames[n],
-                f)
-            self._associate[n] = {n:f}
+        # The segment control object
+        self._control = None
+        self._control_file = ''.join((SUBFILE_DELIMITER * 3, 'control'))
 
-        # Set up secondary databases in DBnames.
-        for n in DBnames:
-            fn = DBnames[n][PRIMARY]
-            for s in DBnames[n][SECONDARY]:
-                f = DBnames[n][SECONDARY][s]
-                self._main[f] = secondary_class(
-                    DBfiles[f],
-                    DBnames[n],
-                    f)
-                self._associate[n][s] = f
+    def make_root(self, **kw):
+        """Return Definition instance created from **kw arguments.
+        """
+        return Definition(database_instance=self, **kw)
 
     def backout(self):
-        """Do nothing.  Added for compatibility with DPT.
-
-        The transaction control available in Berkeley DB is not used.
-
-        """
-        return
+        """Abort the active transaction and remove binding to txn object."""
+        if self._dbtxn is not None:
+            self._dbtxn.abort()
+            self._dbtxn = None
+            self._dbservices.txn_checkpoint(5)
 
     def close_context(self):
-        """Close main and deferred update databases and environment."""
-        for n in self._main:
-            self._main[n].close()
-        if self._dbenv is not None:
-            self._dbenv.close()
-            self._dbenv = None
-
-    def close_contexts(self, close_contexts):
-        """Do nothing, present for DPT compatibility."""
-        pass
+        """Close databases (DB instances) and environment."""
+        if self._control:
+            self._control.close()
+        for table in self.database_definition.values():
+            table.primary.close()
+            for s in table.secondary.values():
+                s.close()
+        if self._dbservices is not None:
+            self._dbservices.txn_checkpoint()
+            self._dbservices.close()
+            self._dbservices = None
+        m = self.database_definition
+        database_specification = self._dbspec
+        for n in database_specification:
+            m[n].primary.set_control_database(None)
+            for k, v in database_specification[n][SECONDARY].items():
+                m[n].associate(k).set_primary_database(None)
 
     def close_database(self):
-        """Close main and deferred update databases and environment.
+        """Close databases (DB instances) and environment.
 
         Introduced for compatibility with DPT.  There is a case for closing
-        self._dbenv in this method rather than doing it all in close_context.
+        self._dbservices in this method rather than doing it all in
+        close_context.
         
         """
         self.close_context()
             
     def commit(self):
-        """Do nothing.  Added for compatibility with DPT.
-
-        The transaction control available in Berkeley DB is not used.
-
-        """
-        return
+        """Commit the active transaction and remove binding to txn object."""
+        if self._dbtxn is not None:
+            self._dbtxn.commit()
+            self._dbtxn = None
+            self._dbservices.txn_checkpoint(5)
 
     def db_compatibility_hack(self, record, srkey):
         """Convert record and return in (key, value) format.
@@ -384,33 +265,6 @@ class _DBapi(Database, _DatabaseEncoders):
         
         """
         return record
-
-    def delete_instance(self, dbset, instance):
-        """Delete an existing instance on databases in dbset.
-        
-        Deletes are direct while callbacks handle subsidiary databases
-        and non-standard inverted indexes.
-        
-        """
-        deletekey = instance.key.pack()
-        instance.set_packed_value_and_indexes()
-        
-        db = self._associate[dbset]
-        main = self._main
-
-        main[db[dbset]].delete(deletekey, instance.srvalue.encode())
-        instance.srkey = self.encode_record_number(deletekey)
-        convertedkey = deletekey
-
-        srindex = instance.srindex
-        dcb = instance._deletecallbacks
-        for secondary in srindex:
-            if secondary not in db:
-                if secondary in dcb:
-                    dcb[secondary](instance, srindex[secondary])
-                continue
-            for v in srindex[secondary]:
-                main[db[secondary]].delete(v.encode(), convertedkey)
 
     def do_deferred_updates(self, pyscript, filepath):
         """Invoke a deferred update process and wait for it to finish.
@@ -446,231 +300,97 @@ class _DBapi(Database, _DatabaseEncoders):
                                     'is not an existing file'])
                     raise DBapiError(msg)
 
-        args.append(os.path.abspath(self._home))
+        args.append(os.path.abspath(self._home_directory))
         args.extend(paths)
 
         return subprocess.Popen(args)
 
-    def edit_instance(self, dbset, instance):
-        """Edit an existing instance on databases in dbset.
-        
-        Edits are direct while callbacks handle subsidiary databases
-        and non-standard inverted indexes.
+    def files_exist(self):
+        """Return True if all defined files exist in self._home_directory.
+
+        Berkeley DB databases are held, one per file, in self._home_directory.
 
         """
-        oldkey = instance.key.pack()
-        newkey = instance.newrecord.key.pack()
-        instance.set_packed_value_and_indexes()
-        instance.newrecord.set_packed_value_and_indexes()
-        
-        db = self._associate[dbset]
-        main = self._main
-
-        srindex = instance.srindex
-        nsrindex = instance.newrecord.srindex
-        dcb = instance._deletecallbacks
-        ndcb = instance.newrecord._deletecallbacks
-        pcb = instance._putcallbacks
-        npcb = instance.newrecord._putcallbacks
-        
-        ionly = []
-        nionly = []
-        iandni = []
-        for f in srindex:
-            if f in nsrindex:
-                iandni.append(f)
-            else:
-                ionly.append(f)
-        for f in nsrindex:
-            if f not in srindex:
-                nionly.append(f)
-
-        if oldkey != newkey:
-            main[db[dbset]].delete(oldkey, instance.srvalue.encode())
-            key = main[db[dbset]].put(
-                newkey, instance.newrecord.srvalue.encode())
-            if key is not None:
-                # put was append to record number database and
-                # returned the new primary key. Adjust record key
-                # for secondary updates.
-                instance.newrecord.key.load(key)
-                newkey = key
-        elif instance.srvalue != instance.newrecord.srvalue:
-            main[db[dbset]].replace(
-                oldkey,
-                instance.srvalue.encode(),
-                instance.newrecord.srvalue.encode())
-
-        instance.srkey = self.encode_record_number(oldkey)
-        instance.newrecord.srkey = self.encode_record_number(newkey)
-        convertedoldkey = oldkey
-        convertednewkey = newkey
-        
-        for secondary in ionly:
-            if secondary not in db:
-                if secondary in dcb:
-                    dcb[secondary](instance, srindex[secondary])
-                continue
-            for v in srindex[secondary]:
-                main[db[secondary]].delete(v.encode(), convertedoldkey)
-
-        for secondary in nionly:
-            if secondary not in db:
-                if secondary in npcb:
-                    npcb[secondary](
-                        instance.newrecord, nsrindex[secondary])
-                continue
-            for v in nsrindex[secondary]:
-                main[db[secondary]].put(v.encode(), convertednewkey)
-
-        for secondary in iandni:
-            if srindex[secondary] == nsrindex[secondary]:
-                if convertedoldkey == convertednewkey:
-                    continue
-            if secondary not in db:
-                if secondary in dcb:
-                    dcb[secondary](instance, srindex[secondary])
-                if secondary in npcb:
-                    npcb[secondary](
-                        instance.newrecord, nsrindex[secondary])
-                continue
-            for v in srindex[secondary]:
-                main[db[secondary]].delete(v.encode(), convertedoldkey)
-            for v in nsrindex[secondary]:
-                main[db[secondary]].put(v.encode(), convertednewkey)
-
-    def exists(self, dbset, dbname):
-        """Return True if dbname is a primary or secondary DB in dbset."""
-        if dbset in self._associate:
-            return dbname in self._associate[dbset]
-        else:
+        if not os.path.isdir(self._home_directory):
             return False
-
-    def files_exist(self):
-        """Return True if all defined files exist in self._home folder."""
         fileset = set()
-        for a in self._associate:
-            fileset.add(self._associate[a][a])
+        for d in self.database_definition.values():
+            fileset.add(d.primary._dataname)
+            fileset.add(self._control_file)
+            fileset.add(d.primary._existence_bits._segment_file)
+            fileset.add(d.primary._segment_list._segment_file)
+            fileset.add(d.primary._segment_bits._segment_file)
+            for s in d.secondary.values():
+                fileset.add(s._dataname)
         filecount = len(fileset)
-        for f in os.listdir(self._home):
+        for f in os.listdir(self._home_directory):
             if f in fileset:
                 fileset.remove(f)
         if len(fileset) == filecount:
             return None
         return len(fileset) == 0
 
-    def database_cursor(self, dbset, dbname, keyrange=None):
-        """Create and return a cursor on DB dbname in dbset.
-        
-        keyrange is an addition for DPT. It may yet be removed.
-        
-        """
-        return self._main[self._associate[dbset][dbname]].make_cursor(
-            self._main[self._associate[dbset][dbname]],
-            keyrange)
-
-    def repair_cursor(self, cursor, *a):
-        """Return cursor for compatibility with DPT which returns a new one."""
-        return cursor
-
-    def get_database_folder(self):
-        """Return database folder name"""
-        return self._home
+    def get_database_filenames(self):
+        """Return list of database file names."""
+        names = ['___control']
+        for f in os.listdir(self._home_directory):
+            b, e = os.path.splitext(f)
+            if b == 'log' and e[1:].isdigit():
+                names.append(f)
+        for mv in self.database_definition.values():
+            names.extend(mv.primary.get_filenames())
+            for s in mv.secondary.values():
+                names.extend(s.get_filenames())
+        return names
     
     def get_database(self, dbset, dbname):
         """Return DB for dbname in dbset."""
-        return self._main[self._associate[dbset][dbname]]._object
-
-    def get_database_instance(self, dbset, dbname):
-        """Return DB instance for dbname in dbset."""
-        return self._main[self._associate[dbset][dbname]]
-
-    def get_first_primary_key_for_index_key(self, dbset, dbname, key):
-        """Return first primary key for secondary key in dbname for dbname.
-
-        Consider restricting use of this method to secondary DBs whose keys
-        each have a unique value.
-        
-        """
-        if dbset == dbname:
-            raise DBapiError((
-                'get_first_primary_key_for_index_key for primary index'))
-
-        if isinstance(key, str):
-            key = key.encode('utf8')
-        try:
-            return self.decode_record_number(
-                self._main[self._associate[dbset][dbname]
-                           ]._object.cursor().set(key)[1])
-        except:
-            if not isinstance(key, bytes):
-                raise
-            return None
-
-    def get_primary_record(self, dbset, key):
-        """Return primary record (key, value) given primary key on dbset."""
-        try:
-            return self._decode_record(
-                self._main[self._associate[dbset][dbset]
-                           ]._object.cursor().set(key))
-        except:
-            return None
-
-    def _decode_record(self, record):
-        """Return decoded (key, value) of record."""
-        try:
-            k, v = record
-            return k, v.decode()
-        except:
-            if record is None:
-                return record
-            raise
-
-    def is_primary(self, dbset, dbname):
-        """Return True if dbname is primary database in dbset."""
-        return self._main[self._associate[dbset][dbname]].is_primary()
-
-    def is_primary_recno(self, dbset):
-        """Return True if primary DB in dbset is RECNO.
-
-        Primary DB is assumed to be RECNO, so return True.
-
-        It is possible to override the open_root() method in the class passed
-        to DBapi() as primary_class and not use RECNO, but things should soon
-        fall apart if so.  The sibling DPTbase and _Sqlite3api classes cannot
-        be other than the equivalent of RECNO, and their is_primary_recno()
-        methods already return True always.
-
-        """
-        #return self._main[self._associate[dbset][dbset]].is_primary_recno()
-        return True
+        return self.database_definition[dbset].primary.table_link
+    
+    def get_transaction(self):
+        """Return object created by an earlier DBEnv.txn_begin() call or None
+        if a DBEnv.abort() or DBEnv.commit() call is more recent."""
+        return self._dbtxn
 
     def is_recno(self, dbset, dbname):
         """Return True if DB dbname in dbset is RECNO."""
-        return self._main[self._associate[dbset][dbname]].is_recno()
+        return self.database_definition[dbset].associate(dbname).is_recno()
 
     def open_context(self):
         """Open all DBs."""
         try:
-            os.mkdir(self._home)
+            os.mkdir(self._home_directory)
         except FileExistsError:
-            if not os.path.isdir(self._home):
+            if not os.path.isdir(self._home_directory):
                 raise
+
+        # Set up control database for segments with unused record numbers.
+        self._control = ControlFile(database_instance=self)
         
         gbytes = self._DBenvironment.get('gbytes', 0)
         bytes_ = self._DBenvironment.get('bytes', 0)
         flags = self._DBenvironment.get('flags', 0)
-        self._dbenv = DBEnv()
+        self._dbservices = DBEnv()
         if gbytes or bytes_:
-            self._dbenv.set_cachesize(gbytes, bytes_)
-        self._dbenv.open(self._home, flags)
-        for p in self._main:
-            self._main[p].open_root(self._dbenv)
-        return True
+            self._dbservices.set_cachesize(gbytes, bytes_)
+        self._dbservices.open(self._home_directory, flags)
+        self.start_transaction()
+        for table in self.database_definition.values():
+            table.primary.open_root(self._dbservices)
+            for s in table.secondary.values():
+                s.open_root(self._dbservices)
+        self._control.open_root(self._dbservices)
+        self.commit()
 
-    def open_contexts(self, closed_contexts):
-        """Do nothing, present for DPT compatibility."""
-        pass
+        # Refer to primary from secondary for access to segment databases
+        # Link each primary to control file for segment management
+        m = self.database_definition
+        database_specification = self._dbspec
+        for n in database_specification:
+            m[n].primary.set_control_database(self._control)
+            for k, v in database_specification[n][SECONDARY].items():
+                m[n].associate(k).set_primary_database(m[n].primary)
+        return True
 
     def allocate_and_open_contexts(self, closed_contexts):
         """Do nothing, present for DPT compatibility."""
@@ -693,80 +413,13 @@ class _DBapi(Database, _DatabaseEncoders):
         """
         return self.decode_record_number(pkey)
 
-    def encode_primary_key(self, dbname, instance):
+    def encode_primary_key(self, dbset, instance):
         """Convert instance.key for use as database value.
         
         For Berkeley DB just return self.get_packed_key().
         
         """
-        return self.get_packed_key(dbname, instance)
-
-    def put_instance(self, dbset, instance):
-        """Put new instance on database dbset.
-        
-        Puts may be direct or deferred while callbacks handle subsidiary
-        databases and non-standard inverted indexes.  Deferred updates are
-        controlled by counting the calls to put_instance and comparing with
-        self._defer_record_limit.
-        
-        """
-        putkey = instance.key.pack()
-        instance.set_packed_value_and_indexes()
-        
-        db = self._associate[dbset]
-        main = self._main
-
-        key = main[db[dbset]].put(putkey, instance.srvalue.encode())
-        if key is not None:
-            # put was append to record number database and
-            # returned the new primary key. Adjust record key
-            # for secondary updates.
-            instance.key.load(key)
-            putkey = key
-        instance.srkey = self.encode_record_number(putkey)
-        convertedkey = putkey
-
-        srindex = instance.srindex
-        pcb = instance._putcallbacks
-        for secondary in srindex:
-            if secondary not in db:
-                if secondary in pcb:
-                    pcb[secondary](instance, srindex[secondary])
-                continue
-            for v in srindex[secondary]:
-                main[db[secondary]].put(v.encode(), convertedkey)
-
-    def set_defer_update(self, db=None, duallowed=False):
-        """Close files before doing deferred updates.
-
-        Replace the original Berkeley DB version with a DPT look-alike.
-        It is the same code but implementation of close_context ie different
-        because the database engines are different.  Most of the code in the
-        earlier set_defer_update will move to the subprocess.
-        
-        """
-        self.close_context()
-        return duallowed
-
-    def unset_defer_update(self, db=None):
-        """Unset deferred update for db DBs. Default all."""
-        # Original method moved to dbduapi.py
-        return self.open_context()
-
-    def use_deferred_update_process(self, **kargs):
-        """Return module name or None
-
-        **kargs - soak up any arguments other database engines need.
-
-        """
-        raise DBapiError('use_deferred_update_process not implemented')
-
-    def initial_database_size(self):
-        """Do nothing and return True as method exists for DPT compatibility"""
-        return True
-
-    def increase_database_size(self, **ka):
-        """Do nothing because method exists for DPT compatibility"""
+        return self.get_packed_key(dbset, instance)
 
     def do_database_task(
         self,
@@ -786,977 +439,189 @@ class _DBapi(Database, _DatabaseEncoders):
         # See sqlite3api.py for code which justifies existence of this method.
         taskmethod(self, logwidget, **taskmethodargs)
 
-    def make_recordset_key(self, dbset, dbname, key=None, cache_size=1):
-        """Return recordset on database containing records for key."""
-        rs = Recordset(dbhome=self, dbset=dbset, cache_size=cache_size)
-        self._main[self._associate[dbset][dbname]
-                   ].populate_recordset_key(rs, key)
-        return rs
-
-    def make_recordset_key_startswith(
-        self, dbset, dbname, key=None, cache_size=1):
-        """Return recordset on database containing records for key."""
-        rs = Recordset(dbhome=self, dbset=dbset, cache_size=cache_size)
-        self._main[self._associate[dbset][dbname]
-                   ].populate_recordset_key_startswith(rs, key)
-        return rs
-
-    def make_recordset_key_range(self, dbset, dbname, key=None, cache_size=1):
-        """Return recordset on database containing records for key."""
-        rs = Recordset(dbhome=self, dbset=dbset, cache_size=cache_size)
-        self._main[self._associate[dbset][dbname]
-                   ].populate_recordset_key_range(rs, key)
-        return rs
-
-    def make_recordset_all(self, dbset, dbname, key=None, cache_size=1):
-        """Return recordset on database containing records for key."""
-        rs = Recordset(dbhome=self, dbset=dbset, cache_size=cache_size)
-        self._main[self._associate[dbset][dbname]
-                   ].populate_recordset_all(rs)#, key)
-        return rs
-
-    def recordset_for_segment(self, recordset, dbname, segment):
-        """Return recordset populated with records for segment."""
-        self._main[self._associate[recordset.dbset][dbname]
-                   ].populate_recordset_from_segment(recordset, segment)
-        return recordset
-    
-    def file_records_under(self, dbset, dbname, recordset, key):
-        """File recordset under key in dbname if created from dbset in self."""
-        if recordset.dbidentity != id(self.get_database(dbset, dbset)):
-            raise DatabaseError(
-                'Record set was not created from this database instance')
-        if recordset.dbset != dbset:
-            raise DatabaseError(
-                'Record set was not created from dbset database')
-        self._main[self._associate[recordset.dbset][dbname]
-                   ].file_records_under(recordset, key)
-
-    def is_engine_uses_bytes(self):
-        """Return True if database engine interface is bytes"""
-        return self.engine_uses_bytes_or_str is USE_BYTES
-
-    def is_engine_uses_str(self):
-        """Return True if database engine interface is str (C not unicode)"""
-        return self.engine_uses_bytes_or_str is USE_STR
-
     def start_transaction(self):
-        """Do nothing. Added for compatibility with apsw Sqlite3 interface."""
+        """Start transaction if none and bind txn object to self._dbtxn."""
+        if self._dbtxn is None:
+            self._dbtxn = self._dbservices.txn_begin()
 
     def cede_contexts_to_process(self, close_contexts):
-        """Do nothing. Added for compatibility with apsw Sqlite3 interface."""
+        """Do nothing. Added for compatibility with Sqlite3 interfaces."""
+        # According to earlier version of docstring this was for compatibility
+        # with apsw interface specifically.
+        # Perhaps the difference between Pythons 3.5 and 3.6 in transactions in
+        # the sqlite3 interface is related.
         pass
 
+    def create_recordset_cursor(self, recordset):
+        """Create and return a cursor for this recordset."""
+        return RecordsetCursor(recordset, self)
 
-class DBapi(_DBapi):
+
+class DBapi(Database):
     
-    """Define a Berkeley DB database structure.
+    """Access database with bsddb3.  See superclass for *args and **kargs.
     
-    Primary databases are created as DB_RECNO.
-    Secondary databases are DB_BTREE with DB_DUPSORT set.
+    bsddb3 is an interface to Berkeley DB.
+
+    Primary instances are used to access data, and Secondary instances are
+    used to access indicies on the data.
+
+    There will be one Primary instance for each Berkeley DB primary database,
+    used approximately like a SQLite table.
+
+    There will be one Secondary instance for each Berkeley DB secondary
+    database, used approximately like a SQLite index.
 
     Primary and secondary terminology comes from Berkeley DB documentation but
     the association technique is not used.
-
-    The value part of a secondary key:value is a (segment, reference, count)
-    tuple where segment follows DPT terminology.  Reference can be a record
-    number relative to segment start, a reference to a list of record numbers,
-    or a reference to a bitmap representing such record numbers.  Count is the
-    number of records referenced by this value.
-
-    Secondary databases are supported by two DB_RECNO databases, one for lists
-    of record numbers and one for bitmap representations of record numbers. The
-    reference is the key into the relevant DB_RECNO database.
-
-    Methods added:
-
-    None
-
-    Methods overridden:
-
-    None
-
-    Methods extended:
-
-    __init__
     
     """
 
     def __init__(self, *args, **kargs):
-        """Define database structure.  See superclass for *args and **kargs."""
-        super(DBapi, self).__init__(DBPrimary, DBSecondary, *args, **kargs)
+        """Use Primary and Secondary classes."""
+        super().__init__(Primary, Secondary, *args, **kargs)
 
             
-class DBFile(object):
+class File(file.File):
     
-    """Define a DB file with a cursor and open_root and close methods.
+    """Wrap a Berkeley DB database.
 
-    Methods added:
-
-    close
-    get_database_file
-    open_root
-
-    Methods overridden:
-
-    None
-
-    Methods extended:
-
-    __init__
-    
+    This class defines elements common to primary and secondary databases.
     """
 
     def __init__(
         self,
         dbfile,
         dbdesc,
-        fieldatts,
-        description,
         dbname,
-        ):
-        """Define a DB file.
-        
-        dbfile=file name relative to environment home directory
-        dbname=db name within file
-        primary=True|False. DB is primary or secondary
-        
+        database_instance=None,
+        **kargs):
+        """Define a Berkeley DB database.
+
+        dbfile - primary database name, or secondary database name with a
+                 primary name prefix.
+        dbdesc - database description for primary and associated secondaries.
+        dbname - primary or secondary database name.
+        database_instance - DBapi instance.
+
+        This class defines elements common to primary and secondary databases.
+
         """
-        super(DBFile, self).__init__()
 
-        self._object = None
-        self._dbfile = dbfile
-        self._dbname = dbname
-        self._fieldatts = dict()
-        
-        for attr in DB_FIELDATTS:
-            self._fieldatts[attr] = fieldatts[attr]
-        if description == None:
-            description = dict()
-        if not isinstance(description, dict):
-            msg = ' '.join(['Attributes for index', dbname,
-                            'in file', repr(dbdesc[PRIMARY]),
-                            'must be a dictionary or "None"'])
-            raise DBapiError(msg)
-        
-        for attr in description:
-            if attr not in fieldatts:
-                msg = ' '.join(['Attribute', repr(attr),
-                                'for index', dbname,
-                                'in file', repr(dbdesc[PRIMARY]),
-                                'is not allowed'])
-                raise DBapiError(msg)
-            
-            if not isinstance(description[attr], type(fieldatts[attr])):
-                msg = ' '.join([attr, 'for field', dbname,
-                                'in file', repr(dbdesc[PRIMARY]),
-                                'is wrong type'])
-                raise DBapiError(msg)
-            
-            if attr == SPT:
-                if (description[attr] < 0 or
-                    description[attr] > 100):
-                    msg = ' '.join(['Split percentage for field',
-                                    dbname, 'in file', repr(dbdesc[PRIMARY]),
-                                    'is invalid'])
-                    raise DBapiError(msg)
+        # This attribute is referenced in the super().__init__() chain after
+        # moving the ExistenceBitMap() call to primaryfile.PrimaryFile.
+        # The binding was after the super().__init__() previously.
+        self._transaction = database_instance.get_transaction
 
-            if attr in DB_FIELDATTS:
-                self._fieldatts[attr] = description[attr]
+        super().__init__(dbfile,
+                         dbdesc[FIELDS][dbname],
+                         dbname,
+                         DB_FIELDATTS,
+                         repr(dbname),
+                         repr(dbdesc[PRIMARY]),
+                         **kargs)
+
+    @property
+    def transaction(self):
+        """Return the active transaction or None."""
+        return self._transaction()
 
     def close(self):
         """Close DB and cursor."""
-        if self._object is not None:
-            self._object.close()
-            self._object = None
+        if self._table_link is not None:
+            self.table_link.close()
+            self._table_link = None
 
     def open_root(self, dbenv):
         """Create DB in dbenv."""
         try:
-            self._object = DB(dbenv)
+
+            # Use a list for compatibility with dbduapi.py deferred updates.
+            self._table_link = [DB(dbenv)]
+            
         except:
             raise
 
     def get_database_file(self):
-        """Return database file name"""
-        return self._dbfile
+        """Return name of file containing database of key-value pairs.
+
+        The name is a concatenation of the primary and secondary database
+        names.  This assumes each key-value database is in a separate file.
+
+        If all databases of key-value pairs are in a single file this attribute
+        is a good candidate to replace _keyvalueset_name as the database name.
+
+        """
+        return self._dataname
+
+    def get_filenames(self):
+        """Return tuple of database file names."""
+        return self._dataname,
 
             
-class DBPrimaryFile(DBFile):
+class PrimaryFile(File, primaryfile.PrimaryFile):
     
-    """Define a DB file with a cursor and open_root and close methods.
+    """Add segment support to File for primary database.
 
-    Methods added:
-
-    is_primary
-    is_primary_recno
-    is_recno
-    is_value_recno
-
-    Methods overridden:
-
-    None
-
-    Methods extended:
-
-    __init__
-    open_root
-    
+    This class provides the methods to manage the lists and bitmaps of record
+    numbers for segments of the primary database.
     """
 
-    def __init__(self, dbfile, dbdesc, *args):
-        """Primary database file for name in description.
-        
-        dbfile=file name relative to environment home directory
-        dbdesc=file description containing secondary database dbname
-        
-        """
-        super(DBPrimaryFile, self).__init__(
-            dbfile,
-            dbdesc,
-            PRIMARY_FIELDATTS,
-            dbdesc[FIELDS][dbdesc[PRIMARY]],
-            *args)
-
-    def open_root(self, *args):
-        """Open primary database.  See superclass for *args"""
-        super(DBPrimaryFile, self).open_root(*args)
-        try:
-            self._object.open(
-                self._dbfile,
-                self._dbname,
-                DB_RECNO,
-                DB_CREATE)
-        except:
-            self._object = None
-            raise
-
-    def is_primary(self):
-        """Return True."""
-        # Maybe ask self._object
-        return True
-
-    def is_primary_recno(self):
-        """Return True."""
-        # Maybe ask self._object
-        return True
-
-    def is_recno(self):
-        """Return True."""
-        # Maybe ask self._object
-        return True
-
-    def is_value_recno(self):
-        """Return False."""
-        # Maybe ask self._object
-        return False
-
-            
-class DBSecondaryFile(DBFile):
-    
-    """Define a DB file with a cursor and open_root and close methods.
-
-    Methods added:
-
-    is_primary
-    is_primary_recno
-    is_recno
-    is_value_recno
-
-    Methods overridden:
-
-    None
-
-    Methods extended:
-
-    __init__
-    open_root
-    
-    """
-
-    def __init__(self, dbfile, dbdesc, dbname, *args):
-        """Secondary database file for name in description.
-        
-        dbfile=file name relative to environment home directory
-        dbdesc=file description containing secondary database dbname
-        dbname=entry in file description for this file
-        
-        """
-        super(DBSecondaryFile, self).__init__(
-            dbfile,
-            dbdesc,
-            SECONDARY_FIELDATTS,
-            dbdesc[FIELDS][dbname],
-            dbname,
-            *args)
-
-    def open_root(self, *args):
-        """Open secondary database.  See superclass for *args"""
-        super(DBSecondaryFile, self).open_root(*args)
-        try:
-            self._object.set_flags(DB_DUPSORT)
-            self._object.open(
-                self._dbfile,
-                self._dbname,
-                DB_BTREE,
-                DB_CREATE)
-        except:
-            self._object = None
-            raise
-
-    def is_primary(self):
-        """Return False."""
-        # Maybe ask self._object
-        return False
-
-    def is_primary_recno(self):
-        """Return True."""
-        # Maybe ask self._object
-        return True
-
-    def is_recno(self):
-        """Return False."""
-        # Maybe ask self._object
-        return False
-
-    def is_value_recno(self):
-        """Return True."""
-        # Maybe ask self._object
-        return True
-
-
-class DBPrimary(DBPrimaryFile, _DatabaseEncoders):
-    
-    """Define a DB file with record access and deferred update methods.
-
-    Methods added:
-
-    delete
-    file_records_under
-    make_cursor
-    populate_recordset_all
-    populate_recordset_from_segment
-    populate_recordset_key
-    populate_recordset_key_range
-    populate_recordset_key_startswith
-    put
-    replace
-
-    Methods overridden:
-
-    None
-
-    Methods extended:
-
-    __init__
-    close
-    
-    """
-
-    def __init__(self, *args):
-        """Primary database.  See superclass for *args."""
-        super(DBPrimary, self).__init__(*args)
-        self._clientcursors = dict()
-        self._recordsets = dict()
-
-    def delete(self, key, value):
-        """Delete (key, value) from database."""
-        try:
-            # Primary assumed to be not DUPSORT nor DUP
-            cursor = self._object.cursor()
-            if cursor.set(key):
-                cursor.delete()
-        except:
-            pass
-
-    # This may be common between DBPrimary and DBbitPrimary
-    def put(self, key, value):
-        """Put (key, value) on database and return key for new RECNO records.
-
-        The DB put method, or append for new RECNO records,is
-        used for primary DBs with associated secondary DBs. The
-        cursor put method is used otherwise.
-        
-        """
-        # Primary assumed to be not DUPSORT nor DUP
-        if not key: #key == 0:  # Change test to "key is None" when sure
-            return self._object.append(value)
-        else:
-            self._object.put(key, value)
-            return None
-
-    # This may be common between DBPrimary and DBbitPrimary
-    def replace(self, key, oldvalue, newvalue):
-        """Replace (key, oldvalue) with (key, newvalue) on DB.
-        
-        (key, newvalue) is put on DB only if (key, oldvalue) is on DB.
-        
-        """
-        try:
-            # Primary assumed to be not DUPSORT nor DUP
-            cursor = self._object.cursor()
-            if cursor.set(key):
-                cursor.put(key, newvalue, DB_CURRENT)
-        except:
-            pass
-
-    def make_cursor(self, dbobject, keyrange):
-        """Create a cursor on the dbobject positiioned at start of keyrange."""
-        c = CursorDBPrimary(dbobject, keyrange)
-        if c:
-            self._clientcursors[c] = True
-        return c
-    
-    def close(self):
-        """Close DB and any cursors or recordsets."""
-        for c in list(self._clientcursors.keys()):
-            c.close()
-        self._clientcursors.clear()
-        for rs in list(self._recordsets.keys()):
-            rs.close()
-        self._recordsets.clear()
-        super(DBPrimary, self).close()
-
-    # Copied to DBbitPrimary because it seems simpler for one key
-    def populate_recordset_key(self, recordset, key=None):
-        """Return recordset on database containing records for key."""
-        r = self._object.get(key)
-        if r:
-            s, rn = divmod(key, DB_SEGMENT_SIZE)
-            recordset[s] = SegmentList(
-                s, None, records=rn.to_bytes(2, byteorder='big'))
-
-    def populate_recordset_key_startswith(self, recordset, key):
-        """Raise exception - populate_recordset_key_startswith primary db."""
-        raise DBapiError(
-            ''.join(
-                ('populate_recordset_key_startswith not available ',
-                 'on primary database')))
-
-    def populate_recordset_key_range(
-        self, recordset, keystart=None, keyend=None):
-        """Return recordset on database containing records for key range."""
-        if keystart is None:
-            segment_start = 0
-        else:
-            segment_start = divmod(keystart, DB_SEGMENT_SIZE)[0]
-        if keyend is not None:
-            segment_end = divmod(keyend, DB_SEGMENT_SIZE)[0]
-        cursor = self.make_cursor(self._object, keystart)
-        c = cursor._cursor
-        r = c.set_range(keystart)
-        while r:
-            if keyend is not None:
-                if r[0] > keyend:
-                    break
-            s, rn = divmod(r[0], DB_SEGMENT_SIZE)
-            if s not in recordset:
-                recordset[s] = SegmentBitarray(s, None)
-            recordset[s][rn] = True
-            r = c.next()
-        del c
-        cursor.close()
-    
-    def populate_recordset_all(self, recordset):
-        """Return recordset containing all referenced records."""
-        cursor = self.make_cursor(self._object)
-        c = cursor._cursor
-        r = c.first()
-        while r:
-            s, rn = divmod(r[0], DB_SEGMENT_SIZE)
-            if s not in recordset:
-                recordset[s] = SegmentBitarray(s, None)
-            recordset[s][rn] = True
-            r = c.next()
-        del c
-        cursor.close()
-
-    def populate_recordset_from_segment(self, recordset, segment):
-        """Populate recordset with records in segment."""
-        raise DatabaseError(
-            'populate_recordset_from_segment not implemented for DBPrimary')
-    
-    def file_records_under(self, recordset, key):
-        """Raise exception as DBPrimary.file_records_under() is nonsense."""
-        raise DatabaseError(
-            'file_records_under not implemented for DBPrimary')
-
-
-class DBSecondary(DBSecondaryFile, _DatabaseEncoders):
-    
-    """Define a DB file with record access and deferred update methods.
-
-    Methods added:
-
-    delete
-    file_records_under
-    make_cursor
-    populate_recordset_all
-    populate_recordset_from_segment
-    populate_recordset_key
-    populate_recordset_key_range
-    populate_recordset_key_startswith
-    put
-    replace
-
-    Methods overridden:
-
-    None
-
-    Methods extended:
-
-    __init__
-    close
-    
-    """
-
-    def __init__(self, *args):
-        """Secondary database.  See superclass for *args."""
-        super(DBSecondary, self).__init__(*args)
-        self._clientcursors = dict()
-
-    def delete(self, key, value):
-        """Delete (key, value) from database."""
-        try:
-            # Primary database for this secondary is assumed to be RECNO
-            cursor = self._object.cursor()
-            if cursor.set_both(key, self.encode_record_number(value)):
-                cursor.delete()
-        except:
-            pass
-
-    def put(self, key, value):
-        """Put (key, value) on database and return key for new RECNO records.
-
-        The DB put method, or append for new RECNO records,is
-        used for primary DBs with associated secondary DBs. The
-        cursor put method is used otherwise.
-        
-        """
-        try:
-            # Primary database for this secondary is assumed to be RECNO
-            self._object.cursor().put(
-                key, self.encode_record_number(value), DB_KEYLAST)
-        except DBKeyExistError:
-            # Application may legitimately do duplicate updates (-30996)
-            # to a sorted secondary database for DPT compatibility.
-            pass
-        except:
-            raise
-
-    def replace(self, key, oldvalue, newvalue):
-        """Replace (key, oldvalue) with (key, newvalue) on DB.
-        
-        (key, newvalue) is put on DB only if (key, oldvalue) is on DB.
-        
-        """
-        try:
-            # Primary database for this secondary is assumed to be RECNO
-            cursor = self._object.cursor()
-            if cursor.set_both(
-                key, self.encode_record_number(oldvalue)):
-                cursor.put(
-                    key, self.encode_record_number(newvalue), DB_CURRENT)
-        except:
-            pass
-
-    def make_cursor(self, dbobject, keyrange):
-        """Create a cursor on the dbobject positiioned at start of keyrange."""
-        c = CursorDBSecondary(dbobject, keyrange)
-        if c:
-            self._clientcursors[c] = True
-        return c
-    
-    def close(self):
-        """Close DB and any cursors."""
-        for c in list(self._clientcursors.keys()):
-            c.close()
-        self._clientcursors.clear()
-        super(DBSecondary, self).close()
-    
-    def populate_recordset_key(self, recordset, key):
-        """Return recordset of segments containing records for key."""
-        cursor = self.make_cursor(self, key)
-        c = cursor._cursor
-        r = c.set_range(key)
-        while r:
-            if r[0] != key:
-                break
-            s, rn = divmod(r[1], DB_SEGMENT_SIZE)
-            if s not in recordset:
-                recordset[s] = SegmentBitarray(s, None)
-            recordset[s][rn] = True
-            r = c.next()
-        del c
-        cursor.close()
-
-    def populate_recordset_key_startswith(self, recordset, key):
-        """Return recordset on database containing records for keys starting."""
-        cursor = self.make_cursor(self, key)
-        c = cursor._cursor
-        r = c.set_range(key)
-        while r:
-            if not r[0].startswith(key):
-                break
-            s, rn = divmod(r[1], DB_SEGMENT_SIZE)
-            if s not in recordset:
-                recordset[s] = SegmentBitarray(s, None)
-            recordset[s][rn] = True
-            r = c.next()
-        del c
-        cursor.close()
-
-    def populate_recordset_key_range(
-        self, recordset, keystart=None, keyend=None):
-        """Return recordset on database containing records for key range."""
-        cursor = self.make_cursor(self, keystart)
-        c = cursor._cursor
-        r = c.set_range(keystart)
-        while r:
-            if keyend is not None:
-                if r[0] > keyend:
-                    break
-            s, rn = divmod(r[1], DB_SEGMENT_SIZE)
-            if s not in recordset:
-                recordset[s] = SegmentBitarray(s, None)
-            recordset[s][rn] = True
-            r = c.next()
-        del c
-        cursor.close()
-    
-    def populate_recordset_all(self, recordset):
-        """Return recordset containing all referenced records."""
-        cursor = self.make_cursor(self)
-        c = cursor._cursor
-        r = c.first()
-        while r:
-            s, rn = divmod(r[1], DB_SEGMENT_SIZE)
-            if s not in recordset:
-                recordset[s] = SegmentBitarray(s, None)
-            recordset[s][rn] = True
-            r = c.next()
-        del c
-        cursor.close()
-
-    def populate_recordset_from_segment(self, recordset, segment):
-        """Populate recordset with records in segment."""
-        raise DatabaseError(
-            'populate_recordset_from_segment not implemented for DBSecondary')
-    
-    def file_records_under(self, recordset, key):
-        """Replace records for index dbname[key] with recordset records."""
-        print('DBSecondary', 'file_records_under')
-
-
-class DBbitapi(_DBapi):
-    
-    """Define a Berkeley DB database structure.
-    
-    Primary databases are created as DB_RECNO.
-    Secondary databases are DB_BTREE with DB_DUPSORT set.
-
-    Primary and secondary terminology comes from Berkeley DB documentation but
-    the association technique is not used.
-
-    The value part of a secondary key:value is a (segment, reference, count)
-    tuple where segment follows DPT terminology.  Reference can be a record
-    number relative to segment start, a reference to a list of record numbers,
-    or a reference to a bitmap representing such record numbers.  Count is the
-    number of records referenced by this value.
-
-    Secondary databases are supported by two DB_RECNO databases, one for lists
-    of record numbers and one for bitmap representations of record numbers. The
-    reference is the key into the relevant DB_RECNO database.
-
-    Methods added:
-
-    None
-
-    Methods overridden:
-
-    delete_instance
-    edit_instance
-    put_instance
-
-    Methods extended:
-
-    __init__
-    close_context
-    open_context
-    
-    """
-
-    def __init__(self, DBnames, *args, **kargs):
-        """Define database structure.  See superclass for *args and **kargs."""
-        super(DBbitapi, self).__init__(
-            DBbitPrimary, DBbitSecondary, DBnames, *args, **kargs)
-        self._control = DBbitControlFile()
-        # Refer to primary from secondary for access to segment databases
-        # Link each primary to control file for segment management
-        m = self._main
-        for n in DBnames:
-            m[DBnames[n][PRIMARY]].set_control_database(self._control)
-            for s in DBnames[n][SECONDARY].values():
-                m[s].set_primary_database(m[DBnames[n][PRIMARY]])
-
-    def delete_instance(self, dbset, instance):
-        """Delete an existing instance on databases in dbset.
-        
-        Deletes are direct while callbacks handle subsidiary databases
-        and non-standard inverted indexes.
-        
-        """
-        deletekey = instance.key.pack()
-        instance.set_packed_value_and_indexes()
-        
-        db = self._associate[dbset]
-        main = self._main
-        primarydb = main[db[dbset]]
-
-        high_record = primarydb._object.cursor().last()
-        primarydb.delete(deletekey, instance.srvalue.encode())
-        instance.srkey = self.encode_record_number(deletekey)
-
-        srindex = instance.srindex
-        segment, record_number = divmod(deletekey, DB_SEGMENT_SIZE)
-        primarydb.segment_delete(segment, record_number)
-        dcb = instance._deletecallbacks
-        for secondary in srindex:
-            if secondary not in db:
-                if secondary in dcb:
-                    dcb[secondary](instance, srindex[secondary])
-                continue
-            for v in srindex[secondary]:
-                main[db[secondary]].segment_delete(
-                    v.encode(), segment, record_number)
-        try:
-            high_segment = divmod(high_record[0], DB_SEGMENT_SIZE)[0]
-        except TypeError:
-            # Implies attempt to delete record from empty database.
-            # The delete method will have raised an exception if appropriate.
-            return
-        if segment < high_segment:
-            primarydb.get_control_primary().note_freed_record_number_segment(
-                segment, record_number)
-
-    def edit_instance(self, dbset, instance):
-        """Edit an existing instance on databases in dbset.
-        
-        Edits are direct while callbacks handle subsidiary databases
-        and non-standard inverted indexes.
-
-        """
-        oldkey = instance.key.pack()
-        newkey = instance.newrecord.key.pack()
-        instance.set_packed_value_and_indexes()
-        instance.newrecord.set_packed_value_and_indexes()
-        
-        db = self._associate[dbset]
-        main = self._main
-
-        srindex = instance.srindex
-        nsrindex = instance.newrecord.srindex
-        dcb = instance._deletecallbacks
-        ndcb = instance.newrecord._deletecallbacks
-        pcb = instance._putcallbacks
-        npcb = instance.newrecord._putcallbacks
-
-        # Changing oldkey to newkey should not be allowed
-        old_segment, old_record_number = divmod(oldkey, DB_SEGMENT_SIZE)
-        # Not changed by default.  See oldkey != newkey below.
-        new_segment, new_record_number = old_segment, old_record_number
-        
-        ionly = []
-        nionly = []
-        iandni = []
-        for f in srindex:
-            if f in nsrindex:
-                iandni.append(f)
-            else:
-                ionly.append(f)
-        for f in nsrindex:
-            if f not in srindex:
-                nionly.append(f)
-
-        if oldkey != newkey:
-            main[db[dbset]].delete(oldkey, instance.srvalue.encode())
-            key = main[db[dbset]].put(
-                newkey, instance.newrecord.srvalue.encode())
-            if key is not None:
-                # put was append to record number database and
-                # returned the new primary key. Adjust record key
-                # for secondary updates.
-                instance.newrecord.key.load(key)
-                newkey = key
-                new_segment, new_record_number = divmod(newkey, DB_SEGMENT_SIZE)
-            main[db[dbset]].segment_delete(old_segment, old_record_number)
-            main[db[dbset]].segment_put(new_segment, new_record_number)
-        elif instance.srvalue != instance.newrecord.srvalue:
-            main[db[dbset]].replace(
-                oldkey,
-                instance.srvalue.encode(),
-                instance.newrecord.srvalue.encode())
-
-        instance.srkey = self.encode_record_number(oldkey)
-        instance.newrecord.srkey = self.encode_record_number(newkey)
-
-        for secondary in ionly:
-            if secondary not in db:
-                if secondary in dcb:
-                    dcb[secondary](instance, srindex[secondary])
-                continue
-            for v in srindex[secondary]:
-                main[db[secondary]].segment_delete(
-                    v.encode(), old_segment, old_record_number)
-
-        for secondary in nionly:
-            if secondary not in db:
-                if secondary in npcb:
-                    npcb[secondary](
-                        instance.newrecord, nsrindex[secondary])
-                continue
-            for v in nsrindex[secondary]:
-                main[db[secondary]].segment_put(
-                    v.encode(), new_segment, new_record_number)
-
-        for secondary in iandni:
-            if srindex[secondary] == nsrindex[secondary]:
-                if oldkey == newkey:
-                    continue
-            if secondary not in db:
-                if secondary in dcb:
-                    dcb[secondary](instance, srindex[secondary])
-                if secondary in npcb:
-                    npcb[secondary](
-                        instance.newrecord, nsrindex[secondary])
-                continue
-            for v in srindex[secondary]:
-                main[db[secondary]].segment_delete(
-                    v.encode(), old_segment, old_record_number)
-            for v in nsrindex[secondary]:
-                main[db[secondary]].segment_put(
-                    v.encode(), new_segment, new_record_number)
-
-    def put_instance(self, dbset, instance):
-        """Put new instance on database dbset.
-        
-        This method assumes all primary databases are DB_RECNO.
-        
-        """
-        putkey = instance.key.pack()
-        instance.set_packed_value_and_indexes()
-        
-        db = self._associate[dbset]
-        main = self._main
-        primarydb = main[db[dbset]]
-
-        if putkey == 0:
-            # reuse record number if possible
-            putkey = primarydb.get_control_primary(
-                ).get_lowest_freed_record_number()
-            if putkey != 0:
-                instance.key.load(putkey)
-        key = primarydb.put(putkey, instance.srvalue.encode())
-        if key is not None:
-            # put was append to record number database and
-            # returned the new primary key. Adjust record key
-            # for secondary updates.
-            # Perhaps _control_primary should hold this key to avoid the cursor
-            # operation to find the high segment in every delete_instance call.
-            instance.key.load(key)
-            putkey = key
-        instance.srkey = self.encode_record_number(putkey)
-
-        srindex = instance.srindex
-        segment, record_number = divmod(putkey, DB_SEGMENT_SIZE)
-        primarydb.segment_put(segment, record_number)
-        pcb = instance._putcallbacks
-        for secondary in srindex:
-            if secondary not in db:
-                if secondary in pcb:
-                    pcb[secondary](instance, srindex[secondary])
-                continue
-            for v in srindex[secondary]:
-                main[db[secondary]].segment_put(
-                    v.encode(), segment, record_number)
-
-    def close_context(self):
-        """Close main and deferred update databases and environment."""
-        self._control.close()
-        super(DBbitapi, self).close_context()
-
-    def open_context(self):
-        """Open all DBs."""
-        super(DBbitapi, self).open_context()
-        self._control.open_root(self._dbenv)
-        return True
-
-            
-class DBbitPrimaryFile(DBPrimaryFile):
-    
-    """Define a DB file with a cursor and open_root and close methods.
-
-    Methods added:
-
-    get_control_database
-    get_existence_bits
-    get_existence_bits_database
-    get_segment_bits_database
-    get_segment_list_database
-    set_control_database
-    get_control_primary
-    get_control_secondary
-
-    Methods overridden:
-
-    None
-
-    Methods extended:
-
-    __init__
-    close
-    open_root
-    
-    """
-
-    def __init__(self, *args):
-        """Bitmapped primary database file for name in description."""
-        super(DBbitPrimaryFile, self).__init__(*args)
-
-        # Description to be provided
-        self._control_database = None
-
-        # Existence bit map control structure (reuse record numbers)
-        self._control_primary = FileControlPrimary(self)
+    def __init__(self, *args, **kargs):
+        """Add segment support to File for primary database."""
+        super().__init__(*args,
+                         filecontrolprimary_class=FileControlPrimary,
+                         existencebitmap_class=ExistenceBitMap,
+                         file_reference=self,
+                         **kargs)
 
         # Freed record list and bit map segment control structure
         self._control_secondary = FileControlSecondary(self)
 
-        # Record number existence bit map for this primary database
-        self._existence_bits = DBExistenceBitMap(self.get_database_file())
-
         # Inverted index record number lists for this primary database
-        self._segment_list = DBSegmentList(self.get_database_file())
+        self._segment_list = SegmentList(file_reference=self)
 
         # Inverted index record number bit maps for this primary database
-        self._segment_bits = DBSegmentBitMap(self.get_database_file())
+        self._segment_bits = SegmentBitarray(file_reference=self)
+
+    def is_primary_recno(self):
+        """Return True."""
+        # Maybe ask self._table_link
+        return True
+
+    def is_recno(self):
+        """Return True."""
+        # Maybe ask self._table_link
+        return True
+
+    def is_value_recno(self):
+        """Return False."""
+        # Maybe ask self._table_link
+        return False
 
     def open_root(self, *args):
-        """Open primary database and inverted index databases."""
-        super(DBbitPrimaryFile, self).open_root(*args)
+        """Open primary database.  See superclass for *args."""
+        super().open_root(*args)
+        try:
+            self.table_link.open(
+                self._dataname,
+                self._keyvalueset_name,
+                DB_RECNO,
+                DB_CREATE,
+                txn=self.transaction)
+        except:
+            self._table_link = None
+            raise
         self._segment_list.open_root(*args)
         self._segment_bits.open_root(*args)
         self._existence_bits.open_root(*args)
 
     def close(self):
-        """Close inverted index databases then primary database."""
+        """Close inverted index databases then delegate to superclass close()
+        method."""
         self._segment_list.close()
         self._segment_bits.close()
-        super(DBbitPrimaryFile, self).close()
-
-    def get_control_database(self):
-        """Return the database containing segment control data."""
-        return self._control_database.get_control_database()
+        super().close()
 
     # Added for sqlite3 compatibility.
     # Berkeley DB uses get_segment_list_database.
@@ -1768,7 +633,7 @@ class DBbitPrimaryFile(DBPrimaryFile):
         """Return the database containing segment record number lists."""
         # Maybe use instance.get_segment_list().get_seg_object() instead of
         # instance.get_segment_list_database()
-        return self._segment_list._seg_object
+        return self._segment_list._segment_link
 
     # Added for sqlite3 compatibility.
     # Berkeley DB uses get_segment_bits_database.
@@ -1780,64 +645,67 @@ class DBbitPrimaryFile(DBPrimaryFile):
         """Return the database containing segment record number bit maps."""
         # Maybe use instance.get_segment_bits().get_seg_object() instead of
         # instance.get_segment_bits_database()
-        return self._segment_bits._seg_object
-
-    def get_existence_bits(self):
-        """Return the existence bit map control data."""
-        return self._existence_bits
+        return self._segment_bits._segment_link
 
     def get_existence_bits_database(self):
         """Return the database containing existence bit map."""
         # Maybe use instance.get_existence_bits().get_seg_object() instead of
         # instance.get_existence_bits_database()
-        return self._existence_bits._seg_object
-
-    def set_control_database(self, database):
-        """Set reference to segment control databases."""
-        self._control_database = database
-
-    def get_control_primary(self):
-        """Return the re-use record number control data."""
-        return self._control_primary
+        return self._existence_bits._segment_link
 
     def get_control_secondary(self):
         """Return the segment control data."""
         return self._control_secondary
 
+    def get_filenames(self):
+        """Return tuple of database file names."""
+        return (self.get_database_file(),
+                self._existence_bits._segment_file,
+                self._segment_list._segment_file,
+                self._segment_bits._segment_file)
+
             
-class DBbitSecondaryFile(DBSecondaryFile):
+class SecondaryFile(File, secondaryfile.SecondaryFile):
     
-    """Define a DB file with a cursor and open_root and close methods.
+    """Add segment support to File for secondary database.
 
-    Methods added:
-
-    get_primary_database
-    get_primary_segment_bits
-    get_primary_segment_list
-    set_primary_database
-
-    Methods overridden:
-
-    None
-
-    Methods extended:
-
-    __init__
-    
+    This class uses the methods of the PrimaryFile class to manage the
+    lists and bitmaps of record numbers for segments of the table supporting
+    the secondary database.  The link is set after both tables have been
+    opened.
     """
 
-    def __init__(self, *args):
-        """Bitmapped secondary database.  See superclass for *args."""
-        super(DBbitSecondaryFile, self).__init__(*args)
-        self._primary_database = None
+    def is_primary_recno(self):
+        """Return True."""
+        # Maybe ask self._table_link
+        return True
 
-    def set_primary_database(self, database):
-        """Set reference to primary database to access segment databases."""
-        self._primary_database = database
+    def is_recno(self):
+        """Return False."""
+        # Maybe ask self._table_link
+        return False
 
-    def get_primary_database(self):
-        """Set reference to primary database to access segment databases."""
-        return self._primary_database
+    def is_value_recno(self):
+        """Return True."""
+        # Maybe ask self._table_link
+        return True
+
+    def open_root(self, *args):
+        """Delegate to superclass open_root() method then create database if
+        it does not exist.
+        """
+        super().open_root(*args)
+        try:
+            self.table_link.set_flags(DB_DUPSORT)
+            self.table_link.open(
+                self._dataname,
+                self._keyvalueset_name,
+                DB_HASH if self._fieldatts[ACCESS_METHOD] == HASH else DB_BTREE,
+                DB_CREATE,
+                txn=self.transaction)
+        except:
+            self._table_link = None
+            raise
 
     def get_primary_segment_bits(self):
         """Return the segment bitmap database of primary database."""
@@ -1848,71 +716,68 @@ class DBbitSecondaryFile(DBSecondaryFile):
         return self._primary_database.get_segment_list_database()
 
 
-class DBbitPrimary(DBbitPrimaryFile):
+class Primary(PrimaryFile, primary.Primary, _DatabaseEncoders):
     
-    """Define a DB file with record access and deferred update methods.
+    """Add record update and recordset processing to PrimaryFile.
 
-    Methods added:
+    This class provides methods to add, delete, and modify, records on the
+    primary database.
 
-    delete
-    file_records_under
-    make_cursor
-    populate_recordset_all
-    populate_recordset_from_segment
-    populate_recordset_key
-    populate_recordset_key_range
-    populate_recordset_key_startswith
-    put
-    replace
-    segment_delete
-    segment_put
+    This class provides methods to process recordsets created from records in
+    the primary database.  A dictionary of created recordsets is maintained
+    and any that exist when the primary database is closed are destroyed too.
 
-    Methods overridden:
-
-    None
-
-    Methods extended:
-
-    __init__
-    close
-    
+    The make_cursor method creates a CursorPrimary instance, a Berkeley
+    DB style cursor, which is used to traverse the primary database.  A
+    dictionary of these cursors is maintained and any that exist when the
+    primary database is closed are destroyed too.
     """
-
-    def __init__(self, *args):
-        """Bitmapped primary database.  See superclass for *args."""
-        super(DBbitPrimary, self).__init__(*args)
-        self._clientcursors = dict()
-        self._recordsets = dict()
-
-    def make_cursor(self, dbobject, keyrange):
-        """Create a cursor on the dbobject positiioned at start of keyrange."""
-        c = CursorDBbitPrimary(dbobject, keyrange)
-        if c:
-            self._clientcursors[c] = True
-        return c
-    
-    def close(self):
-        """Close DB and any cursors."""
-        for c in list(self._clientcursors.keys()):
-            c.close()
-        self._clientcursors.clear()
-        for rs in list(self._recordsets.keys()):
-            rs.close()
-        self._recordsets.clear()
-        super(DBbitPrimary, self).close()
 
     def delete(self, key, value):
         """Delete (key, value) from database."""
+        # Transferred encode() from delete_instance, edit_instance, and
+        # put_instance, calls (the only ones) so those methods are identical
+        # to sqlite3 versions: well would have if value were mentioned.
         try:
             # Primary assumed to be not DUPSORT nor DUP
-            cursor = self._object.cursor()
-            if cursor.set(key):
-                cursor.delete()
-                self.get_control_primary().note_freed_record_number(key)
+            cursor = self.table_link.cursor(txn=self.transaction)
+            try:
+                if cursor.set(key):
+                    cursor.delete()
+
+                    # See comment in DBapi.delete_instance()
+                    #self.get_control_primary().note_freed_record_number(key)
+
+            finally:
+                cursor.close()
         except:
             pass
 
-    # This may be common between DBPrimary and DBbitPrimary
+    def get_primary_record(self, key):
+        """Return primary record (key, value) given primary key on dbset."""
+        if key is None:
+            return None
+        c = self.table_link.cursor(txn=self.transaction)
+        try:
+            record = c.set(key)
+        finally:
+            c.close()
+        try:
+            return key, record[1].decode()
+        except:
+            if record is None:
+                return record
+            raise
+
+    def make_cursor(self, dbobject, keyrange):
+        """Create a cursor on the dbobject positiioned at start of keyrange."""
+        c = CursorPrimary(dbobject,
+                          keyrange=keyrange,
+                          transaction=self.transaction)
+        if c:
+            self._clientcursors[c] = True
+        return c
+
     def put(self, key, value):
         """Put (key, value) on database and return key for new RECNO records.
 
@@ -1921,34 +786,99 @@ class DBbitPrimary(DBbitPrimaryFile):
         cursor put method is used otherwise.
         
         """
+        # Transferred encode() from delete_instance, edit_instance, and
+        # put_instance, calls (the only ones) so those methods are identical
+        # to sqlite3 versions.
         # Primary assumed to be not DUPSORT nor DUP
         if not key: #key == 0:  # Change test to "key is None" when sure
-            return self._object.append(value)
+            return self.table_link.append(
+                value.encode(), txn=self.transaction)
         else:
-            self._object.put(key, value)
+            self.table_link.put(key, value.encode(), txn=self.transaction)
             return None
 
-    # This may be common between DBPrimary and DBbitPrimary
     def replace(self, key, oldvalue, newvalue):
         """Replace (key, oldvalue) with (key, newvalue) on DB.
         
         (key, newvalue) is put on DB only if (key, oldvalue) is on DB.
         
         """
+        # Transferred encode() from delete_instance, edit_instance, and
+        # put_instance, calls (the only ones) so those methods are identical
+        # to sqlite3 versions.
         try:
             # Primary assumed to be not DUPSORT nor DUP
-            cursor = self._object.cursor()
-            if cursor.set(key):
-                cursor.put(key, newvalue, DB_CURRENT)
+            cursor = self.table_link.cursor(txn=self.transaction)
+            try:
+                if cursor.set(key):
+                    cursor.put(key, newvalue.encode(), DB_CURRENT)
+            finally:
+                cursor.close()
         except:
             pass
 
+    def populate_recordset_key(self, recordset, key=None):
+        """Return recordset on database containing records for key."""
+        if key is None:
+            return
+        r = self.table_link.get(key, txn=self.transaction)
+        if r:
+            s, rn = divmod(key, SegmentSize.db_segment_size)
+            recordset[s] = RecordsetSegmentList(
+                s, None, records=rn.to_bytes(2, byteorder='big'))
+
+    def populate_recordset_key_range(
+        self, recordset, keystart=None, keyend=None):
+        """Return recordset on database containing records for key range."""
+        if keystart is None:
+            segment_start, recnum_start = 0, 1
+        else:
+            segment_start, recnum_start = divmod(keystart,
+                                                 SegmentSize.db_segment_size)
+        if keyend is not None:
+            segment_end, recnum_end = divmod(keyend,
+                                             SegmentSize.db_segment_size)
+        c = self.get_existence_bits_database().cursor(txn=self.transaction)
+        try:
+            r = c.set(segment_start + 1)
+            while r:
+                if keyend is not None:
+                    if r[0] - 1 > segment_end:
+                        break
+                recordset[r[0] - 1] = RecordsetSegmentBitarray(
+                    r[0] - 1, None, records=r[1])
+                r = c.next()
+        finally:
+            c.close()
+        try:
+            recordset[segment_start][:recnum_start] = False
+        except KeyError:
+            pass
+        if keyend is not None:
+            try:
+                recordset[segment_end][recnum_end + 1:] = False
+            except KeyError:
+                pass
+    
+    def populate_recordset_all(self, recordset):
+        """Return recordset containing all referenced records."""
+        c = self.get_existence_bits_database().cursor(txn=self.transaction)
+        try:
+            r = c.first()
+            while r:
+                recordset[r[0] - 1] = RecordsetSegmentBitarray(
+                    r[0] - 1, None, records=r[1])
+                r = c.next()
+        finally:
+            c.close()
+
     def segment_delete(self, segment, record_number):
         """Remove record_number from existence bit map for segment."""
-        # See dbduapi.py DBbitduPrimary.defer_put for model.  Main difference
+        # See dbduapi.Primary.defer_put for model.  Main difference
         # is the write back to database is done immediately (and delete!!).
         # Get the segment existence bit map from database
-        ebmb = self.get_existence_bits_database().get(segment + 1)
+        ebmb = self.get_existence_bits_database().get(segment + 1,
+                                                      txn=self.transaction)
         if ebmb is None:
             # It does not exist so raise an exception
             raise DBapiError('Existence bit map for segment does not exist')
@@ -1958,167 +888,543 @@ class DBbitPrimary(DBbitPrimaryFile):
             ebm.frombytes(ebmb)
             # Set bit for record number and write segment back to database
             ebm[record_number] = False
-            self.get_existence_bits_database().put(segment + 1, ebm.tobytes())
+            self.get_existence_bits_database().put(segment + 1,
+                                                   ebm.tobytes(),
+                                                   txn=self.transaction)
 
     def segment_put(self, segment, record_number):
         """Add record_number to existence bit map for segment."""
-        # See dbduapi.py DBbitduPrimary.defer_put for model.  Main difference
+        # See dbduapi.Primary.defer_put for model.  Main difference
         # is the write back to database is done immediately.
         # Get the segment existence bit map from database
-        ebmb = self.get_existence_bits_database().get(segment + 1)
+        ebmb = self.get_existence_bits_database().get(segment + 1,
+                                                      txn=self.transaction)
         if ebmb is None:
             # It does not exist so create a new empty one
-            ebm = EMPTY_BITARRAY.copy()
+            ebm = SegmentSize.empty_bitarray.copy()
         else:
             # It does exist so convert database representation to bitarray
             ebm = Bitarray()
             ebm.frombytes(ebmb)
         # Set bit for record number and write segment back to database
         ebm[record_number] = True
-        self.get_existence_bits_database().put(segment + 1, ebm.tobytes())
+        self.get_existence_bits_database().put(segment + 1,
+                                               ebm.tobytes(),
+                                               txn=self.transaction)
 
-    # Same as DBPrimary for one key
-    def populate_recordset_key(self, recordset, key=None):
-        """Return recordset on database containing records for key."""
-        r = self._object.get(key)
-        if r:
-            s, rn = divmod(key, DB_SEGMENT_SIZE)
-            recordset[s] = SegmentList(
-                s, None, records=rn.to_bytes(2, byteorder='big'))
-
-    # Same algorithm as DBPrimary but look at segment record
-    def populate_recordset_key_startswith(self, key, cache_size=1):
-        """Raise DBapiError - populate_recordset_key_startswith primary db."""
-        raise DBapiError(
-            ''.join(
-                ('populate_recordset_key_startswith not available ',
-                 'on primary database')))
-
-    def populate_recordset_key_range(
-        self, recordset, keystart=None, keyend=None):
-        """Return recordset on database containing records for key range."""
-        if keystart is None:
-            segment_start, recnum_start = 0, 1
-        else:
-            segment_start, recnum_start = divmod(keystart, DB_SEGMENT_SIZE)
-        if keyend is not None:
-            segment_end, record_number_end = divmod(keyend, DB_SEGMENT_SIZE)
-        c = self.get_existence_bits_database()._cursor
-        r = c.set(segment_start + 1)
-        while r:
-            if keyend is not None:
-                if r[0] - 1 > segment_end:
-                    break
-            recordset[r[0] - 1] = SegmentBitarray(r[0] - 1, None, records=r[1])
-            r = c.next()
+    def get_high_record(self):
+        """Return record with highest record number."""
+        c = self.table_link.cursor(txn=self.transaction)
         try:
-            recordset[segment_start][:recnum_start] = False
-        except KeyError:
-            pass
-        try:
-            recordset[segment_end][recnum_end + 1:] = False
-        except KeyError:
-            pass
+            return c.last()
+        finally:
+            c.close()
+
+
+class Secondary(SecondaryFile, secondary.Secondary, _DatabaseEncoders):
     
-    def populate_recordset_all(self, recordset):
-        """Return recordset containing all referenced records."""
-        c = self.get_existence_bits_database().cursor()
-        r = c.first()
-        while r:
-            recordset[r[0] - 1] = SegmentBitarray(r[0] - 1, None, records=r[1])
-            r = c.next()
+    """Add update, cursor, and recordset processing, to SecondaryFile.
 
-    def populate_recordset_from_segment(self, recordset, segment):
-        """Populate recordset with records in segment."""
-        recordset.clear_recordset()
-        k, v = segment
-        s = int.from_bytes(k, byteorder='big')
-        if len(v) + len(k) == LENGTH_SEGMENT_LIST_REFERENCE:
-            srn = int.from_bytes(v[2:], byteorder='big')
-            bs = self.get_segment_list().get(srn)
-            if bs is None:
-                raise DatabaseError('Segment record missing')
-            recordset[s] = SegmentList(s, None, records=bs)
-        elif len(v) + len(k) == LENGTH_SEGMENT_BITARRAY_REFERENCE:
-            srn = int.from_bytes(v[3:], byteorder='big')
-            bs = self.get_segment_bits().get(srn)
-            if bs is None:
-                raise DatabaseError('Segment record missing')
-            recordset[s] = SegmentBitarray(s, None, records=bs)
-        else:
-            recordset[s] = SegmentList(s, None, records=v)
-    
-    def file_records_under(self, recordset, key):
-        """Raise exception as DBbitPrimary.file_records_under() is nonsense."""
-        raise DatabaseError(
-            'file_records_under not implemented for DBbitPrimary')
+    This class provides methods to add, delete, and modify, records on the
+    secondary database.
 
+    This class provides methods to process recordsets created from records in
+    a secondary database.  A dictionary of created recordsets is maintained
+    and any that exist when the secondary database is closed are destroyed too.
 
-class DBbitSecondary(DBbitSecondaryFile):
-    
-    """Define a DB file with record access and deferred update methods.
-
-    Methods added:
-
-    file_records_under
-    make_cursor
-    populate_recordset_all
-    populate_recordset_from_segment
-    populate_recordset_key
-    populate_recordset_key_range
-    populate_recordset_key_startswith
-    segment_delete
-    segment_put
-
-    Methods overridden:
-
-    None
-
-    Methods extended:
-
-    __init__
-    close
-    
+    The make_cursor method creates a CursorSecondary instance, a Berkeley
+    DB style cursor, which is used to traverse the secondary database.  A
+    dictionary of these cursors is maintained and any that exist when the
+    secondary database is closed are destroyed too.
     """
-
-    def __init__(self, *args):
-        """Bitmapped secondary database.  See superclass for *args."""
-        super(DBbitSecondary, self).__init__(*args)
-        self._clientcursors = dict()
 
     def make_cursor(self, dbobject, keyrange):
         """Create a cursor on the dbobject positiioned at start of keyrange."""
-        c = CursorDBbitSecondary(dbobject, keyrange)
+        c = CursorSecondary(dbobject,
+                            keyrange=keyrange,
+                            transaction=self.transaction)
         if c:
             self._clientcursors[c] = True
         return c
     
-    def close(self):
-        """Close DB and any cursors."""
-        for c in list(self._clientcursors.keys()):
-            c.close()
-        self._clientcursors.clear()
-        super(DBbitSecondary, self).close()
+    def populate_recordset_key_like(self, recordset, key):
+        """Return recordset containing database records with keys like key."""
+        pattern = b'.*?' + key
+        cursor = self.make_cursor(self, key)
+        try:
+            c = cursor._cursor
+            r = c.first()
+            while r:
+                k, v = r
+                if re.match(pattern, k, flags=re.IGNORECASE|re.DOTALL):
+                    s = int.from_bytes(v[:4], byteorder='big')
+                    if len(v) == LENGTH_SEGMENT_LIST_REFERENCE:
+                        srn = int.from_bytes(v[6:], byteorder='big')
+                        bs = self.get_primary_segment_list().get(srn)
+                        if bs is None:
+                            raise DBapiError('Segment record missing')
+                        if s in recordset:
+                            recordset[s] |= RecordsetSegmentList(
+                                s, None, records=bs)
+                        else:
+                            recordset[s] = RecordsetSegmentList(
+                                s, None, records=bs)
+                    elif len(v) == LENGTH_SEGMENT_BITARRAY_REFERENCE:
+                        srn = int.from_bytes(v[7:], byteorder='big')
+                        bs = self.get_primary_segment_bits().get(srn)
+                        if bs is None:
+                            raise DBapiError('Segment record missing')
+                        if s in recordset:
+                            recordset[s] |= RecordsetSegmentBitarray(
+                                s, None, records=bs)
+                        else:
+                            recordset[s] = RecordsetSegmentBitarray(
+                                s, None, records=bs)
+                    else:
+                        if s in recordset:
+                            recordset[s] |= RecordsetSegmentList(
+                                s, None, records=v[4:])
+                        else:
+                            recordset[s] = RecordsetSegmentList(
+                                s, None, records=v[4:])
+                r = c.next()
+        finally:
+            cursor.close()
     
-    def segment_delete(self, key, segment, record_number):
-        """Remove record_number from segment for key and write to database"""
-        # See DBbitSecondary.segment_put (in this class definition) for model.
-        cursor = self._object.cursor()
-        r = cursor.set_range(key)
-        while r:
-            k, v = r
-            if k != key:
-                # Assume that multiple requests to delete an index value have
-                # been made for a record.  The segment_put method uses sets to
-                # avoid adding multiple entries.  Consider using set rather
-                # than list in the pack method of the ...value... subclass of
-                # Value if this will happen a lot.
-                return
-            sr = int.from_bytes(v[:4], byteorder='big')
-            if sr == segment:
+    def populate_recordset_key(self, recordset, key):
+        """Return recordset of segments containing records for key."""
+        cursor = self.make_cursor(self, key)
+        try:
+            c = cursor._cursor
+            r = c.set_range(key)
+            while r:
+                k, v = r
+                if k != key:
+                    break
+                s = int.from_bytes(v[:4], byteorder='big')
+                if len(v) == LENGTH_SEGMENT_LIST_REFERENCE:
+                    srn = int.from_bytes(v[6:], byteorder='big')
+                    bs = self.get_primary_segment_list().get(srn)
+                    if bs is None:
+                        raise DBapiError('Segment record missing')
+                    recordset[s] = RecordsetSegmentList(s, None, records=bs)
+                elif len(v) == LENGTH_SEGMENT_BITARRAY_REFERENCE:
+                    srn = int.from_bytes(v[7:], byteorder='big')
+                    bs = self.get_primary_segment_bits().get(srn)
+                    if bs is None:
+                        raise DBapiError('Segment record missing')
+                    recordset[s] = RecordsetSegmentBitarray(s, None, records=bs)
+                else:
+                    recordset[s] = RecordsetSegmentList(s, None, records=v[4:])
+                r = c.next()
+        finally:
+            cursor.close()
+
+    def populate_recordset_key_startswith(self, recordset, key):
+        """Return recordset on database containing records for keys starting."""
+        cursor = self.make_cursor(self, key)
+        try:
+            c = cursor._cursor
+            r = c.set_range(key)
+            while r:
+                if not r[0].startswith(key):
+                    break
+                v = r[1]
+                s = int.from_bytes(v[:4], byteorder='big')
+                if len(v) == LENGTH_SEGMENT_LIST_REFERENCE:
+                    srn = int.from_bytes(v[6:], byteorder='big')
+                    bs = self.get_primary_segment_list().get(srn)
+                    if bs is None:
+                        raise DBapiError('Segment record missing')
+                    if s not in recordset:
+                        recordset[s] = RecordsetSegmentBitarray(s, None)
+                    sba = recordset[s]._bitarray# needs tidying
+                    for i in range(0, len(bs), 2):
+                        sba[int.from_bytes(bs[i:i+2], byteorder='big')] = True
+                elif len(v) == LENGTH_SEGMENT_BITARRAY_REFERENCE:
+                    srn = int.from_bytes(v[7:], byteorder='big')
+                    bs = self.get_primary_segment_bits().get(srn)
+                    if bs is None:
+                        raise DBapiError('Segment record missing')
+                    if s not in recordset:
+                        recordset[s] = RecordsetSegmentBitarray(s, None)
+                    sba = RecordsetSegmentBitarray(s, None, records=bs)
+                    recordset[s] |= sba
+                else:
+                    rn = int.from_bytes(v[4:], byteorder='big')
+                    if s not in recordset:
+                        recordset[s] = RecordsetSegmentBitarray(s, None)
+                    recordset[s]._bitarray[rn] = True# needs tidying
+                r = c.next()
+        finally:
+            cursor.close()
+
+    def populate_recordset_key_range(
+        self, recordset, keystart=None, keyend=None):
+        """Return recordset on database containing records for key range."""
+        cursor = self.make_cursor(self, keystart)
+        try:
+            c = cursor._cursor
+            if keystart is None:
+                r = c.first()
+            else:
+                r = c.set_range(keystart)
+            while r:
+                if keyend is not None:
+                    if r[0] > keyend:
+                        break
+                v = r[1]
+                s = int.from_bytes(v[:4], byteorder='big')
+                if len(v) == LENGTH_SEGMENT_LIST_REFERENCE:
+                    srn = int.from_bytes(v[6:], byteorder='big')
+                    bs = self.get_primary_segment_list().get(srn)
+                    if bs is None:
+                        raise DBapiError('Segment record missing')
+                    if s not in recordset:
+                        recordset[s] = RecordsetSegmentBitarray(s, None)
+                    sba = recordset[s]._bitarray# needs tidying
+                    for i in range(0, len(bs), 2):
+                        sba[int.from_bytes(bs[i:i+2], byteorder='big')] = True
+                elif len(v) == LENGTH_SEGMENT_BITARRAY_REFERENCE:
+                    srn = int.from_bytes(v[7:], byteorder='big')
+                    bs = self.get_primary_segment_bits().get(srn)
+                    if bs is None:
+                        raise DBapiError('Segment record missing')
+                    if s not in recordset:
+                        recordset[s] = RecordsetSegmentBitarray(s, None)
+                    sba = RecordsetSegmentBitarray(s, None, records=bs)
+                    recordset[s] |= sba
+                else:
+                    rn = int.from_bytes(v[4:], byteorder='big')
+                    if s not in recordset:
+                        recordset[s] = RecordsetSegmentBitarray(s, None)
+                    recordset[s]._bitarray[rn] = True# needs tidying
+                r = c.next()
+        finally:
+            cursor.close()
+    
+    def populate_recordset_all(self, recordset):
+        """Return recordset containing all referenced records."""
+        cursor = self.make_cursor(self, None)
+        try:
+            c = cursor._cursor
+            r = c.first()
+            while r:
+                v = r[1]
+                s = int.from_bytes(v[:4], byteorder='big')
+                if len(v) == LENGTH_SEGMENT_LIST_REFERENCE:
+                    srn = int.from_bytes(v[6:], byteorder='big')
+                    bs = self.get_primary_segment_list().get(srn)
+                    if bs is None:
+                        raise DBapiError('Segment record missing')
+                    if s not in recordset:
+                        recordset[s] = RecordsetSegmentBitarray(s, None)
+                    sba = recordset[s]._bitarray# needs tidying
+                    for i in range(0, len(bs), 2):
+                        sba[int.from_bytes(bs[i:i+2], byteorder='big')] = True
+                elif len(v) == LENGTH_SEGMENT_BITARRAY_REFERENCE:
+                    srn = int.from_bytes(v[7:], byteorder='big')
+                    bs = self.get_primary_segment_bits().get(srn)
+                    if bs is None:
+                        raise DBapiError('Segment record missing')
+                    if s not in recordset:
+                        recordset[s] = RecordsetSegmentBitarray(s, None)
+                    sba = RecordsetSegmentBitarray(s, None, records=bs)
+                    recordset[s] |= sba
+                else:
+                    rn = int.from_bytes(v[4:], byteorder='big')
+                    if s not in recordset:
+                        recordset[s] = RecordsetSegmentBitarray(s, None)
+                    recordset[s]._bitarray[rn] = True# needs tidying
+                r = c.next()
+        finally:
+            cursor.close()
+
+    def populate_segment(self, segment):
+        """Helper for segment_delete and segment_put methods."""
+        k, v = segment
+        s = int.from_bytes(k, byteorder='big')
+        if len(v) + len(k) == LENGTH_SEGMENT_LIST_REFERENCE:
+            srn = int.from_bytes(v[2:], byteorder='big')
+            bs = self.get_primary_segment_list().get(srn)
+            if bs is None:
+                raise DBapiError('Segment record missing')
+            return RecordsetSegmentList(s, None, records=bs)
+        elif len(v) + len(k) == LENGTH_SEGMENT_BITARRAY_REFERENCE:
+            srn = int.from_bytes(v[3:], byteorder='big')
+            bs = self.get_primary_segment_bits().get(srn)
+            if bs is None:
+                raise DBapiError('Segment record missing')
+            return RecordsetSegmentBitarray(s, None, records=bs)
+        else:
+            return RecordsetSegmentList(s, None, records=v)
+
+    def make_segment(self, key, segment_number, record_count, records):
+        """Return a Segment subclass instance created from arguments."""
+        if record_count == 1:
+            return RecordsetSegmentInt(
+                segment_number,
+                None,
+                records=records.to_bytes(2, byteorder='big'))
+        else:
+            if len(records) == SegmentSize.db_segment_size_bytes:
+                return RecordsetSegmentBitarray(
+                    segment_number, None, records=records)
+            else:
+                return RecordsetSegmentList(
+                    segment_number, None, records=records)
+    
+    def file_records_under(self, recordset, key):
+        """Replace records for index dbname[key] with recordset records."""
+        # Delete existing segments for key
+        self.unfile_records_under(key)
+        # Put new segments for key
+        cursor = self.table_link.cursor(txn=self.transaction)
+        try:
+            recordset.normalize()
+            for sn in recordset.sorted_segnums:
+                if isinstance(recordset.rs_segments[sn], RecordsetSegmentBitarray):
+                    count = recordset.rs_segments[sn].count_records()
+                    # stub call to get srn_bits from reuse stack
+                    srn_bits = self.get_primary_database(
+                        ).get_control_secondary().get_freed_bits_page()
+                    if srn_bits == 0:
+                        srn_bits = self.get_primary_segment_bits(
+                            ).append(recordset.rs_segments[sn].tobytes(),
+                                     txn=self.transaction)
+                    else:
+                        self.get_primary_segment_bits(
+                            ).put(srn_bits,
+                                  recordset.rs_segments[sn].tobytes(),
+                                  txn=self.transaction)
+                    cursor.put(
+                        key,
+                        b''.join(
+                            (sn.to_bytes(4, byteorder='big'),
+                             count.to_bytes(3, byteorder='big'),
+                             srn_bits.to_bytes(4, byteorder='big'))),
+                        DB_KEYLAST)
+                elif isinstance(recordset.rs_segments[sn], RecordsetSegmentList):
+                    count = recordset.rs_segments[sn].count_records()
+                    # stub call to get srn_list from reuse stack
+                    srn_list = self.get_primary_database(
+                        ).get_control_secondary().get_freed_list_page()
+                    if srn_list == 0:
+                        srn_list = self.get_primary_segment_list().append(
+                            recordset.rs_segments[sn].tobytes(),
+                            txn=self.transaction)
+                    else:
+                        self.get_primary_segment_list().put(
+                            srn_list,
+                            recordset.rs_segments[sn].tobytes(),
+                            txn=self.transaction)
+                    cursor.put(
+                        key,
+                        b''.join(
+                            (sn.to_bytes(4, byteorder='big'),
+                             count.to_bytes(2, byteorder='big'),
+                             srn_list.to_bytes(4, byteorder='big'))),
+                        DB_KEYLAST)
+                elif isinstance(recordset.rs_segments[sn], RecordsetSegmentInt):
+                    cursor.put(
+                        key,
+                        b''.join(
+                            (sn.to_bytes(4, byteorder='big'),
+                             recordset.rs_segments[sn].tobytes())),
+                        DB_KEYLAST)
+        finally:
+            cursor.close()
+    
+    def unfile_records_under(self, key):
+        """Delete the reference to records in file under key.
+
+        The existing reference by key, usually created by file_records_under,
+        is deleted.
+
+        """
+        # Delete existing segments for key
+        cursor = self.table_link.cursor(txn=self.transaction)
+        try:
+            r = cursor.set_range(key)
+            while r:
+                k, v = r
+                if k != key:
+                    break
+                sr = int.from_bytes(v[:4], byteorder='big')
                 if len(v) == LENGTH_SEGMENT_LIST_REFERENCE:
                     srn_list = int.from_bytes(v[6:], byteorder='big')
-                    bs = self.get_primary_segment_list().get(srn_list)
+                    # stub call to put srn_list on reuse stack
+                    self.get_primary_database().get_control_secondary(
+                        ).note_freed_list_page(srn_list)
+                    # ok if reuse bitmap but not if reuse stack
+                    self.get_primary_segment_list(
+                        ).delete(srn_list, txn=self.transaction)
+                    #cursor.delete()
+                elif len(v) == LENGTH_SEGMENT_BITARRAY_REFERENCE:
+                    srn_bits = int.from_bytes(v[7:], byteorder='big')
+                    # stub call to put srn_bits on reuse stack
+                    self.get_primary_database().get_control_secondary(
+                        ).note_freed_bits_page(srn_bits)
+                    # ok if reuse bitmap but not if reuse stack
+                    self.get_primary_segment_bits(
+                        ).delete(srn_bits, txn=self.transaction)
+                    #cursor.delete()
+                #elif record_number == int.from_bytes(v[4:], byteorder='big'):
+                    #cursor.delete()
+                r = cursor.next()
+            try:
+                self.table_link.delete(key, txn=self.transaction)
+            except DBNotFoundError:
+                pass
+        finally:
+            cursor.close()
+
+    def get_first_primary_key_for_index_key(self, key):
+        """Return first primary key for secondary key in dbname for dbname.
+
+        This method should be ued only on secondary DBs whose keys each have a
+        unique value.
+        
+        """
+        if isinstance(key, str):
+            key = key.encode()
+        try:
+            c = self.table_link.cursor(txn=self.transaction)
+            try:
+                v = c.set(key)[1]
+            finally:
+                c.close()
+        except:
+            if not isinstance(key, bytes):
+                raise
+            return None
+        if len(v) != LENGTH_SEGMENT_RECORD_REFERENCE:
+            raise DBapiError('Index must refer to unique record')
+        return (
+            int.from_bytes(v[:4],
+                           byteorder='big') * SegmentSize.db_segment_size +
+            int.from_bytes(v[4:], byteorder='big'))
+
+    def find_values(self, valuespec):
+        """Yield values meeting valuespec specification."""
+        cursor = self.table_link.cursor(txn=self.transaction)
+        try:
+            if valuespec.above_value and valuespec.below_value:
+                r = cursor.set_range(valuespec.above_value.encode())
+                if r:
+                    if r[0] == valuespec.above_value.encode():
+                        r = cursor.next_nodup()
+                while r:
+                    k = r[0].decode()
+                    if k >= valuespec.below_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(k):
+                        yield k
+                    r = cursor.next_nodup()
+            elif valuespec.above_value and valuespec.to_value:
+                r = cursor.set_range(valuespec.above_value.encode())
+                if r:
+                    if r[0] == valuespec.above_value.encode():
+                        r = cursor.next_nodup()
+                while r:
+                    k = r[0].decode()
+                    if k > valuespec.to_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(k):
+                        yield k
+                    r = cursor.next_nodup()
+            elif valuespec.from_value and valuespec.to_value:
+                r = cursor.set_range(valuespec.from_value.encode())
+                while r:
+                    k = r[0].decode()
+                    if k > valuespec.to_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(k):
+                        yield k
+                    r = cursor.next_nodup()
+            elif valuespec.from_value and valuespec.below_value:
+                r = cursor.set_range(valuespec.from_value.encode())
+                while r:
+                    k = r[0].decode()
+                    if k >= valuespec.below_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(k):
+                        yield k
+                    r = cursor.next_nodup()
+            elif valuespec.above_value:
+                r = cursor.set_range(valuespec.above_value.encode())
+                if r:
+                    if r[0] == valuespec.above_value.encode():
+                        r = cursor.next_nodup()
+                while r:
+                    k = r[0].decode()
+                    if valuespec.apply_pattern_and_set_filters_to_value(k):
+                        yield k
+                    r = cursor.next_nodup()
+            elif valuespec.from_value:
+                r = cursor.set_range(valuespec.from_value.encode())
+                while r:
+                    k = r[0].decode()
+                    if valuespec.apply_pattern_and_set_filters_to_value(k):
+                        yield k
+                    r = cursor.next_nodup()
+            elif valuespec.to_value:
+                r = cursor.first()
+                while r:
+                    k = r[0].decode()
+                    if k > valuespec.to_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(k):
+                        yield k
+                    r = cursor.next_nodup()
+            elif valuespec.below_value:
+                r = cursor.first()
+                while r:
+                    k = r[0].decode()
+                    if k >= valuespec.below_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(k):
+                        yield k
+                    r = cursor.next_nodup()
+            else:
+                r = cursor.first()
+                while r:
+                    k = r[0].decode()
+                    if valuespec.apply_pattern_and_set_filters_to_value(k):
+                        yield k
+                    r = cursor.next_nodup()
+        finally:
+            cursor.close()
+    
+    def segment_delete(self, key, segment, record_number):
+        """Remove record_number from segment for key and write to database."""
+        # Transferred from delete_instance, edit_instance, and put_instance,
+        # calls (the only ones) so those methods are identical to sqlite3
+        # versions.
+        key = key.encode()
+        # See dbapi.Secondary.segment_put (in this class definition) for model.
+        cursor = self.table_link.cursor(txn=self.transaction)
+        try:
+            r = cursor.set_range(key)
+            while r:
+                k, v = r
+                if k != key:
+                    # Assume that multiple requests to delete an index value
+                    # have been made for a record.  The segment_put method uses
+                    # sets to avoid adding multiple entries.  Consider using
+                    # set rather than list in the pack method of the subclass
+                    # of Value if this will happen a lot.
+                    return
+                sr = int.from_bytes(v[:4], byteorder='big')
+                if sr < segment:
+                    r = cursor.next_dup()
+                    continue
+                elif sr > segment:
+                    return
+                if len(v) == LENGTH_SEGMENT_LIST_REFERENCE:
+                    srn_list = int.from_bytes(v[6:], byteorder='big')
+                    bs = self.get_primary_segment_list(
+                        ).get(srn_list, txn=self.transaction)
                     recnums = {int.from_bytes(bs[i:i+2], byteorder='big')
                                for i in range(0, len(bs), 2)}
                     # ignore possibility record_number already absent
@@ -2133,7 +1439,8 @@ class DBbitSecondary(DBbitSecondaryFile):
                         self.get_primary_database().get_control_secondary(
                             ).note_freed_list_page(srn_list)
                         # ok if reuse bitmap but not if reuse stack
-                        self.get_primary_segment_list().delete(srn_list)
+                        self.get_primary_segment_list(
+                            ).delete(srn_list, txn=self.transaction)
                         cursor.delete()
                         if count:
                             cursor.put(k, ref, DB_KEYLAST)
@@ -2141,7 +1448,8 @@ class DBbitSecondary(DBbitSecondaryFile):
                         seg = b''.join(tuple(
                             rn.to_bytes(length=2, byteorder='big')
                             for rn in sorted(recnums)))
-                        self.get_primary_segment_list().put(srn_list, seg)
+                        self.get_primary_segment_list(
+                            ).put(srn_list, seg, txn=self.transaction)
                         cursor.delete()
                         cursor.put(
                             k,
@@ -2152,15 +1460,27 @@ class DBbitSecondary(DBbitSecondaryFile):
                             DB_KEYLAST)
                 elif len(v) == LENGTH_SEGMENT_BITARRAY_REFERENCE:
                     srn_bits = int.from_bytes(v[7:], byteorder='big')
-                    bs = self.get_primary_segment_bits().get(srn_bits)
+                    bs = self.get_primary_segment_bits(
+                        ).get(srn_bits, txn=self.transaction)
                     if bs is None:
-                        raise DatabaseError('Segment record missing')
+                        raise DBapiError('Segment record missing')
                     recnums = Bitarray()
                     recnums.frombytes(bs)
                     # ignore possibility record_number already absent
                     recnums[record_number] = False
                     count = recnums.count()
-                    if count < DB_CONVERSION_LIMIT:
+                    if count > SegmentSize.db_lower_conversion_limit:
+                        self.get_primary_segment_bits().put(
+                            srn_bits, recnums.tobytes(), txn=self.transaction)
+                        cursor.delete()
+                        cursor.put(
+                            k,
+                            b''.join(
+                                (v[:4],
+                                 recnums.count().to_bytes(3, byteorder='big'),
+                                 v[7:])),
+                            DB_KEYLAST)
+                    else:
                         recnums = {rn for rn in recnums.search(SINGLEBIT)}
                         # stub call to get srn_list from reuse stack
                         srn_list = self.get_primary_database(
@@ -2169,13 +1489,15 @@ class DBbitSecondary(DBbitSecondaryFile):
                             srn_list = self.get_primary_segment_list().append(
                                 b''.join(
                                     [rn.to_bytes(2, byteorder='big')
-                                     for rn in sorted(recnums)]))
+                                     for rn in sorted(recnums)]),
+                                txn=self.transaction)
                         else:
                             self.get_primary_segment_list().put(
                                 srn_list,
                                 b''.join(
                                     [rn.to_bytes(2, byteorder='big')
-                                     for rn in sorted(recnums)]))
+                                     for rn in sorted(recnums)]),
+                                txn=self.transaction)
                         cursor.delete()
                         cursor.put(
                             k,
@@ -2188,75 +1510,82 @@ class DBbitSecondary(DBbitSecondaryFile):
                         self.get_primary_database().get_control_secondary(
                             ).note_freed_bits_page(srn_bits)
                         # ok if reuse bitmap but not if reuse stack
-                        self.get_primary_segment_bits().delete(srn_bits)
-                    else:
-                        self.get_primary_segment_bits().put(
-                            srn_bits, recnums.tobytes())
-                        cursor.delete()
-                        cursor.put(
-                            k,
-                            b''.join(
-                                (v[:4],
-                                 recnums.count().to_bytes(3, byteorder='big'),
-                                 v[7:])),
-                            DB_KEYLAST)
+                        self.get_primary_segment_bits(
+                            ).delete(srn_bits, txn=self.transaction)
                 elif record_number == int.from_bytes(v[4:], byteorder='big'):
                     cursor.delete()
                 return
-            elif sr > segment:
-                return
-            else:
-                r = cursor._nodup()
+        finally:
+            cursor.close()
     
     def segment_put(self, key, segment, record_number):
-        """Add record_number to segment for key and write to database"""
-        # See dbduapi.py DBbitduSecondary.defer_put for model.
+        """Add record_number to segment for key and write to database."""
+        # Transferred from delete_instance, edit_instance, and put_instance,
+        # calls (the only ones) so those methods are identical to sqlite3
+        # versions.
+        key = key.encode()
+        # See dbduapi.Secondary.defer_put for model.
         # The dance to find the segment record is a reason to convert these
         # secondary databases from DUP to NODUP.  Also a NODUP database allows
         # implementation equivalent to DPT 'FOR EACH VALUE' directly and easy
         # counting of values for manipulation of scrollbar sliders.
         # Assumption is that new records usually go in last segment for value.
-        cursor = self._object.cursor()
-        r = cursor.set_range(key)
-        while r:
-            k, v = r
-            if k != key:
-                # No index entry for key yet
-                cursor.put(
-                    key,
-                    b''.join(
-                        (segment.to_bytes(4, byteorder='big'),
-                         record_number.to_bytes(2, byteorder='big'))),
-                    DB_KEYLAST)
-                return
-            sr = int.from_bytes(v[:4], byteorder='big')
-            if sr == segment:
+        cursor = self.table_link.cursor(txn=self.transaction)
+        try:
+            r = cursor.set_range(key)
+            while r:
+                k, v = r
+                if k != key:
+                    # No index entry for key yet
+                    cursor.put(
+                        key,
+                        b''.join(
+                            (segment.to_bytes(4, byteorder='big'),
+                             record_number.to_bytes(2, byteorder='big'))),
+                        DB_KEYLAST)
+                    return
+                sr = int.from_bytes(v[:4], byteorder='big')
+                if sr < segment:
+                    r = cursor.next_dup()
+                    continue
+                elif sr > segment:
+                    cursor.put(
+                        k,
+                        b''.join(
+                            (segment.to_bytes(4, byteorder='big'),
+                             record_number.to_bytes(2, byteorder='big'))),
+                        DB_KEYLAST)
+                    return
                 if len(v) == LENGTH_SEGMENT_LIST_REFERENCE:
                     srn_list = int.from_bytes(v[6:], byteorder='big')
-                    bs = self.get_primary_segment_list().get(srn_list)
+                    bs = self.get_primary_segment_list(
+                        ).get(srn_list, txn=self.transaction)
                     recnums = {int.from_bytes(bs[i:i+2], byteorder='big')
                                for i in range(0, len(bs), 2)}
                     # ignore possibility record_number already present
                     recnums.add(record_number)
                     count = len(recnums)
-                    if count > DB_CONVERSION_LIMIT:
-                        seg = EMPTY_BITARRAY.copy()
+                    if count > SegmentSize.db_upper_conversion_limit:
+                        seg = SegmentSize.empty_bitarray.copy()
                         for rn in recnums:
                             seg[rn] = True
                         # stub call to put srn_list on reuse stack
                         self.get_primary_database().get_control_secondary(
                             ).note_freed_list_page(srn_list)
                         # ok if reuse bitmap but not if reuse stack
-                        self.get_primary_segment_list().delete(srn_list)
+                        self.get_primary_segment_list(
+                            ).delete(srn_list, txn=self.transaction)
                         # stub call to get srn_bits from reuse stack
                         srn_bits = self.get_primary_database(
                             ).get_control_secondary().get_freed_bits_page()
                         if srn_bits == 0:
                             srn_bits = self.get_primary_segment_bits(
-                                ).append(seg.tobytes())
+                                ).append(seg.tobytes(), txn=self.transaction)
                         else:
                             self.get_primary_segment_bits(
-                                ).put(srn_bits, seg.tobytes())
+                                ).put(srn_bits,
+                                      seg.tobytes(),
+                                      txn=self.transaction)
                         cursor.delete()
                         cursor.put(
                             k,
@@ -2269,7 +1598,8 @@ class DBbitSecondary(DBbitSecondaryFile):
                         seg = b''.join(tuple(
                             rn.to_bytes(length=2, byteorder='big')
                             for rn in sorted(recnums)))
-                        self.get_primary_segment_list().put(srn_list, seg)
+                        self.get_primary_segment_list(
+                            ).put(srn_list, seg, txn=self.transaction)
                         cursor.delete()
                         cursor.put(
                             k,
@@ -2280,13 +1610,15 @@ class DBbitSecondary(DBbitSecondaryFile):
                             DB_KEYLAST)
                 elif len(v) == LENGTH_SEGMENT_BITARRAY_REFERENCE:
                     srn = int.from_bytes(v[7:], byteorder='big')
-                    bs = self.get_primary_segment_bits().get(srn)
+                    bs = self.get_primary_segment_bits(
+                        ).get(srn, txn=self.transaction)
                     if bs is None:
-                        raise DatabaseError('Segment record missing')
+                        raise DBapiError('Segment record missing')
                     recnums = Bitarray()
                     recnums.frombytes(bs)
                     recnums[record_number] = True
-                    self.get_primary_segment_bits().put(srn, recnums.tobytes())
+                    self.get_primary_segment_bits(
+                        ).put(srn, recnums.tobytes(), txn=self.transaction)
                     cursor.delete()
                     cursor.put(
                         k,
@@ -2306,14 +1638,16 @@ class DBbitSecondary(DBbitSecondaryFile):
                                 b''.join(
                                     (record_number.to_bytes(
                                         length=2, byteorder='big'),
-                                     rn.to_bytes(length=2, byteorder='big'))))
+                                     rn.to_bytes(length=2, byteorder='big'))),
+                                txn=self.transaction)
                         else:
                             self.get_primary_segment_list().put(
                                 srn_list,
                                 b''.join(
                                     (record_number.to_bytes(
                                         length=2, byteorder='big'),
-                                     rn.to_bytes(length=2, byteorder='big'))))
+                                     rn.to_bytes(length=2, byteorder='big'))),
+                                txn=self.transaction)
                         cursor.delete()
                         cursor.put(
                             k,
@@ -2331,14 +1665,16 @@ class DBbitSecondary(DBbitSecondaryFile):
                                 b''.join(
                                     (rn.to_bytes(length=2, byteorder='big'),
                                      record_number.to_bytes(
-                                        length=2, byteorder='big'))))
+                                        length=2, byteorder='big'))),
+                                txn=self.transaction)
                         else:
                             self.get_primary_segment_list().put(
                                 srn_list,
                                 b''.join(
                                     (rn.to_bytes(length=2, byteorder='big'),
                                      record_number.to_bytes(
-                                        length=2, byteorder='big'))))
+                                        length=2, byteorder='big'))),
+                                txn=self.transaction)
                         cursor.delete()
                         cursor.put(
                             k,
@@ -2348,573 +1684,101 @@ class DBbitSecondary(DBbitSecondaryFile):
                                  srn_list.to_bytes(4, byteorder='big'))),
                             DB_KEYLAST)
                 return
-            elif sr > segment:
+            else:
+                # No index entry for key yet because database empty
                 cursor.put(
-                    k,
+                    key,
                     b''.join(
                         (segment.to_bytes(4, byteorder='big'),
                          record_number.to_bytes(2, byteorder='big'))),
                     DB_KEYLAST)
-                return
-            else:
-                r = cursor._nodup()
-        else:
-            # No index entry for key yet because database empty
-            cursor.put(
-                key,
-                b''.join(
-                    (segment.to_bytes(4, byteorder='big'),
-                     record_number.to_bytes(2, byteorder='big'))),
-                DB_KEYLAST)
+        finally:
+            cursor.close()
+
+
+class Definition(definition.Definition):
     
-    def populate_recordset_key(self, recordset, key):
-        """Return recordset of segments containing records for key."""
-        cursor = self.make_cursor(self, key)
-        c = cursor._cursor
-        r = c.set_range(key)
-        while r:
-            k, v = r
-            if k != key:
-                break
-            s = int.from_bytes(v[:4], byteorder='big')
-            if len(v) == LENGTH_SEGMENT_LIST_REFERENCE:
-                srn = int.from_bytes(v[6:], byteorder='big')
-                bs = self.get_primary_segment_list().get(srn)
-                if bs is None:
-                    raise DatabaseError('Segment record missing')
-                recordset[s] = SegmentList(s, None, records=bs)
-            elif len(v) == LENGTH_SEGMENT_BITARRAY_REFERENCE:
-                srn = int.from_bytes(v[7:], byteorder='big')
-                bs = self.get_primary_segment_bits().get(srn)
-                if bs is None:
-                    raise DatabaseError('Segment record missing')
-                recordset[s] = SegmentBitarray(s, None, records=bs)
-            else:
-                recordset[s] = SegmentList(s, None, records=v[4:])
-            r = c.next()
-        del c
-        cursor.close()
+    """Define method to create secondary database classes for bsddb3 interface.
 
-    def populate_recordset_key_startswith(self, recordset, key):
-        """Return recordset on database containing records for keys starting."""
-        cursor = self.make_cursor(self, key)
-        c = cursor._cursor
-        r = c.set_range(key)
-        while r:
-            if not r[0].startswith(key):
-                break
-            v = r[1]
-            s = int.from_bytes(v[:4], byteorder='big')
-            if len(v) == LENGTH_SEGMENT_LIST_REFERENCE:
-                srn = int.from_bytes(v[6:], byteorder='big')
-                bs = self.get_primary_segment_list().get(srn)
-                if bs is None:
-                    raise DatabaseError('Segment record missing')
-                if s not in recordset:
-                    recordset[s] = SegmentBitarray(s, None)
-                sba = recordset[s]._bitarray# needs tidying
-                for i in range(0, len(bs), 2):
-                    sba[int.from_bytes(bs[i:i+2], byteorder='big')] = True
-            elif len(v) == LENGTH_SEGMENT_BITARRAY_REFERENCE:
-                srn = int.from_bytes(v[7:], byteorder='big')
-                bs = self.get_primary_segment_bits().get(srn)
-                if bs is None:
-                    raise DatabaseError('Segment record missing')
-                if s not in recordset:
-                    recordset[s] = SegmentBitarray(s, None)
-                sba = SegmentBitarray(s, None, records=bs)
-                recordset[s] |= sba
-            else:
-                rn = int.from_bytes(v[4:], byteorder='big')
-                if s not in recordset:
-                    recordset[s] = SegmentBitarray(s, None)
-                recordset[s]._bitarray[rn] = True# needs tidying
-            r = c.next()
-        del c
-        cursor.close()
+    Actions are delegated to Definition superclass.
 
-    def populate_recordset_key_range(
-        self, recordset, keystart=None, keyend=None):
-        """Return recordset on database containing records for key range."""
-        cursor = self.make_cursor(self, keystart)
-        c = cursor._cursor
-        if keystart is None:
-            r = c.first()
-        else:
-            r = c.set_range(keystart)
-        while r:
-            if keyend is not None:
-                if r[0] > keyend:
-                    break
-            v = r[1]
-            s = int.from_bytes(v[:4], byteorder='big')
-            if len(v) == LENGTH_SEGMENT_LIST_REFERENCE:
-                srn = int.from_bytes(v[6:], byteorder='big')
-                bs = self.get_primary_segment_list().get(srn)
-                if bs is None:
-                    raise DatabaseError('Segment record missing')
-                if s not in recordset:
-                    recordset[s] = SegmentBitarray(s, None)
-                sba = recordset[s]._bitarray# needs tidying
-                for i in range(0, len(bs), 2):
-                    sba[int.from_bytes(bs[i:i+2], byteorder='big')] = True
-            elif len(v) == LENGTH_SEGMENT_BITARRAY_REFERENCE:
-                srn = int.from_bytes(v[7:], byteorder='big')
-                bs = self.get_primary_segment_bits().get(srn)
-                if bs is None:
-                    raise DatabaseError('Segment record missing')
-                if s not in recordset:
-                    recordset[s] = SegmentBitarray(s, None)
-                sba = SegmentBitarray(s, None, records=bs)
-                recordset[s] |= sba
-            else:
-                rn = int.from_bytes(v[4:], byteorder='big')
-                if s not in recordset:
-                    recordset[s] = SegmentBitarray(s, None)
-                recordset[s]._bitarray[rn] = True# needs tidying
-            r = c.next()
-        del c
-        cursor.close()
+    """
+    def make_secondary_class(self,
+                             secondary_class,
+                             dbset,
+                             primary,
+                             secondary,
+                             specification,
+                             database_instance=None,
+                             **kw):
+        return secondary_class(SUBFILE_DELIMITER.join((dbset, secondary)),
+                               specification,
+                               secondary,
+                               database_instance,
+                               **kw)
+
+
+class Cursor(cursor.Cursor):
     
-    def populate_recordset_all(self, recordset):
-        """Return recordset containing all referenced records."""
-        cursor = self.make_cursor(self)
-        c = cursor._cursor
-        r = c.first()
-        while r:
-            v = r[1]
-            s = int.from_bytes(v[:4], byteorder='big')
-            if len(v) == LENGTH_SEGMENT_LIST_REFERENCE:
-                srn = int.from_bytes(v[6:], byteorder='big')
-                bs = self.get_primary_segment_list().get(srn)
-                if bs is None:
-                    raise DatabaseError('Segment record missing')
-                if s not in recordset:
-                    recordset[s] = SegmentBitarray(s, None)
-                sba = recordset[s]._bitarray# needs tidying
-                for i in range(0, len(bs), 2):
-                    sba[int.from_bytes(bs[i:i+2], byteorder='big')] = True
-            elif len(v) == LENGTH_SEGMENT_BITARRAY_REFERENCE:
-                srn = int.from_bytes(v[7:], byteorder='big')
-                bs = self.get_primary_segment_bits().get(srn)
-                if bs is None:
-                    raise DatabaseError('Segment record missing')
-                if s not in recordset:
-                    recordset[s] = SegmentBitarray(s, None)
-                sba = SegmentBitarray(s, None, records=bs)
-                recordset[s] |= sba
-            else:
-                rn = int.from_bytes(v[4:], byteorder='big')
-                if s not in recordset:
-                    recordset[s] = SegmentBitarray(s, None)
-                recordset[s]._bitarray[rn] = True# needs tidying
-            r = c.next()
-        del c
-        cursor.close()
+    """Wrap bsddb3 cursor with record encoding and decoding.
 
-    def populate_recordset_from_segment(self, recordset, segment):
-        """Populate recordset with records in segment."""
-        recordset.clear_recordset()
-        k, v = segment
-        s = int.from_bytes(k, byteorder='big')
-        if len(v) + len(k) == LENGTH_SEGMENT_LIST_REFERENCE:
-            srn = int.from_bytes(v[2:], byteorder='big')
-            bs = self.get_primary_segment_list().get(srn)
-            if bs is None:
-                raise DatabaseError('Segment record missing')
-            recordset[s] = SegmentList(s, None, records=bs)
-        elif len(v) + len(k) == LENGTH_SEGMENT_BITARRAY_REFERENCE:
-            srn = int.from_bytes(v[3:], byteorder='big')
-            bs = self.get_primary_segment_bits().get(srn)
-            if bs is None:
-                raise DatabaseError('Segment record missing')
-            recordset[s] = SegmentBitarray(s, None, records=bs)
-        else:
-            recordset[s] = SegmentList(s, None, records=v)
-    
-    def file_records_under(self, recordset, key):
-        """Replace records for index dbname[key] with recordset records."""
-        # Delete existing segments for key
-        cursor = self._object.cursor()
-        r = cursor.set_range(key)
-        while r:
-            k, v = r
-            if k != key:
-                break
-            sr = int.from_bytes(v[:4], byteorder='big')
-            if len(v) == LENGTH_SEGMENT_LIST_REFERENCE:
-                srn_list = int.from_bytes(v[6:], byteorder='big')
-                # stub call to put srn_list on reuse stack
-                self.get_primary_database().get_control_secondary(
-                    ).note_freed_list_page(srn_list)
-                # ok if reuse bitmap but not if reuse stack
-                self.get_primary_segment_list().delete(srn_list)
-                #cursor.delete()
-            elif len(v) == LENGTH_SEGMENT_BITARRAY_REFERENCE:
-                srn_bits = int.from_bytes(v[7:], byteorder='big')
-                # stub call to put srn_bits on reuse stack
-                self.get_primary_database().get_control_secondary(
-                    ).note_freed_bits_page(srn_bits)
-                # ok if reuse bitmap but not if reuse stack
-                self.get_primary_segment_bits().delete(srn_bits)
-                #cursor.delete()
-            #elif record_number == int.from_bytes(v[4:], byteorder='big'):
-                #cursor.delete()
-            r = cursor.next()
-        try:
-            self._object.delete(key)
-        except DBNotFoundError:
-            pass
-        # Put new segments for key
-        for sn in recordset.sorted_segnums:
-            if isinstance(recordset.rs_segments[sn], SegmentBitarray):
-                count = recordset.rs_segments[sn].count_records()
-                # stub call to get srn_bits from reuse stack
-                srn_bits = self.get_primary_database(
-                    ).get_control_secondary().get_freed_bits_page()
-                if srn_bits == 0:
-                    srn_bits = self.get_primary_segment_bits(
-                        ).append(recordset.rs_segments[sn].tobytes())
-                else:
-                    self.get_primary_segment_bits(
-                        ).put(srn_bits, recordset.rs_segments[sn].tobytes())
-                cursor.put(
-                    key,
-                    b''.join(
-                        (sn.to_bytes(4, byteorder='big'),
-                         count.to_bytes(3, byteorder='big'),
-                         srn_bits.to_bytes(4, byteorder='big'))),
-                    DB_KEYLAST)
-            elif isinstance(recordset.rs_segments[sn], SegmentList):
-                count = recordset.rs_segments[sn].count_records()
-                # stub call to get srn_list from reuse stack
-                srn_list = self.get_primary_database(
-                    ).get_control_secondary().get_freed_list_page()
-                if srn_list == 0:
-                    srn_list = self.get_primary_segment_list().append(
-                        recordset.rs_segments[sn].tobytes())
-                else:
-                    self.get_primary_segment_list().put(
-                        srn_list,
-                        recordset.rs_segments[sn].tobytes())
-                cursor.put(
-                    key,
-                    b''.join(
-                        (sn.to_bytes(4, byteorder='big'),
-                         count.to_bytes(2, byteorder='big'),
-                         srn_list.to_bytes(4, byteorder='big'))),
-                    DB_KEYLAST)
-            elif isinstance(recordset.rs_segments[sn], SegmentInt):
-                cursor.put(
-                    key,
-                    b''.join(
-                        (sn.to_bytes(4, byteorder='big'),
-                         recordset.rs_segments[sn].tobytes())),
-                    DB_KEYLAST)
+    The wrapped cursor is created on the Berkeley DB database in a File
+    instance.
 
-            
-# Maybe this and DBFile should have same superclass for open_root and close.
-class DBSegment(object):
-    
-    """Define a DB file to store inverted record number list representations.
+    The transaction argument in the Cursor() call should be a function
+    which returns current tranasction active on the Berkeley DB environment, or
+    None if there isn't one.  If supplied it's return value is used in all calls
+    to methods of the wrapped cursor which have the 'txn' parameter.  By default
+    the calls are not within a transaction.
 
-    Methods added:
-
-    append
-    close
-    delete
-    get
-    put
-
-    Methods overridden:
-
-    None
-
-    Methods extended:
-
-    __init__
-    
+    The CursorPrimary and CursorSecondary subclasses define the bsddb
+    style cursor methods peculiar to primary and secondary databases.
     """
 
-    def __init__(self, dbfile, segment_type):
-        """Define segment file for segment type of name in file description.
-        
-        dbfile=file name relative to environment home directory
-        segment_type=representation style for inverted list of record numbers
+    def __init__(self, dbset, keyrange=None, transaction=None, **kargs):
+        """Cursor wraps bsddb3 cursor with record encoding and decoding.
 
-        For large numbers of records fixed sized bit maps representing record
-        numbers relative to the base for the segment.  Otherwise a list of
-        record numbers relative to the base.
-        
+        dbset - A File instance.
+        keyrange - Not used.
+        transaction - A function which returns the current transaction.
+        kargs - absorb argunents relevant to other database engines.
+
+        The function provided by transaction will be a method of the Database
+        class, which returns the current tranasction active on the Berkeley DB
+        environment, or None if there isn't one.
+
         """
-        super(DBSegment, self).__init__()
-        self._seg_dbfile = (SUBFILE_DELIMITER * 2).join((dbfile, segment_type))
-        self._seg_object = None
+        super().__init__(dbset)
+        self._transaction = transaction
+        if dbset.table_connection_list is not None:
+            self._cursor = dbset.table_link.cursor(txn=transaction)
+        self._current_segment = None
+        self._current_segment_number = None
+        self._current_record_number_in_segment = None
 
     def close(self):
-        """Close inverted index DB."""
-        if self._seg_object is not None:
-            self._seg_object.close()
-            self._seg_object = None
-
-    def get(self, key):
-        """Get a segment record from the database."""
-        # Exists to match the sqlite3 interface - may get used as wrapper for
-        # DB get method eventually.  Sqlite3Segment version hides boilerplate
-        # SQL statements.
-        raise DBapiError('DBSegment.get not implemented')
-
-    def delete(self, key):
-        """Delete a segment record from the database."""
-        # Exists to match the sqlite3 interface - may get used as wrapper for
-        # DB delete method eventually.  Sqlite3Segment version hides boilerplate
-        # SQL statements.
-        raise DBapiError('DBSegment.delete not implemented')
-
-    def put(self, key, value):
-        """Put a segment record on the database, either replace or insert"""
-        # Exists to match the sqlite3 interface - may get used as wrapper for
-        # DB put method eventually.  Sqlite3Segment version hides boilerplate
-        # SQL statements.
-        raise DBapiError('DBSegment.put not implemented')
-
-    def append(self, value):
-        """Append a segment record on the database using a new key"""
-        # Exists to match the sqlite3 interface - may get used as wrapper for
-        # DB append method eventually.  Sqlite3Segment version hides boilerplate
-        # SQL statements.
-        raise DBapiError('DBSegment.append not implemented')
-
-            
-class DBExistenceBitMap(DBSegment):
-    
-    """DB file to store record number existence bit map keyed by segment number.
-
-    Methods added:
-
-    open_root
-    segment_count
-
-    Methods overridden:
-
-    None
-
-    Methods extended:
-
-    __init__
-
-    Properties:
-    
-    segment_count
-    
-    """
-
-    def __init__(self, dbfile):
-        """Define dbfile in environment for segment record bit maps.
-        
-        dbfile=file name relative to environment home directory
-        
-        """
-        super(DBExistenceBitMap, self).__init__(dbfile, 'exist')
-        self._segment_count = None
-
-    @property
-    def segment_count(self):
-        """Return number of records in segment."""
-        return self._segment_count
-
-    @segment_count.setter
-    def segment_count(self, segment_number):
-        """Set segment count from 0-based segment_number if greater"""
-        if segment_number > self._segment_count:
-            self._segment_count = segment_number + 1
-    
-    def open_root(self, dbenv):
-        """Create inverted index DB in dbenv."""
-        try:
-            self._seg_object = DB(dbenv)
-        except:
-            raise
-        try:
-            self._seg_object.set_re_pad(0)
-            self._seg_object.set_re_len(DB_SEGMENT_SIZE_BYTES)
-            self._seg_object.open(
-                self._seg_dbfile,
-                self._seg_dbfile,
-                DB_RECNO,
-                DB_CREATE)
-            self._segment_count = self._seg_object.stat(
-                flags=DB_FAST_STAT)['ndata']
-        except:
-            self._seg_object = None
-            raise
-
-            
-class DBSegmentList(DBSegment):
-    
-    """DB file to store inverted record number list with arbitrary key.
-
-    The arbitrary key is the number element of a (segment, count, number) tuple
-    encoded as a value in a secondary database.
-
-    Methods added:
-
-    open_root
-
-    Methods overridden:
-
-    None
-
-    Methods extended:
-
-    __init__
-    
-    """
-
-    def __init__(self, dbfile):
-        """Define dbfile in environment for segment record number lists.
-        
-        dbfile=file name relative to environment home directory
-        
-        """
-        super(DBSegmentList, self).__init__(dbfile, 'list')
-
-    def open_root(self, dbenv):
-        """Create inverted index DB in dbenv."""
-        try:
-            self._seg_object = DB(dbenv)
-        except:
-            raise
-        try:
-            self._seg_object.open(
-                self._seg_dbfile,
-                self._seg_dbfile,
-                DB_RECNO,
-                DB_CREATE)
-        except:
-            self._seg_object = None
-            raise
-
-            
-class DBSegmentBitMap(DBSegment):
-    
-    """DB file to store inverted record number bit map with arbitrary key.
-
-    The arbitrary key is the number element of a (segment, count, number) tuple
-    encoded as a value in a secondary database.
-
-    Methods added:
-
-    open_root
-
-    Methods overridden:
-
-    None
-
-    Methods extended:
-
-    __init__
-    
-    """
-
-    def __init__(self, dbfile):
-        """Define dbfile in environment for segment record bit maps.
-        
-        dbfile=file name relative to environment home directory
-        
-        """
-        super(DBSegmentBitMap, self).__init__(dbfile, 'bits')
-
-    def open_root(self, dbenv):
-        """Create inverted index DB in dbenv."""
-        try:
-            self._seg_object = DB(dbenv)
-        except:
-            raise
-        try:
-            self._seg_object.set_re_pad(0)
-            self._seg_object.set_re_len(DB_SEGMENT_SIZE_BYTES)
-            self._seg_object.open(
-                self._seg_dbfile,
-                self._seg_dbfile,
-                DB_RECNO,
-                DB_CREATE)
-        except:
-            self._seg_object = None
-            raise
-
-
-class CursorDB(Cursor):
-    
-    """Define bsddb3 style cursor methods on a Berkeley DB database.
-    
-    Mostly thin wrappers around the identically named bsddb3 cursor methods.
-
-    Keys and values are converted to integer and str from Berkeley DB internal
-    representation.
-
-    Sibling classes in other ~api modules provide this interface for other
-    database engines.
-
-    Methods added:
-
-    None
-    
-    Methods overridden:
-
-    close
-    database_cursor_exists
-    get_converted_partial
-    get_converted_partial_with_wildcard
-    get_partial
-    get_partial_with_wildcard
-    refresh_recordset
-    
-    Methods extended:
-
-    __init__
-
-    Notes:
-
-    The Berkeley DB Cursor put methods are not wrapped.
-
-    The intended use is, using put_record as the example:
-
-        cursor = <Database subclass instance>.database_cursor(...)
-        record = cursor.<get method>(...)
-        <Record subclass instance>.value.<attributes> = <Function(record)>
-        <Record subclass instance>.put_record(...)
-
-    where put_record is boilerplate, creating cursors if needed, and all the
-    work to make the correct thing happen is in <Function>.
-    
-    """
-
-    def __init__(self, dbset, keyrange=None):
-        """Define a cursor using the Berkeley DB engine."""
-        super(CursorDB, self).__init__(dbset)
-        if dbset._object is not None:
-            self._cursor = dbset._object.cursor()
-
-    def close(self):
-        """Delete database cursor"""
+        """Delete database cursor then delegate to superclass close() method."""
         try:
             del self._dbset._clientcursors[self]
         except:
             pass
-        try:
-            self._cursor.close()
-        except:
-            pass
-        self._cursor = None
-        self._dbset = None
-        self.set_partial_key(None)
+        super().close()
+        #self._transaction = None
 
-    def database_cursor_exists(self):
-        """Return True if database cursor exists and False otherwise"""
-        return bool(self._cursor)
+    def get_converted_partial(self):
+        """Return self._partial as it would be held on database."""
+        return self._partial.encode()
 
-    def refresh_recordset(self):
+    def get_partial_with_wildcard(self):
+        """Return self._partial with wildcard suffix appended."""
+        raise DBapiError('get_partial_with_wildcard not implemented')
+
+    def get_converted_partial_with_wildcard(self):
+        """Return converted self._partial with wildcard suffix appended."""
+        # Berkeley DB uses a 'startswith(...)' technique
+        return self._partial.encode()
+
+    def refresh_recordset(self, instance=None):
         """Refresh records for datagrid access after database update.
 
         Do nothing in Berkeley DB.  The cursor (for the datagrid) accesses
@@ -2924,129 +1788,106 @@ class CursorDB(Cursor):
         """
         pass
 
-    def get_partial(self):
-        """Return self._partial"""
-        return self._partial
 
-    def get_converted_partial(self):
-        """Return self._partial as it would be held on database"""
-        return self._partial.encode()
-
-    def get_partial_with_wildcard(self):
-        """Return self._partial with wildcard suffix appended"""
-        raise DatabaseError('get_partial_with_wildcard not implemented')
-
-    def get_converted_partial_with_wildcard(self):
-        """Return converted self._partial with wildcard suffix appended"""
-        # Berkeley DB uses a 'startswith(...)' technique
-        return self._partial.encode()
-
-
-class CursorDBPrimary(CursorDB):
+class CursorPrimary(Cursor):
     
-    """Define bsddb3 cursor methods for a Berkeley DB primary database.
+    """Wrap bsddb3 primary database cursor with record encoding and decoding.
 
-    The database must be a RECNO database.
-    
-    Methods added:
+    The primary database must use the RECNO access method.
 
-    _get_record
-    
-    Methods overridden:
-
-    count_records
-    first
-    get_position_of_record
-    get_record_at_position
-    last
-    nearest
-    next
-    prev
-    setat
-    set_partial_key
-    
-    Methods extended:
-
-    None
+    The value is assumed to be a repr(<python object>).encode('utf8').
     
     """
 
     def count_records(self):
         """Return record count."""
-        return self._dbset._object.stat(flags=DB_FAST_STAT)['ndata']
+        return self._dbset.table_link.stat(flags=DB_FAST_STAT,
+                                           txn=self._transaction)['ndata']
 
     def first(self):
-        """Return first record taking partial key into account"""
+        """Return first record taking partial key into account."""
         return self._decode_record(self._cursor.first())
 
     def get_position_of_record(self, record=None):
-        """Return position of record in file or 0 (zero)"""
-        if record is None:
-            return 0
-        start = self._cursor.first
-        step_nodup = self._cursor.next_nodup
-        step = self._cursor.next
-        stepback = self._cursor.prev_nodup
-        keycount = self._cursor.count
-        position = 0
-        k = record[0]
-        r = start()
-        while r:
-            if r[0] >= k:
-                break
-            position += 1
-            r = step()
-        return position
+        """Return position of record in file or 0 (zero)."""
+        ebd = self._dbset.get_existence_bits_database()
+        try:
+            segment, record_number = divmod(record[0],
+                                            SegmentSize.db_segment_size)
+            position = 0
+            for i in range(segment):
+                sebm = Bitarray()
+                sebm.frombytes(ebd.get(i + 1, txn=self._transaction))
+                position += sebm.count()
+            sebm = Bitarray()
+            sebm.frombytes(ebd.get(segment + 1, txn=self._transaction))
+            try:
+                position += sebm.search(SINGLEBIT).index(record_number)
+            except ValueError:
+                position += bisect.bisect_left(
+                    record_number, sebm.search(SINGLEBIT))
+            return position
+        except:
+            if record is None:
+                return 0
+            raise
 
     def get_record_at_position(self, position=None):
-        """Return record for positionth record in file or None"""
+        """Return record for positionth record in file or None."""
         if position is None:
             return None
-        if position < 0:
-            start = self._cursor.last
-            step_nodup = self._cursor.prev_nodup
-            step = self._cursor.prev
-            stepback = self._cursor.next_nodup
-            position = -1 - position
-        else:
-            start = self._cursor.first
-            step_nodup = self._cursor.next_nodup
-            step = self._cursor.next
-            stepback = self._cursor.prev_nodup
-        keycount = self._cursor.count
+        ebd = self._dbset.get_existence_bits_database()
         count = 0
-        r = start()
-        while r:
-            count += 1
-            if count > position:
-                break
-            r = step()
-        if r is not None:
-            return self._decode_record(r)
+        abspos = abs(position)
+        ebdc = ebd.cursor(txn=self._transaction)
+        try:
+            if position < 0:
+                r = ebdc.last()
+                while r:
+                    sebm = Bitarray()
+                    sebm.frombytes(r[1])
+                    sc = sebm.count()
+                    if count + sc < abspos:
+                        count += sc
+                        r = ebdc.prev()
+                        continue
+                    recno = sebm.search(SINGLEBIT)[position + count] + (
+                        (r[0] - 1) * SegmentSize.db_segment_size)
+                    ebdc.close()
+                    return self._decode_record(self._cursor.set(recno))
+            else:
+                r = ebdc.first()
+                while r:
+                    sebm = Bitarray()
+                    sebm.frombytes(r[1])
+                    sc = sebm.count()
+                    if count + sc < abspos:
+                        count += sc
+                        r = ebdc.next()
+                        continue
+                    recno = sebm.search(SINGLEBIT)[position - count] + (
+                        (r[0] - 1) * SegmentSize.db_segment_size)
+                    ebdc.close()
+                    return self._decode_record(self._cursor.set(recno))
+        finally:
+            ebdc.close()
+        return None
 
     def last(self):
-        """Return last record taking partial key into account"""
+        """Return last record taking partial key into account."""
         return self._decode_record(self._cursor.last())
 
-    def set_partial_key(self, partial):
-        """Set partial key to None for primary cursor"""
-        self._partial = None
-
     def nearest(self, key):
-        """Return nearest record to key taking partial key into account"""
+        """Return nearest record to key taking partial key into account."""
         return self._decode_record(self._cursor.set_range(key))
 
     def next(self):
-        """Return next record taking partial key into account"""
+        """Return next record taking partial key into account."""
         return self._decode_record(self._cursor.next())
 
     def prev(self):
-        """Return previous record taking partial key into account"""
+        """Return previous record taking partial key into account."""
         return self._decode_record(self._cursor.prev())
-
-    def _get_record(self, record):
-        """Return record matching key or partial key or None if no match."""
-        raise DBapiError('_get_record not implemented')
 
     def setat(self, record):
         """Return current record after positioning cursor at record.
@@ -3072,261 +1913,25 @@ class CursorDBPrimary(CursorDB):
                 return record
             raise
 
-
-class CursorDBSecondary(CursorDB):
-    
-    """Define bsddb3 cursor methods for a Berkeley DB secondary database.
-
-    The database must be a BTREE database.
-    
-    Methods added:
-
-    _get_record
-    
-    Methods overridden:
-
-    count_records
-    first
-    get_position_of_record
-    get_record_at_position
-    last
-    nearest
-    next
-    prev
-    setat
-    set_partial_key
-    
-    Methods extended:
-
-    None
-    
-    """
-
-    def count_records(self):
-        """Return record count."""
-        if self.get_partial() is None:
-            count = 0
-            r = self._cursor.first()
-            while r:
-                count += self._cursor.count()
-                r = self._cursor.next_nodup()
-            return count
-        else:
-            count = 0
-            r = self._cursor.set_range(
-                self.get_converted_partial_with_wildcard())
-            while r:
-                if not r[0].startswith(self.get_converted_partial()):
-                    break
-                count += self._cursor.count()
-                r = self._cursor.next_nodup()
-            return count
-
-    def first(self):
-        """Return first record taking partial key into account"""
-        if self.get_partial() is None:
-            return self._get_record(self._cursor.first())
-        elif self.get_partial() is False:
-            return None
-        else:
-            return self.nearest(self.get_converted_partial())
-
-    def get_position_of_record(self, record=None):
-        """Return position of record in file or 0 (zero)"""
-        if record is None:
-            return 0
-        start = self._cursor.first
-        step_nodup = self._cursor.next_nodup
-        step = self._cursor.next
-        stepback = self._cursor.prev_nodup
-        keycount = self._cursor.count
-        position = 0
-        k = record[0]
-        if not self.get_partial():
-            r = start()
-            while r:
-                if r[0] > k:
-                    break
-                elif r[0] == k:
-                    v = self._dbset.encode_record_number(record[1])
-                    while r:
-                        if r[1] > v:
-                            break
-                        position += 1
-                        r = step()
-                    break
-                position += keycount()
-                r = step_nodup()
-            return position
-        else:
-            r = self._cursor.set_range(
-                self.get_converted_partial_with_wildcard())
-            while r:
-                if not r[0].startswith(self.get_converted_partial()):
-                    break
-                if r[0] > k:
-                    break
-                elif r[0] == k:
-                    v = self._dbset.encode_record_number(record[1])
-                    while r:
-                        if not r[0].startswith(self.get_converted_partial()):
-                            break
-                        if r[1] > v:
-                            break
-                        position += 1
-                        r = step()
-                    break
-                position += keycount()
-                r = step_nodup()
-            return position
-
-    def get_record_at_position(self, position=None):
-        """Return record for positionth record in file or None"""
-        if position is None:
-            return None
-        if position < 0:
-            start = self._cursor.last
-            step_nodup = self._cursor.prev_nodup
-            step = self._cursor.prev
-            stepback = self._cursor.next_nodup
-            position = -1 - position
-        else:
-            start = self._cursor.first
-            step_nodup = self._cursor.next_nodup
-            step = self._cursor.next
-            stepback = self._cursor.prev_nodup
-        keycount = self._cursor.count
-        if not self.get_partial():
-            count = 0
-            r = start()
-            while r:
-                count += keycount()
-                if count > position:
-                    r = stepback()
-                    count -= keycount()
-                    if r is None:
-                        r = start()
-                    while r:
-                        count += 1
-                        if count > position:
-                            break
-                        r = step()
-                    break
-                r = step_nodup()
-            if r is not None:
-                return (r[0], self._dbset.decode_record_number(r[1]))
-        else:
-            count = 0
-            r = self._cursor.set_range(
-                self.get_converted_partial_with_wildcard())
-            while r:
-                if not r[0].startswith(self.get_converted_partial()):
-                    break
-                count += keycount()
-                if count > position:
-                    r = stepback()
-                    count -= keycount()
-                    if r is None:
-                        r = start()
-                    while r:
-                        if not r[0].startswith(self.get_converted_partial()):
-                            break
-                        count += 1
-                        if count > position:
-                            break
-                        r = step()
-                    break
-                r = step_nodup()
-            if r is not None:
-                return (r[0], self._dbset.decode_record_number(r[1]))
-
-    def last(self):
-        """Return last record taking partial key into account"""
-        if self.get_partial() is None:
-            return self._get_record(self._cursor.last())
-        elif self.get_partial() is False:
-            return None
-        else:
-            k = list(self.get_partial())
-            while True:
-                try:
-                    k[-1] = chr(ord(k[-1]) + 1)
-                except ValueError:
-                    k.pop()
-                    if not len(k):
-                        return self._get_record(self._cursor.last())
-                    continue
-                self._cursor.set_range(''.join(k).encode())
-                return self.prev()
-
-    def set_partial_key(self, partial):
-        """Set partial key."""
-        self._partial = partial
-
-    def nearest(self, key):
-        """Return nearest record to key taking partial key into account"""
-        return self._get_record(self._cursor.set_range(key))
-
-    def next(self):
-        """Return next record taking partial key into account"""
-        return self._get_record(self._cursor.next())
-
-    def prev(self):
-        """Return previous record taking partial key into account"""
-        return self._get_record(self._cursor.prev())
-
     def _get_record(self, record):
         """Return record matching key or partial key or None if no match."""
-        if self.get_partial() is None:
-            try:
-                return (
-                    record[0],
-                    self._dbset.decode_record_number(record[1]))
-            except:
-                return None
-        elif self.get_partial() is False:
-            return None
-        elif record[0].startswith(self.get_converted_partial()):
-            try:
-                return (
-                    record[0],
-                    self._dbset.decode_record_number(record[1]))
-            except:
-                return None
-        else:
-            return None
+        raise DBapiError('_get_record not implemented')
 
-    def setat(self, record):
-        """Return current record after positioning cursor at record.
+    def refresh_recordset(self, instance=None):
+        """Refresh records for datagrid access after database update.
 
-        Take partial key into account.
-        
-        Words used in bsddb3 (Python) to describe set and set_both say
-        (key, value) is returned while Berkeley DB description seems to
-        say that value is returned by the corresponding C functions.
-        Do not know if there is a difference to go with the words but
-        bsddb3 works as specified.
+        The bitmap for the record set may not match the existence bitmap.
 
         """
-        if self.get_partial() is False:
-            return None
-        key, value = record
-        if self.get_partial() is not None:
-            if not key.startswith(self.get_converted_partial()):
-                return None
-        if self._dbset.is_value_recno():
-            return self._get_record(
-                self._cursor.set_both(
-                    key, self._dbset.encode_record_number(value)))
-        else:
-            return self._get_record(self._cursor.set_both(key, value))
+        #raise DBapiError('refresh_recordset not implemented')
 
 
-class CursorDBbit(CursorDB):
+class CursorSecondary(Cursor):
     
-    """Define bsddb3 style cursor methods on a segmented Berkeley DB database.
+    """Wrap bsddb3 secondary database cursor with record encoding and decoding,
+    and segment navigation.
 
-    Segmented should be read as the DPT database engine usage.
+    The secondary database must use the BTREE access method.
 
     The value part of (key, value) on secondary databases is either:
 
@@ -3334,271 +1939,30 @@ class CursorDBbit(CursorDB):
         reference to a list of primary keys for a segment
         reference to a bit map of primary keys for a segment
 
+    The value is assumed to be a repr(<python object>).encode('utf8').
+
+    Segment should be read as the DPT database engine usage.
+
     References are to records on RECNO databases, one each for lists and bit
     maps, containing the primary keys.
-    
-    Mostly thin wrappers around the identically named bsddb3 cursor methods.
 
-    Keys and values are converted to integer and str from Berkeley DB internal
-    representation.
-
-    Sibling classes in other ~api modules provide this interface for other
-    database engines.
-
-    Methods added:
-
-    None
-    
-    Methods overridden:
-
-    close
-    database_cursor_exists
-    get_converted_partial
-    get_converted_partial_with_wildcard
-    get_partial
-    get_partial_with_wildcard
-    refresh_recordset
-    
-    Methods extended:
-
-    __init__
-
-    Notes:
-
-    The Berkeley DB Cursor put methods are not wrapped.
-
-    The intended use is, using put_record as the example:
-
-        cursor = <Database subclass instance>.database_cursor(...)
-        record = cursor.<get method>(...)
-        <Record subclass instance>.value.<attributes> = <Function(record)>
-        <Record subclass instance>.put_record(...)
-
-    where put_record is boilerplate, creating cursors if needed, and all the
-    work to make the correct thing happen is in <Function>.
-
-    CursorDBbitPrimary and CursorDBbitSecondary bypass CursorDBPrimary and
-    CursorDBSecondary as superclasses so override nearest next and prev as
-    the CursorDB versions are not appropriate in the ...bit... versions of
-    the class.
+    The key part of (key, value) on secondary databases is calculated from the
+    value of any of the referenced records in the associated primary database.
     
     """
 
-    # The refresh_recordset may be relevent in this class
-
-    def __init__(self, dbset, keyrange=None):
-        """Define a cursor using the Berkeley DB engine."""
-        super(CursorDBbit, self).__init__(dbset, keyrange=keyrange)
-        self._current_segment = None
-        self._current_segment_number = None
-        self._current_record_number_in_segment = None
-
-    def nearest(self, key):
-        """Return nearest record to key taking partial key into account"""
-        raise DatabaseError('nearest should be implemented in subclass')
-
-    def next(self):
-        """Return next record taking partial key into account"""
-        raise DatabaseError('next should be implemented in subclass')
-
-    def prev(self):
-        """Return previous record taking partial key into account"""
-        raise DatabaseError('prev should be implemented in subclass')
-
-
-class CursorDBbitPrimary(CursorDBbit):
+    def __init__(self, *a, **k):#dbset, keyrange=None):
     
-    """Define bsddb3 cursor methods for primary segmented Berkeley DB database.
+        """Delegate arguments to superclass and note segment databases."""
 
-    The database must be a RECNO database.
-    
-    Methods added:
-
-    None
-    
-    Methods overridden:
-
-    count_records
-    first
-    get_position_of_record
-    _get_record
-    get_record_at_position
-    last
-    nearest
-    next
-    prev
-    setat
-    set_partial_key
-    
-    Methods extended:
-
-    None
-    
-    """
-    # The refresh_recordset may be relevent in this class
-
-    def count_records(self):
-        """Return record count."""
-        return self._dbset._object.stat(flags=DB_FAST_STAT)['ndata']
-
-    def first(self):
-        """Return first record taking partial key into account"""
-        return self._decode_record(self._cursor.first())
-
-    def get_position_of_record(self, record=None):
-        """Return position of record in file or 0 (zero)"""
-        ebd = self._dbset.get_existence_bits_database()
-        try:
-            segment, record_number = divmod(record[0], DB_SEGMENT_SIZE)
-            position = 0
-            for i in range(segment):
-                sebm = Bitarray()
-                sebm.frombytes(ebd.get(i + 1))
-                position += sebm.count()
-            sebm = Bitarray()
-            sebm.frombytes(ebd.get(segment + 1))
-            position += sebm[:record_number + 1].count()
-            return position
-        except:
-            if record is None:
-                return 0
-
-    def get_record_at_position(self, position=None):
-        """Return record for positionth record in file or None"""
-        if position is None:
-            return None
-        ebd = self._dbset.get_existence_bits_database()
-        count = 0
-        abspos = abs(position)
-        ebdc = ebd.cursor()
-        if position < 0:
-            r = ebdc.last()
-            while r:
-                sebm = Bitarray()
-                sebm.frombytes(r[1])
-                sc = sebm.count()
-                if count + sc < abspos:
-                    count += sc
-                    r = ebdc.prev()
-                    continue
-                recno = sebm.search(SINGLEBIT)[position + count] + (
-                    (r[0] - 1) * DB_SEGMENT_SIZE)
-                ebdc.close()
-                return self._decode_record(self._cursor.set(recno))
-        else:
-            r = ebdc.first()
-            while r:
-                sebm = Bitarray()
-                sebm.frombytes(r[1])
-                sc = sebm.count()
-                if count + sc < abspos:
-                    count += sc
-                    r = ebdc.next()
-                    continue
-                recno = sebm.search(SINGLEBIT)[position - count] + (
-                    (r[0] - 1) * DB_SEGMENT_SIZE)
-                ebdc.close()
-                return self._decode_record(self._cursor.set(recno))
-        ebdc.close()
-        return None
-
-    def last(self):
-        """Return last record taking partial key into account"""
-        return self._decode_record(self._cursor.last())
-
-    def _get_record(self, record):
-        """Return record matching key or partial key or None if no match."""
-        raise DBapiError('_get_record not implemented')
-
-    def nearest(self, key):
-        """Return nearest record to key taking partial key into account"""
-        return self._decode_record(self._cursor.set_range(key))
-
-    def next(self):
-        """Return next record taking partial key into account"""
-        return self._decode_record(self._cursor.next())
-
-    def prev(self):
-        """Return previous record taking partial key into account"""
-        return self._decode_record(self._cursor.prev())
-
-    def setat(self, record):
-        """Return current record after positioning cursor at record.
-
-        Take partial key into account.
-        
-        Words used in bsddb3 (Python) to describe set and set_both say
-        (key, value) is returned while Berkeley DB description seems to
-        say that value is returned by the corresponding C functions.
-        Do not know if there is a difference to go with the words but
-        bsddb3 works as specified.
-
-        """
-        return self._decode_record(self._cursor.set(record[0]))
-
-    def set_partial_key(self, partial):
-        """Set partial key to None for primary cursor"""
-        self._partial = None
-
-    def _decode_record(self, record):
-        """Return decoded (key, value) of record."""
-        try:
-            k, v = record
-            return k, v.decode()
-        except:
-            if record is None:
-                return record
-            raise
-
-
-class CursorDBbitSecondary(CursorDBbit):
-    
-    """Define bsddb3 cursor methods on secondary segmented Berkeley DB database.
-
-    The database must be a BTREE database.
-    
-    Methods added:
-
-    _first
-    set_current_segment
-    _last
-    _next
-    _prev
-    _set_both
-    _set_range
-    _first_partial
-    _last_partial
-    
-    Methods overridden:
-
-    count_records
-    first
-    get_position_of_record
-    _get_record
-    get_record_at_position
-    last
-    nearest
-    next
-    prev
-    setat
-    set_partial_key
-    
-    Methods extended:
-
-    None
-    
-    """
-    # The refresh_recordset may be relevent in this class
-
-    def __init__(self, dbset, keyrange=None):
-        """Define a cursor using the Berkeley DB engine."""
-        super(CursorDBbitSecondary, self).__init__(dbset, keyrange=keyrange)
+        super().__init__(*a, **k)#dbset, keyrange=keyrange)
         self._segment_bits = self._dbset.get_primary_segment_bits()
         self._segment_list = self._dbset.get_primary_segment_list()
 
     def count_records(self):
         """Return record count."""
-        if self.get_partial() is None:
+        #if self.get_partial() is None:
+        if self.get_partial() in (None, False):
             count = 0
             r = self._cursor.first()
             while r:
@@ -3627,7 +1991,7 @@ class CursorDBbitSecondary(CursorDBbit):
             return count
 
     def first(self):
-        """Return first record taking partial key into account"""
+        """Return first record taking partial key into account."""
         if self.get_partial() is None:
             try:
                 k, v = self._first()
@@ -3640,11 +2004,12 @@ class CursorDBbitSecondary(CursorDBbit):
             return self.nearest(self.get_converted_partial())
 
     def get_position_of_record(self, record=None):
-        """Return position of record in file or 0 (zero)"""
+        """Return position of record in file or 0 (zero)."""
         if record is None:
             return 0
         key, value = record
-        segment_number, record_number = divmod(value, DB_SEGMENT_SIZE)
+        segment_number, record_number = divmod(value,
+                                               SegmentSize.db_segment_size)
         # Define lambdas to handle presence or absence of partial key
         low = lambda rk, recordkey: rk < recordkey
         if not self.get_partial():
@@ -3684,18 +2049,20 @@ class CursorDBbitSecondary(CursorDBbit):
                 else:
                     if len(r[1]) == LENGTH_SEGMENT_LIST_REFERENCE:
                         srn = int.from_bytes(r[1][6:], byteorder='big')
-                        segment = SegmentList(
+                        segment = RecordsetSegmentList(
                             segment_number,
                             None,
-                            records=self._segment_list.get(srn))
+                            records=self._segment_list.get(
+                                srn, txn=self._transaction))
                     elif len(r[1]) == LENGTH_SEGMENT_BITARRAY_REFERENCE:
                         srn = int.from_bytes(r[1][7:], byteorder='big')
-                        segment = SegmentBitarray(
+                        segment = RecordsetSegmentBitarray(
                             segment_number,
                             None,
-                            records=self._segment_bits.get(srn))
+                            records=self._segment_bits.get(
+                                srn, txn=self._transaction))
                     else:
-                        segment = SegmentInt(
+                        segment = RecordsetSegmentInt(
                             segment_number,
                             None,
                             records=r[1][4:])
@@ -3706,22 +2073,26 @@ class CursorDBbitSecondary(CursorDBbit):
         return position
 
     def get_record_at_position(self, position=None):
-        """Return record for positionth record in file or None"""
+        """Return record for positionth record in file or None."""
         if position is None:
             return None
         # Start at first or last record whichever is likely closer to position
         # and define lambdas to handle presence or absence of partial key.
-        if position < 0:
-            step = self._cursor.prev
+        if not self.get_partial():
             get_partial = self.get_partial
+        else:
+            get_partial = self.get_converted_partial
+        if position < 0:
+            is_step_forward = False
+            step = self._cursor.prev
             position = -1 - position
             if not self.get_partial():
                 start = lambda partial: self._cursor.last()
             else:
                 start = lambda partial: self._last_partial(partial)
         else:
+            is_step_forward = True
             step = self._cursor.next
-            get_partial = self.get_converted_partial
             if not self.get_partial():
                 start = lambda partial: self._cursor.first()
             else:
@@ -3743,30 +2114,32 @@ class CursorDBbitSecondary(CursorDBbit):
                 count -= position
                 if len(r[1]) == LENGTH_SEGMENT_LIST_REFERENCE:
                     srn = int.from_bytes(r[1][6:], byteorder='big')
-                    segment = SegmentList(
+                    segment = RecordsetSegmentList(
                         int.from_bytes(r[1][:4], byteorder='big'),
                         None,
-                        records=self._segment_list.get(srn))
+                        records=self._segment_list.get(srn,
+                                                       txn=self._transaction))
                 elif len(r[1]) == LENGTH_SEGMENT_BITARRAY_REFERENCE:
                     srn = int.from_bytes(r[1][7:], byteorder='big')
-                    segment = SegmentBitarray(
+                    segment = RecordsetSegmentBitarray(
                         int.from_bytes(r[1][:4], byteorder='big'),
                         None,
-                        records=self._segment_bits.get(srn))
+                        records=self._segment_bits.get(srn,
+                                                       txn=self._transaction))
                 else:
-                    segment = SegmentInt(
+                    segment = RecordsetSegmentInt(
                         int.from_bytes(r[1][:4], byteorder='big'),
                         None,
                         records=r[1][4:])
                 record_number = segment.get_record_number_at_position(
-                    count, step is self._cursor.next)
+                    count, is_step_forward)
                 if record_number is not None:
                     return r[0].decode(), record_number
                 break
         return None
 
     def last(self):
-        """Return last record taking partial key into account"""
+        """Return last record taking partial key into account."""
         if self.get_partial() is None:
             try:
                 k, v = self._last()
@@ -3792,12 +2165,8 @@ class CursorDBbitSecondary(CursorDBbit):
                 self._set_range(''.join(c).encode())
                 return self.prev()
 
-    def _get_record(self, record):
-        """Return record matching key or partial key or None if no match."""
-        raise DBapiError('_get_record not implemented')
-
     def nearest(self, key):
-        """Return nearest record to key taking partial key into account"""
+        """Return nearest record to key taking partial key into account."""
         try:
             k, v = self._set_range(key)
         except TypeError:
@@ -3805,7 +2174,7 @@ class CursorDBbitSecondary(CursorDBbit):
         return k.decode(), v
 
     def next(self):
-        """Return next record taking partial key into account"""
+        """Return next record taking partial key into account."""
         try:
             k, v = self._next()
         except TypeError:
@@ -3813,7 +2182,7 @@ class CursorDBbitSecondary(CursorDBbit):
         return k.decode(), v
 
     def prev(self):
-        """Return previous record taking partial key into account"""
+        """Return previous record taking partial key into account."""
         try:
             k, v = self._prev()
         except TypeError:
@@ -3848,15 +2217,14 @@ class CursorDBbitSecondary(CursorDBbit):
         """Set partial key."""
         self._partial = partial
 
-    def _first(self):
-        """Return first record taking partial key into account"""
-        record = self._cursor.first()
-        if record is None:
-            return None
-        return self.set_current_segment(*record).first()
+    def _get_record(self, record):
+        """Return record matching key or partial key or None if no match."""
+        raise DBapiError('_get_record not implemented')
 
     def set_current_segment(self, key, reference):
-        """Return a SegmentBitarray, SegmentInt, or SegmentList instance."""
+        """Return a RecordsetSegmentBitarray, RecordsetSegmentInt, or
+        RecordsetSegmentList instance, depending on the current representation
+        of the segment on the database."""
         segment_number = int.from_bytes(reference[:4], byteorder='big')
         if len(reference) == LENGTH_SEGMENT_LIST_REFERENCE:
             if self._current_segment_number == segment_number:
@@ -3864,35 +2232,46 @@ class CursorDBbitSecondary(CursorDBbit):
                 if key == self._current_segment._key:
                     return self._current_segment
             record_number = int.from_bytes(reference[6:], byteorder='big')
-            segment = SegmentList(
+            segment = RecordsetSegmentList(
                 segment_number,
                 key,
-                records=self._segment_list.get(record_number))
+                records=self._segment_list.get(record_number,
+                                               txn=self._transaction))
         elif len(reference) == LENGTH_SEGMENT_BITARRAY_REFERENCE:
             if self._current_segment_number == segment_number:
                 #return self._current_segment
                 if key == self._current_segment._key:
                     return self._current_segment
             record_number = int.from_bytes(reference[7:], byteorder='big')
-            segment = SegmentBitarray(
+            segment = RecordsetSegmentBitarray(
                 segment_number,
                 key,
-                records=self._segment_bits.get(record_number))
+                records=self._segment_bits.get(record_number,
+                                               txn=self._transaction))
         else:
-            segment = SegmentInt(segment_number, key, records=reference[4:])
+            segment = RecordsetSegmentInt(segment_number,
+                                          key,
+                                          records=reference[4:])
         self._current_segment = segment
         self._current_segment_number = segment_number
         return segment
 
+    def _first(self):
+        """Return first record taking partial key into account."""
+        record = self._cursor.first()
+        if record is None:
+            return None
+        return self.set_current_segment(*record).first()
+
     def _last(self):
-        """Return last record taking partial key into account"""
+        """Return last record taking partial key into account."""
         record = self._cursor.last()
         if record is None:
             return None
         return self.set_current_segment(*record).last()
 
     def _next(self):
-        """Return next record taking partial key into account"""
+        """Return next record taking partial key into account."""
         if self._current_segment is None:
             return self._first()
         record = self._current_segment.next()
@@ -3908,7 +2287,7 @@ class CursorDBbitSecondary(CursorDBbit):
             return record
 
     def _prev(self):
-        """Return previous record taking partial key into account"""
+        """Return previous record taking partial key into account."""
         if self._current_segment is None:
             return self._last()
         record = self._current_segment.prev()
@@ -3925,37 +2304,40 @@ class CursorDBbitSecondary(CursorDBbit):
 
     def _set_both(self, key, value):
         """Return current record after positioning cursor at (key, value)."""
-        segment, record_number = divmod(value, DB_SEGMENT_SIZE)
+        segment, record_number = divmod(value, SegmentSize.db_segment_size)
         # Find the segment reference in secondary database
-        cursor = self._dbset._object.cursor()
-        record = cursor.set_range(key)
-        while record:
-            if record[0] != key:
-                cursor.close()
+        cursor = self._dbset.table_link.cursor(txn=self._transaction)
+        try:
+            record = cursor.set_range(key)
+            while record:
+                if record[0] != key:
+                    return None
+                segment_number = int.from_bytes(record[1][:4], byteorder='big')
+                if segment_number > segment:
+                    return None
+                if segment_number == segment:
+                    break
+                record = cursor.next()
+            else:
                 return None
-            segment_number = int.from_bytes(record[1][:4], byteorder='big')
-            if segment_number > segment:
-                cursor.close()
-                return None
-            if segment_number == segment:
-                cursor.close()
-                break
-            record = cursor.next()
-        else:
+        finally:
             cursor.close()
-            return None
         # Check if record number is in segment
         ref = record[1]
         if len(ref) == LENGTH_SEGMENT_LIST_REFERENCE:
             srn = int.from_bytes(ref[6:], byteorder='big')
-            segment = SegmentList(
-                segment_number, key, records=self._segment_list.get(srn))
+            segment = RecordsetSegmentList(
+                segment_number,
+                key,
+                records=self._segment_list.get(srn, txn=self._transaction))
         elif len(ref) == LENGTH_SEGMENT_BITARRAY_REFERENCE:
             srn = int.from_bytes(ref[7:], byteorder='big')
-            segment = SegmentBitarray(
-                segment_number, key, records=self._segment_bits.get(srn))
+            segment = RecordsetSegmentBitarray(
+                segment_number,
+                key,
+                records=self._segment_bits.get(srn, txn=self._transaction))
         else:
-            segment = SegmentInt(segment_number, key, records=ref[4:])
+            segment = RecordsetSegmentInt(segment_number, key, records=ref[4:])
         if segment.setat(value) is None:
             return None
         # Move self._cursor to new segment reference
@@ -3981,14 +2363,20 @@ class CursorDBbitSecondary(CursorDBbit):
         ref = record[1]
         if len(ref) == LENGTH_SEGMENT_LIST_REFERENCE:
             srn = int.from_bytes(ref[6:], byteorder='big')
-            segment = SegmentList(
-                segment_number, record[0], records=self._segment_list.get(srn))
+            segment = RecordsetSegmentList(
+                segment_number,
+                record[0],
+                records=self._segment_list.get(srn, txn=self._transaction))
         elif len(ref) == LENGTH_SEGMENT_BITARRAY_REFERENCE:
             srn = int.from_bytes(ref[7:], byteorder='big')
-            segment = SegmentBitarray(
-                segment_number, record[0], records=self._segment_bits.get(srn))
+            segment = RecordsetSegmentBitarray(
+                segment_number,
+                record[0],
+                records=self._segment_bits.get(srn, txn=self._transaction))
         else:
-            segment = SegmentInt(segment_number, record[0], records=ref[4:])
+            segment = RecordsetSegmentInt(segment_number,
+                                          record[0],
+                                          records=ref[4:])
         self._current_segment = segment
         self._current_segment_number = segment_number
         # Return the "secondary database record".
@@ -4019,69 +2407,264 @@ class CursorDBbitSecondary(CursorDBbit):
             self._set_range(''.join(k).encode())
             return self._prev()
 
+    def refresh_recordset(self, instance=None):
+        """Refresh records for datagrid access after database update.
+
+        The bitmap for the record set may not match the existence bitmap.
+
+        """
+        # See set_selection() hack in chesstab subclasses of DataGrid.
+        # It seems not needed by this class.
+        
+        #raise DBapiError('refresh_recordset not implemented')
+
+
+class RecordsetCursor(RecordsetCursor):
+    
+    """Add _get_record method and tranasction support to RecordsetCursor."""
+
+    def __init__(self, recordset, database_instance=None, **kargs):
+        """Note method which returns transaction identity and delegate
+        recordset to superclass.
+
+        kargs absorbs arguments relevant to other database engines.
+
+        """
+        super().__init__(recordset)
+        self._transaction = database_instance.get_transaction
+
+    @property
+    def transaction(self):
+        """Return the active transaction or None."""
+        return self._transaction()
+
+    # The _get_record hack in sqlite3bitdatasource.py becomes the correct way
+    # to do this because the record has bsddb-specific decoding needs.
+    def _get_record(self, record_number, use_cache=False):
+        """Return (record_number, record) using cache if requested."""
+        dbset = self._dbset
+        if use_cache:
+            record = dbset.record_cache.get(record_number)
+            if record is not None:
+                return record # maybe (record_number, record)
+        segment, recnum = divmod(record_number, SegmentSize.db_segment_size)
+        if segment not in dbset.rs_segments:
+            return # maybe raise
+        if recnum not in dbset.rs_segments[segment]:
+            return # maybe raise
+        try:
+            record = dbset._database.get(record_number,
+                                         txn=self.transaction).decode()
+        except AttributeError:
+            # Assume get() returned None.
+            record = None
+        # maybe raise if record is None (if not, None should go on cache)
+        if use_cache:
+            dbset.record_cache[record_number] = record
+            dbset.record.deque.append(record_number)
+        return (record_number, record)
+
             
-class DBbitControlFile(object):
+class Segment(segment.Segment):
     
-    """Define a DB file for control information about the database DB files.
+    """Define a primary database with transaction support for lists or bitmaps
+    of record numbers.
 
-    Methods added:
+    There are three types of segment: existence bitmap, recordset bitmap, and
+    recordset record number list.  Each is opened in a slightly different way
+    so the relevant open_root method is defined in the subclasses.
 
-    close
-    get_control_database
-    open_root
+    Record access methods are not defined at present, leaving the caller to
+    do the bsddb3 calls needed.
 
-    Methods overridden:
-
-    None
-
-    Methods extended:
-
-    __init__
-
-    Properties:
-
-    control_file
-
-    Notes
-
-    The method names used in DBbitPrimaryFile and superclasses are used
-    where possible.  But this file is primary DB_BTREE NODUP.  It is used by
-    all FileControl instances.
-    
     """
 
-    def __init__(self, control_file='control'):
-        """File control database for all DB files."""
-        super(DBbitControlFile, self).__init__()
-        self._control_file = ''.join((SUBFILE_DELIMITER * 3, control_file))
-        self._control_object = None
+    def __init__(self, segment_type=None, file_reference=None, **kargs):
+        """Define primary database for segment type for file_reference.
+        
+        segment_type is a suffix to the database name indicating the database
+        is for existence bitmaps, recordset bitmaps, or recordset record number
+        lists.
+
+        file_reference is the File instance which provides the name of the
+        primary database containing the records the segment referes to, and the
+        method which returns the current transaction identity.
+        
+        """
+        super().__init__()
+        self._segment_file = (SUBFILE_DELIMITER * 2).join(
+            (file_reference.get_database_file(), segment_type))
+        self._transaction = file_reference._transaction
+
+    @property
+    def transaction(self):
+        """Return the active transaction or None."""
+        return self._transaction()
+
+    def close(self):
+        """Close inverted index DB."""
+        try:
+            self._segment_link.close()
+        except:
+            pass
+        super().close()
+
+    def _set_pre_open_parameters(self):
+        pass
 
     def open_root(self, dbenv):
-        """Create file control database in environment"""
+        """Create inverted index DB in dbenv."""
         try:
-            self._control_object = DB(dbenv)
+            self._segment_link = DB(dbenv)
         except:
             raise
         try:
-            self._control_object.set_flags(DB_DUPSORT)
-            self._control_object.open(
+            self._set_pre_open_parameters()
+            self._segment_link.open(
+                self._segment_file,
+                self._segment_file,
+                DB_RECNO,
+                DB_CREATE,
+                txn=self.transaction)
+        except:
+            self._segment_link = None
+            raise
+
+            
+class ExistenceBitMap(Segment):
+    
+    """Define a primary database for existence bitmap segments.
+
+    A count of segments is maintained.  (The thing of interest is the high
+    segment number, which is assumed to be <number of segments> - 1. Perhaps
+    segment_count is a very misleading name for the property.)
+
+    The primary database (Recno access method) is configured to use fixed
+    length values.
+    """
+
+    def __init__(self, **k):
+        """Delegate arguments to superclass and say this is an 'exist', and
+        create placeholder for count of segments.
+        """
+        super().__init__(segment_type='exist', **k)
+        self._segment_count = None
+
+    @property
+    def segment_count(self):
+        """Return number of segments."""
+        return self._segment_count
+
+    @segment_count.setter
+    def segment_count(self, segment_number):
+        """Set segment count from 0-based segment_number if greater."""
+        if segment_number > self._segment_count:
+            self._segment_count = segment_number + 1
+
+    def _set_pre_open_parameters(self):
+        self._segment_link.set_re_pad(0)
+        self._segment_link.set_re_len(SegmentSize.db_segment_size_bytes)
+    
+    def open_root(self, dbenv):
+        """Create inverted index DB in dbenv."""
+        super().open_root(dbenv)
+        self._segment_count = self._segment_link.stat(
+            flags=DB_FAST_STAT, txn=self.transaction)['ndata']
+
+            
+class SegmentList(Segment):
+    
+    """Define a primary database for record number list segments.
+
+    The values in this database will be variable length.
+    """
+
+    def __init__(self, **k):
+        """Delegate arguments to superclass and say this is a 'list'.
+        """
+        super().__init__(segment_type='list', **k)
+
+            
+class SegmentBitarray(Segment):
+    
+    """Define a primary database for bitarray segments.
+
+    The primary database (Recno access method) is configured to use fixed
+    length values.
+    """
+
+    def __init__(self, **k):
+        """Delegate arguments to superclass and say this is a 'bits'.
+        """
+        super().__init__(segment_type='bits', **k)
+
+    def _set_pre_open_parameters(self):
+        self._segment_link.set_re_pad(0)
+        self._segment_link.set_re_len(SegmentSize.db_segment_size_bytes)
+
+            
+class ControlFile(controlfile.ControlFile):
+    
+    """Define a Berkeley DB database to hold the keys of existence bitmap
+    segments which contain unset bits corresponding to deleted records in a
+    primary database.
+
+    The keys in this database are the names of the primary databases specified
+    in the FileSpec instance for the application.
+
+    The access method of this database, which is not in a 'primary database,
+    secondary database' relationship, is DB_BTREE NODUP.
+
+    This database is used by FileControl instances to find record numbers which
+    can be re-used rather than add a new record number at the end of a database
+    without need.
+    """
+
+    def __init__(self, database_instance=None, **kargs):
+        """Define database named database_instance._control_file with
+        transactions managed by database_instance.
+
+        database_instance also provides the method that returns the current
+        transaction identity.
+        
+        """
+        super().__init__()
+        self._control_file = database_instance._control_file
+        self._control_link = None
+        self._transaction = database_instance.get_transaction
+
+    @property
+    def transaction(self):
+        """Return the active transaction or None."""
+        return self._transaction()
+
+    def open_root(self, dbenv):
+        """Create file control database in environment."""
+        try:
+            self._control_link = DB(dbenv)
+        except:
+            raise
+        try:
+            self._control_link.set_flags(DB_DUPSORT)
+            self._control_link.open(
                 self._control_file,
                 self._control_file,
                 DB_BTREE,
-                DB_CREATE)
+                DB_CREATE,
+                txn=self.transaction)
         except:
-            self._control_object = None
+            self._control_link = None
             raise
 
     def close(self):
         """Close file control database."""
-        if self._control_object is not None:
-            self._control_object.close()
-            self._control_object = None
+        if self._control_link is not None:
+            self._control_link.close()
+            self._control_link = None
 
     def get_control_database(self):
         """Return the database containing file control records."""
-        return self._control_object
+        return self._control_link
 
     @property
     def control_file(self):
@@ -4089,27 +2672,19 @@ class DBbitControlFile(object):
         return self._control_file
 
 
-class FileControl(object):
+class FileControl:
     
-    """Freed resource data for a segmented file.
+    """Base class for managing dbapi.Segment subclass databases.
 
-    Methods added:
+    Note the primary or secondary database instance to be managed.
 
-    None
-    
-    Methods overridden:
-
-    None
-    
-    Methods extended:
-
-    __init__
-    
+    Subclasses implement the management.
     """
 
     def __init__(self, dbfile):
-        """Define the file control data."""
-        super(FileControl, self).__init__()
+        """Note dbfile as primary or secondary database instance to be managed.
+        """
+        super().__init__()
 
         # Primary or Secondary file instance whose segment reuse is handled
         self._dbfile = dbfile
@@ -4117,85 +2692,79 @@ class FileControl(object):
 
 class FileControlPrimary(FileControl):
     
-    """Freed resource data for a segmented file.
+    """Keep track of segments in an existence bit map that contain freed record
+    numbers that can be reused.
 
-    Methods added:
-
-    get_lowest_freed_record_number
-    note_freed_record_number
-    note_freed_record_number_segment
-    _read_exists_segment
-    
-    Methods overridden:
-
-    None
-    
-    Methods extended:
-
-    __init__
-    
-    Properties:
-
-    freed_record_number_pages
-
-    Notes
-
-    Introduced to keep track of pages on the existence bit map that contain
-    freed record numbers that can be reused.
-
-    The list of existence bit map page numbers containing freed record numbers
+    The list of existence bit map segments containing freed record numbers
     is cached.
-
     """
 
     def __init__(self, *args):
-        """Define the file control data for primary files."""
-        super(FileControlPrimary, self).__init__(*args)
+        """Delegate arguments to superclass and create placeholder for list of
+        segments with freed record numbers.
+        """
+        super().__init__(*args)
         self._freed_record_number_pages = None
+        self._ebmkey = self._dbfile.encode_record_selector(
+            'E' + self._dbfile._keyvalueset_name)
 
     @property
     def freed_record_number_pages(self):
-        """Return existence bit map record numbers available for re-use"""
+        """Return existence bit map record numbers available for re-use."""
         if self._freed_record_number_pages is None:
             return None
         return bool(self._freed_record_number_pages)
 
     def note_freed_record_number(self, record_number):
-        """Adjust segment of high and low freed record numbers"""
+        """Adjust segment of high and low freed record numbers."""
         self.note_freed_record_number_segment(
-            *divmod(record_number, DB_SEGMENT_SIZE))
+            *divmod(record_number, SegmentSize.db_segment_size))
 
     def note_freed_record_number_segment(
         self, segment, record_number_in_segment):
-        """Adjust segment of high and low freed record numbers"""
+        """Adjust segment of high and low freed record numbers."""
         if self._freed_record_number_pages is None:
             self._freed_record_number_pages = []
-            cursor = self._dbfile.get_control_database().cursor()
-            record = cursor.set(b'E')
-            while record:
-                self._freed_record_number_pages.append(
-                    int.from_bytes(record[1], byteorder='big'))
-                record = cursor.next_dup()
+            cursor = self._dbfile.get_control_database(
+                ).cursor(txn=self._dbfile.transaction)
+            try:
+                record = cursor.set(self._ebmkey)
+                while record:
+                    self._freed_record_number_pages.append(
+                        int.from_bytes(record[1], byteorder='big'))
+                    record = cursor.next_dup()
+            finally:
+                cursor.close()
         insert = bisect.bisect_left(self._freed_record_number_pages, segment)
-        if self._freed_record_number_pages[insert] == segment:
-            return
+        # Should be:
+        # if insert <= len(self._freed_record_number_pages):
+        # Leave as it is until dbapi tests give same results as sqlite3 tests,
+        # which have the same problem.
+        if self._freed_record_number_pages:
+            if insert < len(self._freed_record_number_pages):
+                if self._freed_record_number_pages[insert] == segment:
+                    return
         self._freed_record_number_pages.insert(insert, segment)
         self._dbfile.get_control_database().put(
-            b'E',
-            segment.to_bytes(1 + page.bit_length() // 8, byteorder='big'),
-            flags=DB_NODUPDATA)
+            self._ebmkey,
+            segment.to_bytes(1 + segment.bit_length() // 8, byteorder='big'),
+            flags=DB_NODUPDATA,
+            txn=self._dbfile.transaction)
 
     def get_lowest_freed_record_number(self):
-        """Return low record number in segments with freed record numbers"""
+        """Return low record number in segments with freed record numbers."""
         if self._freed_record_number_pages is None:
             self._freed_record_number_pages = []
-            cursor = self._dbfile.get_control_database().cursor()
-            record = cursor.set(b'E')
-            while record:
-                self._freed_record_number_pages.append(
-                    int.from_bytes(record[1], byteorder='big'))
-                record = cursor.next_dup()
-            del cursor
+            cursor = self._dbfile.get_control_database(
+                ).cursor(txn=self._dbfile.transaction)
+            try:
+                record = cursor.set(self._ebmkey)
+                while record:
+                    self._freed_record_number_pages.append(
+                        int.from_bytes(record[1], byteorder='big'))
+                    record = cursor.next_dup()
+            finally:
+                cursor.close()
         while len(self._freed_record_number_pages):
             s = self._freed_record_number_pages[0]
             lfrns = self._read_exists_segment(s)
@@ -4203,144 +2772,146 @@ class FileControlPrimary(FileControl):
                 # Do not reuse record number on segment of high record number
                 return 0
             try:
-                first_zero_bit = lfrns.index(False)
+                first_zero_bit = lfrns.index(False, 0 if s else 1)
             except ValueError:
-                cursor = self._dbfile.get_control_database().cursor()
-                if cursor.set_both(
-                    b'E',
-                    s.to_bytes(1 + page.bit_length() // 8, byteorder='big')):
-                    cursor.delete()
-                else:
-                    raise
-                del cursor
+                cursor = self._dbfile.get_control_database(
+                    ).cursor(txn=self._dbfile.transaction)
+                try:
+                    if cursor.set_both(
+                        self._ebmkey,
+                        s.to_bytes(1 + s.bit_length() // 8, byteorder='big')):
+                        cursor.delete()
+                    else:
+                        raise
+                finally:
+                    cursor.close()
                 del self._freed_record_number_pages[0]
                 continue
-            return s * DB_SEGMENT_SIZE + first_zero_bit + 1
+            return s * SegmentSize.db_segment_size + first_zero_bit
         else:
             return 0 # record number when inserting into RECNO database
 
     def _read_exists_segment(self, segment_number):
         """Return existence bit map for segment_number if not high segment."""
         # record keys are 1-based but segment_numbers are 0-based
-        page = segment_number + 1
-        if page < self._dbfile.get_existence_bits().segment_count():
+        if segment_number < self._dbfile.get_existence_bits().segment_count - 1:
             ebm = Bitarray()
-            return ebm.frombytes(
-                self._dbfile.get_existence_bits_database().get(page)[1])
+            ebm.frombytes(
+                self._dbfile.get_existence_bits_database(
+                    ).get(segment_number + 1,
+                          txn=self._dbfile.transaction))
+            return ebm
         return None
 
 
 class FileControlSecondary(FileControl):
     
-    """Freed resource data for a segmented file.
+    """Keep track of freed record numbers on the 'record number bitmap' and
+    'record number list' databases for each primary database.
 
-    Methods added:
+    These record numbers can be freed when records are deleted from the primary
+    database or when an inverted list for a key is moved between bitmap and
+    list representations.
 
-    note_freed_bits_page
-    note_freed_list_page
-    _get_bits_page_number
-    get_freed_bits_page
-    get_freed_list_page
-    _get_list_page_number
-    _put_bits_page_number
-    _put_list_page_number
-    
-    Methods overridden:
-
-    None
-    
-    Methods extended:
-
-    __init__
-    
-    Properties:
-
-    freed_list_pages
-    freed_bits_pages
-
-    Notes
-
-    Introduced to keep track of freed pages on the record number bit map and
-    record number list files for each segmented file.
-
-    These pages can be freed when records are deleted or when an inverted list
-    for a key is moved between bit map and list representations.
-
-    (The term page is used because record number n on --list and --bits files
-    is not in general referring to segment number n on the segmented file.)
-
+    The goal is to reuse records in the 'list' and 'bits' databases (see
+    SegmentList and SegmentBitarray classes) if possible rather than add
+    new records at the end.
     """
 
     def __init__(self, *args):
-        """Define the file control data for secondary files."""
-        super(FileControlSecondary, self).__init__(*args)
+        """Delegate arguments to superclass and create placeholders for lists
+        of freed 'list' and 'bits' records.
+        """
+        super().__init__(*args)
         self._freed_list_pages = None
         self._freed_bits_pages = None
+        self._listkey = self._dbfile.encode_record_selector(
+            'L' + self._dbfile._keyvalueset_name)
+        self._bitskey = self._dbfile.encode_record_selector(
+            'B' + self._dbfile._keyvalueset_name)
 
     @property
     def freed_list_pages(self):
-        """List pages available for re-use"""
+        """List pages available for re-use."""
         return self._freed_list_pages
 
     @property
     def freed_bits_pages(self):
-        """Bit Map pages available for re-use"""
+        """Bit Map pages available for re-use."""
         return self._freed_bits_pages
 
     def note_freed_bits_page(self, page_number):
-        """Add page_number to freed bits pages"""
+        """Add page_number to freed bits pages."""
         self._put_bits_page_number(page_number)
 
     def note_freed_list_page(self, page_number):
-        """Add page_number to freed list pages"""
+        """Add page_number to freed list pages."""
         self._put_list_page_number(page_number)
 
     def get_freed_bits_page(self):
-        """Return low page from freed bits pages"""
+        """Return low page from freed bits pages."""
         if self._freed_bits_pages is False:
             return 0 # record number when inserting into RECNO database
         return self._get_bits_page_number()
 
     def get_freed_list_page(self):
-        """Return low page from freed list pages"""
+        """Return low page from freed list pages."""
         if self._freed_list_pages is False:
             return 0 # record number when inserting into RECNO database
         return self._get_list_page_number()
 
     def _put_bits_page_number(self, page):
-        """Put page on freed bits page record"""
-        self._dbfile.get_control_database().put(
-            b'B',
-            page.to_bytes(1 + page.bit_length() // 8, byteorder='big'),
-            flags=DB_NODUPDATA)
+        """Put page on freed bits page record."""
+        try:
+            self._dbfile.get_control_database().put(
+                self._bitskey,
+                page.to_bytes(1 + page.bit_length() // 8, byteorder='big'),
+                flags=DB_NODUPDATA,
+                txn=self._dbfile.transaction)
+        except DBKeyExistError:
+            # Assume callers do not check if page is already marked free.
+            pass
         self._freed_bits_pages = True
 
     def _put_list_page_number(self, page):
-        """Put page on freed list page record"""
-        self._dbfile.get_control_database().put(
-            b'L',
-            page.to_bytes(1 + page.bit_length() // 8, byteorder='big'),
-            flags=DB_NODUPDATA)
+        """Put page on freed list page record."""
+        try:
+            self._dbfile.get_control_database().put(
+                self._listkey,
+                page.to_bytes(1 + page.bit_length() // 8, byteorder='big'),
+                flags=DB_NODUPDATA,
+                txn=self._dbfile.transaction)
+        except DBKeyExistError:
+            # Assume callers do not check if page is already marked free.
+            pass
         self._freed_list_pages = True
 
     def _get_bits_page_number(self):
-        """Pop low page from freed bits page record"""
-        cursor = self._dbfile.get_control_database().cursor()
-        record = cursor.set(b'B')
-        if record:
-            cursor.delete()
-            self._freed_bits_pages = False
-            return int.from_bytes(record[1], byteorder='big')
+        """Pop low page from freed bits page record."""
+        cursor = self._dbfile.get_control_database(
+            ).cursor(txn=self._dbfile.transaction)
+        try:
+            record = cursor.set(self._bitskey)
+            if record:
+                cursor.delete()
+                self._freed_bits_pages = False
+                return int.from_bytes(record[1], byteorder='big')
+        finally:
+            cursor.close()
         self._freed_bits_pages = False
         return 0 # record number when inserting into RECNO database
 
     def _get_list_page_number(self):
-        """Pop low page from freed list page record"""
-        cursor = self._dbfile.get_control_database().cursor()
-        record = cursor.set(b'L')
-        if record:
-            cursor.delete()
-            self._freed_list_pages = False
-            return int.from_bytes(record[1], byteorder='big')
+        """Pop low page from freed list page record."""
+        cursor = self._dbfile.get_control_database(
+            ).cursor(txn=self._dbfile.transaction)
+        try:
+            record = cursor.set(self._listkey)
+            if record:
+                cursor.delete()
+                self._freed_list_pages = False
+                return int.from_bytes(record[1], byteorder='big')
+        finally:
+            cursor.close()
         self._freed_list_pages = False
         return 0 # record number when inserting into RECNO database

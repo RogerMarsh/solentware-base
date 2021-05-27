@@ -7,7 +7,8 @@ or DPT.
 
 See www.sleepycat.com for details of Berkeley DB
 See www.sqlite3.com for details of sqlite3
-See www.dptoolkit.com for details of DPT
+See www.dptoolkit.com for details of DPT (No longer exists.  The database
+interface part of DPT is available at www.solentware.co.uk)
 
 """
 # Module names of supported database engines
@@ -52,15 +53,13 @@ SQLITE_RECORDS_COLUMN = 'RecordNumbers'
 # It is held in a table of it's own to reduce the movement overheads inserting
 # or deleting records and indexes.
 
-PY2_UNPICKLE = 'py2_unpickle'
-KEY_VALUE = 'key_value'
-DATABASE_CODEC = 'utf-8'
-UNPICKLE_CODEC = 'ascii'
+# Access method entry in secondary databases for Berkeley DB
+ACCESS_METHOD = 'access_method'
 
-# Database engine is in one of three states for data storage.
-USE_GIVEN = None
-USE_BYTES = True
-USE_STR = False
+# Access methods for Berkeley DB databases.
+BTREE = 'btree'
+HASH = 'hash'
+RECNO = 'recno'
 
 BLOB = 'blob'
 FLT = 'float'
@@ -94,8 +93,7 @@ SECONDARY_FIELDATTS = {
     ORD: True,
     ONM: False,
     SPT: 50,
-    PY2_UNPICKLE: UNPICKLE_CODEC,
-    KEY_VALUE: DATABASE_CODEC,
+    ACCESS_METHOD: BTREE, # HASH is the other supported value.
     }
 PRIMARY_FIELDATTS = {
     FLT: False,
@@ -104,12 +102,11 @@ PRIMARY_FIELDATTS = {
     ORD: False,
     ONM: False,
     SPT: 50,
-    PY2_UNPICKLE: UNPICKLE_CODEC,
-    KEY_VALUE: DATABASE_CODEC,
+    ACCESS_METHOD: RECNO, # Only supported value.
     }
-DB_FIELDATTS = {PY2_UNPICKLE, KEY_VALUE}
-DPT_FIELDATTS = {FLT, INV, UAE, ORD, ONM, SPT, PY2_UNPICKLE, KEY_VALUE}
-SQLITE3_FIELDATTS = {FLT, PY2_UNPICKLE, KEY_VALUE}
+DB_FIELDATTS = {ACCESS_METHOD}
+DPT_FIELDATTS = {FLT, INV, UAE, ORD, ONM, SPT}
+SQLITE3_FIELDATTS = {FLT}
 FILEATTS = {
     BSIZE: None,
     BRECPPG: None,
@@ -147,16 +144,9 @@ DEFAULT_INCREASE_FACTOR = 'default_increase_factor'
 TABLE_B_SIZE = 8160
 DEFAULT_INITIAL_NUMBER_OF_RECORDS = 200
 
-DUP = 'dup'
-BTREE = 'btree'
-HASH = 'hash'
-RECNO = 'recno'
-DUPSORT = 'dupsort'
-HASH_DUPSORT = 'hash_dupsort'
-BTREE_DUPSORT = 'btree_dupsort'
-
 INDEXPREFIX = 'ix'
 SEGMENTPREFIX = 'sg'
+TABLEPREFIX = 't'
 
 # At Python3 problems converting  Python str or bytes to C++ string for DPT API
 # interface are worked around by limiting primary field length to 127.  This
@@ -169,16 +159,10 @@ SAFE_DPT_FIELD_LENGTH = 63
 # DPT pattern matching special characters
 DPT_PATTERN_CHARS = {c: ''.join(('!', c)) for c in '*+!#/,)(/-='}
 
-# Berkeley DB bitmap configuration
-# Segment size bytes is 2 ** e (e = 0,1,2, ..) to fit with database page size.
-DB_SEGMENT_SIZE_BYTES = 8192
-DB_SEGMENT_SIZE = DB_SEGMENT_SIZE_BYTES * 8
-DB_TOP_RECORD_NUMBER_IN_SEGMENT = DB_SEGMENT_SIZE - 1
-# Conversion limit * byte size of record number is less than segment size bytes.
-DB_CONVERSION_LIMIT = 511
 # Byte length of segment references in secondary database records.
 LENGTH_SEGMENT_BITARRAY_REFERENCE = 11
 LENGTH_SEGMENT_LIST_REFERENCE = 10
+LENGTH_SEGMENT_RECORD_REFERENCE = 6
 
 # Delimiter for file and table names generated from PRIMARY and SECONDARY names.
 SUBFILE_DELIMITER = '_'

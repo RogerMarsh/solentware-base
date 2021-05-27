@@ -2,20 +2,21 @@
 # Copyright (c) 2013 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""Provide a bit array class (called Bitarray) for basesup package.
+"""Provide a bit array class (called Bitarray) for solentware_base package.
 
-Use the bitarray package if it has been installed, otherwise use the bytebit
-module in basesup.tools.
+Use the bitarray package if it has been installed, otherwise use the _bytebit
+module in solentware_base.api.
 
-The tool.bytebit module implements the subset of the bitarray interface used
-in basesup.
+The api._bytebit module implements the subset of the bitarray interface used
+in solentware_base.
 
-Bitarray mostly takes about 4 times longer to do something than bitarray.
+Bitarray mostly takes about 4 times longer to do something than bitarray, but
+takes about 100 times longer to count set bits.
 
 """
-# The decision is made here, rather than in basesup.__init__, because the DPT
-# specific modules in basesup do not need a bit array class as DPT provides
-# it's own bit array handling.
+# The decision is made here, rather than in solentware_base.__init__, because
+# the DPT specific modules in solentware_base do not need a bit array class as
+# DPT provides it's own bit array handling.
 
 try:
     # Use bitarray class from bitarray module if it is available.
@@ -23,15 +24,10 @@ try:
     # more restricted interface defined if the import fails.
     from bitarray import bitarray as Bitarray
 
-    from .constants import DB_SEGMENT_SIZE
-
     SINGLEBIT = Bitarray('1')
-    EMPTY_BITARRAY = Bitarray('0') * DB_SEGMENT_SIZE
 
 except ImportError:
 
-    from .constants import DB_SEGMENT_SIZE
-    from ..tools.bytebit import Bitarray
+    from ._bytebit import Bitarray
 
     SINGLEBIT = True
-    EMPTY_BITARRAY = Bitarray(DB_SEGMENT_SIZE)

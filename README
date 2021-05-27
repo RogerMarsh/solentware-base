@@ -19,14 +19,13 @@ Interfaces exist for:
 * `bsddb3`_
 * `DPT`_
 * `sqlite3`_
+* `apsw`_
+
+At least one of the database engines supported by these interfaces must be installed.
 
 
 Installation Instructions
 =========================
-
-Build dependencies
-
-* `Python`_ 3.3 or later 
 
 Install the package by typing
 
@@ -48,24 +47,29 @@ You may need to give the path and version of Python depending on your system's c
 
          on Unix-like systems.
 
-Runtime dependencies
-
-* `Python`_ 3.3 or later.
-* tkinter, part of Python, which is installed separately sometimes.
-* at least one of the database engines for which an interface exists.
+Use `Python`_ 3.3 or later.
 
 
 Notes
 =====
 
-The `sqlite3`_ interface was added because sqlite3 became the only database engine supporting ordered keys included in the Python distribution when bsddb was dropped at Python 3.  Otherwise why use SQL to implement a non-SQL interface to an 'SQL database system'.
+The `sqlite3`_ interface was added because sqlite3 became the only database engine supporting ordered keys included in the Python distribution when bsddb was dropped at Python 3.
 
 I have not yet succeeded in building `bsddb3`_ on Microsoft Windows.  I assume this package will work with bsddb3 on Microsoft Windows.
 
 `DPT`_ is Microsoft Windows only.  It is included because it represents record sets in indexes using bitmaps when efficient to do so, and uses bitmaps to do boolean logic on record sets.
 
 
+Restrictions
+============
+
+Python 3.4 and 3.5 are removed from runtime dependencies because delete record unittest results using Python's sqlite3 interface to Sqlite 3 are erratic.
+
+The equivalent unittest results using the apsw interface to Sqlite 3 are both identical and not erratic for Python 3.3, 3.4, and 3.5
+
+
 .. _`Python`: https://python.org
 .. _`bsddb3`: https://pypi.python.org/pypi/bsddb3
-.. _`DPT`: http://solentware.co.uk/products.html
+.. _`DPT`: http://solentware.co.uk/components.html
 .. _`sqlite3`: https://github.com/ghaering/pysqlite
+.. _`apsw`: https://github.com/rogerbinns/apsw

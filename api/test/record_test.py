@@ -73,48 +73,6 @@ class KeydBaseIII(unittest.TestCase):
         msg = 'Failure of this test invalidates all other tests'
 
 
-class KeyDict(unittest.TestCase):
-
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
-
-    def test__raises(self):
-        """"""
-        pass
-
-    def test__copy(self):
-        """"""
-        pass
-
-    def test__assumptions(self):
-        """"""
-        msg = 'Failure of this test invalidates all other tests'
-
-
-class KeyList(unittest.TestCase):
-
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
-
-    def test__raises(self):
-        """"""
-        pass
-
-    def test__copy(self):
-        """"""
-        pass
-
-    def test__assumptions(self):
-        """"""
-        msg = 'Failure of this test invalidates all other tests'
-
-
 class KeyText(unittest.TestCase):
 
     def setUp(self):
@@ -304,74 +262,17 @@ class RecordText(unittest.TestCase):
         msg = 'Failure of this test invalidates all other tests'
 
 
-def suite__k():
-    return unittest.TestLoader().loadTestsFromTestCase(Key)
-
-
-def suite__kd():
-    return unittest.TestLoader().loadTestsFromTestCase(KeyData)
-
-
-def suite__kb():
-    return unittest.TestLoader().loadTestsFromTestCase(KeydBaseIII)
-
-
-def suite__kdi():
-    return unittest.TestLoader().loadTestsFromTestCase(KeyDict)
-
-
-def suite__kl():
-    return unittest.TestLoader().loadTestsFromTestCase(KeyList)
-
-
-def suite__kt():
-    return unittest.TestLoader().loadTestsFromTestCase(KeyText)
-
-
-def suite__v():
-    return unittest.TestLoader().loadTestsFromTestCase(Value)
-
-
-def suite__vd():
-    return unittest.TestLoader().loadTestsFromTestCase(ValueData)
-
-
-def suite__vdi():
-    return unittest.TestLoader().loadTestsFromTestCase(ValueDict)
-
-
-def suite__vl():
-    return unittest.TestLoader().loadTestsFromTestCase(ValueList)
-
-
-def suite__vt():
-    return unittest.TestLoader().loadTestsFromTestCase(ValueText)
-
-
-def suite__r():
-    return unittest.TestLoader().loadTestsFromTestCase(Record)
-
-
-def suite__rb():
-    return unittest.TestLoader().loadTestsFromTestCase(RecorddBaseIII)
-
-
-def suite__rt():
-    return unittest.TestLoader().loadTestsFromTestCase(RecordText)
-
-
 if __name__ == '__main__':
-    unittest.TextTestRunner(verbosity=2).run(suite__k())
-    unittest.TextTestRunner(verbosity=2).run(suite__kd())
-    unittest.TextTestRunner(verbosity=2).run(suite__kb())
-    unittest.TextTestRunner(verbosity=2).run(suite__kdi())
-    unittest.TextTestRunner(verbosity=2).run(suite__kl())
-    unittest.TextTestRunner(verbosity=2).run(suite__kt())
-    unittest.TextTestRunner(verbosity=2).run(suite__v())
-    unittest.TextTestRunner(verbosity=2).run(suite__vd())
-    unittest.TextTestRunner(verbosity=2).run(suite__vdi())
-    unittest.TextTestRunner(verbosity=2).run(suite__vl())
-    unittest.TextTestRunner(verbosity=2).run(suite__vt())
-    unittest.TextTestRunner(verbosity=2).run(suite__r())
-    unittest.TextTestRunner(verbosity=2).run(suite__rb())
-    unittest.TextTestRunner(verbosity=2).run(suite__rt())
+    runner = unittest.TextTestRunner
+    loader = unittest.defaultTestLoader.loadTestsFromTestCase
+    runner().run(loader(Key))
+    runner().run(loader(KeyData))
+    runner().run(loader(KeydBaseIII))
+    runner().run(loader(Value))
+    runner().run(loader(ValueData))
+    runner().run(loader(ValueDict))
+    runner().run(loader(ValueList))
+    runner().run(loader(ValueText))
+    runner().run(loader(Record))
+    runner().run(loader(RecorddBaseIII))
+    runner().run(loader(RecordText))
