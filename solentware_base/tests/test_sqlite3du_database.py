@@ -6,7 +6,10 @@
 
 import unittest
 
-from .. import sqlite3du_database
+try:
+    from .. import sqlite3du_database
+except ImportError: # Not ModuleNotFoundError for Pythons earlier than 3.6
+    sqlite3du_database = None
 
 
 class Sqlite3duDatabase(unittest.TestCase):
@@ -29,4 +32,5 @@ if __name__ == '__main__':
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
 
-    runner().run(loader(Sqlite3duDatabase))
+    if sqlite3du_database is not None:
+        runner().run(loader(Sqlite3duDatabase))

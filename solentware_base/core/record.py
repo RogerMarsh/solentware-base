@@ -28,7 +28,7 @@ class _Comparison:
     # The attributes which contribute to comparision.
     # Empty by default, meaning use the instance dictionary.
     # Override in sublasses if needed.
-    _attributes = ()
+    comparison_attributes = ()
 
     def __eq__(self, other):
         """Return (self == other).
@@ -37,14 +37,14 @@ class _Comparison:
         attributes in just one of the objects evaluates to False.
         
         """
-        s = self.__class__._attributes or self.__dict__
-        o = other.__class__._attributes or other.__dict__
+        s = self.__class__.comparison_attributes or self.__dict__
+        o = other.__class__.comparison_attributes or other.__dict__
         if len(s) != len(o):
             return False
         for i in o:
             if i not in s:
                 return False
-            if s[i] != o[i]:
+            if self.__dict__[i] != other.__dict__[i]:
                 return False
         return True
 
@@ -56,12 +56,12 @@ class _Comparison:
         attributes in common.
         
         """
-        s = self.__class__._attributes or self.__dict__
-        o = other.__class__._attributes or other.__dict__
+        s = self.__class__.comparison_attributes or self.__dict__
+        o = other.__class__.comparison_attributes or other.__dict__
         for i in o:
             if i in s:
                 try:
-                    if s[i] < o[i]:
+                    if self.__dict__[i] < other.__dict__[i]:
                         return False
                 except TypeError:
                     return False
@@ -75,12 +75,12 @@ class _Comparison:
         attributes in common.
         
         """
-        s = self.__class__._attributes or self.__dict__
-        o = other.__class__._attributes or other.__dict__
+        s = self.__class__.comparison_attributes or self.__dict__
+        o = other.__class__.comparison_attributes or other.__dict__
         for i in o:
             if i in s:
                 try:
-                    if s[i] <= o[i]:
+                    if self.__dict__[i] <= other.__dict__[i]:
                         return False
                 except TypeError:
                     return False
@@ -94,12 +94,12 @@ class _Comparison:
         attributes in common.
         
         """
-        s = self.__class__._attributes or self.__dict__
-        o = other.__class__._attributes or other.__dict__
+        s = self.__class__.comparison_attributes or self.__dict__
+        o = other.__class__.comparison_attributes or other.__dict__
         for i in o:
             if i in s:
                 try:
-                    if s[i] > o[i]:
+                    if self.__dict__[i] > other.__dict__[i]:
                         return False
                 except TypeError:
                     return False
@@ -113,12 +113,12 @@ class _Comparison:
         attributes in common.
         
         """
-        s = self.__class__._attributes or self.__dict__
-        o = other.__class__._attributes or other.__dict__
+        s = self.__class__.comparison_attributes or self.__dict__
+        o = other.__class__.comparison_attributes or other.__dict__
         for i in o:
             if i in s:
                 try:
-                    if s[i] >= o[i]:
+                    if self.__dict__[i] >= other.__dict__[i]:
                         return False
                 except TypeError:
                     return False
@@ -131,14 +131,14 @@ class _Comparison:
         attributes in just one of the objects evaluates to True.
         
         """
-        s = self.__class__._attributes or self.__dict__
-        o = other.__class__._attributes or other.__dict__
+        s = self.__class__.comparison_attributes or self.__dict__
+        o = other.__class__.comparison_attributes or other.__dict__
         if len(s) != len(o):
             return True
         for i in o:
             if i not in s:
                 return True
-            if s[i] != o[i]:
+            if self.__dict__[i] != other.__dict__[i]:
                 return True
         return False
 

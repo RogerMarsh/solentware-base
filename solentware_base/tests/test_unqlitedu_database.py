@@ -6,7 +6,10 @@
 
 import unittest
 
-from .. import unqlitedu_database
+try:
+    from .. import unqlitedu_database
+except ImportError: # Not ModuleNotFoundError for Pythons earlier than 3.6
+    unqlitedu_database = None
 
 
 class UnqliteduDatabase(unittest.TestCase):
@@ -29,4 +32,5 @@ if __name__ == '__main__':
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
 
-    runner().run(loader(UnqliteduDatabase))
+    if unqlitedu_database is not None:
+        runner().run(loader(UnqliteduDatabase))

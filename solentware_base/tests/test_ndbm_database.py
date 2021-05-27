@@ -7,8 +7,14 @@
 import unittest
 import os
 
-from .. import ndbm_module
-from .. import ndbm_database
+try:
+    from .. import ndbm_module
+except ImportError: # Not ModuleNotFoundError for Pythons earlier than 3.6
+    ndbm_module = None
+try:
+    from .. import ndbm_database
+except ImportError: # Not ModuleNotFoundError for Pythons earlier than 3.6
+    ndbm_database = None
 
 
 class NdbmDatabase(unittest.TestCase):
@@ -48,4 +54,6 @@ if __name__ == '__main__':
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
 
-    runner().run(loader(NdbmDatabase))
+    # See some kind of unit test failure if either import succeeds.
+    if ndbm_module is not None or ndbm_database is not None:
+        runner().run(loader(NdbmDatabase))

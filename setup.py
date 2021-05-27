@@ -2,15 +2,20 @@
 # Copyright 2018 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-import distutils.command
+import distutils.command as distutils_command
 import sys
 
 from setuptools import setup
-import setuptools.command
+import setuptools.command as setuptools_command
 
-commands = set(distutils.command.__all__ + setuptools.command.__all__)
-del setuptools.command
-del distutils.command
+commands = set(distutils_command.__all__ + setuptools_command.__all__)
+del setuptools_command
+
+# If this is left as distutils.command 'python3.6 setup.py ...' runs into
+# exception "AttributeError: module 'distutils' has no attribute 'command'"
+# but 'python3.7 ...' and 'python3.8 ...' versions succeed.
+# Hence the 'as ...' appended to the import statements above.
+del distutils_command
 
 args = sys.argv
 del sys
@@ -38,7 +43,7 @@ if __name__ == '__main__':
 
     setup(
         name='solentware-base',
-        version='4.1',
+        version='4.1.4',
         description=' '.join(
             ('Bitmapped record number databases using Python interfaces to',
              'Berkeley DB, SQLite, UnQLite, Vedis, and DPT.',
@@ -54,6 +59,7 @@ if __name__ == '__main__':
             'Programming Language :: Python :: 2.7',
             'Programming Language :: Python :: 3.6',
             'Programming Language :: Python :: 3.7',
+            'Programming Language :: Python :: 3.8',
             'Operating System :: OS Independent',
             'Topic :: Database',
             'Intended Audience :: Developers',

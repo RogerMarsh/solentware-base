@@ -6,7 +6,10 @@
 
 import unittest
 
-from .. import apswdu_database
+try:
+    from .. import apswdu_database
+except ImportError: # Not ModuleNotFoundError for Pythons earlier than 3.6
+    apswdu_database = None
 
 
 class ApswduDatabase(unittest.TestCase):
@@ -29,4 +32,5 @@ if __name__ == '__main__':
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
 
-    runner().run(loader(ApswduDatabase))
+    if apswdu_database is not None:
+        runner().run(loader(ApswduDatabase))

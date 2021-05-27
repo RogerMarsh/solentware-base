@@ -105,19 +105,24 @@ class Modulequery(unittest.TestCase):
                  'vedis',
                  )),
             set(r))
-        self.assertEqual(
-            len(set(r)),
-            len({m for m in (modulequery.apsw,
-                             modulequery.bsddb,
-                             modulequery.bsddb3,
-                             modulequery.gnu,
-                             modulequery.ndbm,
-                             modulequery.dptapi,
-                             modulequery.sqlite3,
-                             modulequery.unqlite,
-                             modulequery.vedis,
-                             ) if m},
-                ))
+        m = {i for i in (modulequery.apsw,
+                         modulequery.bsddb,
+                         modulequery.bsddb3,
+                         modulequery.gnu,
+                         modulequery.ndbm,
+                         modulequery.dptapi,
+                         modulequery.sqlite3,
+                         modulequery.unqlite,
+                         modulequery.vedis,
+                         ) if i}
+        self.assertEqual(len(m)>=len(r), True)
+        if len(m) > len(r):
+            if modulequery.bsddb in m and modulequery.bsddb3 in m:
+                self.assertEqual('bsddb' not in r, True)
+                self.assertEqual('bsddb3' in r, True)
+            if modulequery.apsw in m and modulequery.sqlite3 in m:
+                self.assertEqual('sqlite3' not in r, True)
+                self.assertEqual('apsw' in r, True)
 
     def test_modules_for_existing_databases(self):
         # r depends on what's installed, and the existence of a file structure

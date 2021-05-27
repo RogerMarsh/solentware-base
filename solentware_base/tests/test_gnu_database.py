@@ -7,8 +7,14 @@
 import unittest
 import os
 
-from .. import gnu_module
-from .. import gnu_database
+try:
+    from .. import gnu_module
+except ImportError: # Not ModuleNotFoundError for Pythons earlier than 3.6
+    gnu_module = None
+try:
+    from .. import gnu_database
+except ImportError: # Not ModuleNotFoundError for Pythons earlier than 3.6
+    gnu_database = None
 
 
 class GnuDatabase(unittest.TestCase):
@@ -48,4 +54,6 @@ if __name__ == '__main__':
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
 
-    runner().run(loader(GnuDatabase))
+    # See some kind of unit test failure if either import succeeds.
+    if gnu_module is not None or gnu_database is not None:
+        runner().run(loader(GnuDatabase))

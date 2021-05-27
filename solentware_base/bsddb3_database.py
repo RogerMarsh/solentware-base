@@ -6,7 +6,10 @@
 bsddb3 module.
 
 """
-from bsddb3 import db
+
+# Must be bsddb3, not bsddb3.db, to meet external references the way done in
+# apsw_database, sqlite3_database, unqlite_database, and vedis_database.
+import bsddb3
 
 from .core import _db
 
@@ -26,6 +29,6 @@ class Database(_db.Database):
         # Then the super().open_database() call in except path should succeed
         # because segment size is now same as that on the database.
         try:
-            super().open_database(db, **k)
+            super().open_database(bsddb3.db, **k)
         except self.__class__.SegmentSizeError:
-            super().open_database(db, **k)
+            super().open_database(bsddb3.db, **k)

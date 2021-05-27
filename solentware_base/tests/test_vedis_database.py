@@ -7,6 +7,10 @@
 import unittest
 
 from .. import vedis_database
+try:
+    from .. import vedis_database
+except ImportError: # Not ModuleNotFoundError for Pythons earlier than 3.6
+    vedis_database = None
 
 
 class VedisDatabase(unittest.TestCase):
@@ -34,4 +38,5 @@ if __name__ == '__main__':
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
 
-    runner().run(loader(VedisDatabase))
+    if vedis_database is not None:
+        runner().run(loader(VedisDatabase))

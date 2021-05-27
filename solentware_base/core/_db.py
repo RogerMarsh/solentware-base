@@ -11,6 +11,10 @@ from ast import literal_eval
 import bisect
 import re
 
+import sys
+_openbsd_platform = sys.platform.startswith('openbsd')
+del sys
+
 from . import filespec
 from .constants import (
     PRIMARY,
@@ -214,9 +218,11 @@ class Database(_database.Database):
                 spec_from_db = literal_eval(control.get(SPECIFICATION_KEY
                                             ).decode())
                 if self._use_specification_items is not None:
-                    spec_from_db = {k:v for k, v in spec_from_db.items()
-                                    if k in self._use_specification_items}
-                self.specification.is_consistent_with(spec_from_db)
+                    self.specification.is_consistent_with(
+                        {k:v for k, v in spec_from_db.items()
+                         if k in self._use_specification_items})
+                else:
+                    self.specification.is_consistent_with(spec_from_db)
                 segment_size = literal_eval(
                     control.get(SEGMENT_SIZE_BYTES_KEY).decode())
                 if self._real_segment_size_bytes is not False:
@@ -262,6 +268,31 @@ class Database(_database.Database):
             if not os.path.exists(logdir):
                 os.mkdir(logdir)
             self.dbenv.set_lg_dir(logdir)
+
+        # Dated 26 April 2020.
+        # Not sure what has changed, if anything, but if the maxlocks parameter
+        # is not set self.dbenv.lock_stat()['maxlocks'] returns 0 on FreeBSD
+        # and 1000 on OpenBSD.  For ChessTab databases keys can be deleted
+        # within transactions on FreeBSD, but not necessarily on OpenBSD where
+        # it is possible for a game record to be too big to be deleted.  A Game
+        # record has around 4500 index references depending on the number of
+        # moves played.
+        # A game with no moves was deleted successfully on OpenBSD, but typical
+        # games are too big.
+        # Setting maxlocks to 0 (zero) leaves FreeBSD behaviour unchanged, but
+        # stops OpenBSD opening any databases at all.
+        # Setting maxlocks to 10000 on OpenBSD allows at least one Game record
+        # to be deleted within a transaction.  However making the same setting
+        # on FreeBSD might be applying an unnecessary upper bound on locks
+        # assuming 0 (zero) means no limit.  A game with 138 moves was deleted,
+        # which is about 3 times the average number of moves in a game.  The
+        # FIDE longest possible game, at nearly 6000 moves, might be a problem.
+        # maxlocks is added to the things taken from self.environment but is
+        # only applied if non-zero and OS is OpenBSD.
+        if _openbsd_platform:
+            maxlocks = self.environment.get('maxlocks', 0)
+            if maxlocks:
+                self.dbenv.set_lk_max_locks(maxlocks)
 
         self.dbenv.open(self.home_directory, self.environment_flags(dbe))
         if files is None:
@@ -312,7 +343,9 @@ class Database(_database.Database):
             for field, fieldname in fields.items():
                 if fieldname is None:
                     fieldname = filespec.FileSpec.field_name(field)
-                if ACCESS_METHOD in fieldprops[fieldname]:
+                if fieldprops[fieldname] is None:
+                    access_method = dbe.DB_BTREE
+                elif ACCESS_METHOD in fieldprops[fieldname]:
                     if fieldprops[fieldname][ACCESS_METHOD] == HASH:
                         access_method = dbe.DB_HASH
                     else:
@@ -448,21 +481,14 @@ class Database(_database.Database):
 
     def replace(self, file, key, oldvalue, newvalue):
         assert file in self.specification
-        cursor = self.table[file][0].cursor(txn=self.dbtxn)
-        try:
-            if cursor.set_both(key, oldvalue.encode()):
-                cursor.put(key, newvalue.encode(), self._dbe.DB_CURRENT)
-        finally:
-            cursor.close()
+        self.table[file][0].put(key, newvalue.encode(), txn=self.dbtxn)
 
     def delete(self, file, key, value):
         assert file in self.specification
-        cursor = self.table[file][0].cursor(txn=self.dbtxn)
         try:
-            if cursor.set_both(key, value.encode()):
-                cursor.delete()
-        finally:
-            cursor.close()
+            self.table[file][0].delete(key, txn=self.dbtxn)
+        except:
+            pass
 
     def get_primary_record(self, file, key):
         """Return primary record (key, value) given primary key on dbset."""
@@ -2006,10 +2032,10 @@ class CursorSecondary(Cursor):
 
     def get_unique_primary_for_index_key(self, key):
         """Return the record number on primary table given key on index."""
-        r = self.nearest(key.encode())
+        r = self.nearest(key)
         if not r:
             return None
-        if r[0] != key:
+        if r[0].encode() != key:
             return None
         nr = self.next()
         if nr:

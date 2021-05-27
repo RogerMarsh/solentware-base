@@ -69,8 +69,7 @@ class CreateDatabase:
     """Select database location, segment size, and location, then create it."""
 
     _START_TEXT = ''.join(
-        ('Right-click for menu.\n\n',
-         'By default a new database would be created with the top-left ',
+        ('By default a new database would be created with the top-left ',
          'engine, and segment size 4000.',
          ))
 
@@ -91,7 +90,11 @@ class CreateDatabase:
             ).grid(row=1, column=2, columnspan=2)
         tkinter.ttk.Label(master=root, text='Database engines'
                           ).grid(row=2, column=0, rowspan=3)
-        tkinter.ttk.Label(master=root, text='Log').grid(row=5, column=1, pady=5)
+        tkinter.ttk.Label(master=root, text='Log').grid(row=6, column=1, pady=5)
+        tkinter.ttk.Label(master=root, text=self._START_TEXT
+                          ).grid(row=5, column=0, pady=5, columnspan=4)
+        tkinter.ttk.Label(master=root, text='Right-click for menu'
+                          ).grid(row=6, column=2, pady=5, sticky='e')
         entry = tkinter.ttk.Entry(master=root)
         entry.grid(row=0, column=1, columnspan=2, sticky='ew', pady=5)
         directory = tkinter.StringVar(root, '')
@@ -129,7 +132,7 @@ class CreateDatabase:
                 r, c = divmod(e, 3)
                 rb.grid(row=r+2, column=c+1, pady=2)
         frame = tkinter.ttk.Frame(master=root)
-        frame.grid(row=6, column=0, columnspan=4, sticky='ew')
+        frame.grid(row=7, column=0, columnspan=4, sticky='ew')
         text = tkinter.Text(master=frame, wrap=tkinter.WORD)
         scrollbar = tkinter.ttk.Scrollbar(
             master=frame,
@@ -149,7 +152,6 @@ class CreateDatabase:
         self.set_menu_and_entry_events_for_create_database(True)
         entry.bind('<ButtonPress-3>', self.show_menu)
         text.bind('<ButtonPress-3>', self.show_menu)
-        self.insert_text(self._START_TEXT)
         if dptapi is not None:
             self.insert_text(
                 ''.join(
@@ -163,12 +165,17 @@ class CreateDatabase:
         """Wrap Text widget insert with Enable and Disable state configure."""
         self.text.insert(tkinter.END, text)
                 
-    def report_action_or_error(self, msg):
+    def report_action_or_error(self, msg, error=True):
         self.insert_text('\n\n')
         self.insert_text(''.join(msg))
-        tkinter.messagebox.showerror(
-            master=self.root,
-            message='\n'.join(msg))
+        if error:
+            tkinter.messagebox.showerror(
+                master=self.root,
+                message='\n'.join(msg))
+        else:
+            tkinter.messagebox.showinfo(
+                master=self.root,
+                message='\n'.join(msg))
 
     def show_menu(self, event=None):
         """Show the popup menu for widget."""
@@ -198,8 +205,6 @@ class CreateDatabase:
         ssb = int(self.segmentsizebytes.get())
         path = self.directory.get()
         if dptapi is engine:
-            cd = engine_database_class(path, allowcreate=True)
-        elif ssb == 16:
             cd = engine_database_class(path, allowcreate=True)
         else:
             cd = engine_database_class(
@@ -304,7 +309,7 @@ class CreateDatabase:
         self.directory.set('')
         self.segmentsizebytes.set('')
         self.database.set('')
-        self.report_action_or_error(msg)
+        self.report_action_or_error(msg, error=False)
 
     def set_menu_and_entry_events_for_create_database(self, active):
         """Turn events for opening a URL on if active is True otherwise off."""
@@ -444,8 +449,6 @@ if __name__ == '__main__':
             ssb = int(self.segmentsizebytes.get())
             path = self.directory.get()
             if dptapi is engine:
-                cd = engine_database_class({}, path, allowcreate=True)
-            elif ssb == 16:
                 cd = engine_database_class({}, path, allowcreate=True)
             else:
                 cd = engine_database_class(

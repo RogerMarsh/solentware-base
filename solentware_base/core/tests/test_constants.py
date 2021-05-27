@@ -150,8 +150,10 @@ class ConstantsFunctions(unittest.TestCase):
         ae(constants.BITMAP_BYTES, 'B')
         ae(constants.GNU_MODULE, 'dbm.gnu')
         ae(constants.NDBM_MODULE, 'dbm.ndbm')
+        ae(constants.TABLE_REGISTER_KEY, b'_table_register')
+        ae(constants.FIELD_REGISTER_KEY, b'_field_register')
         cc = [d for d in dir(constants) if not d.endswith('__')]
-        ae(len(cc), 95)
+        ae(len(cc), 97)
         ae(sorted(cc),
            sorted(['BSDDB_MODULE',
                    'BSDDB3_MODULE',
@@ -248,6 +250,8 @@ class ConstantsFunctions(unittest.TestCase):
                    'SEGMENT_VALUE_SUFFIX',
                    'LIST_BYTES',
                    'BITMAP_BYTES',
+                   'TABLE_REGISTER_KEY',
+                   'FIELD_REGISTER_KEY',
                    ]))
 
 

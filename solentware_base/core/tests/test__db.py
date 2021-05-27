@@ -1437,12 +1437,17 @@ class Database_make_recordset(_DBOpen):
     # causes a different error?  Spotted while working on _nosql.py.
     # There has been a FreeBSD OS and ports upgrade since solentware-base-4.0.
     # Changed back after rebuild at end of March 2020.
+    # When doing some testing on OpenBSD in September 2020 see that the -30997
+    # exception is raised.
     def test_55_file_records_under(self):
         rs = self.database.recordlist_key('file1', 'field1', key=b'ba_o')
         #self.database.file_records_under('file1', 'field1', rs, b'www')
         self.assertRaisesRegex(
             bsddb3.db.DBKeyEmptyError,
-            "\(-30995, 'BDB0066 DB_KEYEMPTY: Non-existent key/data pair'\)",
+            r"".join(
+                (r"(?:\(-30995, 'BDB0066 |\(-30997, ')",
+                 r"DB_KEYEMPTY: Non-existent key/data pair'\)")),
+            #"\(-30995, 'BDB0066 DB_KEYEMPTY: Non-existent key/data pair'\)",
             #"\(-30997, 'DB_KEYEMPTY: Non-existent key/data pair'\)",
             self.database.file_records_under,
             *('file1', 'field1', rs, b'www'),
@@ -1452,6 +1457,8 @@ class Database_make_recordset(_DBOpen):
     # causes a different error?  Spotted while working on _nosql.py.
     # There has been a FreeBSD OS and ports upgrade since solentware-base-4.0.
     # Changed back after rebuild at end of March 2020.
+    # When doing some testing on OpenBSD in September 2020 see that BDB1002
+    # is omitted from the exception text.
     def test_56__get_segment_record_numbers(self):
         self.assertIsInstance(self.database._get_segment_record_numbers(
             'file1', 7), Bitarray)
@@ -1459,7 +1466,11 @@ class Database_make_recordset(_DBOpen):
             'file1', 8), list)
         self.assertRaisesRegex(
             bsddb3.db.DBInvalidArgError,
-            "\(22, 'Invalid argument -- BDB1002 illegal record number of 0'\)",
+            r"".join((
+                r"\(22, 'Invalid argument -- (?:BDB1002 )?",
+                r"illegal record number of 0'\)",
+                )),
+            #"\(22, 'Invalid argument -- BDB1002 illegal record number of 0'\)",
             #"\(22, 'Invalid argument -- illegal record number of 0'\)",
             self.database._get_segment_record_numbers,
             *('file1', 0),

@@ -188,9 +188,11 @@ class Database(_database.Database):
             if rsk is not None and rssbk is not None:
                 spec_from_db = literal_eval(rsk[0][0])
                 if self._use_specification_items is not None:
-                    spec_from_db = {k:v for k, v in spec_from_db.items()
-                                    if k in self._use_specification_items}
-                self.specification.is_consistent_with(spec_from_db)
+                    self.specification.is_consistent_with(
+                        {k:v for k, v in spec_from_db.items()
+                         if k in self._use_specification_items})
+                else:
+                    self.specification.is_consistent_with(spec_from_db)
                 segment_size = literal_eval(rssbk[0][0])
                 if self._real_segment_size_bytes is not False:
                     self.segment_size_bytes = self._real_segment_size_bytes
@@ -391,10 +393,9 @@ class Database(_database.Database):
                 'set',
                 SQLITE_VALUE_COLUMN, '= ?',
                 'where',
-                file, '== ? and',
-                SQLITE_VALUE_COLUMN, '= ?',
+                file, '== ?',
                 ))
-            cursor.execute(statement, (newvalue, key, oldvalue))
+            cursor.execute(statement, (newvalue, key))
         finally:
             cursor.close()
 
@@ -410,8 +411,7 @@ class Database(_database.Database):
                 'delete from',
                 self.table[file][0],
                 'where',
-                file, '== ? and',
-                SQLITE_VALUE_COLUMN, '= ?',
+                file, '== ?',
                 ))
             #statement = ' '.join((
             #    'update',
@@ -421,7 +421,7 @@ class Database(_database.Database):
             #    'where',
             #    file, '== ?',
             #    ))
-            cursor.execute(statement, (key, value))
+            cursor.execute(statement, (key, ))
         finally:
             cursor.close()
     
@@ -1800,7 +1800,7 @@ class CursorPrimary(Cursor):
         """Return last record taking partial key into account."""
         statement = ' '.join((
             'select',
-            self._file,
+            self._file, ',',
             SQLITE_VALUE_COLUMN,
             'from',
             self._table,

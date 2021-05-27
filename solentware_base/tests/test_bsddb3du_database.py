@@ -6,7 +6,10 @@
 
 import unittest
 
-from .. import bsddb3du_database
+try:
+    from .. import bsddb3du_database
+except ImportError: # Not ModuleNotFoundError for Pythons earlier than 3.6
+    bsddb3du_database = None
 
 
 class Bsddb3duDatabase(unittest.TestCase):
@@ -29,4 +32,5 @@ if __name__ == '__main__':
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
 
-    runner().run(loader(Bsddb3duDatabase))
+    if bsddb3du_database is not None:
+        runner().run(loader(Bsddb3duDatabase))

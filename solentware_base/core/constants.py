@@ -188,6 +188,8 @@ CONTROL_FILE = SUBFILE_DELIMITER * 3 + 'control'
 DEFAULT_SEGMENT_SIZE_BYTES = 4000
 SPECIFICATION_KEY = b'_specification'
 SEGMENT_SIZE_BYTES_KEY = b'_segment_size_bytes'
+TABLE_REGISTER_KEY = b'_table_register'
+FIELD_REGISTER_KEY = b'_field_register'
 
 # Constants defined for UnQLite and Vedis databases.  dbm.gnu and dbm.ndbm are
 # added to this list later.

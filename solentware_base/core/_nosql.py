@@ -29,6 +29,8 @@ from .constants import (
     DEFAULT_SEGMENT_SIZE_BYTES,
     SPECIFICATION_KEY,
     SEGMENT_SIZE_BYTES_KEY,
+    TABLE_REGISTER_KEY,
+    FIELD_REGISTER_KEY,
     FREED_RECORD_NUMBER_SEGMENTS_SUFFIX,
     FIELDS,
     NOSQL_FIELDATTS,
@@ -173,13 +175,20 @@ class Database(_database.Database):
                     raise
 
         # Need to look for control file if database already exists.
-        table_register = set()
-        self.table[CONTROL_FILE] = str(len(table_register))
-        table_register.add(CONTROL_FILE)
+        table_register = dict()
+        field_register = dict()
+        high_table_number = len(table_register)
+        high_field_number = dict()
+        self.table[CONTROL_FILE] = str(high_table_number)
+        table_register[CONTROL_FILE] = high_table_number
         specification_key = SUBFILE_DELIMITER.join(
             (self.table[CONTROL_FILE], SPECIFICATION_KEY.decode()))
         segment_size_bytes_key = SUBFILE_DELIMITER.join(
             (self.table[CONTROL_FILE], SEGMENT_SIZE_BYTES_KEY.decode()))
+        table_register_key = SUBFILE_DELIMITER.join(
+            (self.table[CONTROL_FILE], TABLE_REGISTER_KEY.decode()))
+        field_register_key = SUBFILE_DELIMITER.join(
+            (self.table[CONTROL_FILE], FIELD_REGISTER_KEY.decode()))
 
         # The ___control table should be present already if the file exists.
         if self.database_file is not None:
@@ -195,9 +204,11 @@ class Database(_database.Database):
             if rsk is not None and rssbk is not None:
                 spec_from_db = literal_eval(rsk.decode())
                 if self._use_specification_items is not None:
-                    spec_from_db = {k:v for k, v in spec_from_db.items()
-                                    if k in self._use_specification_items}
-                self.specification.is_consistent_with(spec_from_db)
+                    self.specification.is_consistent_with(
+                        {k:v for k, v in spec_from_db.items()
+                         if k in self._use_specification_items})
+                else:
+                    self.specification.is_consistent_with(spec_from_db)
                 segment_size = literal_eval(rssbk.decode())
                 if self._real_segment_size_bytes is not False:
                     self.segment_size_bytes = self._real_segment_size_bytes
@@ -207,6 +218,28 @@ class Database(_database.Database):
                     raise self.SegmentSizeError(
                         ''.join(('Segment size recorded in database is not ',
                                  'the one used attemping to open database')))
+                if table_register_key in dbenv:
+                    table_register = literal_eval(
+                        dbenv[table_register_key].decode())
+                    high_table_number = max(table_register.values())
+                    if high_table_number < len(spec_from_db):
+                        raise DatabaseError(
+                            'High table number less than specification items')
+                if field_register_key in dbenv:
+                    field_register = literal_eval(
+                        dbenv[field_register_key].decode())
+                    for k, v in field_register.items():
+                        hfn = [n for n in v.values()]
+                        if len(hfn):
+                            high_field_number[k] = max(hfn)
+                        else:
+                            high_field_number[k] = 0
+                        if high_field_number[k] < len(
+                            spec_from_db[k][SECONDARY]):
+                            raise DatabaseError(
+                                ''.join((
+                                    'High field number less than number of ',
+                                    'specification items')))
             elif rsk is None and rssbk is not None:
                 raise DatabaseError('No specification recorded in database')
             elif rsk is not None and rssbk is None:
@@ -232,36 +265,53 @@ class Database(_database.Database):
         self.dbenv = dbenv
         if files is None:
             files = self.specification.keys()
+        if self.database_file is None:
+            fs = self.specification.keys()
+        elif rsk is None:
+            fs = self.specification.keys()
+        else:
+            fs = literal_eval(rsk.decode()).keys()
         self.start_transaction()
 
-        # Sorted so each file gets the same prefix each time.  This will be
-        # replaced by using the self.table values stored in a 'control file'
-        # record when an existing file is opened.
-        for file, specification in sorted(self.specification.items()):
+        # Sorted so each file gets the same prefix each time in a new database.
+        for e, file in enumerate(sorted(fs)):
             if file not in files:
                 continue
+            specification = self.specification[file]
 
             # Sorted so each field gets same prefix each time.
             # Use self.table values stored in a 'control file' record when an
             # existing file is opened.
             fields = sorted(specification[SECONDARY])
 
-            self.table[file] = [str(len(table_register))]
-            table_register.add(file)
+            if file in table_register:
+                self.table[file] = [str(table_register[file])]
+            else:
+                high_table_number += 1
+                self.table[file] = [str(high_table_number)]
+                table_register[file] = high_table_number
 
             # Not sure what to store, if anything.  But the key should exist.
             # Maybe name and key which must agree with control file data?
             if self.table[file][0] not in dbenv:
                 dbenv[self.table[file][0]] = repr({})
 
-            field_register = set()
+            # The primary field is always field number 0.
             self.ebm_control[file] = ExistenceBitmapControl(
-                self.table[file][0], str(len(field_register)), self)
+                self.table[file][0], str(0), self)
             self.table_data[file] = SUBFILE_DELIMITER.join(
-                (self.table[file][0], str(len(field_register))))
-            field_register.add(file)
+                (self.table[file][0], str(0)))
             fieldprops = specification[FIELDS]
+            if file not in field_register:
+                field_register[file] = dict()
+            frf = field_register[file]
             for field in fields:
+                if field not in frf:
+                    if len(frf):
+                        frf[field] = max(frf.values()) + 1
+                    else:
+                        frf[field] = 1
+                field_number = frf[field]
 
                 # The self.table entries for indicies, necessary in _sqlite to
                 # be indexed, should not be needed in _nosql; so follow the
@@ -269,7 +319,7 @@ class Database(_database.Database):
                 fieldkey = SUBFILE_DELIMITER.join((file, field))
                 self.table[fieldkey] = [
                     SUBFILE_DELIMITER.join(
-                        (self.table[file][0], str(len(field_register))))]
+                        (self.table[file][0], str(field_number)))]
 
                 # Tree is needed only for ordered access to keys.
                 fieldname = specification[SECONDARY][field]
@@ -285,7 +335,7 @@ class Database(_database.Database):
                 # (Append SUBFILE_DELIMITER<value> to create database key.)
                 self.segment_table[fieldkey] = SUBFILE_DELIMITER.join(
                     (self.table[file][0],
-                     str(len(field_register)),
+                     str(field_number),
                      SEGMENT_KEY_SUFFIX))
 
                 # The records in a segment indexed by a value.
@@ -293,16 +343,16 @@ class Database(_database.Database):
                 # appended to create database key.)
                 self.segment_records[fieldkey] = SUBFILE_DELIMITER.join(
                     (self.table[file][0],
-                     str(len(field_register)),
+                     str(field_number),
                      SEGMENT_VALUE_SUFFIX))
-
-                field_register.add(field)
 
         if self.database_file is not None:
             if rsk is None and rssbk is None:
                 self.dbenv[specification_key] = repr(self.specification)
                 self.dbenv[segment_size_bytes_key
                            ] = repr(self.segment_size_bytes)
+                self.dbenv[table_register_key] = repr(table_register)
+                self.dbenv[field_register_key] = repr(field_register)
         self.commit()
 
     def close_database_contexts(self, files=None):
@@ -356,23 +406,14 @@ class Database(_database.Database):
         # Normal source, edit_instance, generates oldvalue and newvalue by
         # repr(object).
         assert file in self.specification
-        dbkey = SUBFILE_DELIMITER.join((self.table_data[file], str(key)))
-        try:
-            if (literal_eval(oldvalue) ==
-                literal_eval(self.dbenv[dbkey].decode())):
-                self.dbenv[dbkey] = newvalue
-        except KeyError:
-            pass
+        self.dbenv[SUBFILE_DELIMITER.join((self.table_data[file], str(key)))
+                   ] = newvalue
 
     def delete(self, file, key, value):
         # Normal source, delete_instance, generates value by repr(object).
         assert file in self.specification
-        dbkey = SUBFILE_DELIMITER.join((self.table_data[file], str(key)))
-        try:
-            if literal_eval(value) == literal_eval(self.dbenv[dbkey].decode()):
-                del self.dbenv[dbkey]
-        except KeyError:
-            pass
+        del self.dbenv[
+            SUBFILE_DELIMITER.join((self.table_data[file], str(key)))]
     
     def get_primary_record(self, file, key):
         """Return the instance given the record number in key."""

@@ -6,7 +6,10 @@
 
 import unittest
 
-from .. import ndbmdu_database
+try:
+    from .. import ndbmdu_database
+except ImportError: # Not ModuleNotFoundError for Pythons earlier than 3.6
+    ndbmdu_database = None
 
 
 class NdbmduDatabase(unittest.TestCase):
@@ -29,4 +32,5 @@ if __name__ == '__main__':
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
 
-    runner().run(loader(NdbmduDatabase))
+    if ndbmdu_database is not None:
+        runner().run(loader(NdbmduDatabase))

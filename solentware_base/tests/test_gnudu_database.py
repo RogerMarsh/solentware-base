@@ -6,7 +6,10 @@
 
 import unittest
 
-from .. import gnudu_database
+try:
+    from .. import gnudu_database
+except ImportError: # Not ModuleNotFoundError for Pythons earlier than 3.6
+    gnudu_database = None
 
 
 class GnuduDatabase(unittest.TestCase):
@@ -29,4 +32,5 @@ if __name__ == '__main__':
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
 
-    runner().run(loader(GnuduDatabase))
+    if gnudu_database is not None:
+        runner().run(loader(GnuduDatabase))
