@@ -10,8 +10,58 @@ See www.sqlite3.com for details of sqlite3
 See www.dptoolkit.com for details of DPT
 
 """
+# Module names of supported database engines
+BSDDB_MODULE = 'bsddb'
+BSDDB3_MODULE = 'bsddb3'
+DPT_MODULE = 'dptdb.dptapi'
+SQLITE3_MODULE = 'sqlite3'
+APSW_MODULE = 'apsw'
 
-SQLITE_ADAPTER = 'adapter'
+SQLITE_VALUE_COLUMN = 'Value'
+# Notes on SQLITE_VALUE_COLUMN from a Berkeley DB perspective.
+# Application file specifications declare a PRIMARY field.
+# In Berkeley DB this corresponds to the value in (key, value) records of the
+# primary RECNO database and to the key in (key, value) records of secondary
+# databases.
+# In DPT this corresponds to the visible field of a record and the indexes
+# correspond to the invisible fields of a record (keys in Berkeley DB secondary
+# databases).
+# In Sqlite3 this corresponds to the row number of a row and an arbitrary name
+# is chosen for the equivalent of the value in a Berkeley DB primary database.
+
+SQLITE_SEGMENT_COLUMN = 'Segment'
+SQLITE_COUNT_COLUMN = 'RecordCount'
+# Notes on SQLITE_SEGMENT_COLUMN and SQLITE_COUNT_COLUMN from a Berkeley DB
+# perspective.
+# The ...bit... secondary database values are a composite consisting of the
+# segment number, the count of records in the segment, and either a bytes
+# representation of a record number or the record number of a list or bitarray
+# of record numbers.
+# Here segment number gets it's own column and becomes part of the key.
+# Count of records gets it's own column but is not part of the key.
+# The remnant of the value will be the record number, or the list or bitarray
+# of record numbers.
+
+SQLITE_RECORDS_COLUMN = 'RecordNumbers'
+# Notes on SQLITE_RECORDS_COLUMN from a DPT perspective.
+# Index value which reference many records hold the record number references as
+# lists or bitmaps of record numbers, one per segment, depending on how many
+# records are referenced in the segment.
+# The column will be up to 8192 bytes if it holds a list, or exactly 8192 bytes
+# if it holds a bitmap.
+# It is held in a table of it's own to reduce the movement overheads inserting
+# or deleting records and indexes.
+
+PY2_UNPICKLE = 'py2_unpickle'
+KEY_VALUE = 'key_value'
+DATABASE_CODEC = 'utf-8'
+UNPICKLE_CODEC = 'ascii'
+
+# Database engine is in one of three states for data storage.
+USE_GIVEN = None
+USE_BYTES = True
+USE_STR = False
+
 BLOB = 'blob'
 FLT = 'float'
 INV = 'invisible'
@@ -32,39 +82,43 @@ EO = 0
 RRN = 36
 SUPPORTED_FILEORGS = (EO, RRN)
 MANDATORY_FILEATTS = {
-    BSIZE:(int, type(None)),
-    BRECPPG:int,
-    DSIZE:(int, type(None)),
-    FILEORG:int,
+    BSIZE: (int, type(None)),
+    BRECPPG: int,
+    DSIZE: (int, type(None)),
+    FILEORG: int,
     }
 SECONDARY_FIELDATTS = {
-    FLT:False,
-    INV:True,
-    UAE:False,
-    ORD:True,
-    ONM:False,
-    SPT:50,
-    SQLITE_ADAPTER:(),
+    FLT: False,
+    INV: True,
+    UAE: False,
+    ORD: True,
+    ONM: False,
+    SPT: 50,
+    PY2_UNPICKLE: UNPICKLE_CODEC,
+    KEY_VALUE: DATABASE_CODEC,
     }
 PRIMARY_FIELDATTS = {
-    FLT:False,
-    INV:False,
-    UAE:False,
-    ORD:False,
-    ONM:False,
-    SPT:50,
+    FLT: False,
+    INV: False,
+    UAE: False,
+    ORD: False,
+    ONM: False,
+    SPT: 50,
+    PY2_UNPICKLE: UNPICKLE_CODEC,
+    KEY_VALUE: DATABASE_CODEC,
     }
-DPT_FIELDATTS = set((FLT, INV, UAE, ORD, ONM, SPT))
-SQLITE3_FIELDATTS = set((FLT, SQLITE_ADAPTER))
+DB_FIELDATTS = {PY2_UNPICKLE, KEY_VALUE}
+DPT_FIELDATTS = {FLT, INV, UAE, ORD, ONM, SPT, PY2_UNPICKLE, KEY_VALUE}
+SQLITE3_FIELDATTS = {FLT, PY2_UNPICKLE, KEY_VALUE}
 FILEATTS = {
-    BSIZE:None,
-    BRECPPG:None,
-    BRESERVE:DEFAULT,
-    BREUSE:DEFAULT,
-    DSIZE:None,
-    DRESERVE:DEFAULT,
-    DPGSRES:DEFAULT,
-    FILEORG:None,
+    BSIZE: None,
+    BRECPPG: None,
+    BRESERVE: DEFAULT,
+    BREUSE: DEFAULT,
+    DSIZE: None,
+    DRESERVE: DEFAULT,
+    DPGSRES: DEFAULT,
+    FILEORG: None,
     }
 DDNAME = 'ddname'
 FILE = 'file'
@@ -91,6 +145,7 @@ BTOD_CONSTANT = 'btod_constant'
 DEFAULT_RECORDS = 'default_records'
 DEFAULT_INCREASE_FACTOR = 'default_increase_factor'
 TABLE_B_SIZE = 8160
+DEFAULT_INITIAL_NUMBER_OF_RECORDS = 200
 
 DUP = 'dup'
 BTREE = 'btree'
@@ -101,3 +156,29 @@ HASH_DUPSORT = 'hash_dupsort'
 BTREE_DUPSORT = 'btree_dupsort'
 
 INDEXPREFIX = 'ix'
+SEGMENTPREFIX = 'sg'
+
+# At Python3 problems converting  Python str or bytes to C++ string for DPT API
+# interface are worked around by limiting primary field length to 127.  This
+# leaves room for encoding expansion within the DPT limit of 255.  Nothing can
+# be done about indexes but there will be double, or quadruple the occurrences
+# on Table B.  63 four-byte utf-8 encodings fit in 255 bytes.
+DPT_PRIMARY_FIELD_LENGTH = 'dptprimaryfieldlength'
+SAFE_DPT_FIELD_LENGTH = 63
+
+# DPT pattern matching special characters
+DPT_PATTERN_CHARS = {c: ''.join(('!', c)) for c in '*+!#/,)(/-='}
+
+# Berkeley DB bitmap configuration
+# Segment size bytes is 2 ** e (e = 0,1,2, ..) to fit with database page size.
+DB_SEGMENT_SIZE_BYTES = 8192
+DB_SEGMENT_SIZE = DB_SEGMENT_SIZE_BYTES * 8
+DB_TOP_RECORD_NUMBER_IN_SEGMENT = DB_SEGMENT_SIZE - 1
+# Conversion limit * byte size of record number is less than segment size bytes.
+DB_CONVERSION_LIMIT = 511
+# Byte length of segment references in secondary database records.
+LENGTH_SEGMENT_BITARRAY_REFERENCE = 11
+LENGTH_SEGMENT_LIST_REFERENCE = 10
+
+# Delimiter for file and table names generated from PRIMARY and SECONDARY names.
+SUBFILE_DELIMITER = '_'

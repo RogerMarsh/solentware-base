@@ -15,10 +15,10 @@ get_sizes_for_new_files
 """
 
 import os
-import Tkinter
+import tkinter
 
-import basesup.tools.dialogues
-from basesup.api.constants import BSIZE, DSIZE, BRECPPG, DEFAULT_RECORDS
+from ..tools.dialogues import FOCUS_ERROR
+from ..api.constants import BSIZE, DSIZE, BRECPPG, DEFAULT_RECORDS
 
 
 class FileSize(object):
@@ -59,7 +59,7 @@ class FileSize(object):
         self.use_custom = None
         self.sizes = dict()
         self.bytesize = dict()
-        self.confirm = Tkinter.Toplevel()
+        self.confirm = tkinter.Toplevel()
         self.confirm.wm_title('File sizes')
         self.confirm.grid_rowconfigure(0)
         self.confirm.grid_rowconfigure(1, weight=1)
@@ -67,17 +67,17 @@ class FileSize(object):
         self.confirm.grid_rowconfigure(3)
         self.confirm.grid_columnconfigure(0, weight=1)
         self.confirm.grid_columnconfigure(1)
-        self.buttons_frame = Tkinter.Frame(master=self.confirm)
+        self.buttons_frame = tkinter.Frame(master=self.confirm)
         self.buttons_frame.grid(
-            column=0, row=3, sticky=Tkinter.NSEW, columnspan=2)
+            column=0, row=3, sticky=tkinter.NSEW, columnspan=2)
         self.create_buttons(self.get_button_definitions())
-        self.reports = Tkinter.Text(
+        self.reports = tkinter.Text(
                 master=self.confirm,
-                wrap=Tkinter.WORD,
+                wrap=tkinter.WORD,
                 takefocus=0,
                 height=12)
         self.reports.insert(
-            Tkinter.END,
+            tkinter.END,
             ''.join((
                 'The files below will be created with sufficient space ',
                 'to hold the specified number of records assuming a ',
@@ -91,58 +91,58 @@ class FileSize(object):
                 'checked, and if this is less than 90% of the initial size ',
                 'then the file is increased in size by initial size.',
                 )))
-        self.reports.grid(column=0, row=0, sticky=Tkinter.NSEW, columnspan=2)
-        self.sizes_canvas = Tkinter.Canvas(master=self.confirm)
-        self.sizes_canvas.grid(column=0, row=1, sticky=Tkinter.NSEW)
-        self.sizes_frame = Tkinter.Frame(self.sizes_canvas)
+        self.reports.grid(column=0, row=0, sticky=tkinter.NSEW, columnspan=2)
+        self.sizes_canvas = tkinter.Canvas(master=self.confirm)
+        self.sizes_canvas.grid(column=0, row=1, sticky=tkinter.NSEW)
+        self.sizes_frame = tkinter.Frame(self.sizes_canvas)
         self.sizes_frame.grid_columnconfigure(0, weight=1)
         self.sizes_frame.grid_columnconfigure(1, weight=1, uniform='s')
         self.sizes_frame.grid_columnconfigure(2, weight=1, uniform='s')
         self.sizes_frame.grid_columnconfigure(3, weight=1, uniform='s')
         self.sizes_canvas.create_window(
-            0, 0, window=self.sizes_frame, anchor=Tkinter.NW)
-        self.vsbar = Tkinter.Scrollbar(self.confirm, orient=Tkinter.VERTICAL)
-        self.vsbar.grid(column=1, row=1, sticky=Tkinter.NSEW)
-        self.hsbar = Tkinter.Scrollbar(self.confirm, orient=Tkinter.HORIZONTAL)
-        self.hsbar.grid(column=0, row=2, sticky=Tkinter.NSEW)
+            0, 0, window=self.sizes_frame, anchor=tkinter.NW)
+        self.vsbar = tkinter.Scrollbar(self.confirm, orient=tkinter.VERTICAL)
+        self.vsbar.grid(column=1, row=1, sticky=tkinter.NSEW)
+        self.hsbar = tkinter.Scrollbar(self.confirm, orient=tkinter.HORIZONTAL)
+        self.hsbar.grid(column=0, row=2, sticky=tkinter.NSEW)
         self.sizes_canvas.configure(xscrollcommand=self.hsbar.set)
         self.sizes_canvas.configure(yscrollcommand=self.vsbar.set)
         self.hsbar.configure(command=self.sizes_canvas.xview)
         self.vsbar.configure(command=self.sizes_canvas.yview)
-        for e, i in enumerate(filespec._dptfiles.iteritems()):
+        for e, i in enumerate(iter(filespec.get_dptfiles().items())):
             k, v = i
-            w = Tkinter.Label(master=self.sizes_frame, text=k)
-            w.grid(column=0, row=e, sticky=Tkinter.NSEW)
+            w = tkinter.Label(master=self.sizes_frame, text=k)
+            w.grid(column=0, row=e, sticky=tkinter.NSEW)
             if not os.path.exists(v._file):
                 if v._filedesc[BSIZE] is None:
                     records = v._default_records
                 else:
                     records = v._filedesc[BSIZE] * v._filedesc[BRECPPG]
-                w = Tkinter.Label(
+                w = tkinter.Label(
                     master=self.sizes_frame,
                     text=str(records))
-                w.grid(column=1, row=e, sticky=Tkinter.NSEW)
-                w = Tkinter.Entry(master=self.sizes_frame)
+                w.grid(column=1, row=e, sticky=tkinter.NSEW)
+                w = tkinter.Entry(master=self.sizes_frame)
                 w.configure(
                     validate='key',
                     validatecommand=(
                         w.register(self.is_size_valid),
                         '%P',
                         '%W'))
-                w.grid(column=2, row=e, sticky=Tkinter.NSEW)
+                w.grid(column=2, row=e, sticky=tkinter.NSEW)
                 self.sizes[k] = w.get
                 s = self.bytesize[w.winfo_pathname(w.winfo_id())] = [v]
-                w = Tkinter.Label(master=self.sizes_frame)
-                w.grid(column=3, row=e, sticky=Tkinter.NSEW)
+                w = tkinter.Label(master=self.sizes_frame)
+                w.grid(column=3, row=e, sticky=tkinter.NSEW)
                 s.append(w)
                 self._report_bytesize('', s)
             else:
-                w = Tkinter.Label(master=self.sizes_frame, text='Exists')
-                w.grid(column=2, row=e, sticky=Tkinter.NSEW)
+                w = tkinter.Label(master=self.sizes_frame, text='Exists')
+                w.grid(column=2, row=e, sticky=tkinter.NSEW)
                 self.sizes[k] = lambda : ''
         self.reports.configure(
             background=self.sizes_frame.cget('background'),
-            state=Tkinter.DISABLED)
+            state=tkinter.DISABLED)
         self.restore_focus = self.confirm.focus_get()
         self.confirm.wait_visibility()
         self.confirm.grab_set()
@@ -164,15 +164,15 @@ class FileSize(object):
             #restore focus on dismissing dialogue
             if self.restore_focus is not None:
                 self.restore_focus.focus_set()
-        except Tkinter._tkinter.TclError, error:
+        except tkinter._tkinter.TclError as error:
             #application destroyed while confirm dialogue exists
-            if str(error) != basesup.tools.dialogues.FOCUS_ERROR:
+            if str(error) != FOCUS_ERROR:
                 raise
 
     def create_buttons(self, buttons):
         """Create the buttons in the button definition."""
         for i, b in enumerate(buttons):
-            button = Tkinter.Button(
+            button = tkinter.Button(
                 master=self.buttons_frame,
                 text=buttons[i][0],
                 underline=buttons[i][3],
@@ -204,7 +204,7 @@ class FileSize(object):
 
     def _get_custom_file_sizes(self):
         """Get file sizes from Entry widgets before dialogue destroyed."""
-        for k, v in self.sizes.iteritems():
+        for k, v in self.sizes.items():
             t = v()  # v is Entry's get method
             if len(t):
                 self.sizes[k] = int(t)
@@ -276,7 +276,7 @@ class FileSize(object):
 
 def get_sizes_for_new_files(filespec, cnf=dict(), **kargs):
     """Invoke file size dialogue if any files in filespec do not exist"""
-    for k, v in filespec._dptfiles.iteritems():
+    for k, v in filespec.get_dptfiles().items():
         if not os.path.exists(v._file):
             break
     else:
@@ -284,18 +284,18 @@ def get_sizes_for_new_files(filespec, cnf=dict(), **kargs):
     d = FileSize(filespec, cnf=cnf, **kargs)
     if not d.is_ok():
         return False
-    for k, v in d.sizes.iteritems():
-        f = filespec._dptfiles[k]._filedesc
+    for k, v in d.sizes.items():
+        f = filespec.get_dptfiles()[k]._filedesc
         if v and d.use_custom:
             records = v
         elif f[BSIZE] is None:
-            records = filespec._dptfiles[k]._default_records
+            records = filespec.get_dptfiles()[k]._default_records
         else:
             continue
         bsize = int(round(records / f[BRECPPG]))
         if bsize * f[BRECPPG] < records:
             bsize += 1
-        dsize = int(round(bsize * filespec._dptfiles[k]._btod_factor))
+        dsize = int(round(bsize * filespec.get_dptfiles()[k]._btod_factor))
         f[BSIZE] = bsize
         f[DSIZE] = dsize
     return True

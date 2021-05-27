@@ -2,31 +2,38 @@
 # Copyright 2011 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-from distutils.core import setup
+from setuptools import setup
 
-from version import _basesup_version
+if __name__ == '__main__':
 
-setup(
-    name='basesup',
-    version=_basesup_version,
-    description='Database definition classes',
-    author='solentware.co.uk',
-    author_email='roger.marsh@solentware.co.uk',
-    url='http://www.solentware.co.uk',
-    package_dir={'basesup':''},
-    packages=[
-        'basesup',
-        'basesup.api', 'basesup.gui', 'basesup.tools',
-        ],
-    package_data={
-        'basesup': ['LICENCE'],
-        },
-    long_description='''Database definition classes
+    long_description = open('README').read()
 
-    Provides access to a database using the bsddb interface to Berkeley DB, the
-    dptdb interface to DPT, or the sqlite3 interface to sqlite.
-
-    Records are stored as pickled class instances and indexed with values
-    derived from the instance attributes.
-    ''',
-    )
+    setup(
+        name='basesup',
+        version='0.17',
+        description='Database Record definition classes',
+        author='Roger Marsh',
+        author_email='roger.marsh@solentware.co.uk',
+        url='http://www.solentware.co.uk',
+        package_dir={'basesup':''},
+        packages=[
+            'basesup',
+            'basesup.api', 'basesup.gui', 'basesup.tools',
+            'basesup.about',
+            ],
+        package_data={
+            'basesup.about': ['LICENCE', 'CONTACT'],
+            },
+        long_description=long_description,
+        license='BSD',
+        classifiers=[
+            'License :: OSI Approved :: BSD License',
+            'Programming Language :: Python :: 3.3',
+            'Programming Language :: Python :: 3.4',
+            'Operating System :: OS Independent',
+            'Topic :: Software Development',
+            'Topic :: Database :: Front Ends',
+            'Intended Audience :: Developers',
+            'Development Status :: 4 - Beta',
+            ],
+        )

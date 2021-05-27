@@ -23,6 +23,7 @@ See www.dptoolkit.com for details of DPT
 
 List of classes
 
+_DatabaseEncoders
 DPTbaseError - Exceptions
 DPTbase - DPT database definition and API
 DPTbaseFile - DPT file definition and file level access
@@ -32,14 +33,18 @@ _CursorDPT - DPT record set and direct value set access
 
 """
 
-from api.database import DatabaseError
+from .api.database import DatabaseError
 
 import sys
+import collections
 _platform_win32 = sys.platform == 'win32'
+_python_version = '.'.join(
+    (str(sys.version_info[0]),
+     str(sys.version_info[1])))
 del sys
 
 if not _platform_win32:
-    raise DatabaseError, 'Platform is not "win32"'
+    raise DatabaseError('Platform is not "win32"')
 
 import os
 import os.path
@@ -47,11 +52,11 @@ import subprocess
 
 from dptdb import dptapi
 
-from api.database import (
-    Database, Cursor, decode_record_number, encode_record_number,
+from .api.database import (
+    Database, Cursor,
     )
-from api.constants import (
-    FLT, INV, UAE, ORD, ONM, SPT,
+from .api.constants import (
+    FLT, INV, UAE, ORD, ONM, SPT, KEY_VALUE,
     BSIZE, BRECPPG, BRESERVE, BREUSE,
     DSIZE, DRESERVE, DPGSRES,
     FILEORG, DEFAULT, EO, RRN, SUPPORTED_FILEORGS,
@@ -61,6 +66,8 @@ from api.constants import (
     PRIMARY, SECONDARY, DEFER,
     BTOD_FACTOR, BTOD_CONSTANT, DEFAULT_RECORDS, DEFAULT_INCREASE_FACTOR,
     DPT_DEFER_FOLDER, DPT_DU_SEQNUM, DPT_SYS_FOLDER,
+    USE_STR, DPT_PRIMARY_FIELD_LENGTH, SAFE_DPT_FIELD_LENGTH,
+    DPT_PATTERN_CHARS,
     )
 from basesup.gui.dptfilesize import get_sizes_for_new_files
 
@@ -71,8 +78,57 @@ file_parameter_list = (
 class DPTbaseError(DatabaseError):
     pass
 
+        
+class _DatabaseEncoders(object):
+    
+    """Define default record key encoder and decoder.
 
-class DPTbase(Database):
+    Methods added:
+
+    decode_record_number
+    encode_record_number
+    is_engine_uses_bytes
+    is_engine_uses_str
+
+    Methods overridden:
+
+    None
+
+    Methods extended:
+
+    None
+    
+    """
+
+    def encode_record_number(self, key):
+        """Return base 256 string for integer with left-end most significant.
+
+        Typically used to convert Berkeley DB primary key to secondary index
+        format.
+        
+        """
+        return repr(key)
+
+    def decode_record_number(self, skey):
+        """Return integer from base 256 string with left-end most significant.
+
+        Typically used to convert Berkeley DB primary key held on secondary
+        index.
+
+        """
+        return literal_eval(skey)
+
+    def encode_record_selector(self, key):
+        """Return base64 string for integer with left-end most significant.
+
+        Typically used to convert Berkeley DB primary key to secondary index
+        format.
+        
+        """
+        return key
+
+
+class DPTbase(Database, _DatabaseEncoders):
     
     """Implement Database API using DPT database.
 
@@ -90,9 +146,17 @@ class DPTbase(Database):
 
     Methods added:
 
+    allocate_and_open_contexts
+    cede_contexts_to_process
     create_default_parms
+    do_database_task
     do_deferred_updates
     get_database_instance
+    get_dbserv
+    get_dptfiles
+    get_dptsysfolder
+    get_parms
+    get_sfserv
     open_context_allocated
     set_defer_update
     unset_defer_update
@@ -106,36 +170,39 @@ class DPTbase(Database):
     close_context
     close_database
     commit
-    close_internal_cursors
+    database_cursor
     db_compatibility_hack
+    decode_as_primary_key
     delete_instance
     edit_instance
+    encode_primary_key
     exists
     files_exist
-    make_cursor
     get_database_folder
     get_database
     get_database_increase
     get_database_parameters
     get_first_primary_key_for_index_key
+    get_packed_key
     get_primary_record
-    make_internal_cursors
     increase_database_size
     initial_database_size
     is_primary
     is_primary_recno
     is_recno
     open_context
-    get_packed_key
-    decode_as_primary_key
-    encode_primary_key
     put_instance
+    start_transaction
 
     Methods extended:
 
     None
     
     """
+
+    # Database engine uses str.
+    # If a bytes is passed it is decoded using iso-8859-1.
+    engine_uses_bytes_or_str = USE_STR 
 
     def __init__(self, DPTfiles, DPTfolder, **kargs):
         """Define DPT database.
@@ -168,7 +235,7 @@ class DPTbase(Database):
         except:
             msg = ' '.join(['Main folder name', str(DPTfolder),
                             'is not valid'])
-            raise DPTbaseError, msg
+            raise DPTbaseError(msg)
         
         #The database system parameters. DPT assumes reasonable defaults
         #for any values sought in self._dptkargs.
@@ -177,52 +244,52 @@ class DPTbase(Database):
         self._dptsysfolder = str(kargs.get(
             DPT_SYS_FOLDER, os.path.join(dptfolder, DPT_SYS_FOLDER)))
         self._sysprint = str(kargs.get(
-            'sysprint', os.path.join(self._dptsysfolder, 'sysprint.txt')))
+            'sysprint', os.path.join(self.get_dptsysfolder(), 'sysprint.txt')))
         self._parms = str(kargs.get(
-            'parms', os.path.join(self._dptsysfolder, 'parms.ini')))
+            'parms', os.path.join(self.get_dptsysfolder(), 'parms.ini')))
         self._msgctl = str(kargs.get(
-            'msgctl', os.path.join(self._dptsysfolder, 'msgctl.ini')))
+            'msgctl', os.path.join(self.get_dptsysfolder(), 'msgctl.ini')))
         self._audit = str(kargs.get(
-            'audit', os.path.join(self._dptsysfolder, 'audit.txt')))
+            'audit', os.path.join(self.get_dptsysfolder(), 'audit.txt')))
         self._username = str(kargs.get('username', 'dptapi'))
         
         #DPTfiles processing
 
         dptfiles = dict()
         pathnames = dict()
-        sfi = 0
+        sfi = 0 # used by obsolescent multi-step deferred update
 
         if not isinstance(DPTfiles, dict):
-            raise DPTbaseError, 'File definitions must be a dictionary'
+            raise DPTbaseError('File definitions must be a dictionary')
         
         for dd in DPTfiles:
             if not isinstance(DPTfiles[dd], dict):
                 msg = ' '.join(
                     ['DPT file definition for', repr(dd),
                      'must be a dictionary'])
-                raise DPTbaseError, msg
+                raise DPTbaseError(msg)
             
             ddname = DPTfiles[dd][DDNAME]
             if len(ddname) == 0:
-                raise DPTbaseError, 'Zero length DD name'
+                raise DPTbaseError('Zero length DD name')
             
             elif len(ddname) > 8:
-                raise DPTbaseError, 'DD name length over 8 characters'
+                raise DPTbaseError('DD name length over 8 characters')
             
             elif not ddname.isalnum():
                 msg = ' '.join(['DD name', ddname, 'must be upper case',
                                 'alphanum starting with alpha'])
-                raise DPTbaseError, msg
+                raise DPTbaseError(msg)
                 
             elif not ddname.isupper():
                 msg = ' '.join(['DD name', ddname, 'must be upper case',
                                 'alphanum starting with alpha'])
-                raise DPTbaseError, msg
+                raise DPTbaseError(msg)
                 
             elif not ddname[0].isupper():
                 msg = ' '.join(['DD name', ddname, 'must be upper case',
                                 'alphanum starting with alpha'])
-                raise DPTbaseError, msg
+                raise DPTbaseError(msg)
                 
             else:
                 folder = DPTfiles[dd].get(FOLDER, None)
@@ -237,19 +304,20 @@ class DPTbase(Database):
                     msg = ' '.join(
                         ['Full path name from file description', dd,
                          'is invalid'])
-                    raise DPTbaseError, msg
+                    raise DPTbaseError(msg)
                 
                 if fname in pathnames:
                     msg = ' '.join(['File name', fname,
                                     'linked to', pathnames[fname],
                                     'cannot link to', dd])
-                    raise DPTbaseError, msg
+                    raise DPTbaseError(msg)
 
                 pathnames[fname] = dd
                 dptfiles[dd] = self.make_root(
                     dd,
                     fname,
                     DPTfiles[dd],
+                    DPTfiles.field_name,
                     sfi)
                 sfi += 1
 
@@ -258,40 +326,41 @@ class DPTbase(Database):
 
     def backout(self):
         """Backout updates on all DPT files."""
-        if self._dbserv:
-            if self._dbserv.UpdateIsInProgress():
-                self._dbserv.Backout()
+        if self.get_dbserv():
+            if self.get_dbserv().UpdateIsInProgress():
+                self.get_dbserv().Backout()
             
     def close_context(self):
         """Close all DPT files."""
-        if self._dbserv is None:
+        if self.get_dbserv() is None:
             return
-        for dd in self._dptfiles:
-            self._dptfiles[dd].close(self._dbserv)
+        for dd in self.get_dptfiles():
+            self.get_dptfiles()[dd].close(self.get_dbserv())
+
+    def close_contexts(self, contexts):
+        """Close the contexts."""
+        for c in contexts:
+            self.get_dptfiles()[c].close_context(self.get_dbserv())
 
     def close_database(self):
         """Close all DPT files and shut down database services."""
-        if self._dbserv is None:
+        if self.get_dbserv() is None:
             return
         self.close_context()
         try:
             # #SEQTEMP and checkpoint.ckp are in self._dptsysfolder
             cwd = os.getcwd()
-            os.chdir(os.path.abspath(self._dptsysfolder))
-            self._dbserv.Destroy()
+            os.chdir(os.path.abspath(self.get_dptsysfolder()))
+            self.get_dbserv().Destroy()
             os.chdir(cwd)
         except:
             pass
-
-    def close_internal_cursors(self, dbnames=None):
-        """Return True for compatibility with Berkeley DB subclass."""
-        return True
             
     def commit(self):
         """Commit updates on all DPT files."""
-        if self._dbserv:
-            if self._dbserv.UpdateIsInProgress():
-                self._dbserv.Commit()
+        if self.get_dbserv():
+            if self.get_dbserv().UpdateIsInProgress():
+                self.get_dbserv().Commit()
             
     def db_compatibility_hack(self, record, srkey):
         """Convert to (key, value) format returned by Berkeley DB access.
@@ -311,14 +380,14 @@ class DPTbase(Database):
         """
         key, value = record
         if value is None:
-            return (key, decode_record_number(srkey))
+            return (key, self.decode_record_number(srkey))
         else:
             return record
 
     def create_default_parms(self):
         """Create default parms.ini file."""
-        if not os.path.exists(self._parms):
-            pf = file(self._parms, 'w')
+        if not os.path.exists(self.get_parms()):
+            pf = open(self.get_parms(), 'w')
             try:
                 pf.write("MAXBUF=10000 " + os.linesep)
             finally:
@@ -326,7 +395,7 @@ class DPTbase(Database):
                 
     def delete_instance(self, filename, instance):
         """Delete an existing instance on file filename."""
-        self._dptfiles[filename].delete_instance(instance)
+        self.get_dptfiles()[filename].delete_instance(instance)
 
     def do_deferred_updates(self, pyscript, filepath):
         """Invoke a deferred update process and wait for it to finish.
@@ -338,12 +407,12 @@ class DPTbase(Database):
         if _platform_win32:
             args = ['pythonw']
         else:
-            args = ['python']
+            args = [''.join(('python', _python_version))]
         
         if not os.path.isfile(pyscript):
             msg = ' '.join([repr(pyscript),
                             'is not an existing file'])
-            raise DPTbaseError, msg
+            raise DPTbaseError(msg)
 
         args.append(pyscript)
         
@@ -353,23 +422,23 @@ class DPTbase(Database):
             else:
                 msg = ' '.join([repr(filepath),
                                 'is not an existing file'])
-                raise DPTbaseError, msg
+                raise DPTbaseError(msg)
         except:
             paths = tuple(filepath)
             for fp in paths:
                 if not os.path.isfile(fp):
                     msg = ' '.join([repr(fp),
                                     'is not an existing file'])
-                    raise DPTbaseError, msg
+                    raise DPTbaseError(msg)
 
-        args.append(os.path.abspath(self._dptfolder))
+        args.append(os.path.abspath(self.get_database_folder()))
         args.extend(paths)
 
         return subprocess.Popen(args)
 
     def edit_instance(self, filename, instance):
         """Edit an existing instance on file filename."""
-        self._dptfiles[filename].edit_instance(instance)
+        self.get_dptfiles()[filename].edit_instance(instance)
 
     def exists(self, dbname, dbfield):
         """Return True if dbname is named in dptfiles otherwise False.
@@ -377,28 +446,33 @@ class DPTbase(Database):
         dbfield is relevant to Berkeley DB and retained for compatibility.
 
         """
-        return dbname in self._dptfiles
+        return dbname in self.get_dptfiles()
 
     def files_exist(self):
         """Return True if all defined files exist in self._dptfolder folder."""
         fileset = set()
-        for dd in self._dptfiles:
-            fileset.add(self._dptfiles[dd]._file)
+        for dd in self.get_dptfiles():
+            fileset.add(self.get_dptfiles()[dd]._file)
         filecount = len(fileset)
-        for dd in self._dptfiles:
-            if os.path.isfile(self._dptfiles[dd]._file):
-                fileset.remove(self._dptfiles[dd]._file)
+        for dd in self.get_dptfiles():
+            if os.path.isfile(self.get_dptfiles()[dd]._file):
+                fileset.remove(self.get_dptfiles()[dd]._file)
         if len(fileset) == filecount:
             return None
         return len(fileset) == 0
 
-    def make_cursor(self, dbname, fieldname, keyrange=None):
+    def database_cursor(self, dbname, fieldname, keyrange=None):
         """Create a cursor on the DB.
 
         keyrange is an addition in DPT. It may yet be removed.
 
         """
-        return self._dptfiles[dbname].make_cursor(fieldname, keyrange)
+        return self.get_dptfiles()[dbname].make_cursor(fieldname, keyrange)
+
+    def repair_cursor(self, cursor, dbname, fieldname):
+        """Return new cursor based on argument cursor with fresh recordset."""
+        cursor.close()
+        return self.database_cursor(dbname, fieldname)
         
     def get_database_folder(self):
         """return database folder name"""
@@ -410,11 +484,23 @@ class DPTbase(Database):
         dbfield is relevant to Berkeley DB and retained for compatibility.
 
         """
-        return self._dptfiles[dbname].get_database()
+        return self.get_dptfiles()[dbname].get_database()
 
     def get_database_instance(self, dbname, dbfield):
         """Return DPT instance for dbname in dbset."""
-        return self._dptfiles[dbname]
+        return self.get_dptfiles()[dbname]
+        
+    def get_dbserv(self):
+        """return dbserv instance for thread"""
+        return self._dbserv
+        
+    def get_dptfiles(self):
+        """return dptfiles definition for thread"""
+        return self._dptfiles
+        
+    def get_dptsysfolder(self):
+        """return dptsysfolder name for thread"""
+        return self._dptsysfolder
 
     def get_first_primary_key_for_index_key(self, dbname, dbfield, key):
         """Get the record number on dbname given key for dbfield.
@@ -425,16 +511,20 @@ class DPTbase(Database):
         dbname.
 
         """
-        return self._dptfiles[dbname].get_first_primary_key_for_index_key(
+        return self.get_dptfiles()[dbname].get_first_primary_key_for_index_key(
             dbfield, key)
+        
+    def get_parms(self):
+        """return parms.ini file name for thread"""
+        return self._parms
     
     def get_primary_record(self, dbname, key):
         """Get the instance given the record number."""
-        return self._dptfiles[dbname].get_primary_record(key)
-
-    def make_internal_cursors(self, dbnames=None):
-        """Return True for compatibility with Berkeley DB subclass."""
-        return True
+        return self.get_dptfiles()[dbname].get_primary_record(key)
+        
+    def get_sfserv(self):
+        """return sfserv instance for thread"""
+        return self._sfserv
     
     def increase_database_size(self, files=None):
         """Increase file sizes if files nearly full
@@ -451,20 +541,20 @@ class DPTbase(Database):
         if files is None:
             files = dict()
         for file_ in files:
-            if file_ in self._dptfiles:
-                self._dptfiles[file_].increase_file_size(
-                    self._dbserv,
+            if file_ in self.get_dptfiles():
+                self.get_dptfiles()[file_].increase_file_size(
+                    self.get_dbserv(),
                     sizing_record_counts=files[file_])
 
     def initial_database_size(self):
         """Set initial file sizes as specified in file descriptions"""
-        for v in self._dptfiles.itervalues():
+        for v in self.get_dptfiles().values():
             v.initial_file_size()
         return True
 
     def is_primary(self, dbname, dbfield):
         """Return True if dbfield is primary field (or not secondary)."""
-        return self._dptfiles[dbname].is_field_primary(dbfield)
+        return self.get_dptfiles()[dbname].is_field_primary(dbfield)
 
     def is_primary_recno(self, dbname):
         """Return True for compatibility with Berkeley DB.
@@ -476,7 +566,7 @@ class DPTbase(Database):
 
     def is_recno(self, dbname, dbfield):
         """Return True if dbfield is primary field (or not secondary). """
-        return self._dptfiles[dbname].is_field_primary(dbfield)
+        return self.get_dptfiles()[dbname].is_field_primary(dbfield)
 
     def open_context(self):
         """Open all files after creating them if necessary."""
@@ -484,31 +574,70 @@ class DPTbase(Database):
         if not self.initial_database_size():
             return
         
-        dptfolder = os.path.abspath(self._dptfolder)
+        dptfolder = os.path.abspath(self.get_database_folder())
         if not os.path.exists(dptfolder):
             os.mkdir(dptfolder)
 
-        dptsysfolder = os.path.abspath(self._dptsysfolder)
+        dptsysfolder = os.path.abspath(self.get_dptsysfolder())
         if not os.path.exists(dptsysfolder):
             os.mkdir(dptsysfolder)
 
         self.create_default_parms()
                 
-        if self._dbserv is None:
+        if self.get_dbserv() is None:
             # #SEQTEMP and checkpoint.ckp placed in self._dptsysfolder'
             cwd = os.getcwd()
-            os.chdir(os.path.abspath(self._dptsysfolder))
+            os.chdir(os.path.abspath(self.get_dptsysfolder()))
             self._dbserv = dptapi.APIDatabaseServices(
                 self._sysprint,
                 self._username,
-                self._parms,
+                self.get_parms(),
                 self._msgctl,
                 self._audit)
             os.chdir(cwd)
             
-        for dd in self._dptfiles:
-            self._dptfiles[dd].open_root(self)
+        for dd in self.get_dptfiles():
+            self.get_dptfiles()[dd].open_root(self)
         return True
+
+    def open_contexts(self, closed_contexts):
+        """Open closed_contexts which had been closed."""
+        for c in closed_contexts:
+            self.get_dptfiles()[c].open_context(self)
+
+    def allocate_and_open_contexts(self, closed_contexts):
+        """Open closed_contexts which had been closed and possibly freed.
+
+        This method is intended for use only when re-opening a file after
+        closing it temporarily to ask another thread to increase the size
+        of the file.
+
+        """
+        # One thread may close contexts temporarily to allow another thread to
+        # increase the size of a file if necessary.  For example a UI thread
+        # might delegate a long data import task.
+        # The DPT Increase() method can be used only if the file is open in
+        # exactly one thread. meaning the file is at points like 'x' but not
+        # 'y' in the sequence 'x OpenContext() y CloseContext() x' in all other
+        # threads.  A typical file size increase will go 'prepare OpenContext()
+        # calculate_increase Increase() work CloseContext() tidy'.  The file is
+        # freed by the CloseContext() call because it is the only open context.
+        # If the thread, or possibly threads, which closed contexts open them
+        # again while the increaser is in it's work phase the file will not be
+        # freed by the increaser's CloseContext() call.
+        # Note the file will not be freed until the increaser thread finishes:
+        # which is why a single thread does not have to allocate the file again
+        # every time it closes it's last context on a file.
+        dptfiles = self.get_dptfiles()
+        for c in closed_contexts:
+            try:
+                dptfiles[c].allocate(self)
+            except RuntimeError as exc:
+                if dptfiles[c]._ddname.join((
+                    'File or directory ',
+                    ' is already allocated.')) != str(exc):
+                    raise
+            dptfiles[c].open_context(self)
 
     def get_packed_key(self, dbname, instance):
         """Convert instance.key for use as database value.
@@ -530,7 +659,7 @@ class DPTbase(Database):
         if isinstance(pkey, int):
             return pkey
         else:
-            return decode_record_number(pkey)
+            return self.decode_record_number(pkey)
 
     def encode_primary_key(self, dbname, instance):
         """Convert instance.key for use as database value.
@@ -538,29 +667,29 @@ class DPTbase(Database):
         For DPT just return self.get_packed_key() converted to string.
 
         """
-        return encode_record_number(self.get_packed_key(dbname, instance))
+        return self.encode_record_number(self.get_packed_key(dbname, instance))
 
     def put_instance(self, filename, instance):
         """Add a new instance to filename."""
-        self._dptfiles[filename].put_instance(instance)
+        self.get_dptfiles()[filename].put_instance(instance)
             
     def set_defer_update(self, db=None, duallowed=False):
-        raise DPTbaseError, 'set_defer_update not implemented'
+        raise DPTbaseError('set_defer_update not implemented')
 
     def unset_defer_update(self, db=None):
-        raise DPTbaseError, 'unset_defer_update not implemented'
+        raise DPTbaseError('unset_defer_update not implemented')
 
     def __del__(self):
         """Close files and destroy APIDatabaseServices object."""
 
-        if self._dbserv is None:
+        if self.get_dbserv() is None:
             return
 
         self.close_database()
 
-    def make_root(self, name, fname, dptfile, sfi):
+    def make_root(self, name, fname, dptfile, fieldnamefn, sfi):
 
-        return DPTbaseRecord(name, fname, dptfile, sfi)
+        return DPTbaseRecord(name, fname, dptfile, fieldnamefn, sfi)
 
     def get_database_parameters(self, files=None):
         """Return file parameters infomation for file names in files."""
@@ -568,8 +697,9 @@ class DPTbase(Database):
             files = ()
         sizes = {}
         for f in files:
-            if f in self._dptfiles:
-                sizes[f] = self._dptfiles[f].get_file_parameters(self._dbserv)
+            if f in self.get_dptfiles():
+                sizes[f] = self.get_dptfiles()[f].get_file_parameters(
+                    self.get_dbserv())
         return sizes
 
     def get_database_increase(self, files=None):
@@ -577,10 +707,11 @@ class DPTbase(Database):
         if files is None:
             files = ()
         increases = {}
+        dptfiles = self.get_dptfiles()
         for file_ in files:
-            if file_ in self._dptfiles:
-                increases[file_] = self._dptfiles[file_].get_tables_increase(
-                    self._dbserv,
+            if file_ in dptfiles:
+                increases[file_] = dptfiles[file_].get_tables_increase(
+                    self.get_dbserv(),
                     sizing_record_counts=files[file_])
         return increases
 
@@ -595,14 +726,14 @@ class DPTbase(Database):
 
         """
         for dd in files:
-            if dd in self._dptfiles:
-                root = self._dptfiles[dd]
-                self._dbserv.Allocate(
+            if dd in self.get_dptfiles():
+                root = self.get_dptfiles()[dd]
+                self.get_dbserv().Allocate(
                     root._ddname,
                     root._file,
-                    FILEDISP_OLD)
-                cs = APIContextSpecification(root._ddname)
-                root._opencontext = self._dbserv.OpenContext(cs)
+                    dptapi.FILEDISP_OLD)
+                cs = dptapi.APIContextSpecification(root._ddname)
+                root._opencontext = self.get_dbserv().OpenContext(cs)
 
     def open_context_allocated(self, files=()):
         """Open all files in normal mode.
@@ -614,7 +745,59 @@ class DPTbase(Database):
         It is assumed that the Database Services object exists.
 
         """
-        self.open_context_normal(self, files=files)
+        self.open_context_normal(files=files)
+
+    def do_database_task(
+        self,
+        taskmethod,
+        logwidget=None,
+        taskmethodargs={},
+        use_specification_items=None,
+        ):
+        """Open new connection to database, run method, then close database.
+
+        This method is intended for use in a separate thread from the one
+        dealing with the user interface.  If the normal user interface thread
+        also uses a separate thread for it's normal, quick, database actions
+        there is probably no need to use this method at all.
+
+        """
+        # Works only if sysprint='CONSOLE' as +SYSPRNT is already allocated
+        db = self.__class__(
+            self.get_database_folder(),
+            sysprint='CONSOLE',
+            use_specification_items=use_specification_items)
+        if db.open_context() is not True:
+            return
+        try:
+            taskmethod(db, logwidget, **taskmethodargs)
+        finally:
+            # close_database() invoked by __del__ for db
+            db.close_context()
+
+    def is_engine_uses_bytes(self):
+        """Return True if database engine interface is bytes"""
+        return self.engine_uses_bytes_or_str is USE_BYTES
+
+    def is_engine_uses_str(self):
+        """Return True if database engine interface is str (C not unicode)"""
+        return self.engine_uses_bytes_or_str is USE_STR
+
+    def start_transaction(self):
+        """Do nothing. Added for compatibility with apsw Sqlite3 interface."""
+
+    def cede_contexts_to_process(self, contexts):
+        """Call self.close_contexts().
+
+        Added for compatibility with difference between apsw and sqlite3
+        interfaces to Sqlite3.
+
+        The apsw and sqlite3 versions of close_contexts() seem to not need to
+        do anything ever, but cede_contexts_to_process() in apsw seems to need
+        to close all tables rather than none in sqlite3 version.
+
+        """
+        self.close_contexts(contexts)
 
 
 class DPTbaseFile(object):
@@ -641,10 +824,13 @@ class DPTbaseFile(object):
 
     Methods added:
 
+    allocate
     calculate_table_b_increase
     calculate_table_d_increase
     close
+    close_context
     create_files
+    get_database
     get_extents
     get_file_parameters
     get_tables_increase
@@ -652,6 +838,7 @@ class DPTbaseFile(object):
     increase_size_of_full_file  -  right place?
     initial_file_size
     is_field_primary
+    open_context
     open_root
     open_folders
 
@@ -665,34 +852,43 @@ class DPTbaseFile(object):
     
     """
 
-    def __init__(self, name, fname, dptdesc):
+    def __init__(self, name, fname, dptdesc, fieldnamefn):
         """Define a DPT file.
 
         name = file description name
         fname = path to data file (.dpt) for ddname
         dptdesc = field description for data file
+        fieldnamefn = generate field name function (usually FileSpec.field_name)
 
         """
         super(DPTbaseFile, self).__init__()
-
-        primary = dptdesc.get(PRIMARY, name[0].upper() + name[1:])
+        
+        primary = dptdesc.get(PRIMARY, fieldnamefn(name))
+        primary_length = dptdesc.get(
+            DPT_PRIMARY_FIELD_LENGTH, SAFE_DPT_FIELD_LENGTH)
         
         if primary not in dptdesc[FIELDS]:
             msg = ' '.join(['Primary field name', str(primary),
                             'for', name,
                             'does not have a field description'])
-            raise DPTbaseError, msg
+            raise DPTbaseError(msg)
+        if primary_length > 255:
+            msg = ' '.join(
+                ['Safe unicode length for utf-8 encoding is greater than 255',
+                 'for primary field',
+                 name])
+            raise DPTbaseError(msg)
         
-        self._name = name
+        self._fd_name = name
         self._ddname = dptdesc[DDNAME]
         self._fields = dict()
         self._file = fname
         self._filedesc = dict()
         self._primary = primary
         self._secondary = dict()
-        self._defer = dict()
         self._opencontext = None
         self._pyappend = dict()
+        self._primary_length = primary_length
         self._btod_factor = dptdesc[BTOD_FACTOR]
         self._btod_constant = dptdesc[BTOD_CONSTANT]
         self._default_records = dptdesc[DEFAULT_RECORDS]
@@ -719,24 +915,24 @@ class DPTbaseFile(object):
                     msg = ' '.join(['Secondary field name', str(s),
                                     'for', self._ddname,
                                     'must be a string'])
-                    raise DPTbaseError, msg
+                    raise DPTbaseError(msg)
 
                 secondary = dptdesc[SECONDARY][s]
                 if secondary is None:
-                    secondary = s[0].upper() + s[1:]
+                    secondary = fieldnamefn(s)
 
                 if secondary == primary:
                     msg = ' '.join(['Secondary field name', str(s),
                                     'for', self._ddname,
                                     'cannot be same as primary'])
-                    raise DPTbaseError, msg
+                    raise DPTbaseError(msg)
 
                 if secondary not in dptdesc[FIELDS]:
                     msg = ' '.join(['Secondary field name',
                                     str(secondary),
                                     'for', self._ddname, 'does not have',
                                     'a field description'])
-                    raise DPTbaseError, msg
+                    raise DPTbaseError(msg)
 
                 self._secondary[s] = secondary
             
@@ -745,14 +941,14 @@ class DPTbaseFile(object):
             if not isinstance(filedesc, dict):
                 msg = ' '.join(['Description of file', repr(self._ddname),
                                 'must be a dictionary or "None"'])
-                raise DPTbaseError, msg
+                raise DPTbaseError(msg)
 
             for attr in MANDATORY_FILEATTS:
                 if attr not in filedesc:
                     msg = ' '.join(['Attribute', repr(attr),
                                     'for file', self._ddname,
                                     'must be present'])
-                    raise DPTbaseError, msg
+                    raise DPTbaseError(msg)
 
             self._filedesc = FILEATTS.copy()
             for attr in filedesc:
@@ -760,19 +956,19 @@ class DPTbaseFile(object):
                     msg = ' '.join(['Attribute', repr(attr),
                                     'for file', self._ddname,
                                     'is not allowed'])
-                    raise DPTbaseError, msg
+                    raise DPTbaseError(msg)
 
                 if attr not in MANDATORY_FILEATTS:
                     if not isinstance(filedesc[attr], int):
                         msg = ' '.join(['Attribute', repr(attr),
                                         'for file', self._ddname,
                                         'must be a number'])
-                        raise DPTbaseError, msg
+                        raise DPTbaseError(msg)
                 elif not isinstance(filedesc[attr], MANDATORY_FILEATTS[attr]):
                     msg = ' '.join(['Attribute', repr(attr),
                                     'for file', self._ddname,
                                     'is not correct type'])
-                    raise DPTbaseError, msg
+                    raise DPTbaseError(msg)
 
                 self._filedesc[attr] = filedesc[attr]
             if filedesc.get(FILEORG, None) not in SUPPORTED_FILEORGS:
@@ -780,7 +976,7 @@ class DPTbaseFile(object):
                     ['File', self._ddname,
                      'must be "Entry Order" or',
                      '"Unordered and Reuse Record Number"'])
-                raise DPTbaseError, msg
+                raise DPTbaseError(msg)
 
         else:
             self._filedesc = None
@@ -789,29 +985,31 @@ class DPTbaseFile(object):
         if not isinstance(fields, dict):
             msg = ' '.join(['Field description of file', repr(self._ddname),
                             'must be a dictionary'])
-            raise DPTbaseError, msg
+            raise DPTbaseError(msg)
         
         for fieldname in fields:
             if not isinstance(fieldname, str):
                 msg = ' '.join(['Field name', repr(fieldname),
                                 'in file', self._ddname, 'is invalid'])
-                raise DPTbaseError, msg
+                raise DPTbaseError(msg)
             
             if not fieldname.isalnum():
                 msg = ' '.join(['Field name', fieldname,
                                 'in file', self._ddname, 'is invalid'])
-                raise DPTbaseError, msg
+                raise DPTbaseError(msg)
             
             if not fieldname[0].isupper():
                 msg = ' '.join(['Field name', fieldname, 'in file',
                                 self._ddname, 'must start with upper case'])
-                raise DPTbaseError, msg
+                raise DPTbaseError(msg)
             
             if self._primary == fieldname:
                 fieldatts = PRIMARY_FIELDATTS
             else:
                 fieldatts = SECONDARY_FIELDATTS
-            self._fields[fieldname] = fieldatts.copy()
+            self._fields[fieldname] = dict()
+            for attr in DPT_FIELDATTS:
+                self._fields[fieldname][attr] = fieldatts[attr]
             description = fields[fieldname]
             if description is None:
                 description = dict()
@@ -819,7 +1017,7 @@ class DPTbaseFile(object):
                 msg = ' '.join(['Attributes for field', fieldname,
                                 'in file', repr(self._ddname),
                                 'must be a dictionary or "None"'])
-                raise DPTbaseError, msg
+                raise DPTbaseError(msg)
             
             for attr in description:
                 if attr not in fieldatts:
@@ -827,12 +1025,12 @@ class DPTbaseFile(object):
                                     'for field', fieldname,
                                     'in file', self._ddname,
                                     'is not allowed'])
-                    raise DPTbaseError, msg
+                    raise DPTbaseError(msg)
                 
-                if type(description[attr]) != type(fieldatts[attr]):
+                if not isinstance(description[attr], type(fieldatts[attr])):
                     msg = ' '.join([attr, 'for field', fieldname,
                                     'in file', self._ddname, 'is wrong type'])
-                    raise DPTbaseError, msg
+                    raise DPTbaseError(msg)
                 
                 if attr == SPT:
                     if (description[attr] < 0 or
@@ -840,7 +1038,7 @@ class DPTbaseFile(object):
                         msg = ' '.join(['Split percentage for field',
                                         fieldname, 'in file', self._ddname,
                                         'is invalid'])
-                        raise DPTbaseError, msg
+                        raise DPTbaseError(msg)
                     
                 if attr in DPT_FIELDATTS:
                     self._fields[fieldname][attr] = description[attr]
@@ -849,38 +1047,30 @@ class DPTbaseFile(object):
                 self._pyappend[fieldname] = dptapi.pyAppendDouble
             elif self._fields[fieldname][ORD]:
                 self._pyappend[fieldname] = dptapi.pyAppendStdString
-
-        defer = dptdesc.get(DEFER, dict())
-        if not isinstance(defer, dict):
-            msg = ' '.join(
-                ['Deferred update parameters of file', repr(self._ddname),
-                 'must be a dictionary'])
-            raise DPTbaseError, msg
         
-        for fieldname in defer:
-            if fieldname not in self._secondary:
-                msg = ' '.join(['Field name', repr(fieldname),
-                                'in file', self._ddname,
-                                'is not a secondary field'])
-                raise DPTbaseError, msg
-
-            if not isinstance(defer[fieldname], int):
-                msg = ' '.join(['Deferred update limit for field name',
-                                repr(fieldname), 'in file', self._ddname,
-                                'must be an integer'])
-                raise DPTbaseError, msg
-
-            self._defer[fieldname] = defer[fieldname]
+    def allocate(self, db):
+        """Allocate DPT file using existing items."""
+        db.get_dbserv().Allocate(
+            self._ddname,
+            self._file,
+            dptapi.FILEDISP_OLD)
         
     def close(self, dbserv):
-        """Close DPT file."""
+        """Close DPT file context and Free file."""
         try:
-            self._opencontext.DestroyAllRecordSets()
-            dbserv.CloseContext(self._opencontext)
+            self.close_context(dbserv)
             dbserv.Free(self._ddname)
         except:
             pass
-        self._opencontext = None
+        
+    def close_context(self, db):
+        """Close DPT file context."""
+        if self._opencontext is not None:
+            try:
+                self._opencontext.DestroyAllRecordSets()
+                db.CloseContext(self._opencontext)
+            finally:
+                self._opencontext = None
 
     def create_files(self, dbserv):
         """Create and initialize DPT file and define fields."""
@@ -913,6 +1103,10 @@ class DPTbaseFile(object):
             oc.DefineField(field, fa)
         dbserv.CloseContext(oc)
         dbserv.Free(self._ddname)
+
+    def get_database(self):
+        """Return the APIDatabaseContext."""
+        return self._opencontext
             
     def get_extents(self):
         """Get current extents for file."""
@@ -938,11 +1132,16 @@ class DPTbaseFile(object):
         """Return true if field is primary (not secondary test used)."""
         return dbfield not in self._secondary
 
+    def open_context(self, db):
+        """Open context for allocated file."""
+        cs = dptapi.APIContextSpecification(self._ddname)
+        self._opencontext = db.get_dbserv().OpenContext(cs)
+
     def open_root(self, db):
         """Open file after creating it if necessary."""
         self.open_folders()
         if not os.path.exists(self._file):
-            self.create_files(db._dbserv)
+            self.create_files(db.get_dbserv())
             
     def open_folders(self):
         """Create folder hierarchy to file location if necessary."""
@@ -951,13 +1150,13 @@ class DPTbaseFile(object):
         if os.path.exists(foldername):
             if not os.path.isdir(foldername):
                 msg = ' '.join([foldername, 'exists but is not a folder'])
-                raise DPTbaseError, msg
+                raise DPTbaseError(msg)
         else:
             os.makedirs(foldername)
         if os.path.exists(pathname):
             if not os.path.isfile(pathname):
                 msg = ' '.join([pathname, 'exists but is not a file'])
-                raise DPTbaseError, msg
+                raise DPTbaseError(msg)
             
     def initial_file_size(self):
         """Set initial file size as specified in file description"""
@@ -1009,20 +1208,27 @@ class DPTbaseFile(object):
         d_spare = size_before['DSIZE'] - size_before['DPGSUSED']
         b_filled = size_filled['FIFLAGS'] & dptapi.FIFLAGS_FULL_TABLEB
         d_filled = size_filled['FIFLAGS'] & dptapi.FIFLAGS_FULL_TABLED
-        deferred = size_filled['FISTAT'][0] == dptapi.FISTAT_DEFERRED_UPDATES
+        deferred = size_filled['FISTAT'][0] & dptapi.FISTAT_DEFERRED_UPDATES
+        broken = size_filled['FISTAT'][0] & dptapi.FISTAT_PHYS_BROKEN
         if b_filled:
-            b_increase = ((((b_diff_imp + b_spare) * 6) / 5))
+            b_increase = ((((b_diff_imp + b_spare) * 6) // 5))
             d_increase = max(
-                ((((d_diff_imp + d_spare) * 6) / 5)),
-                b_increase * self._btod_factor - d_spare)
+                ((((d_diff_imp + d_spare) * 6) // 5)),
+                int(b_increase * self._btod_factor - d_spare + 1))
         elif d_filled:
             b_increase = b_diff_imp
             d_increase = max(
-                ((((d_diff_imp + d_spare) * 6) / 5)),
-                b_increase * self._btod_factor - d_spare)
+                ((((d_diff_imp + d_spare) * 6) // 5)),
+                int(b_increase * self._btod_factor - d_spare + 1))
         elif deferred:
-            b_increase = b_diff_imp
-            d_increase = d_diff_imp
+            if broken:
+                b_increase = 0
+                d_increase = max(
+                    ((((d_diff_imp + d_spare) * 6) // 5)),
+                    int(b_increase * self._btod_factor - d_spare + 1))
+            else:
+                b_increase = b_diff_imp
+                d_increase = d_diff_imp
         else:
             b_increase = 0
             d_increase = 0
@@ -1080,7 +1286,7 @@ class DPTbaseFile(object):
 
         """
         if unused is not None:
-            unused = (unused * self._filedesc[BRECPPG]) / self._btod_factor
+            unused = (unused * self._filedesc[BRECPPG]) // self._btod_factor
         if table_b_increase is None:
             if unused is None:
                 if increase is not None:
@@ -1126,13 +1332,13 @@ class DPTbaseFile(object):
                         increase=sizing_record_counts[1]),
                     )
             return (
-                increase_record_counts[0] / self._filedesc[BRECPPG],
-                ((increase_record_counts[1] * self._btod_factor)
-                 / self._filedesc[BRECPPG]),
+                increase_record_counts[0] // self._filedesc[BRECPPG],
+                int((increase_record_counts[1] * self._btod_factor)
+                 // self._filedesc[BRECPPG]),
                 )
 
 
-class DPTbaseRecord(DPTbaseFile):
+class DPTbaseRecord(DPTbaseFile, _DatabaseEncoders):
 
     """Provide record level access to a DPT file.
 
@@ -1152,7 +1358,6 @@ class DPTbaseRecord(DPTbaseFile):
 
     delete_instance
     edit_instance
-    get_database
     make_cursor
     get_first_primary_key_for_index_key
     get_primary_record
@@ -1173,24 +1378,24 @@ class DPTbaseRecord(DPTbaseFile):
     Methods extended:
 
     __init__
-    close
+    close_context
     
     """
 
-    def __init__(self, name, fname, dptdesc, sfi):
+    def __init__(self, name, fname, dptdesc, fieldnamefn, sfi):
         """Define a DPT file.
 
         See base class for argument descriptions.
 
         """
-        super(DPTbaseRecord, self).__init__(name, fname, dptdesc)
+        super(DPTbaseRecord, self).__init__(name, fname, dptdesc, fieldnamefn)
         
         #Permanent instances for efficient file updates
         self._fieldvalue = dptapi.APIFieldValue()
         self._putrecordcopy = dptapi.APIStoreRecordTemplate()
 
         #All active CursorDPT objects opened by make_cursor
-        self._cursors = dict()
+        self._clientcursors = dict()
 
         #All active DPTDataSource objects
         self._sources = dict()
@@ -1199,16 +1404,16 @@ class DPTbaseRecord(DPTbaseFile):
         #record identities for cross-file reference.
         #Without it file reorgs are dangerous at least.
         self._GetNextIdentity = self.make_identity_getter(None)
-
-    def close(self, dbserv):
+        
+    def close_context(self, db):
         """Extend close to close active CursorDPT and DPTDataSource objects."""
-        for c in self._cursors.keys():
+        for c in list(self._clientcursors.keys()):
             c.close()
-        self._cursors.clear()
-        for d in self._sources.keys():
+        self._clientcursors.clear()
+        for d in list(self._sources.keys()):
             d.close()
         self._sources.clear()
-        super(DPTbaseRecord, self).close(dbserv)
+        super(DPTbaseRecord, self).close_context(db)
         
     def delete_instance(self, instance):
         """Delete the record containing the instance.
@@ -1221,7 +1426,7 @@ class DPTbaseRecord(DPTbaseFile):
         are dealt with directly.
 
         """
-        instance.srkey = encode_record_number(instance.key.pack())
+        instance.srkey = self.encode_record_number(instance.key.pack())
         instance.set_packed_value_and_indexes()
         sri = instance.srindex
         sec = self._secondary
@@ -1271,8 +1476,8 @@ class DPTbaseRecord(DPTbaseFile):
             self.put_instance(instance.newrecord)
             return
         
-        instance.srkey = encode_record_number(instance.key.pack())
-        instance.newrecord.srkey = encode_record_number(
+        instance.srkey = self.encode_record_number(instance.key.pack())
+        instance.newrecord.srkey = self.encode_record_number(
             instance.newrecord.key.pack())
         instance.set_packed_value_and_indexes()
         instance.newrecord.set_packed_value_and_indexes()
@@ -1299,12 +1504,13 @@ class DPTbaseRecord(DPTbaseFile):
         Assign = fieldvalue.Assign
         fd = self.foundset_record_number(instance.key.pack())
         rsc = fd.OpenCursor()
+        safe_length = self._primary_length
         while rsc.Accessible():
             r = rsc.AccessCurrentRecordForReadWrite()
             f = self._primary
             r.DeleteEachOccurrence(f)
-            for i in range(0, len(nsrv), 255):
-                Assign(nsrv[i:i+255])
+            for i in range(0, len(nsrv), safe_length):
+                Assign(nsrv[i:i+safe_length])
                 r.AddField(
                     f,
                     fieldvalue)
@@ -1348,10 +1554,6 @@ class DPTbaseRecord(DPTbaseFile):
         fd.CloseCursor(rsc)
         self._opencontext.DestroyRecordSet(fd)
 
-    def get_database(self):
-        """Return the APIDatabaseContext."""
-        return self._opencontext
-
     def make_cursor(self, fieldname, keyrange=None):
         """Return a CursorDPT cursor on DPT file for fieldname."""
         c = CursorDPT(
@@ -1361,7 +1563,7 @@ class DPTbaseRecord(DPTbaseFile):
                 self._primary),
             keyrange)
         if c:
-            self._cursors[c] = True
+            self._clientcursors[c] = True
         return c
 
     def get_first_primary_key_for_index_key(self, dbfield, key):
@@ -1426,7 +1628,7 @@ class DPTbaseRecord(DPTbaseFile):
     def make_identity_getter(self, method):
         """Make the identity getter method for use by put_instance."""
 
-        if callable(method):
+        if isinstance(method, collections.Callable):
 
             def identity():
 
@@ -1439,7 +1641,7 @@ class DPTbaseRecord(DPTbaseFile):
                 msg = ' '.join(
                     ('Record identity assignment for', str(self._ddname),
                      'has not been set up'))
-                raise DPTbaseError, msg
+                raise DPTbaseError(msg)
         
         return identity
 
@@ -1451,8 +1653,9 @@ class DPTbaseRecord(DPTbaseFile):
         fieldvalue = self._fieldvalue
         srv = instance.srvalue
         f = self._primary
-        for i in range(0, len(srv), 255):
-            pyAppend(recordcopy, f, fieldvalue, srv[i:i+255])
+        safe_length = self._primary_length
+        for i in range(0, len(srv), safe_length):
+            pyAppend(recordcopy, f, fieldvalue, srv[i:i+safe_length])
         sri = instance.srindex
         sec = self._secondary
         pcb = instance._putcallbacks
@@ -1465,7 +1668,7 @@ class DPTbaseRecord(DPTbaseFile):
         recnum = self._opencontext.StoreRecord(recordcopy)
         recordcopy.Clear()
         instance.key.load(recnum)
-        instance.srkey = encode_record_number(recnum)
+        instance.srkey = self.encode_record_number(recnum)
         if len(pcb):
             for s in sri:
                 if s in pcb:
@@ -1489,12 +1692,16 @@ class DPTbaseRecord(DPTbaseFile):
         Provided for convenience of CursorDPT class.
 
         """
-        return self._opencontext.FindRecords(
-            dptapi.APIFindSpecification(
-                fieldname,
-                dptapi.FD_EQ,
-                dptapi.APIFieldValue(value)))
-
+        if isinstance(value, dptapi.APIFieldValue):
+            return self._opencontext.FindRecords(
+                dptapi.APIFindSpecification(fieldname, dptapi.FD_EQ, value))
+        else:
+            return self._opencontext.FindRecords(
+                dptapi.APIFindSpecification(
+                    fieldname,
+                    dptapi.FD_EQ,
+                    dptapi.APIFieldValue(value)))
+        
     def foundset_record_number(self, recnum):
         """Return APIFoundset containing record whose record number is recnum.
 
@@ -1543,7 +1750,19 @@ class DPTbaseRecord(DPTbaseFile):
 
 class CursorDPT(Cursor):
 
-    """Define cursor implemented using the Berkeley DB cursor methods.
+    """Define bsddb3 style cursor methods on a DPT file.
+
+    Primary and secondary database, and others, should be read as the Berkeley
+    DB usage.  This class emulates interaction with a Berkeley DB database via
+    the Python bsddb3 module.
+    
+    APIRecordSetCursor is used to emulate Berkeley DB primary database access.
+    
+    APIDirectValueCursor is used to emulate Berkeley DB secondary database
+    access, with the help of sn APIRecordSetCursor created for each key of the
+    secondary database as required.
+
+    The _CursorDPT class handles the details.
 
     Methods added:
 
@@ -1557,6 +1776,10 @@ class CursorDPT(Cursor):
     count_records
     database_cursor_exists
     first
+    get_converted_partial
+    get_converted_partial_with_wildcard
+    get_partial
+    get_partial_with_wildcard
     get_position_of_record
     get_record_at_position
     last
@@ -1583,9 +1806,7 @@ class CursorDPT(Cursor):
         the default all records on file.
 
         """
-        self._cursor = None
-        self._partial = None
-
+        super(CursorDPT, self).__init__(dptdb)
         self._cursor = _CursorDPT(
             dptdb, fieldname, keyrange=keyrange, recordset=recordset)
 
@@ -1595,12 +1816,12 @@ class CursorDPT(Cursor):
     def close(self):
         if self._cursor is not None:
             try:
-                del self._cursor._dptdb._cursors[self]
+                del self._cursor._dptdb._clientcursors[self]
             except:
                 pass
             self._cursor.close()
             self._cursor = None
-        self._partial = None
+        self.set_partial_key(None)
 
     def count_records(self):
         """return record count or None if cursor is not usable"""
@@ -1616,8 +1837,9 @@ class CursorDPT(Cursor):
             dvcursor = context.OpenDirectValueCursor(
                 dptapi.APIFindValuesSpecification(fieldname))
             dvcursor.SetDirection(dptapi.CURSOR_ASCENDING)
-            if self._partial is not None:
-                dvcursor.SetRestriction_Pattern(''.join((self._partial, '*')))
+            if self.get_partial() is not None:
+                dvcursor.SetRestriction_Pattern(
+                    self.get_converted_partial_with_wildcard())
             games = context.CreateRecordList()
             dvcursor.GotoFirst()
             while dvcursor.Accessible():
@@ -1637,31 +1859,32 @@ class CursorDPT(Cursor):
 
     def first(self):
         """Return first record taking partial key into account."""
-        if self._partial is None:
+        if self.get_partial() is None:
             return self._get_record(self._cursor.first())
         else:
-            return self.nearest(self._partial)
+            return self.nearest(self.get_partial())
 
-    def get_position_of_record(self, key=None):
+    def get_position_of_record(self, record=None):
         """return position of record in file or 0 (zero)"""
-        if key is None:
+        if record is None:
             return 0
         cursor = self._cursor
         fieldname = cursor._fieldname
         dptdb = cursor._dptdb
         context = dptdb.get_database()
         if cursor._nonorderedfield:
-            foundset = cursor.foundset_records_before_record_number(key[0])
+            foundset = cursor.foundset_records_before_record_number(record[0])
             count = foundset.Count()
             context.DestroyRecordSet(foundset)
             return count
         else:
-            sk, rn = key
+            sk, rn = record
             dvcursor = context.OpenDirectValueCursor(
                 dptapi.APIFindValuesSpecification(fieldname))
             dvcursor.SetDirection(dptapi.CURSOR_ASCENDING)
-            if self._partial is not None:
-                dvcursor.SetRestriction_Pattern(''.join((self._partial, '*')))
+            if self.get_partial() is not None:
+                dvcursor.SetRestriction_Pattern(
+                    self.get_converted_partial_with_wildcard())
             games = context.CreateRecordList()
             dvcursor.GotoFirst()
             while dvcursor.Accessible():
@@ -1766,8 +1989,9 @@ class CursorDPT(Cursor):
                 position = -1 - position
             else:
                 dvc.SetDirection(dptapi.CURSOR_ASCENDING)
-            if self._partial is not None:
-                dvc.SetRestriction_Pattern(''.join((self._partial, '*')))
+            if self.get_partial() is not None:
+                dvc.SetRestriction_Pattern(
+                    self.get_converted_partial_with_wildcard())
             count = 0
             record = None
             dvc.GotoFirst()
@@ -1778,18 +2002,13 @@ class CursorDPT(Cursor):
                 count += c
                 if count > position:
                     rsc = fs.OpenCursor()
-                    if backwardscan:
-                        step = count - position - c - 1
-                        rsc.GotoLast()
-                    else:
-                        step = position - count + c
-                        rsc.GotoFirst()
+                    rsc.GotoFirst()
                     if not rsc.Accessible():
                         fs.CloseCursor(rsc)
                         context.DestroyRecordSet(fs)
                         record = None
                         break
-                    rsc.Advance(step)
+                    rsc.Advance(position - count + c)
                     if not rsc.Accessible():
                         fs.CloseCursor(rsc)
                         context.DestroyRecordSet(fs)
@@ -1807,23 +2026,27 @@ class CursorDPT(Cursor):
 
     def last(self):
         """Return last record taking partial key into account."""
-        if self._partial is None:
+        if self.get_partial() is None:
             return self._get_record(self._cursor.last())
         else:
-            k = list(self._partial)
-            while ord(k[-1]) == 255:
-                k.pop()
-            if not len(k):
-                return self._get_record(self._cursor.last())
-            k[-1] = chr(ord(k[-1]) + 1)
-            self._cursor._dptdb._fieldvalue.Assign(''.join(k))
-            self._cursor._dvcursor.SetOptions(dptapi.CURSOR_POSFAIL_NEXT)
-            self._cursor._dvcursor.SetPosition(self._cursor._dptdb._fieldvalue)
-            self._cursor._dvcursor.SetOptions(dptapi.CURSOR_DEFOPTS)
-            if self._cursor._dvcursor.Accessible():
-                return self.prev()
-            else:
-                return self._get_record(self._cursor.last())
+            k = list(self.get_partial())
+            while True:
+                try:
+                    k[-1] = chr(ord(k[-1]) + 1)
+                except ValueError:
+                    k.pop()
+                    if not len(k):
+                        return self._get_record(self._cursor.last())
+                    continue
+                self._cursor._dptdb._fieldvalue.Assign(''.join(k))
+                self._cursor._dvcursor.SetOptions(dptapi.CURSOR_POSFAIL_NEXT)
+                self._cursor._dvcursor.SetPosition(
+                    self._cursor._dptdb._fieldvalue)
+                self._cursor._dvcursor.SetOptions(dptapi.CURSOR_DEFOPTS)
+                if self._cursor._dvcursor.Accessible():
+                    return self.prev()
+                else:
+                    return self._get_record(self._cursor.last())
 
     def set_partial_key(self, partial):
         """Set partial key to constrain range of key values returned."""
@@ -1831,10 +2054,10 @@ class CursorDPT(Cursor):
 
     def _get_record(self, record):
         """Return record matching key or partial key or None if no match."""
-        if self._partial is not None:
+        if self.get_partial() is not None:
             try:
                 key, value = record
-                if not key.startswith(self._partial):
+                if not key.startswith(self.get_converted_partial()):
                     return None
             except:
                 return None
@@ -1868,13 +2091,31 @@ class CursorDPT(Cursor):
 
         """
         key, value = record
-        if self._partial is not None:
-            if not key.startswith(self._partial):
+        if self.get_partial() is not None:
+            if not key.startswith(self.get_converted_partial()):
                 return None
         if self._cursor._nonorderedfield:
             return self._get_record(self._cursor.set(key))
         else:
             return self._get_record(self._cursor.set_both(key, value))
+
+    def get_partial(self):
+        """return self._partial"""
+        return self._partial
+
+    def get_converted_partial(self):
+        """return self._partial as it would be held on database"""
+        return self._partial
+
+    def get_partial_with_wildcard(self):
+        """return self._partial with wildcard suffix appended"""
+        raise DatabaseError('get_partial_with_wildcard not implemented')
+
+    def get_converted_partial_with_wildcard(self):
+        """return converted self._partial with wildcard suffix appended"""
+        return ''.join(
+            (''.join([DPT_PATTERN_CHARS.get(c, c) for c in self._partial]),
+             '*'))
 
 
 class _CursorDPT(object):
@@ -1950,14 +2191,14 @@ class _CursorDPT(object):
             msg = ' '.join(['The database object must be a',
                             ''.join([DPTbaseRecord.__name__, ',']),
                             'or a subclass, instance.'])
-            raise DPTbaseError, msg
+            raise DPTbaseError(msg)
         if fieldname not in dptdb._fields:
             msg = ' '.join(['The field', str(fieldname),
                             'is not defined in the',
                             str(dptdb._ddname), 'file of the',
                             dptdb.__class__.__name__,
                             'instance.'])
-            raise DPTbaseError, msg
+            raise DPTbaseError(msg)
         if not isinstance(dptdb.get_database(),
                           dptapi.APIDatabaseFileContext):
             msg = ' '.join(['The opencontext attribute for the',
@@ -1965,7 +2206,7 @@ class _CursorDPT(object):
                             ''.join([dptapi.APIDatabaseFileContext.__name__,
                                      ',']),
                             'or a subclass, instance.'])
-            raise DPTbaseError, msg
+            raise DPTbaseError(msg)
         
         self._dptdb = dptdb
         self._ddname = dptdb._ddname

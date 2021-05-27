@@ -1,5 +1,5 @@
-# sqlite3duapi.py
-# Copyright (c) 2011 Roger Marsh
+# apswduapi.py
+# Copyright (c) 2015 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
 """Provide sqlite3 database access methods compatible with DPT single-step.
@@ -20,11 +20,11 @@ Sqlite3bitduSecondary - record level access, bit-mapped record numbers
 
 """
 
-import sqlite3
+import apsw
 from collections import deque
 
 from .api.bytebit import Bitarray
-from .sqlite3api import (
+from .apswapi import (
     _Sqlite3api,
     Sqlite3apiError,
     Sqlite3bitPrimary,
@@ -152,14 +152,15 @@ class Sqlite3bitduapi(_Sqlite3api):
         # would be a little slower than the bsddb3 version.
         
         # Comment these if the 'do-nothing' override of commit() is commented.
-        #self._sqconn.execute('pragma journal_mode = off')
-        #self._sqconn.execute('pragma synchronous = off')
+        #self._sqconn,cursor().execute('pragma journal_mode = off')
+        #self._sqconn.cursor().execute('pragma synchronous = off')
 
+        self.start_transaction()
         for d in defer:
             t = self._sqtables[self._associate[d][d]]
             t.low_record_number_in_segment = None
             t.low_segment = None
-            t.high_rowid_at_du_start = self._sqconn.execute(
+            t.high_rowid_at_du_start = self._sqconn.cursor().execute(
                 ' '.join((
                     'select max(rowid) from',
                     t._fd_name,
@@ -169,7 +170,7 @@ class Sqlite3bitduapi(_Sqlite3api):
                     continue
             for s in self._associate[d]:
                 if s != d:
-                    self._sqconn.execute(
+                    self._sqconn.cursor().execute(
                         ' '.join((
                             'drop index if exists',
                             t._indexname,
@@ -189,7 +190,7 @@ class Sqlite3bitduapi(_Sqlite3api):
             for s in self._associate[d]:
                 if s != d:
                     t = self._sqtables[self._associate[d][s]]
-                    self._sqconn.execute(
+                    self._sqconn.cursor().execute(
                         ' '.join((
                             'create unique index if not exists', t._indexname,
                             'on', t._fd_name,
@@ -201,12 +202,14 @@ class Sqlite3bitduapi(_Sqlite3api):
 
         # See comment in set_defer_update method.
 
+        # Now this class' commit() is called neither comment nor uncomment.
         # Uncomment this if the 'do-nothing' override of commit() is commented.
-        self._sqconn.commit()
+        #self._sqconn.commit()
+        self.commit()
         
         # Comment these if the 'do-nothing' override of commit() is commented.
-        #self._sqconn.execute('pragma journal_mode = delete')
-        #self._sqconn.execute('pragma synchronous = full')
+        #self._sqconn.cursor().execute('pragma journal_mode = delete')
+        #self._sqconn.cursor().execute('pragma synchronous = full')
 
     def put_instance(self, dbset, instance):
         """Put new instance on database dbset.
@@ -272,7 +275,7 @@ class Sqlite3bitduapi(_Sqlite3api):
                 t = self._sqtables[self._associate[d][d]]
                 for s in self._associate[d]:
                     if s != d:
-                        self._sqconn.execute(
+                        self._sqconn.cursor().execute(
                             ' '.join((
                                 'drop index if exists',
                                 t._indexname,
@@ -319,7 +322,7 @@ class Sqlite3bitduapi(_Sqlite3api):
             values = ()
             try:
                 segment, record_number = divmod(
-                    primary._connection.execute(
+                    primary._connection.cursor().execute(
                         statement, values).fetchone()[0],
                     DB_SEGMENT_SIZE)
                 if record_number == DB_TOP_RECORD_NUMBER_IN_SEGMENT:
@@ -417,7 +420,8 @@ class Sqlite3bitduPrimary(Sqlite3bitPrimary):
             'values ( ? , ? )',
             ))
         values = (segment + 1, self.existence_bit_maps[segment].tobytes())
-        self.get_existence_bits()._seg_object.execute(statement, values)
+        self.get_existence_bits(
+            )._seg_object.cursor().execute(statement, values)
 
     def make_cursor(self, dbname):
         raise Sqlite3duapiError('make_cursor not implemented')
@@ -572,12 +576,13 @@ class Sqlite3bitduSecondary(Sqlite3bitSecondary):
         if low:
             for k in sorted(segvalues):
                 values = (k, segment)
-                s = self._connection.execute(
+                s = self._connection.cursor().execute(
                     select_existing_segment, values).fetchone()
                 if s is not None:
                     lowvalues.append((k, (self.populate_segment(s), s)))
                     values = (segvalues[k][1] + s[2], k, segment)
-                    self._connection.execute(update_record_count, values)
+                    self._connection.cursor(
+                        ).execute(update_record_count, values)
 
             # If the existing segment record for a segment in lowvalues had a
             # record count > 1 before being updated, a subsidiary table record
@@ -602,7 +607,7 @@ class Sqlite3bitduSecondary(Sqlite3bitSecondary):
                 seg = self.make_segment(k, *segvalues[k]) | v[0]
                 seg = seg.normalize()
                 nv = gpd.insert_segment_records((seg.tobytes(),))
-                self._connection.execute(
+                self._connection.cursor().execute(
                     update_count_and_reference,
                     (v[1][2]+segvalues[k][1], nv, k, v[1][1]))
                 del segvalues[k]
@@ -620,7 +625,8 @@ class Sqlite3bitduSecondary(Sqlite3bitSecondary):
                 v[2] = gpd.insert_segment_records((v[2],))
 
         # Insert new index records.
-        self._connection.executemany(insert_new_segment, self._rows(ssv))
+        self._connection.cursor(
+            ).executemany(insert_new_segment, self._rows(ssv))
         segvalues.clear()
 
     def _rows(self, ssv):

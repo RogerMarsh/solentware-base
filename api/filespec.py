@@ -10,20 +10,32 @@ FileSpec
 
 """
 
-from basesup.api.constants import BSIZE, BRECPPG, DSIZE, BTOD_FACTOR
-from basesup.api.constants import DEFAULT_RECORDS, FILEDESC
+from .constants import (
+    BSIZE,
+    BRECPPG,
+    DSIZE,
+    BTOD_FACTOR,
+    RRN,
+    DEFAULT_RECORDS,
+    FILEDESC,
+    FILEORG,
+    DEFAULT_INITIAL_NUMBER_OF_RECORDS,
+    )
 
 
 class FileSpec(dict):
 
-    """Calculate specification details using initialisation arguments.
+    """Create database specification from **kargs.
 
     BSIZE and DSIZE are calculated from requested number of records for a
-    file.  If no request is made these are set to None telling the user of
-    the FileSpec subclass that newly created DPT files should be sized for
-    the default number of records.
+    file.  DEFAULT_RECORDS for a file is used if available. The default_records
+    argument is used otherwise.
 
     BSIZE is size of data area, and DSIZE the index area, of a DPT file.
+
+    DPT files do not increase, or decrease, in size automatically to meet the
+    demand for space.  The file size must be specified somehow; hence the use
+    of the default_records argument.
 
     Methods added:
 
@@ -39,38 +51,69 @@ class FileSpec(dict):
 
     """
 
-    def __init__(self, default_=None, **kargs):
+    @staticmethod
+    def dpt_dsn(file_def):
+        """Return a standard filename (DSN name) for DPT from file_def"""
+        return ''.join((file_def.lower(), '.dpt'))
+    
+    @staticmethod
+    def field_name(field_def):
+        """Return standard fieldname to be the implementation resource name"""
+        return ''.join((field_def[0].upper(), field_def[1:]))
+
+    def __init__(self, use_specification_items=None, dpt_records=None, **kargs):
         """Set BSIZE and DSIZE for files defined in subclass.
 
-        default_={use_filespec_defaults_=<True|False>,
-                  name1=<number of records in file 1>,
-                  name2=<number of records in file 2>,
-                  ...}
-        name1=<specification of file 1>,
-        name2=<specification of file 2>,
-        ...
+         use_specification_items=<items in kargs to be used as specification>
+             Use all items if use_specification_items is None
+         dpt_records=
+            <dictionary of number of records for DPT file size calculation>
+            Overrides defaults in kargs and the default from constants module.
+        **kargs=<file specifications>
 
-        Defaults in 'namex' are used when nothing is said in defaults_ for
-        a file 'namex' if use_filespec_defaults_ == True.
+        Berkeley DB makes databases of key:value pairs distributed across one
+        or more files depending on the environment specification.
+
+        Sqlite3 makes tables and indexes in a single file.
+
+        DPT makes one file per item in kargs containing non-ordered and ordered
+        fields.
 
         """
         super(FileSpec, self).__init__(**kargs)
 
-        if default_ is None:
-            default_ = dict()
-        use_filespec_defaults = default_.get('use_filespec_defaults_', False)
-        for k, v in kargs.iteritems():
-            records = default_.get(k)
-            if records is None:
-                if use_filespec_defaults:
-                    records = v[DEFAULT_RECORDS]
-            if records is None:
-                v[FILEDESC][BSIZE] = None
-                v[FILEDESC][DSIZE] = None
-            else:
-                bsize = records / v[FILEDESC][BRECPPG]
-                if bsize * v[FILEDESC][BRECPPG] < records:
-                    bsize += 1
-                v[FILEDESC][BSIZE] = bsize
-                v[FILEDESC][DSIZE] = int(round(bsize * v[BTOD_FACTOR]))
+        if use_specification_items is not None:
+            for usi in [k for k in self.keys()
+                        if k not in use_specification_items]:
+                del self[usi]
+
+        if dpt_records is None:
+            dpt_records = {}
+        if not isinstance(dpt_records, dict):
+            raise RuntimeError('dpt_default_records must be a dict')
+        for k, v in self.items():
+            dpt_filesize = dpt_records.setdefault(
+                k, DEFAULT_INITIAL_NUMBER_OF_RECORDS)
+            if not isinstance(dpt_filesize, int):
+                raise RuntimeError(''.join(
+                    ('number of records must be a positive integer for item ',
+                     k,
+                     ' in filespec.',
+                     )))
+            if dpt_filesize < 1:
+                raise RuntimeError(''.join(
+                    ('number of records must be a positive integer for item ',
+                     k,
+                     ' in filespec.',
+                     )))
+            records = v.setdefault(DEFAULT_RECORDS, dpt_filesize)
+            filedesc = v.setdefault(FILEDESC, {})
+            brecppg = filedesc.setdefault(BRECPPG, 10)
+            filedesc.setdefault(FILEORG, RRN)
+            btod_factor = v.setdefault(BTOD_FACTOR, 8)
+            bsize = records // brecppg
+            if bsize * brecppg < records:
+                bsize += 1
+            v[FILEDESC][BSIZE] = bsize
+            v[FILEDESC][DSIZE] = int(round(bsize * btod_factor))
 

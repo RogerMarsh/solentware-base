@@ -17,8 +17,8 @@ None
 if __name__=='__main__':
 
     import os
-    import Tkinter
-    import tkMessageBox
+    import tkinter
+    import tkinter.messagebox
 
     import dptdb.dptapi
 
@@ -50,59 +50,59 @@ if __name__=='__main__':
             super(FileSpec, self).__init__(
                 default_=kargs,
                 games={
-                    DDNAME:'GAMES',
-                    FILE:'games.dpt',
-                    FILEDESC:{
-                        BRECPPG:_games_brecppg,
-                        FILEORG:RRN,
+                    DDNAME: 'GAMES',
+                    FILE: 'games.dpt',
+                    FILEDESC: {
+                        BRECPPG: _games_brecppg,
+                        FILEORG: RRN,
                         },
-                    BTOD_FACTOR:_b_to_d_factor_games,
-                    DEFAULT_RECORDS:_default_number_games,
-                    PRIMARY:'Game',
-                    SECONDARY:{
-                        'source':None,
-                        'Event':None,
-                        'Site':None,
-                        'Date':None,
-                        'Round':None,
-                        'White':None,
-                        'Black':None,
-                        'Result':None,
-                        'positions':None,
-                        'piecesquaremove':'PieceSquareMove',
+                    BTOD_FACTOR: _b_to_d_factor_games,
+                    DEFAULT_RECORDS: _default_number_games,
+                    PRIMARY: 'Game',
+                    SECONDARY: {
+                        'source': None,
+                        'Event': None,
+                        'Site': None,
+                        'Date': None,
+                        'Round': None,
+                        'White': None,
+                        'Black': None,
+                        'Result': None,
+                        'positions': None,
+                        'piecesquaremove': 'PieceSquareMove',
                         },
-                    FIELDS:{
-                        'Game':None,
-                        'Source':{INV:True, ORD:True},
-                        'White':{INV:True, ORD:True},
-                        'Black':{INV:True, ORD:True},
-                        'Event':{INV:True, ORD:True},
-                        'Round':{INV:True, ORD:True},
-                        'Date':{INV:True, ORD:True},
-                        'Result':{INV:True, ORD:True},
-                        'Site':{INV:True, ORD:True},
-                        'Positions':{INV:True, ORD:True},
-                        'PieceSquareMove':{INV:True, ORD:True},
+                    FIELDS: {
+                        'Game': None,
+                        'Source': {INV:True, ORD:True},
+                        'White': {INV:True, ORD:True},
+                        'Black': {INV:True, ORD:True},
+                        'Event': {INV:True, ORD:True},
+                        'Round': {INV:True, ORD:True},
+                        'Date': {INV:True, ORD:True},
+                        'Result': {INV:True, ORD:True},
+                        'Site': {INV:True, ORD:True},
+                        'Positions': {INV:True, ORD:True},
+                        'PieceSquareMove': {INV:True, ORD:True},
                         },
-                    DEFER:{
+                    DEFER: {
                         },
                     },
                 partial={
-                    DDNAME:'PARTIAL',
-                    FILE:'partial.dpt',
-                    FILEDESC:{
-                        BRECPPG:_partial_brecppg,
-                        FILEORG:RRN,
+                    DDNAME: 'PARTIAL',
+                    FILE: 'partial.dpt',
+                    FILEDESC: {
+                        BRECPPG: _partial_brecppg,
+                        FILEORG: RRN,
                         },
-                    BTOD_FACTOR:_b_to_d_factor_partial,
-                    DEFAULT_RECORDS:_default_number_partial,
-                    PRIMARY:'Partial',
-                    SECONDARY:{
+                    BTOD_FACTOR: _b_to_d_factor_partial,
+                    DEFAULT_RECORDS: _default_number_partial,
+                    PRIMARY: 'Partial',
+                    SECONDARY: {
                         },
-                    FIELDS:{
-                        'Partial':None,
+                    FIELDS: {
+                        'Partial': None,
                         },
-                    DEFER:{
+                    DEFER: {
                         },
                     },
                 )
@@ -134,20 +134,20 @@ if __name__=='__main__':
 
         def open_file(self, event=None):
             if self.get_appsys().dbspec.get_database('games', None):
-                for k, v in self.get_appsys().dbspec._dptfiles.iteritems():
+                for k, v in self.get_appsys().dbspec.get_dptfiles().items():
                     extents = dptdb.dptapi.IntVector()
                     v.get_database().ShowTableExtents(extents)
                     extents = [x for x in extents]
-                    print k, extents
+                    print(k, extents)
                     dlg = basesup.tools.dialogues.askquestion(
                         'Extend file',
                         ' '.join(('Confirm extend', k, 'file index')))
-                    if dlg == tkMessageBox.YES:
+                    if dlg == tkinter.messagebox.YES:
                         v.get_database().Increase(extents[1], True)
                     dlg = basesup.tools.dialogues.askquestion(
                         'Extend file',
                         ' '.join(('Confirm extend', k, 'file data')))
-                    if dlg == tkMessageBox.YES:
+                    if dlg == tkinter.messagebox.YES:
                         v.get_database().Increase(extents[0], False)
                 basesup.tools.dialogues.showinfo(
                     'Test File Size Dialogue',
@@ -184,7 +184,7 @@ if __name__=='__main__':
     class mApp(object):
         
         def __init__(self):
-            self.root = Tkinter.Tk()
+            self.root = tkinter.Tk()
             self.root.wm_title('Test File Size Dialogue')
             self.mf = mFrame(
                 master=self.root,
@@ -208,11 +208,8 @@ if __name__=='__main__':
                         mFrame._state_start,
                         mFrame._tab_name],
                     },
-                switch_tab={
-                    mFrame._tab_name : None,
-                    },
                 )
-            self.mf.get_widget().pack(fill=Tkinter.BOTH, expand=True)
+            self.mf.get_widget().pack(fill=tkinter.BOTH, expand=True)
             self.mf.get_widget().pack_propagate(False)
             self.mf.show_state()
             self.mf.dbspec = DPTapi(FileSpec(), os.getenv('HOME'))

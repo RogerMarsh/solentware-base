@@ -1,35 +1,71 @@
-To install the basesup package type
+==================================
+Database Record definition classes
+==================================
 
-python setup.py install
+.. contents::
+
+
+Description
+===========
+
+This package provides a record-level API to a variety of database engines in the style of `bsddb3`_ cursors.
+
+A record contains a key and a value, (key, value) say.  Indexes contain records which invert this as (F(value), key).  F() would return a substring of value for example.
+
+The value could be a pickled class instance, or perhaps more safely a string which can be evaluated by the ast.literal_eval function.
+
+Interfaces exist for:
+
+* `bsddb3`_
+* `DPT`_
+* `sqlite3`_
+
+
+Installation Instructions
+=========================
+
+Build dependencies
+
+* `Python`_ 3.3 or later 
+
+Install the package by typing
+
+   python setup.py install
 
 at the command prompt with setup.py in the current directory.
 
+You may need to give the path and version of Python depending on your system's configuration:
 
-This is basesup-0.8
+   <path to python>/python<version> setup.py install
 
+   For example
 
-Dependencies:
+      C:\\Python33\\python setup.py install
 
-Python 2.6 or Python 2.7 installed.
+         on Microsoft Windows or
 
-and at least one of
+      python3.3 setup.py install
 
-sqlite3 package
-bsddb package
-bsddb3 package from www.jcea.es
-dptdb version 0.4 package from www.solentware.co.uk (source from www.dptoolkit.com) if using Microsoft Windows.
+         on Unix-like systems.
 
+Runtime dependencies
 
-Notes:
-
-The sqlite3 package is distributed as part of Python but may have to be installed separately.
-
-The bsddb package is distributed as part of Python 2.3 through 2.7 but may have to be installed separately.
-
-The dptdb package must be the one for the version of Python.
+* `Python`_ 3.3 or later.
+* tkinter, part of Python, which is installed separately sometimes.
+* at least one of the database engines for which an interface exists.
 
 
-Contact:
+Notes
+=====
 
-roger.marsh@solentware.co.uk
+The `sqlite3`_ interface was added because sqlite3 became the only database engine supporting ordered keys included in the Python distribution when bsddb was dropped at Python 3.  Otherwise why use SQL to implement a non-SQL interface to an 'SQL database system'.
 
+I have not yet succeeded in building `bsddb3`_ on Microsoft Windows.  I assume this package will work with bsddb3 on Microsoft Windows.
+
+`DPT`_ is Microsoft Windows only.  It is included because it represents record sets in indexes using bitmaps when efficient to do so, and uses bitmaps to do boolean logic on record sets.
+
+
+.. _`Python`: https://python.org
+.. _`bsddb3`: https://pypi.python.org/pypi/bsddb3
+.. _`DPT`: http://solentware.co.uk/products.html
+.. _`sqlite3`: https://github.com/ghaering/pysqlite

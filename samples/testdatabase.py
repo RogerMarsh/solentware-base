@@ -11,6 +11,6 @@ if __name__ == '__main__':
 
     d = Database()
     c = Cursor()
-    print d
-    print c
+    print(d)
+    print(c)
     d.close_context()

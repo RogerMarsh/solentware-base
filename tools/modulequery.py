@@ -7,18 +7,26 @@
 List of functions:
 
 database_modules_in_default_preference_order
-existing_databases
+modules_for_existing_databases
 installed_database_modules
 supported_database_modules
 _bsddb_preference
 
 """
 
-import imp
+import importlib
 import sys
 import os.path
 
-from basesup.api.constants import FILE, PRIMARY
+from ..api.constants import (
+    FILE,
+    PRIMARY,
+    BSDDB_MODULE,
+    BSDDB3_MODULE,
+    SQLITE3_MODULE,
+    APSW_MODULE,
+    DPT_MODULE,
+    )
 
 
 def database_modules_in_default_preference_order():
@@ -37,9 +45,15 @@ def database_modules_in_default_preference_order():
 
     """
     if sys.platform == 'win32':
-        return ('dptdb', 'bsddb3', 'sqlite3', 'bsddb')
+        return (
+            DPT_MODULE,
+            BSDDB3_MODULE,
+            APSW_MODULE,
+            SQLITE3_MODULE,
+            BSDDB_MODULE,
+            )
     else:
-        return ('bsddb3', 'sqlite3', 'bsddb')
+        return (BSDDB3_MODULE, APSW_MODULE, SQLITE3_MODULE, BSDDB_MODULE)
 
 
 def supported_database_modules():
@@ -50,19 +64,25 @@ def supported_database_modules():
     and False otherwise.
 
     """
-    return dict(
-        bsddb=False,
-        bsddb3=False,
-        sqlite3=False,
-        dptdb=True,
-        )
+    return {
+        BSDDB_MODULE: False,
+        BSDDB3_MODULE: False,
+        SQLITE3_MODULE: False,
+        APSW_MODULE: False,
+        DPT_MODULE: True,
+        }
 
 
-def installed_database_modules(bsddb_before_bsddb3=True):
-    """Return dictionary of database modules supported and installed
+def installed_database_modules(
+    bsddb_before_bsddb3=True, apsw_before_sqlite3=True):
+    """Return set of preferred database modules supported and installed
 
     bsddb_before_bsddb3 determines which of bsddb and bsddb3 to set False if
     both are True.  So a database is attached to bsddb rather than bsddb3 by
+    default if both are available.
+
+    apsw_before_sqlite3 determines which of apsw and sqlite3 to set False if
+    both are True.  So a database is attached to apsw rather than sqlite3 by
     default if both are available.
 
     For each module name in dictionary value is None if database module not
@@ -79,35 +99,35 @@ def installed_database_modules(bsddb_before_bsddb3=True):
             dbm[d] = None
             continue
         try:
-            dbm[d] = imp.find_module(d)
+            if bool(importlib.import_module(d)):
+                dbm[d] = True
+            else:
+                dbm[d] = None
         except ImportError:
             dbm[d] = None
         except:
             raise
     _bsddb_preference(dbm, bsddb_before_bsddb3)
-    return dbm
+    _sqlite_preference(dbm, apsw_before_sqlite3)
+    return {d for d in dbm if dbm[d]}
 
 
-def existing_databases(folder, filespec, bsddb_before_bsddb3=True):
-    """Return dictionary of filespec defined databases in folder for modules
+def modules_for_existing_databases(folder, filespec):
+    """Return [set(modulename, ...), ...] for filespec databases in folder.
 
-    bsddb_before_bsddb3 determines which of bsddb and bsddb3 to set False if
-    both are True.  So a database is attached to bsddb rather than bsddb3 by
-    default if both are available.
-
-    For each module name in dictionary value is None if database module not
-    installed or supported, False if no part of the database defined in
-    filespec exists, and True otherwise.
+    For each module in supported_database_modules() status is None if database
+    module not installed or supported, False if no part of the database defined
+    in filespec exists, and True otherwise.
 
     """
     dbm = supported_database_modules()
     for d in dbm:
         if dbm[d] is None:
             continue
-        if d == 'sqlite3':
+        if d in (SQLITE3_MODULE, APSW_MODULE):
             f, b = os.path.split(folder)
             dbm[d] = os.path.isfile(os.path.join(folder, b))
-        elif d == 'dptdb':
+        elif d == DPT_MODULE:
             for f in filespec:
                 if os.path.isfile(os.path.join(folder, filespec[f][FILE])):
                     dbm[d] = True
@@ -124,11 +144,25 @@ def existing_databases(folder, filespec, bsddb_before_bsddb3=True):
                     break
             else:
                 dbm[d] = False
-    _bsddb_preference(dbm, bsddb_before_bsddb3)
-    return dbm
+    cm = {
+        (SQLITE3_MODULE, APSW_MODULE): set(),
+        (DPT_MODULE,): set(),
+        (BSDDB_MODULE, BSDDB3_MODULE): set(),
+        }
+    for m in [d for d in dbm if dbm[d]]:
+        for c in cm:
+            if m in c:
+                cm[c].add(m)
+    return [v for v in cm.values() if len(v)]
 
 
 def _bsddb_preference(mapping, bsddb_before_bsddb3):
     """Adjust mapping to honour bsddb_before_bsddb3 preference"""
-    if mapping['bsddb'] and mapping['bsddb3']:
-        mapping['bsddb'] = False
+    if mapping[BSDDB_MODULE] and mapping[BSDDB3_MODULE]:
+        mapping[BSDDB_MODULE] = False
+
+
+def _sqlite_preference(mapping, apsw_before_sqlite3):
+    """Adjust mapping to honour apsw_before_sqlite3 preference"""
+    if mapping[APSW_MODULE] and mapping[SQLITE3_MODULE]:
+        mapping[SQLITE3_MODULE] = False

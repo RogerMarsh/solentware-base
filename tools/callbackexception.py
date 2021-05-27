@@ -61,7 +61,7 @@ class CallbackException(object):
 
         """
         import traceback
-        import Tkinter
+        import tkinter
 
         from basesup.tools.dialogues import askyesno
 
@@ -85,7 +85,7 @@ class CallbackException(object):
                 pass
             
         if root is None:
-            dialtop = Tkinter.Tk()
+            dialtop = tkinter.Tk()
         else:
             dialtop = root
         try:
@@ -95,7 +95,7 @@ class CallbackException(object):
                 message=message,
                 ):
                 dialtop.destroy()
-                raise SystemExit, 'Do not show exception report'
+                raise SystemExit('Do not show exception report')
         except:
             # A non-error example, in context, is two failing after_idle calls.
             # Then click Quit on the second report before clicking No on the
@@ -106,12 +106,12 @@ class CallbackException(object):
                 dialtop.destroy()
             except:
                 pass
-            raise SystemExit, 'Exception in exception report dialogue'
+            raise SystemExit('Exception in exception report dialogue')
 
         if root is None:
             top = dialtop
         else:
-            top = Tkinter.Toplevel(master=root)
+            top = tkinter.Toplevel(master=root)
         # It may be ok to allow the application to respond to keyboard and
         # pointer actions but exceptions when exceptions have already occurred
         # could loop indefinitely or be allowed to escape into Tkinter.  This
@@ -120,20 +120,20 @@ class CallbackException(object):
         # So grab_set.
         top.grab_set()
         top.wm_title(string=title)
-        quit_ = Tkinter.Button(master=top, text='Quit')
-        quit_.pack(side=Tkinter.BOTTOM)
-        report = Tkinter.Text(master=top, wrap='word')
+        quit_ = tkinter.Button(master=top, text='Quit')
+        quit_.pack(side=tkinter.BOTTOM)
+        report = tkinter.Text(master=top, wrap='word')
         quit_.configure(command=top.destroy)
-        scrollbar = Tkinter.Scrollbar(
-            master=top, orient=Tkinter.VERTICAL, command=report.yview)
-        scrollbar.pack(side=Tkinter.RIGHT, fill=Tkinter.Y)
-        report.pack(side=Tkinter.LEFT, fill=Tkinter.BOTH, expand=Tkinter.TRUE)
+        scrollbar = tkinter.Scrollbar(
+            master=top, orient=tkinter.VERTICAL, command=report.yview)
+        scrollbar.pack(side=tkinter.RIGHT, fill=tkinter.Y)
+        report.pack(side=tkinter.LEFT, fill=tkinter.BOTH, expand=tkinter.TRUE)
         report.configure(yscrollcommand=scrollbar.set)
-        report.insert(Tkinter.END, traceback.format_exc())
+        report.insert(tkinter.END, traceback.format_exc())
         top.wait_window()
         # Without the delete pending 'after' commands at start of method this
         # raise does not seem to be needed to quit the application.
-        raise SystemExit, 'Dismiss exception report'
+        raise SystemExit('Dismiss exception report')
 
     def try_command(self, method, widget):
         """Return the method.

@@ -37,7 +37,7 @@ askdirectory
 # but calling _show works (as it does in tkMessageBox.py test stuff)
 # tkFileDialog functions seem ok
 
-import Tkinter, tkMessageBox, tkFileDialog
+import tkinter, tkinter.messagebox, tkinter.filedialog
 import re
 
 GRAB_ERROR = ''.join((
@@ -53,9 +53,9 @@ FOCUS_ERROR = ''.join((
 def showinfo(title=None, message=None, **options):
     """Show an info message"""
     try:
-        return str(tkMessageBox._show(
-            title, message, tkMessageBox.INFO, tkMessageBox.OK, **options))
-    except Tkinter.TclError, error:
+        return str(tkinter.messagebox._show(
+            title, message, tkinter.messagebox.INFO, tkinter.messagebox.OK, **options))
+    except tkinter.TclError as error:
         if str(error) != GRAB_ERROR:
             raise
 
@@ -63,9 +63,9 @@ def showinfo(title=None, message=None, **options):
 def showwarning(title=None, message=None, **options):
     """Show a warning message"""
     try:
-        return str(tkMessageBox._show(
-            title, message, tkMessageBox.WARNING, tkMessageBox.OK, **options))
-    except Tkinter.TclError, error:
+        return str(tkinter.messagebox._show(
+            title, message, tkinter.messagebox.WARNING, tkinter.messagebox.OK, **options))
+    except tkinter.TclError as error:
         if str(error) != GRAB_ERROR:
             raise
 
@@ -73,9 +73,9 @@ def showwarning(title=None, message=None, **options):
 def showerror(title=None, message=None, **options):
     """Show an error message"""
     try:
-        return str(tkMessageBox._show(
-            title, message, tkMessageBox.ERROR, tkMessageBox.OK, **options))
-    except Tkinter.TclError, error:
+        return str(tkinter.messagebox._show(
+            title, message, tkinter.messagebox.ERROR, tkinter.messagebox.OK, **options))
+    except tkinter.TclError as error:
         if str(error) != GRAB_ERROR:
             raise
 
@@ -83,10 +83,10 @@ def showerror(title=None, message=None, **options):
 def askquestion(title=None, message=None, **options):
     """Ask a question"""
     try:
-        return str(tkMessageBox._show(
-            title, message, tkMessageBox.QUESTION, tkMessageBox.YESNO,
+        return str(tkinter.messagebox._show(
+            title, message, tkinter.messagebox.QUESTION, tkinter.messagebox.YESNO,
             **options))
-    except Tkinter.TclError, error:
+    except tkinter.TclError as error:
         if str(error) != GRAB_ERROR:
             raise
 
@@ -94,11 +94,11 @@ def askquestion(title=None, message=None, **options):
 def askokcancel(title=None, message=None, **options):
     """Ask if operation should proceed; return true if the answer is ok"""
     try:
-        s = tkMessageBox._show(
-            title, message, tkMessageBox.QUESTION, tkMessageBox.OKCANCEL,
+        s = tkinter.messagebox._show(
+            title, message, tkinter.messagebox.QUESTION, tkinter.messagebox.OKCANCEL,
             **options)
-        return str(s) == tkMessageBox.OK
-    except Tkinter.TclError, error:
+        return str(s) == tkinter.messagebox.OK
+    except tkinter.TclError as error:
         if str(error) != GRAB_ERROR:
             raise
 
@@ -106,11 +106,11 @@ def askokcancel(title=None, message=None, **options):
 def askyesno(title=None, message=None, **options):
     """Ask a question; return true if the answer is yes"""
     try:
-        s = tkMessageBox._show(
-            title, message, tkMessageBox.QUESTION, tkMessageBox.YESNO,
+        s = tkinter.messagebox._show(
+            title, message, tkinter.messagebox.QUESTION, tkinter.messagebox.YESNO,
             **options)
-        return str(s) == tkMessageBox.YES
-    except Tkinter.TclError, error:
+        return str(s) == tkinter.messagebox.YES
+    except tkinter.TclError as error:
         if str(error) != GRAB_ERROR:
             raise
 
@@ -118,14 +118,14 @@ def askyesno(title=None, message=None, **options):
 def askyesnocancel(title=None, message=None, **options):
     """Ask a question; return true if the answer is yes, None if cancelled."""
     try:
-        s = tkMessageBox._show(
-            title, message, tkMessageBox.QUESTION, tkMessageBox.YESNOCANCEL,
+        s = tkinter.messagebox._show(
+            title, message, tkinter.messagebox.QUESTION, tkinter.messagebox.YESNOCANCEL,
             **options)
         s = str(s)
-        if s == tkMessageBox.CANCEL:
+        if s == tkinter.messagebox.CANCEL:
             return None
-        return s == tkMessageBox.YES
-    except Tkinter.TclError, error:
+        return s == tkinter.messagebox.YES
+    except tkinter.TclError as error:
         if str(error) != GRAB_ERROR:
             raise
 
@@ -133,11 +133,11 @@ def askyesnocancel(title=None, message=None, **options):
 def askretrycancel(title=None, message=None, **options):
     """Ask if operation should be retried; return true if the answer is yes"""
     try:
-        s = tkMessageBox._show(
-            title, message, tkMessageBox.WARNING, tkMessageBox.RETRYCANCEL,
+        s = tkinter.messagebox._show(
+            title, message, tkinter.messagebox.WARNING, tkinter.messagebox.RETRYCANCEL,
             **options)
-        return str(s) == tkMessageBox.RETRY
-    except Tkinter.TclError, error:
+        return str(s) == tkinter.messagebox.RETRY
+    except tkinter.TclError as error:
         if str(error) != GRAB_ERROR:
             raise
 
@@ -150,8 +150,8 @@ def askopenfilename(**options):
     
     """
     try:
-        return tkFileDialog.askopenfilename(**options)
-    except Tkinter.TclError, error:
+        return tkinter.filedialog.askopenfilename(**options)
+    except tkinter.TclError as error:
         if str(error) != GRAB_ERROR:
             raise
 
@@ -159,8 +159,8 @@ def askopenfilename(**options):
 def asksaveasfilename(**options):
     """Ask for a filename to save as"""
     try:
-        return tkFileDialog.asksaveasfilename(**options)
-    except Tkinter.TclError, error:
+        return tkinter.filedialog.asksaveasfilename(**options)
+    except tkinter.TclError as error:
         if str(error) != GRAB_ERROR:
             raise
 
@@ -181,8 +181,8 @@ def askopenfilenames(**options):
     # dialogue supports selection of a single file only.  Nothing can be done
     # about this here.  If it works in other versions - excellent.
     try:
-        fn = tkFileDialog.askopenfilenames(**options)
-        if not isinstance(fn, unicode):
+        fn = tkinter.filedialog.askopenfilenames(**options)
+        if not isinstance(fn, str):
             return fn
         if not fn:
             return fn
@@ -190,7 +190,7 @@ def askopenfilenames(**options):
         fnl.extend(re.sub('{.*}', '', fn).split())
         fnl.sort()
         return tuple(fnl)
-    except Tkinter.TclError, error:
+    except tkinter.TclError as error:
         if str(error) != GRAB_ERROR:
             raise
 
@@ -198,8 +198,8 @@ def askopenfilenames(**options):
 def askopenfile(mode = "r", **options):
     """Ask for a filename to open, and returned the opened file"""
     try:
-        return tkFileDialog.askopenfile(mode = mode, **options)
-    except Tkinter.TclError, error:
+        return tkinter.filedialog.askopenfile(mode = mode, **options)
+    except tkinter.TclError as error:
         if str(error) != GRAB_ERROR:
             raise
 
@@ -212,8 +212,8 @@ def askopenfiles(mode = "r", **options):
     
     """
     try:
-        return tkFileDialog.askopenfiles(mode = mode, **options)
-    except Tkinter.TclError, error:
+        return tkinter.filedialog.askopenfiles(mode = mode, **options)
+    except tkinter.TclError as error:
         if str(error) != GRAB_ERROR:
             raise
 
@@ -221,8 +221,8 @@ def askopenfiles(mode = "r", **options):
 def asksaveasfile(mode = "w", **options):
     """Ask for a filename to save as, and returned the opened file"""
     try:
-        return tkFileDialog.asksaveasfile(mode = mode, **options)
-    except Tkinter.TclError, error:
+        return tkinter.filedialog.asksaveasfile(mode = mode, **options)
+    except tkinter.TclError as error:
         if str(error) != GRAB_ERROR:
             raise
 
@@ -230,7 +230,7 @@ def asksaveasfile(mode = "w", **options):
 def askdirectory(**options):
     """Ask for a directory, and return the file name"""
     try:
-        return tkFileDialog.askdirectory (**options)
-    except Tkinter.TclError, error:
+        return tkinter.filedialog.askdirectory (**options)
+    except tkinter.TclError as error:
         if str(error) != GRAB_ERROR:
             raise

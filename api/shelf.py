@@ -16,10 +16,22 @@ ShelfString
 
 """
 
+# The distinction between bytes and str types enforced at Python 3 appears to
+# cause problems for this module using shelve.BsdDbShelf (with bsddb3 now).
+# The key (type bytes) gets pickled to a str.  When traversing the shelve by
+# next() the pickled key is returned and the attempt to pickle.loads(key)
+# raises an exception because the key is unicode.  And encoding the key before
+# the loads operation leads to a pickle underflow exception.
+# At Python 2 the key is str and pickling is effectively a null operation so
+# the Shelf works.
+# We use base64 to encode the key before pickling because it is safe to encode
+# the key (a unicode str) to bytes before the base64 decoding.
+
 import os
 import shelve
-import cPickle
+import pickle
 import heapq
+import base64
 
 # bsddb removed from Python 3.n
 try:
@@ -31,7 +43,7 @@ INTEGERSIZE = 32  # 32 bit integers
 BITMASK = [1 << x for x in range(INTEGERSIZE - 1)]
 BITMASK.append(~sum(BITMASK))  # 1 << INTEGERSIZE gives +ve Long Integer
 
-DEFAULT_SEGMENTSIZE = (8192 - 32) * (INTEGERSIZE / 4)  # match DPT segments
+DEFAULT_SEGMENTSIZE = (8192 - 32) * (INTEGERSIZE // 4)  # match DPT segments
 CONVERSION_LIMIT = min(1024, DEFAULT_SEGMENTSIZE)  # high as disk space allows
 
 
@@ -70,14 +82,14 @@ class _Segment(list):
         
         low = min(self)
         high = max(self)
-        bitmapsize = 1 + (high - low) / INTEGERSIZE
+        bitmapsize = 1 + (high - low) // INTEGERSIZE
         
         if len(self) <= bitmapsize:
             return self
         
         if high - low - len(self) < CONVERSION_LIMIT:
             values = set(self)
-            values.symmetric_difference_update(xrange(low, high + 1))
+            values.symmetric_difference_update(range(low, high + 1))
             return (low, high, list(values))
         
         values = [0] * bitmapsize
@@ -171,11 +183,11 @@ class Shelf(object):
 
         if isinstance(defer[1], int):
             return list(set(defer[-1]).symmetric_difference(
-                xrange(defer[0], defer[1] + 1)))
+                range(defer[0], defer[1] + 1)))
 
         segment = Shelf.make_segment()
         low, values = defer
-        for b in xrange(len(values) * INTEGERSIZE):
+        for b in range(len(values) * INTEGERSIZE):
             element, bit = divmod(b, INTEGERSIZE)
             if values[element] & BITMASK[bit]:
                 segment.append(low + b)
@@ -188,7 +200,8 @@ class Shelf(object):
         The argument names follow Berkeley DB secondary db usage.
 
         """
-        self.deferbuffer.setdefault(key, self.make_segment()).append(value)
+        self.deferbuffer.setdefault(
+            base64.b64encode(key).decode(), self.make_segment()).append(value)
 
     def delete_shelve(self):
         """Delete a shelve object."""
@@ -230,6 +243,9 @@ class Shelf(object):
             try:
                 r = shelves[i].first()
                 k, v = r
+                if isinstance(k, str):
+                    k = k.encode()
+                k = base64.b64decode(k)
                 heappush(updates, (k, i, v))
             except:
                 shelves[i].close()
@@ -242,6 +258,9 @@ class Shelf(object):
             try:
                 r = shelves[i].next()
                 nk, nv = r
+                if isinstance(nk, str):
+                    nk = nk.encode()
+                nk = base64.b64decode(nk)
                 heappush(updates, (nk, i, nv))
             except:
                 shelves[i].close()
@@ -260,7 +279,7 @@ class Shelf(object):
                 os.path.join(
                     self.dufolder,
                     ''.join(('shelf', str(index))))),
-            protocol = cPickle.HIGHEST_PROTOCOL)
+            protocol = pickle.HIGHEST_PROTOCOL)
         return index
 
     def set_defer_folder(self, dufolder):

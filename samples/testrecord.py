@@ -12,12 +12,12 @@ if __name__=='__main__':
         )
 
     r = Record(Key, Value)
-    print r
+    print(r)
     r = Record(Record, Record)
-    print r
-    print r.__dict__
+    print(r)
+    print(r.__dict__)
     r = RecorddBaseIII(Record, Record)
-    print r
+    print(r)
     r = RecordText(KeyText, ValueText)
-    print r
-    print r.__dict__
+    print(r)
+    print(r.__dict__)

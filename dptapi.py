@@ -18,22 +18,22 @@ DPTapiRoot - DPT record level access in non-deferred update mode
 
 """
 
-from api.database import DatabaseError
+from .api.database import DatabaseError
 
 import sys
 _platform_win32 = sys.platform == 'win32'
 del sys
 
 if not _platform_win32:
-    raise DatabaseError, 'Platform is not "win32"'
+    raise DatabaseError('Platform is not "win32"')
 
 from dptdb import dptapi
 
-from dptbase import DPTbase, DPTbaseRecord, DPTbaseError
-from api.constants import FLT, INV, UAE, ORD, ONM, SPT
-from api.constants import BSIZE, BRECPPG, BRESERVE, BREUSE
-from api.constants import DSIZE, DRESERVE, DPGSRES
-from api.constants import FILEORG
+from .dptbase import DPTbase, DPTbaseRecord, DPTbaseError
+from .api.constants import FLT, INV, UAE, ORD, ONM, SPT
+from .api.constants import BSIZE, BRECPPG, BRESERVE, BREUSE
+from .api.constants import DSIZE, DRESERVE, DPGSRES
+from .api.constants import FILEORG
 
 
 class DPTapiError(DPTbaseError):
@@ -90,11 +90,11 @@ class DPTapi(DPTbase):
         **kargs - soak up any arguments other database engines need.
 
         """
-        raise DPTapiError, 'use_deferred_update_process not implemented'
+        raise DPTapiError('use_deferred_update_process not implemented')
 
-    def make_root(self, name, fname, dptfile, sfi):
+    def make_root(self, name, fname, dptfile, fieldnamefn, sfi):
 
-        return DPTapiRoot(name, fname, dptfile, sfi)
+        return DPTapiRoot(name, fname, dptfile, fieldnamefn, sfi)
 
 
 class DPTapiRoot(DPTbaseRecord):
@@ -126,10 +126,13 @@ class DPTapiRoot(DPTbaseRecord):
         
         """
         super(DPTapiRoot, self).open_root(db)
-        db._dbserv.Allocate(
-            self._ddname,
-            self._file,
-            dptapi.FILEDISP_COND)
+        try:
+            db.get_dbserv().Allocate(
+                self._ddname,
+                self._file,
+                dptapi.FILEDISP_COND)
+        except:
+            pass
         cs = dptapi.APIContextSpecification(self._ddname)
-        self._opencontext = db._dbserv.OpenContext(cs)
+        self._opencontext = db.get_dbserv().OpenContext(cs)
             

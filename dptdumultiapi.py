@@ -26,11 +26,11 @@ _rmFile - Read access for multi-step deferred update sequential file formats
 
 """
 
-from api.database import DatabaseError
+from .api.database import DatabaseError
 
 import sys
 if sys.platform != 'win32':
-    raise DatabaseError, 'Platform is not "win32"'
+    raise DatabaseError('Platform is not "win32"')
 del sys
 
 import os
@@ -39,17 +39,8 @@ from heapq import heapify, heappop, heappush
 
 from dptdb import dptapi
 
-from dptduapi import DPTduapi, DPTduapiRecord
-from api.constants import (
-    FLT, INV, UAE, ORD, ONM, SPT,
-    BSIZE, BRECPPG, BRESERVE, BREUSE,
-    DSIZE, DRESERVE, DPGSRES,
-    FILEORG, DEFAULT, EO, RRN, SUPPORTED_FILEORGS,
-    DDNAME, FILE, FILEDESC, FOLDER, FIELDS,
-    PRIMARY, SECONDARY, DEFER,
-    DPT_DEFER_FOLDER,
-    TAPEA, TAPEN,
-    )
+from .dptduapi import DPTduapi, DPTduapiRecord
+from .api.constants import (ORD, ONM, DPT_DEFER_FOLDER, TAPEA, TAPEN)
 
 DU_AUDIT_LINE = 'DU'
 
@@ -129,36 +120,36 @@ class DPTdumultiapi(DPTduapi):
         except:
             msg = ' '.join(['Defer update folder name', str(deferfolder),
                             'is not valid'])
-            raise DPTdumultiapiError, msg
+            raise DPTdumultiapiError(msg)
         
         #Files to be updated in multi-step deferred update mode
         self._deferupdatefiles = kargs.get('deferupdatefiles', dict())
         for duf in self._deferupdatefiles:
-            if duf not in self._dptfiles:
+            if duf not in self.get_dptfiles():
                 msg = ' '.join(['File name', str(duf),
                                 'is not a file specified for database'])
-                raise DPTdumultiapiError, msg
+                raise DPTdumultiapiError(msg)
         
     def close_context(self):
         """Close all DPT files and multi-step specific sequential files."""
-        if self._dbserv is None:
+        if self.get_dbserv() is None:
             return
-        for dd in self._dptfiles:
-            self._dptfiles[dd].close(self._dbserv, self._sfserv)
+        for dd in self.get_dptfiles():
+            self.get_dptfiles()[dd].close(self.get_dbserv(), self.get_sfserv())
 
     def do_deferred_updates(self):
         """Apply deferred updates."""
         for dd in self._deferupdatefiles:
-            self._dptfiles[dd].do_nopad_noCRLF_deferred_updates(
-                self._dbserv, self._deferfolder)
+            self.get_dptfiles()[dd].do_nopad_noCRLF_deferred_updates(
+                self.get_dbserv(), self._deferfolder)
         try:
             os.rmdir(self._deferfolder)
         except:
             pass
 
-    def make_root(self, name, fname, dptfile, sfi):
+    def make_root(self, name, fname, dptfile, fieldnamefn, sfi):
         """DPT file interface customised for multi-step deferred update"""
-        return DPTdumultiapiRecord(name, fname, dptfile, sfi)
+        return DPTdumultiapiRecord(name, fname, dptfile, fieldnamefn, sfi)
 
     def open_context_allocated(self, files=()):
         """Open all files in multi-step deferred update mode.
@@ -173,16 +164,16 @@ class DPTdumultiapi(DPTduapi):
         """
         # It is assumed a call to OpenContext_DUMulti was made earlier.
         for dd in files:
-            if dd in self._dptfiles:
-                root = self._dptfiles[dd]
-                self._dbserv.Allocate(
+            if dd in self.get_dptfiles():
+                root = self.get_dptfiles()[dd]
+                self.get_dbserv().Allocate(
                     root._ddname,
                     root._file,
                     FILEDISP_OLD)
                 cs = APIContextSpecification(root._ddname)
                 # It is wrong to call OpenContext_DUMulti here, even if it has
                 # not been called earlier.
-                root._opencontext = self._dbserv.OpenContext(cs)
+                root._opencontext = self.get_dbserv().OpenContext(cs)
 
 
 class _DPTdumultiDeferBase(object):
@@ -451,12 +442,13 @@ class DPTdumultiapiRecord(DPTduapiRecord):
 
     _defer_read_limit = DEFAULT_SEQFILE_READ
     
-    def __init__(self, name, fname, dptdesc, sfi):
+    def __init__(self, name, fname, dptdesc, fieldnamefn, sfi):
         """Extend to include deferred update sequential file definition"""
         super(DPTdumultiapiRecord, self).__init__(
             name,
             fname,
             dptdesc,
+            fieldnamefn,
             sfi)
         
         self._seqfileid = sfi
@@ -507,7 +499,7 @@ class DPTdumultiapiRecord(DPTduapiRecord):
         dbserv.Core().AuditLine(
             ' '.join((
                 'Split deferred update sequential files for file',
-                repr(self._name),
+                repr(self._fd_name),
                 'into sorted files for each field')),
             DU_AUDIT_LINE)
 
@@ -590,16 +582,16 @@ class DPTdumultiapiRecord(DPTduapiRecord):
         dbserv.Core().AuditLine(
             ' '.join((
                 'Merge sorted files for each field on file',
-                repr(self._name),
+                repr(self._fd_name),
                 'into two sorted sequential files (char and num)')),
             DU_AUDIT_LINE)
 
-        outfilealpha = file(
+        outfilealpha = open(
             os.path.join(
                 os.path.dirname(self._file),
                 ''.join((self._seqfilealphasorted, '.txt'))),
             'wb')
-        outfilenumeric = file(
+        outfilenumeric = open(
             os.path.join(
                 os.path.dirname(self._file),
                 ''.join((self._seqfilenumericsorted, '.txt'))),
@@ -609,7 +601,7 @@ class DPTdumultiapiRecord(DPTduapiRecord):
             dbserv.Core().AuditLine(
                 ' '.join((
                     'Merge sorted files for field', repr(d),
-                    'on file', repr(self._name))),
+                    'on file', repr(self._fd_name))),
                 DU_AUDIT_LINE)
 
             if self._fields[self._secondary[d]][ONM]:
@@ -627,7 +619,8 @@ class DPTdumultiapiRecord(DPTduapiRecord):
 
         dbserv.Core().AuditLine(
             ' '.join((
-                'Merge sorted files for file', repr(self._name), 'completed')),
+                'Merge sorted files for file',
+                repr(self._fd_name), 'completed')),
             DU_AUDIT_LINE)
 
         deferfolder = os.path.join(dbfolder, self._ddname)
@@ -695,7 +688,7 @@ class DPTdumultiapiRecord(DPTduapiRecord):
         detail.
 
         """
-        if self._name not in db._deferupdatefiles:
+        if self._fd_name not in db._deferupdatefiles:
             return
 
         super(DPTduapiRecord, self).open_root(db)
@@ -741,12 +734,12 @@ class DPTdumultiapiRecord(DPTduapiRecord):
             else:
                 self._duclass[s] = None
 
-        db._dbserv.Allocate(
+        db.get_dbserv().Allocate(
             self._ddname,
             self._file,
             dptapi.FILEDISP_COND)
 
-        sfserv = db._dbserv.SeqServs()
+        sfserv = db.get_dbserv().SeqServs()
         for f in (self._seqfilealpha, self._seqfilenumeric):
             fullpath = os.path.join(
                 os.path.dirname(self._file),
@@ -761,10 +754,10 @@ class DPTdumultiapiRecord(DPTduapiRecord):
         cs = dptapi.APIContextSpecification(self._ddname)
         # First call in run must be OpenContext_DUMulti and rest OpenContext
         if self._dumulti_called:
-            self._opencontext = db._dbserv.OpenContext(cs)
+            self._opencontext = db.get_dbserv().OpenContext(cs)
         else:
             self._dumulti_called = True
-            self._opencontext = db._dbserv.OpenContext_DUMulti(
+            self._opencontext = db.get_dbserv().OpenContext_DUMulti(
                 cs,
                 self._seqfilenumeric,
                 self._seqfilealpha,

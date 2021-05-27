@@ -18,21 +18,21 @@ DPTduapiRecord - DPT record level access in single-step deferred update mode
 
 """
 
-from api.database import DatabaseError
+from .api.database import DatabaseError
 
 import sys
 _platform_win32 = sys.platform == 'win32'
 del sys
 
 if not _platform_win32:
-    raise DatabaseError, 'Platform is not "win32"'
+    raise DatabaseError('Platform is not "win32"')
 
 import os
 
 from dptdb import dptapi
 
-from dptbase import DPTbase, DPTbaseRecord, DPTbaseError
-from api.constants import (
+from .dptbase import DPTbase, DPTbaseRecord, DPTbaseError
+from .api.constants import (
     FLT, INV, UAE, ORD, ONM, SPT,
     BSIZE, BRECPPG, BRESERVE, BREUSE,
     DSIZE, DRESERVE, DPGSRES,
@@ -101,7 +101,7 @@ class DPTduapi(DPTbase):
         except:
             msg = ' '.join(['Main folder name', str(DPTfolder),
                             'is not valid'])
-            raise DPTduapiError, msg
+            raise DPTduapiError(msg)
         
         #The database system parameters. DPT assumes reasonable defaults
         #for any values sought in self._dptkargs.
@@ -120,8 +120,8 @@ class DPTduapi(DPTbase):
 
     def create_default_parms(self):
         """Create default parms.ini file."""
-        if not os.path.exists(self._parms):
-            pf = file(self._parms, 'w')
+        if not os.path.exists(self.get_parms()):
+            pf = open(self.get_parms(), 'w')
             try:
                 pf.write("RCVOPT=X'00' " + os.linesep)
                 pf.write("MAXBUF=100 " + os.linesep)
@@ -129,23 +129,23 @@ class DPTduapi(DPTbase):
                 pf.close()
                 
     def delete_instance(self, dbname, instance):
-        raise DPTduapiError, 'delete_instance not implemented'
+        raise DPTduapiError('delete_instance not implemented')
 
     def do_deferred_updates(self, pyscript, filepath):
-        raise DPTduapiError, 'do_deferred_updates not implemented'
+        raise DPTduapiError('do_deferred_updates not implemented')
 
     def edit_instance(self, dbname, instance):
-        raise DPTduapiError, 'edit_instance not implemented'
+        raise DPTduapiError('edit_instance not implemented')
 
     def make_cursor(self, dbname):
-        raise DPTduapiError, 'make_cursor not implemented'
+        raise DPTduapiError('make_cursor not implemented')
 
     def use_deferred_update_process(self):
-        raise DPTduapiError, 'Query use of du when in deferred update mode'
+        raise DPTduapiError('Query use of du when in deferred update mode')
 
-    def make_root(self, name, fname, dptfile, sfi):
+    def make_root(self, name, fname, dptfile, fieldnamefn, sfi):
         """DPT file interface customised for single-step deferred update"""
-        return DPTduapiRecord(name, fname, dptfile, sfi)
+        return DPTduapiRecord(name, fname, dptfile, fieldnamefn, sfi)
 
     def open_context_allocated(self, files=()):
         """Open all files in single-step deferred update mode.
@@ -158,14 +158,26 @@ class DPTduapi(DPTbase):
 
         """
         for dd in files:
-            if dd in self._dptfiles:
-                root = self._dptfiles[dd]
-                self._dbserv.Allocate(
+            if dd in self.get_dptfiles():
+                root = self.get_dptfiles()[dd]
+                self.get_dbserv().Allocate(
                     root._ddname,
                     root._file,
                     dptapi.FILEDISP_OLD)
                 cs = dptapi.APIContextSpecification(root._ddname)
-                root._opencontext = self._dbserv.OpenContext_DUSingle(cs)
+                root._opencontext = self.get_dbserv().OpenContext_DUSingle(cs)
+
+    def deferred_update_housekeeping(self):
+        """Call Commit() if a non-TBO update is in progress.
+
+        In non-TBO mode Commit() does not commit the tranasction, but it does
+        release redundant resources which would not otherwise be released and
+        may lead to an insuffient memory exception.
+
+        """
+        if self.get_dbserv():
+            if self.get_dbserv().UpdateIsInProgress():
+                self.get_dbserv().Commit()
 
 
 class DPTduapiRecord(DPTbaseRecord):
@@ -191,21 +203,21 @@ class DPTduapiRecord(DPTbaseRecord):
     """
 
     def delete_instance(self, dbname, instance):
-        raise DPTduapiError, 'delete_instance not implemented'
+        raise DPTduapiError('delete_instance not implemented')
 
     def edit_instance(self, dbname, instance):
-        raise DPTduapiError, 'edit_instance not implemented'
+        raise DPTduapiError('edit_instance not implemented')
 
     def make_cursor(self, dbname):
-        raise DPTduapiError, 'make_cursor not implemented'
+        raise DPTduapiError('make_cursor not implemented')
 
     def open_root(self, db):
         """Extend to open file in single-step mode."""
         super(DPTduapiRecord, self).open_root(db)
-        db._dbserv.Allocate(
+        db.get_dbserv().Allocate(
             self._ddname,
             self._file,
             dptapi.FILEDISP_COND)
         cs = dptapi.APIContextSpecification(self._ddname)
-        self._opencontext = db._dbserv.OpenContext_DUSingle(cs)
+        self._opencontext = db.get_dbserv().OpenContext_DUSingle(cs)
             

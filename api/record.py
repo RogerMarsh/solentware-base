@@ -20,7 +20,7 @@ KeyList - key is pickled sorted list of instance attribute values
 KeyText - key is integer (attribute name is line)
 
 Record - contains a Key() and a Value() by default.
-RecorddBaseIII - contains a KeydBaseIII() and a ValueDict() by default.
+RecorddBaseIII - contains a KeydBaseIII() and a Value() by default.
 RecordText - contains a KeyText() and a ValueText() by default.
 
 Value - value is pickled instance
@@ -30,13 +30,15 @@ ValueList - value is pickled sorted list of instance attribute values
 ValueText - value is string (attribute name is text)
 
 Simple (default) use case is
-r = Record(keyclass=Key, valueclass=Value, picklekey=False, picklevalue=True)
+r = Record(keyclass=Key, valueclass=Value)
 r = Record() is equivalent
 Subclasses of Record will have different defaults.
 
 """
 
-from cPickle import dumps, loads
+from pickle import dumps, loads
+from ast import literal_eval
+import collections
 
 
 class Key(object):
@@ -68,7 +70,7 @@ class Key(object):
         super(Key, self).__init__()
 
     def load(self, key):
-        """Do nothing.  Assume self created by unpickle so key already set.
+        """Set self.__dict__ to ast.literal_eval(key).
 
         Method Record.load_key does not call load if key is a subclass of Key
         and key is pickled.  This is appropriate if Key.pack was used to
@@ -79,10 +81,10 @@ class Key(object):
         self.pack()
 
         """
-        pass
+        self.__dict__ = literal_eval(value)
 
     def pack(self):
-        """Return self.
+        """Return repr(self.__dict__).
         
         Subclasses must override this method if the return value
         is not pickled before use as record key.
@@ -91,7 +93,7 @@ class Key(object):
         method Record.load_key must call self.load to reconstruct the key.
 
         """
-        return self
+        return repr(self.__dict__)
 
     def __eq__(self, other):
         """Return (self == other).  Attributes are compared explicitly."""
@@ -218,39 +220,6 @@ class KeyData(Key):
     def __init__(self):
 
         super(KeyData, self).__init__()
-        self.data = None
-
-    def load(self, key):
-        
-        self.data = key
-        
-    def pack(self):
-
-        return self.data
-        
-
-class KeydBaseIII(Key):
-
-    """Define key and methods for a dBaseIII record key.
-
-    Methods added:
-
-    None
-
-    Methods overridden:
-
-    load
-    pack
-
-    Methods extended:
-
-    __init__
-    
-    """
-
-    def __init__(self):
-
-        super(KeydBaseIII, self).__init__()
         self.recno = None
 
     def load(self, key):
@@ -260,6 +229,25 @@ class KeydBaseIII(Key):
     def pack(self):
 
         return self.recno
+        
+
+class KeydBaseIII(KeyData):
+
+    """Define key and methods for a dBaseIII record key.
+
+    Methods added:
+
+    None
+
+    Methods overridden:
+
+    None
+
+    Methods extended:
+
+    None
+    
+    """
         
 
 class KeyDict(Key):
@@ -280,17 +268,6 @@ class KeyDict(Key):
     None
     
     """
-
-    def load(self, key):
-        
-        try:
-            self.__dict__ = key
-        except:
-            self.__dict__ = dict()
-
-    def pack(self):
-
-        return self.__dict__
 
 
 class KeyList(Key):
@@ -327,7 +304,7 @@ class KeyList(Key):
         attributes = self.attributes
         if isinstance(attributes, dict):
             for a in attributes:
-                if callable(attributes[a]):
+                if isinstance(attributes[a], collections.Callable):
                     setattr(self, a, attributes[a]())
             else:
                 setattr(self, a, attributes[a])
@@ -335,17 +312,17 @@ class KeyList(Key):
     def load(self, key):
         
         try:
-            for a, v in zip(self._attribute_order, key):
+            for a, v in zip(self._attribute_order, literal_eval(key)):
                 self.__dict__[a] = v
         except:
             self.__dict__ = dict()
 
     def pack(self):
 
-        return [self.__dict__.get(a) for a in self._attribute_order]
+        return repr([self.__dict__.get(a) for a in self._attribute_order])
 
 
-class KeyText(Key):
+class KeyText(KeyData):
 
     """Define key and methods for a text file line number key.
 
@@ -355,27 +332,13 @@ class KeyText(Key):
 
     Methods overridden:
 
-    load
-    pack
+    None
 
     Methods extended:
 
-    __init__
+    None
     
     """
-
-    def __init__(self):
-
-        super(KeyText, self).__init__()
-        self.line = None
-
-    def load(self, key):
-        
-        self.line = key
-        
-    def pack(self):
-
-        return self.line
         
 
 class Value(object):
@@ -422,7 +385,7 @@ class Value(object):
         self.__dict__.clear()
         
     def load(self, value):
-        """Do nothing.  Assume self created by unpickle so value already set.
+        """Set self.__dict__ to ast.literal_eval(value).
 
         Method Record.load_value does not call load if value is a subclass of
         Value and value is pickled.  This is appropriate if Value.pack_value
@@ -433,7 +396,7 @@ class Value(object):
         pickling self.pack_value()
 
         """
-        pass
+        self.__dict__ = literal_eval(value)
 
     def pack(self):
         """Return packed value and empty index dictionary.
@@ -444,7 +407,7 @@ class Value(object):
         return (self.pack_value(), dict())
         
     def pack_value(self):
-        """Return self.
+        """Return repr(self.__dict__).
         
         Subclasses must override this method if the return value
         is not pickled before use as record value.
@@ -453,7 +416,7 @@ class Value(object):
         method Record.load_value must call self.load to reconstruct the value.
 
         """
-        return self
+        return repr(self.__dict__)
         
     def __eq__(self, other):
         """Return (self == other).  Attributes are compared explicitly."""
@@ -597,11 +560,11 @@ class ValueData(Value):
         
     def load(self, value):
         
-        self.data = value
+        self.data = literal_eval(value)
         
     def pack_value(self):
 
-        return self.data
+        return repr(self.data)
         
 
 class ValueDict(Value):
@@ -626,17 +589,6 @@ class ValueDict(Value):
     Subclasses must extend inherited pack method to populate indexes.
 
     """
-
-    def load(self, value):
-        
-        try:
-            self.__dict__ = value
-        except:
-            self.__dict__ = dict()
-
-    def pack_value(self):
-
-        return self.__dict__
         
 
 class ValueList(Value):
@@ -686,21 +638,21 @@ class ValueList(Value):
     def load(self, value):
         
         try:
-            for a, v in zip(self._attribute_order, value):
+            for a, v in zip(self._attribute_order, literal_eval(value)):
                 self.__dict__[a] = v
         except:
             self.__dict__ = dict()
 
     def pack_value(self):
 
-        return [self.__dict__.get(a) for a in self._attribute_order]
+        return repr([self.__dict__.get(a) for a in self._attribute_order])
 
     def _empty(self):
         """Set initial attributes to default values."""
         attributes = self.attributes
         if isinstance(attributes, dict):
             for a in attributes:
-                if callable(attributes[a]):
+                if isinstance(attributes[a], collections.Callable):
                     setattr(self, a, attributes[a]())
                 else:
                     setattr(self, a, attributes[a])
@@ -750,6 +702,9 @@ class Record(object):
     empty
     get_primary_key_from_index_record
     get_keys
+    get_srvalue
+    get_srvalue_as_bytes
+    get_srvalue_as_str
     load_instance
     load_key
     load_record
@@ -800,8 +755,7 @@ class Record(object):
 
     The load_instance method populates a Record instance with data from the
     database record using the load methods of the Key and Value classes, or
-    subclasses.  srvalue is set in this process but srkey is not.  A
-    record instance created by cPickle.loads() will have srkey equal None.
+    subclasses.  srvalue is set in this process but srkey is not.
 
     Note that srkey and srvalue determine order on database and that
     comparison of key and value in Record instances is not guaranteed to
@@ -813,15 +767,11 @@ class Record(object):
     def __init__(
         self,
         keyclass=None,
-        valueclass=None,
-        picklekey=False,
-        picklevalue=True):
+        valueclass=None):
         """Initialize Record instance.
 
         keyclass - a subclass of Key
         valueclass - a subclass of Value
-        picklekey==True - pickle key before storing on database record
-        picklevalue==True - pickle value before storing on database record
         
         """
         super(Record, self).__init__()
@@ -836,8 +786,6 @@ class Record(object):
         self.record = None
         self.database = None
         self.dbname = None
-        self.picklekey = picklekey
-        self.picklevalue = picklevalue
         self.srkey = None
         self.srvalue = None
         self.srindex = None
@@ -863,7 +811,7 @@ class Record(object):
             if self.value > other.value:
                 return True
         return False
-    
+
     def __le__(self, other):
         """Return (s.key < o.key or (s.key == s.key and s.value <= o.value))"""
         if self.key < other.key:
@@ -993,21 +941,12 @@ class Record(object):
                     self.get_primary_key_from_index_record()))
 
     def load_key(self, key):
-        """Load self.key from key.
-
-        If self.picklekey is false or the unpickled key is not an instance
-        or a subclass of class Key then method self.key.load will load the
-        data.  Otherwise bind to self.key.
-        
-        """
-        if self.picklekey:
-            k = loads(key)
-            if isinstance(k, Key):
-                self.key = k
-            else:
-                self.key.load(k)
-        else:
-            self.key.load(key)
+        """Load self.key from key."""
+        # Looking for an utf8 encoded repr() so key should be bytes but
+        # database engine may have returned an iso-8859-1 str.
+        if isinstance(key, str):
+            key = key.encode('iso-8859-1')
+        self.key.load(key)
 
     def load_record(self, record):
         """Load self.key and self.value from record."""
@@ -1015,22 +954,13 @@ class Record(object):
         self.load_value(record[1])
 
     def load_value(self, value):
-        """Load self.value from value.
+        """Load self.value from value which is repr(<data>).
 
-        If self.picklevalue is false or the unpickled value is not an instance
-        or a subclass of class Value then method self.value.load will load the
-        data.  Otherwise bind to self.value.
-        
+        literal_eval(value) is delegated to self.value.load() method.
+
         """
         self.srvalue = value
-        if self.picklevalue:
-            v = loads(value)
-            if isinstance(v, Value):
-                self.value = v
-            else:
-                self.value.load(v)
-        else:
-            self.value.load(value)
+        self.value.load(value)
 
     def set_packed_value_and_indexes(self):
         """Set self.srvalue and self.srindex for a database update."""
@@ -1057,28 +987,40 @@ class Record(object):
     def packed_key(self):
         """Return self.key converted to string representation.
 
-        If self.picklekey is true self.key.pack() is pickled before return.
-        
-        Call from the database get_packed_key method only as this may deal
+        Call from the database get_packed_key method only as this may deal with
         some cases first.
         
         """
-        if self.picklekey:
-            return dumps(self.key.pack())
-        else:
-            return self.key.pack()
+        # Database engine interface will decode to iso-8859-1 str if necessary.
+        return self.key.pack().encode('utf8')
 
     def packed_value(self):
-        """Return (value, indexes).
-        
-        If self.picklevalue is true value is pickled before return.
+        """Return (value, indexes)."""
+        v, i = self.value.pack()
+        # Database engine interface will decode to iso-8859-1 str if necessary.
+        return (v, i)
+
+    def get_srvalue(self):
+        """Return self.srvalue in format associated with database engine."""
+        return literal_eval(self.srvalue)
+
+    def get_srvalue_as_str(self):
+        """Return self.srvalue in str format.
+
+        The record instance can exist without being associated with a database.
+        This method converts srvalue to str unconditionally.
 
         """
-        if self.picklevalue:
-            v, i = self.value.pack()
-            return (dumps(v), i)
-        else:
-            return self.value.pack()
+        return literal_eval(self.srvalue)
+
+    def get_srvalue_as_bytes(self):
+        """Return self.srvalue in bytes format.
+
+        The record instance can exist without being associated with a database.
+        This method converts srvalue to bytes unconditionally.
+
+        """
+        return self.srvalue
 
 
 class RecorddBaseIII(Record):
@@ -1110,16 +1052,43 @@ class RecorddBaseIII(Record):
         """Initialize dBaseIII record instance."""
         if not issubclass(keyclass, KeydBaseIII):
             keyclass = KeydBaseIII
-        if not issubclass(valueclass, ValueDict):
-            valueclass = ValueDict
-        picklekey = False
-        picklevalue = True
+        if not issubclass(valueclass, Value):
+            valueclass = Value
 
         super(RecorddBaseIII, self).__init__(
             keyclass=keyclass,
-            valueclass=valueclass,
-            picklekey=picklekey,
-            picklevalue=picklevalue)
+            valueclass=valueclass)
+
+    def packed_value(self):
+        """Return (value, indexes)."""
+        v, i = self.value.pack()
+        # Database engine interface will decode to iso-8859-1 str if necessary.
+        return (v.encode('utf8'), i)
+
+    def get_srvalue(self):
+        """Return self.srvalue in format associated with database engine"""
+        if self.database.is_engine_uses_str():
+            return self.srvalue.decode('iso-8859-1')
+        else:
+            return self.srvalue
+
+    def get_srvalue_as_str(self):
+        """Return self.srvalue in str format.
+
+        The record instance can exist without being associated with a database.
+        This method converts srvalue to str unconditionally.
+
+        """
+        return self.srvalue.decode('iso-8859-1')
+
+    def get_srvalue_as_bytes(self):
+        """Return self.srvalue in bytes format.
+
+        The record instance can exist without being associated with a database.
+        This method converts srvalue to bytes unconditionally.
+
+        """
+        return self.srvalue
 
 
 class RecordText(Record):
@@ -1154,12 +1123,43 @@ class RecordText(Record):
             keyclass = KeyText
         if not issubclass(valueclass, ValueText):
             valueclass = ValueText
-        picklekey = False
-        picklevalue = False
 
         super(RecordText, self).__init__(
             keyclass=keyclass,
-            valueclass=valueclass,
-            picklekey=picklekey,
-            picklevalue=picklevalue)
+            valueclass=valueclass)
+
+    def packed_value(self):
+        """Return (value, indexes)."""
+        return self.value.pack()
+
+    def get_srvalue(self):
+        """Return self.srvalue in format associated with database engine."""
+        if self.database.is_engine_uses_bytes():
+            return self.srvalue.decode('utf8')
+        else:
+            return self.srvalue
+
+    def get_srvalue_as_str(self):
+        """Return self.srvalue in str format.
+
+        The record instance can exist without being associated with a database.
+        This method converts srvalue to str unconditionally.
+
+        """
+        if isinstance(self.srvalue, bytes):
+            return self.srvalue.decode('utf8')
+        else:
+            return self.srvalue
+
+    def get_srvalue_as_bytes(self):
+        """Return self.srvalue in bytes format.
+
+        The record instance can exist without being associated with a database.
+        This method converts srvalue to bytes unconditionally.
+
+        """
+        if isinstance(self.srvalue, str):
+            return self.srvalue.encode('utf8')
+        else:
+            return self.srvalue
 

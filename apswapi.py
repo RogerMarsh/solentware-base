@@ -1,8 +1,8 @@
-# sqlite3api.py
-# Copyright 2011 Roger Marsh
+# apswapi.py
+# Copyright 2015 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""Object database using sqlite3.
+"""Object database using apsw, an alternative python sqlite3 wrapper.
 
 List of classes
 
@@ -55,7 +55,7 @@ build emulations of some of the Berkeley DB interface available at Python 2.
 
 import os
 import subprocess
-import sqlite3
+import apsw
 from ast import literal_eval
 
 import sys
@@ -344,7 +344,7 @@ class _Sqlite3api(Database, _DatabaseEncoders):
     def backout(self):
         """Backout tranaction."""
         if self._sqconn:
-            self._sqconn.rollback()
+            self._sqconn.cursor().execute('rollback')
 
     def close_context(self):
         """Close all sqlite3 cursors."""
@@ -368,7 +368,7 @@ class _Sqlite3api(Database, _DatabaseEncoders):
     def commit(self):
         """Commit tranaction."""
         if self._sqconn:
-            self._sqconn.commit()
+            self._sqconn.cursor().execute('commit')
 
     def db_compatibility_hack(self, record, srkey):
         """Convert to (key, value) format returned by Berkeley DB access.
@@ -466,9 +466,7 @@ class _Sqlite3api(Database, _DatabaseEncoders):
         if not os.path.exists(f):
             os.makedirs(f, mode=0o700)
         if self._sqconn is None:
-            self._sqconn = sqlite3.connect(
-                self._sqfile,
-                )#detect_types=sqlite3.PARSE_DECLTYPES)
+            self._sqconn = apsw.Connection(self._sqfile)
             # Remove the following statement to convert to unicode strings
             #self._sqconn.text_factory = str
         for table in self._sqtables.values():
@@ -480,8 +478,24 @@ class _Sqlite3api(Database, _DatabaseEncoders):
         pass
 
     def allocate_and_open_contexts(self, closed_contexts):
-        """Do nothing, present for DPT compatibility."""
-        pass
+        """Open closed_contexts which had been closed.
+
+        This method is intended for use only when re-opening a table after
+        closing it temporarily so another thread can make and commit changes
+        to a table.
+
+        The sqlite3api version of this method does nothing.
+
+        The method name comes from the dptbase module where it describes
+        extactly what is done.  For apswapi it is a callback hook where the
+        name is already chosen.
+
+        """
+        #self.open_context()
+        #sqtables = self._sqtables
+        #for c in closed_contexts:
+        #    sqtables[c].open_root(self._sqconn)
+        self.open_context()
 
     def get_packed_key(self, dbset, instance):
         """Convert instance.key for use as database value.
@@ -657,11 +671,24 @@ class _Sqlite3api(Database, _DatabaseEncoders):
         return self.open_context()
 
     def start_transaction(self):
-        """Do nothing. Added for compatibility with apsw Sqlite3 interface."""
+        """Start a transaction."""
+        if self._sqconn:
+            self._sqconn.cursor().execute('begin')
 
     def cede_contexts_to_process(self, close_contexts):
-        """Do nothing. Added for compatibility with apsw Sqlite3 interface."""
-        pass
+        """Close all contexts so another process, or thread, can commit.
+
+        close_contexts is ignored by this module's version of the method.
+
+        The sqlite3api version of this method does nothing.
+
+        """
+        # Closing just the tables in close_contexts seems to be insufficient
+        # and the complete shutdown in close_database() seems unnecessary.
+        #self.close_database()
+        #for c in close_contexts:
+        #    self._sqtables[c].close()
+        self.close_context()
 
 
 class Sqlite3api(_Sqlite3api):
@@ -968,7 +995,7 @@ class Sqlite3File(object):
                     SQLITE_VALUE_COLUMN, 'text',
                     ')',
                     ))
-                self._connection.execute(statement)
+                self._connection.cursor().execute(statement)
             else:
                 statement = ' '.join((
                     'create table if not exists', self._fd_name,
@@ -977,7 +1004,7 @@ class Sqlite3File(object):
                     SQLITE_VALUE_COLUMN, 'text',
                     ')',
                     ))
-                self._connection.execute(statement)
+                self._connection.cursor().execute(statement)
         elif self._class is not None:
             statement = ' '.join((
                 'create table if not exists', self._fd_name,
@@ -986,12 +1013,12 @@ class Sqlite3File(object):
                 self._primaryname, 'integer',
                 ')',
                 ))
-            self._connection.execute(statement)
+            self._connection.cursor().execute(statement)
             statement = ' '.join((
                 'create index if not exists', self._indexname,
                 'on', self._fd_name, '(', self._fd_name, ')',
                 ))
-            self._connection.execute(statement)
+            self._connection.cursor().execute(statement)
         else:
             statement = ' '.join((
                 'create table if not exists', self._fd_name,
@@ -1000,14 +1027,14 @@ class Sqlite3File(object):
                 self._primaryname, 'integer',
                 ')',
                 ))
-            self._connection.execute(statement)
+            self._connection.cursor().execute(statement)
             statement = ' '.join((
                 'create index if not exists', self._indexname,
                 'on', self._fd_name, '(', self._fd_name, ')',
                 ))
-            self._connection.execute(statement)
+            self._connection.cursor().execute(statement)
         # Commit must be at higher level: in open_context() at least.
-        #sqconn.commit()
+        #sqconn.cursor().execute('commit')
 
     def get_database_file(self):
         """Return database file name"""
@@ -1067,7 +1094,7 @@ class Sqlite3Primary(Sqlite3File, _DatabaseEncoders):
     def delete(self, key, value):
         """Delete (key, value) from database."""
         try:
-            self._connection.execute(
+            self._connection.cursor().execute(
                 ' '.join((
                     'delete from',
                     self._fd_name,
@@ -1102,7 +1129,7 @@ class Sqlite3Primary(Sqlite3File, _DatabaseEncoders):
             'limit 1',
             ))
         values = (key,)
-        return self._connection.execute(statement, values).fetchone()
+        return self._connection.cursor().execute(statement, values).fetchone()
 
     def make_cursor(self, dbobject, keyrange):
         """Create a cursor on the dbobject positiioned at start of keyrange."""
@@ -1114,7 +1141,7 @@ class Sqlite3Primary(Sqlite3File, _DatabaseEncoders):
     def put(self, key, value):
         """Put (key, value) on database and return key for new rows."""
         if not key: #key == 0:  # Change test to "key is None" when sure
-            return self._connection.execute(
+            self._connection.cursor().execute(
                 ' '.join((
                     'insert into',
                     self._fd_name,
@@ -1122,9 +1149,13 @@ class Sqlite3Primary(Sqlite3File, _DatabaseEncoders):
                     'values ( ? )',
                     )),
                 (value,)
-                ).lastrowid
+                )
+            return self._connection.cursor().execute(
+                ' '.join((
+                    'select last_insert_rowid() from',
+                    self._fd_name))).fetchone()[0]
         else:
-            self._connection.execute(
+            self._connection.cursor().execute(
                 ' '.join((
                     'update',
                     self._fd_name,
@@ -1143,7 +1174,7 @@ class Sqlite3Primary(Sqlite3File, _DatabaseEncoders):
         
         """
         try:
-            self._connection.execute(
+            self._connection.cursor().execute(
                 ' '.join((
                     'update',
                     self._fd_name,
@@ -1158,7 +1189,7 @@ class Sqlite3Primary(Sqlite3File, _DatabaseEncoders):
 
     def populate_recordset_key(self, recordset, key=None):
         """Return recordset on database containing records for key."""
-        self._connection.execute(
+        self._connection.cursor().execute(
             ' '.join((
                 'select', self._fd_name, 'from',
                 self._fd_name,
@@ -1167,7 +1198,7 @@ class Sqlite3Primary(Sqlite3File, _DatabaseEncoders):
                 'order by', self._fd_name,
                 'limit 1')),
             (key,))
-        if len(self._connection.fetchone()):
+        if len(self._connection.cursor().fetchone()):
             s, rn = divmod(key, DB_SEGMENT_SIZE)
             recordset[s] = SegmentList(
                 s, None, records=rn.to_bytes(2, byteorder='big'))
@@ -1198,7 +1229,7 @@ class Sqlite3Primary(Sqlite3File, _DatabaseEncoders):
                  self._fd_name, '>= ? and',
                  self._fd_name, '<= ?'))
             values = (keystart. keyend)
-        for r in self._connection.execute(
+        for r in self._connection.cursor().execute(
             ' '.join((
                 'select', self._fd_name, 'from',
                 self._fd_name,
@@ -1211,7 +1242,7 @@ class Sqlite3Primary(Sqlite3File, _DatabaseEncoders):
     
     def populate_recordset_all(self, recordset):
         """Return recordset containing all referenced records."""
-        for r in self._connection.execute(
+        for r in self._connection.cursor().execute(
             ' '.join((
                 'select', self._fd_name, 'from',
                 self._fd_name))):
@@ -1285,7 +1316,7 @@ class Sqlite3Secondary(Sqlite3File, _DatabaseEncoders):
     def delete(self, key, value):
         """Delete (key, value) from database."""
         try:
-            self._connection.execute(
+            self._connection.cursor().execute(
                 ' '.join((
                     'delete from',
                     self._fd_name,
@@ -1317,7 +1348,7 @@ class Sqlite3Secondary(Sqlite3File, _DatabaseEncoders):
             ))
         values = (key,)
         try:
-            return self._connection.execute(
+            return self._connection.cursor().execute(
                 statement, values).fetchone()[0]
         except TypeError:
             return None
@@ -1337,7 +1368,7 @@ class Sqlite3Secondary(Sqlite3File, _DatabaseEncoders):
     def put(self, key, value):
         """Put (key, value) on database and return key for new rows."""
         try:
-            self._connection.execute(
+            self._connection.cursor().execute(
                 ' '.join((
                     'insert into', self._fd_name,
                     '(', self._fd_name, ',', self._primaryname, ')',
@@ -1359,7 +1390,7 @@ class Sqlite3Secondary(Sqlite3File, _DatabaseEncoders):
         
         """
         try:
-            self._connection.execute(
+            self._connection.cursor().execute(
                 ' '.join((
                     'update',
                     self._fd_name,
@@ -1377,7 +1408,7 @@ class Sqlite3Secondary(Sqlite3File, _DatabaseEncoders):
         """Return recordset on database containing records for key."""
         if isinstance(key, str):
             key = key.encode('utf8')
-        for r in self._connection.execute(
+        for r in self._connection.cursor().execute(
             ' '.join((
                 'select', self._primaryname, 'from',
                 self._fd_name,
@@ -1392,7 +1423,7 @@ class Sqlite3Secondary(Sqlite3File, _DatabaseEncoders):
 
     def populate_recordset_key_startswith(self, recordset, key):
         """Raise exception - populate_recordset_key_startswith primary db."""
-        for r in self._connection.execute(
+        for r in self._connection.cursor().execute(
             ' '.join((
                 'select', self._primaryname, 'from',
                 self._fd_name,
@@ -1426,7 +1457,7 @@ class Sqlite3Secondary(Sqlite3File, _DatabaseEncoders):
                  self._fd_name, '>= ? and',
                  self._fd_name, '<= ?'))
             values = (keystart. keyend)
-        for r in self._connection.execute(
+        for r in self._connection.cursor().execute(
             ' '.join((
                 'select', self._primaryname, 'from',
                 self._fd_name,
@@ -1439,7 +1470,7 @@ class Sqlite3Secondary(Sqlite3File, _DatabaseEncoders):
     
     def populate_recordset_all(self, recordset):
         """Return recordset containing all referenced records."""
-        for r in self._connection.execute(
+        for r in self._connection.cursor().execute(
             ' '.join((
                 'select', self._primaryname, 'from',
                 self._fd_name))):
@@ -1554,7 +1585,7 @@ class Sqlite3bitapi(_Sqlite3api):
             'limit 1',
             ))
         values = ()
-        high_record = primarydb._connection.execute(
+        high_record = primarydb._connection.cursor().execute(
             statement, values).fetchone()
         primarydb.delete(deletekey, instance.srvalue)
         instance.srkey = self.encode_record_number(deletekey)
@@ -1879,7 +1910,7 @@ class Sqlite3bitFile(object):
                     SQLITE_VALUE_COLUMN,
                     ')',
                     ))
-                self._connection.execute(statement)
+                self._connection.cursor().execute(statement)
             else:
                 statement = ' '.join((
                     'create table if not exists', self._fd_name,
@@ -1888,14 +1919,14 @@ class Sqlite3bitFile(object):
                     SQLITE_VALUE_COLUMN,
                     ')',
                     ))
-                self._connection.execute(statement)
+                self._connection.cursor().execute(statement)
             statement = ' '.join((
                 'create table if not exists', self._segmentname,
                 '(',
                 SQLITE_RECORDS_COLUMN,
                 ')',
                 ))
-            self._connection.execute(statement)
+            self._connection.cursor().execute(statement)
         else:
             if self._class is not None:
                 statement = ' '.join((
@@ -1918,7 +1949,7 @@ class Sqlite3bitFile(object):
                     self._primaryname,
                     ')',
                     ))
-            self._connection.execute(statement)
+            self._connection.cursor().execute(statement)
             statement = ' '.join((
                 'create unique index if not exists', self._indexname,
                 'on', self._fd_name,
@@ -1927,9 +1958,9 @@ class Sqlite3bitFile(object):
                 SQLITE_SEGMENT_COLUMN,
                 ')',
                 ))
-            self._connection.execute(statement)
+            self._connection.cursor().execute(statement)
         # Commit must be at higher level: in open_context() at least.
-        #sqconn.commit()
+        #sqconn.cursor().execute('commit')
 
     def get_database_file(self):
         """Return database file name"""
@@ -2013,7 +2044,8 @@ class Sqlite3bitPrimaryFile(Sqlite3bitFile):
             'where rowid == ?',
             ))
         values = (rownumber,)
-        return self._connection.execute(statement, values).fetchone()[0]
+        return self._connection.cursor(
+            ).execute(statement, values).fetchone()[0]
 
     def set_segment_records(self, values):
         """Update self._segmentname row using values"""
@@ -2024,7 +2056,7 @@ class Sqlite3bitPrimaryFile(Sqlite3bitFile):
             SQLITE_RECORDS_COLUMN, '= ?',
             'where rowid == ?',
             ))
-        self._connection.execute(statement, values)
+        self._connection.cursor().execute(statement, values)
 
     def delete_segment_records(self, values):
         """Delete self._segmentname row using values"""
@@ -2033,7 +2065,7 @@ class Sqlite3bitPrimaryFile(Sqlite3bitFile):
             self._segmentname,
             'where rowid == ?',
             ))
-        self._connection.execute(statement, values)
+        self._connection.cursor().execute(statement, values)
 
     def insert_segment_records(self, values):
         """Insert self._segmentname row using values"""
@@ -2045,9 +2077,11 @@ class Sqlite3bitPrimaryFile(Sqlite3bitFile):
             ')',
             'values ( ? )',
             ))
-        #self._connection.execute(statement, values)
-        #return self._connection.lastrowid
-        return self._connection.execute(statement, values).lastrowid
+        self._connection.cursor().execute(statement, values)
+        return self._connection.cursor().execute(
+            ' '.join((
+                'select last_insert_rowid() from',
+                self._segmentname))).fetchone()[0]
 
             
 class Sqlite3bitSecondaryFile(Sqlite3bitFile):
@@ -2146,7 +2180,7 @@ class Sqlite3bitPrimary(Sqlite3bitPrimaryFile):
                 self._fd_name, '== ?',
                 ))
             values = (key,)
-            self._connection.execute(statement, values)
+            self._connection.cursor().execute(statement, values)
         except:
             pass
 
@@ -2175,7 +2209,7 @@ class Sqlite3bitPrimary(Sqlite3bitPrimaryFile):
             'limit 1',
             ))
         values = (key,)
-        return self._connection.execute(statement, values).fetchone()
+        return self._connection.cursor().execute(statement, values).fetchone()
 
     def make_cursor(self, dbobject, keyrange):
         """Create a cursor on the dbobject positiioned at start of keyrange."""
@@ -2194,7 +2228,11 @@ class Sqlite3bitPrimary(Sqlite3bitPrimaryFile):
                 'values ( ? )',
                 ))
             values = (value,)
-            return self._connection.execute(statement, values).lastrowid
+            self._connection.cursor().execute(statement, values)
+            return self._connection.cursor().execute(
+                ' '.join((
+                    'select last_insert_rowid() from',
+                    self._fd_name))).fetchone()[0]
         else:
             statement = ' '.join((
                 'update',
@@ -2205,7 +2243,7 @@ class Sqlite3bitPrimary(Sqlite3bitPrimaryFile):
                 self._primaryname, '== ?',
                 ))
             values = (value, key)
-            self._connection.execute(statement, values)
+            self._connection.cursor().execute(statement, values)
             return None
 
     def replace(self, key, oldvalue, newvalue):
@@ -2224,7 +2262,7 @@ class Sqlite3bitPrimary(Sqlite3bitPrimaryFile):
                 self._primaryname, '== ?',
                 ))
             values = (newvalue, key)
-            self._connection.execute(statement, values)
+            self._connection.cursor().execute(statement, values)
         except:
             pass
 
@@ -2242,7 +2280,7 @@ class Sqlite3bitPrimary(Sqlite3bitPrimaryFile):
             'limit 1',
             ))
         values = (key,)
-        if len(self._connection.execute(statement, values).fetchone()):
+        if len(self._connection.cursor().execute(statement, values).fetchone()):
             s, rn = divmod(key, DB_SEGMENT_SIZE)
             recordset[s] = SegmentList(
                 s, None, records=rn.to_bytes(2, byteorder='big'))
@@ -2299,7 +2337,8 @@ class Sqlite3bitPrimary(Sqlite3bitPrimaryFile):
                 self.get_existence_bits()._seg_dbfile, '<= ?',
                 ))
             values = (segment_start, segment_end)
-        for r in self.get_existence_bits_database().execute(statement, values):
+        for r in self.get_existence_bits_database(
+            ).cursor().execute(statement, values):
             recordset[r[0] - 1] = SegmentBitarray(r[0] - 1, None, records=r[1])
         try:
             recordset[segment_start][:recnum_start] = False
@@ -2320,7 +2359,8 @@ class Sqlite3bitPrimary(Sqlite3bitPrimaryFile):
             self.get_existence_bits()._seg_dbfile,
             ))
         values = ()
-        for r in self.get_existence_bits_database().execute(statement, values):
+        for r in self.get_existence_bits_database(
+            ).cursor().execute(statement, values):
             recordset[r[0] - 1] = SegmentBitarray(r[0] - 1, None, records=r[1])
 
     def populate_recordset_from_segment(self, recordset, segment):
@@ -2456,7 +2496,7 @@ class Sqlite3bitSecondary(Sqlite3bitSecondaryFile):
             self._fd_name, '== ?',
             ))
         values = (key,)
-        for record in self._connection.execute(statement, values):
+        for record in self._connection.cursor().execute(statement, values):
             if record[2] > DB_CONVERSION_LIMIT:
                 bs = self.get_primary_database().get_segment_records(record[3])
                 if bs is None:
@@ -2492,7 +2532,7 @@ class Sqlite3bitSecondary(Sqlite3bitSecondaryFile):
                 (key.encode('utf8') if isinstance(key, str) else key,
                  b'*',
                  )),)
-        for record in self._connection.execute(statement, values):
+        for record in self._connection.cursor().execute(statement, values):
             if record[2] > DB_CONVERSION_LIMIT:
                 bs = self.get_primary_database().get_segment_records(record[3])
                 if bs is None:
@@ -2560,7 +2600,7 @@ class Sqlite3bitSecondary(Sqlite3bitSecondaryFile):
                 self._fd_name, '<= ?',
                 ))
             values = (keystart, keyend)
-        for record in self._connection.execute(statement, values):
+        for record in self._connection.cursor().execute(statement, values):
             if record[2] > DB_CONVERSION_LIMIT:
                 bs = self.get_primary_database().get_segment_records(record[3])
                 if bs is None:
@@ -2593,7 +2633,7 @@ class Sqlite3bitSecondary(Sqlite3bitSecondaryFile):
             self._fd_name,
             ))
         values = ()
-        for record in self._connection.execute(statement, values):
+        for record in self._connection.cursor().execute(statement, values):
             if record[2] > DB_CONVERSION_LIMIT:
                 bs = self.get_primary_database().get_segment_records(record[3])
                 if bs is None:
@@ -2682,7 +2722,7 @@ class Sqlite3bitSecondary(Sqlite3bitSecondaryFile):
         values = (key,)
         segments = []
         lists = []
-        rows = self._connection.execute(statement, values).fetchall()
+        rows = self._connection.cursor().execute(statement, values).fetchall()
         rows.sort()
         for r in rows:
             if r[1] == 1:
@@ -2740,7 +2780,7 @@ class Sqlite3bitSecondary(Sqlite3bitSecondaryFile):
                         sn,
                         recordset.rs_segments[sn].count_records(),
                         sk)
-                self._connection.execute(statement, values)
+                self._connection.cursor().execute(statement, values)
             elif isinstance(recordset.rs_segments[sn], SegmentList):
                 rnlist = b''.join(
                     [rn.to_bytes(2, byteorder='big')
@@ -2787,7 +2827,7 @@ class Sqlite3bitSecondary(Sqlite3bitSecondaryFile):
                         sn,
                         recordset.rs_segments[sn].count_records(),
                         sk)
-                self._connection.execute(statement, values)
+                self._connection.cursor().execute(statement, values)
             elif isinstance(recordset.rs_segments[sn], SegmentInt):
                 # divmod to avoid defining a relative record number getter
                 # for here only
@@ -2828,7 +2868,7 @@ class Sqlite3bitSecondary(Sqlite3bitSecondaryFile):
                         sn,
                         recordset.rs_segments[sn].count_records(),
                         sk)
-                self._connection.execute(statement, values)
+                self._connection.cursor().execute(statement, values)
             pass
         # Delete any references not reused by file_records_under.
         for r in rows:
@@ -2840,7 +2880,7 @@ class Sqlite3bitSecondary(Sqlite3bitSecondaryFile):
                 SQLITE_SEGMENT_COLUMN, '== ?',
                 ))
             values = (key, r)
-            self._connection.execute(statement, values)
+            self._connection.cursor().execute(statement, values)
         for r in segments, lists:
             for sk in r:
                 gpd.delete_segment_records((sk[2]))
@@ -2866,7 +2906,8 @@ class Sqlite3bitSecondary(Sqlite3bitSecondaryFile):
             ))
         values = (key,)
         try:
-            return self._connection.execute(statement, values).fetchone()[0]
+            return self._connection.cursor(
+                ).execute(statement, values).fetchone()[0]
         except TypeError:
             return None
     
@@ -2886,7 +2927,7 @@ class Sqlite3bitSecondary(Sqlite3bitSecondaryFile):
             SQLITE_SEGMENT_COLUMN, '== ?',
             ))
         values = (key, segment)
-        record = self._connection.execute(statement, values).fetchone()
+        record = self._connection.cursor().execute(statement, values).fetchone()
         if record is None:
             # Assume that multiple requests to delete an index value have been
             # made for a record.  The segment_put method uses sets to avoid
@@ -2919,7 +2960,7 @@ class Sqlite3bitSecondary(Sqlite3bitSecondaryFile):
                     SQLITE_SEGMENT_COLUMN, '== ?',
                     ))
                 values = (count, key, segment)
-                self._connection.execute(statement, values)
+                self._connection.cursor().execute(statement, values)
                 values = (rn_list, record[3])
                 self.get_primary_database().set_segment_records(values)
             else:
@@ -2933,7 +2974,7 @@ class Sqlite3bitSecondary(Sqlite3bitSecondaryFile):
                     SQLITE_SEGMENT_COLUMN, '== ?',
                     ))
                 values = (count, key, segment)
-                self._connection.execute(statement, values)
+                self._connection.cursor().execute(statement, values)
                 values = (recnums.tobytes(), record[3])
                 self.get_primary_database().set_segment_records(values)
         elif record[2] > 1:
@@ -2958,7 +2999,7 @@ class Sqlite3bitSecondary(Sqlite3bitSecondaryFile):
                         SQLITE_SEGMENT_COLUMN, '== ?',
                         ))
                     values = (count, recnums.pop(), key, segment)
-                    self._connection.execute(statement, values)
+                    self._connection.cursor().execute(statement, values)
                     values = (record[3],)
                     self.get_primary_database().delete_segment_records(values)
                 else:
@@ -2970,7 +3011,7 @@ class Sqlite3bitSecondary(Sqlite3bitSecondaryFile):
                         SQLITE_SEGMENT_COLUMN, '== ?',
                         ))
                     values = (key, segment)
-                    self._connection.execute(statement, values)
+                    self._connection.cursor().execute(statement, values)
             else:
                 seg = b''.join(tuple(
                     rn.to_bytes(length=2, byteorder='big')
@@ -2985,7 +3026,7 @@ class Sqlite3bitSecondary(Sqlite3bitSecondaryFile):
                     SQLITE_SEGMENT_COLUMN, '== ?',
                     ))
                 values = (count, key, segment)
-                self._connection.execute(statement, values)
+                self._connection.cursor().execute(statement, values)
                 values = (seg, record[3])
                 self.get_primary_database().set_segment_records(values)
         else:
@@ -2999,7 +3040,7 @@ class Sqlite3bitSecondary(Sqlite3bitSecondaryFile):
                 SQLITE_SEGMENT_COLUMN, '== ?',
                 ))
             values = (key, segment)
-            self._connection.execute(statement, values)
+            self._connection.cursor().execute(statement, values)
     
     def segment_put(self, key, segment, record_number):
         """Add record_number to segment for key and write to database"""
@@ -3023,7 +3064,7 @@ class Sqlite3bitSecondary(Sqlite3bitSecondaryFile):
             'limit 1',
             ))
         values = (key, segment)
-        record = self._connection.execute(statement, values).fetchone()
+        record = self._connection.cursor().execute(statement, values).fetchone()
         if record is None:
             statement = ' '.join((
                 'insert into',
@@ -3037,7 +3078,7 @@ class Sqlite3bitSecondary(Sqlite3bitSecondaryFile):
                 'values ( ? , ? , ? , ? )',
                 ))
             values = (key, segment, 1, record_number)
-            self._connection.execute(statement, values)
+            self._connection.cursor().execute(statement, values)
             return
         if record[2] > DB_CONVERSION_LIMIT:
             bs = self.get_primary_database().get_segment_records(record[3])
@@ -3059,7 +3100,7 @@ class Sqlite3bitSecondary(Sqlite3bitSecondaryFile):
                 SQLITE_SEGMENT_COLUMN, '== ?',
                 ))
             values = (recnums.count(), key, record[1])
-            self._connection.execute(statement, values)
+            self._connection.cursor().execute(statement, values)
             values = (recnums.tobytes(), record[3])
             self.get_primary_database().set_segment_records(values)
         elif record[2] > 1:
@@ -3087,7 +3128,7 @@ class Sqlite3bitSecondary(Sqlite3bitSecondaryFile):
                     SQLITE_SEGMENT_COLUMN, '== ?',
                     ))
                 values = (len(recnums), key, record[1])
-                self._connection.execute(statement, values)
+                self._connection.cursor().execute(statement, values)
                 values = (seg.tobytes(), record[3])
                 self.get_primary_database().set_segment_records(values)
             else:
@@ -3104,7 +3145,7 @@ class Sqlite3bitSecondary(Sqlite3bitSecondaryFile):
                     SQLITE_SEGMENT_COLUMN, '== ?',
                     ))
                 values = (len(recnums), key, record[1])
-                self._connection.execute(statement, values)
+                self._connection.cursor().execute(statement, values)
                 values = (seg, record[3])
                 self.get_primary_database().set_segment_records(values)
         else:
@@ -3132,7 +3173,7 @@ class Sqlite3bitSecondary(Sqlite3bitSecondaryFile):
                 SQLITE_SEGMENT_COLUMN, '== ?',
                 ))
             values = (2, key, row)
-            self._connection.execute(statement, values)
+            self._connection.cursor().execute(statement, values)
 
 
 class CursorSqlite3(Cursor):
@@ -3167,9 +3208,6 @@ class CursorSqlite3(Cursor):
     direct superclass of this class, is intended to provide bsddb3 style cursor
     methods so the cursor is defined to persist for the lifetime of the Cursor
     instance.
-
-    The implicit cursor of the Python sqlite3.Connection.execute method is
-    ignored.
 
     """
 
@@ -4879,7 +4917,7 @@ class Sqlite3Segment(object):
                 SQLITE_VALUE_COLUMN,
                 ')',
                 ))
-            self._seg_object.execute(statement)
+            self._seg_object.cursor().execute(statement)
         except:
             self._seg_object = None
             raise
@@ -4897,7 +4935,8 @@ class Sqlite3Segment(object):
             ))
         values = (key,)
         try:
-            return self._seg_object.execute(statement, values).fetchone()[0]
+            return self._seg_object.cursor(
+                ).execute(statement, values).fetchone()[0]
         except TypeError:
             return None
 
@@ -4910,7 +4949,7 @@ class Sqlite3Segment(object):
             self._seg_dbfile, '== ?',
             ))
         values = (key,)
-        self._seg_object.execute(statement, values)
+        self._seg_object.cursor().execute(statement, values)
 
     def put(self, key, value):
         """Put a segment record on the database using key"""
@@ -4923,7 +4962,7 @@ class Sqlite3Segment(object):
             self._seg_dbfile, '== ?',
             ))
         values = (value, key)
-        self._seg_object.execute(statement, values)
+        self._seg_object.cursor().execute(statement, values)
 
     def append(self, value):
         """Append a segment record on the database using a new key"""
@@ -4936,7 +4975,10 @@ class Sqlite3Segment(object):
             'values ( ? )',
             ))
         values = (value,)
-        return self._seg_object.execute(statement, values).lastrowid
+        return self._seg_object.cursor().execute(statement, values).execute(
+                ' '.join((
+                    'select last_insert_rowid() from',
+                    self._seg_dbfile))).fetchone()[0]
 
             
 class Sqlite3ExistenceBitMap(Sqlite3Segment):
@@ -4986,7 +5028,8 @@ class Sqlite3ExistenceBitMap(Sqlite3Segment):
         """Create inverted index DB in dbenv."""
         super(Sqlite3ExistenceBitMap, self).open_root(sqconn)
         statement = ' '.join(('select count(*) from', self._seg_dbfile))
-        self._segment_count = self._seg_object.execute(statement).fetchone()[0]
+        self._segment_count = self._seg_object.cursor(
+            ).execute(statement).fetchone()[0]
 
             
 class Sqlite3bitControlFile(object):
@@ -5040,7 +5083,7 @@ class Sqlite3bitControlFile(object):
                 SQLITE_VALUE_COLUMN,
                 ') )',
                 ))
-            self._control_object.execute(statement)
+            self._control_object.cursor().execute(statement)
         except:
             self._control_object = None
             raise
@@ -5152,7 +5195,7 @@ class FileControlPrimary(FileControl):
                 )),
             values = (b'B',)
             for record in self._dbfile.get_control_database(
-                ).execute(statement, values):
+                ).cursor().execute(statement, values):
                 self._freed_record_number_pages.append(
                     int.from_bytes(record[0], byteorder='big'))
         insert = bisect.bisect_left(self._freed_record_number_pages, segment)
@@ -5168,7 +5211,7 @@ class FileControlPrimary(FileControl):
             'values ( ? , ? )',
             ))
         values = (b'B', page)
-        self._dbfile.get_control_database().execute(statement, values)
+        self._dbfile.get_control_database().cursor().execute(statement, values)
 
     def get_lowest_freed_record_number(self):
         """Return low record number in segments with freed record numbers"""
@@ -5186,7 +5229,7 @@ class FileControlPrimary(FileControl):
                 ))
             values = (b'E',)
             for record in self._dbfile.get_control_database(
-                ).execute(statement, values):
+                ).cursor().execute(statement, values):
                 self._freed_record_number_pages.append(record[0])
         while len(self._freed_record_number_pages):
             s = self._freed_record_number_pages[0]
@@ -5205,7 +5248,8 @@ class FileControlPrimary(FileControl):
                     SQLITE_VALUE_COLUMN, '== ?',
                     ))
                 values = (b'E', s)
-                self._dbfile.get_control_database().execute(statement, values)
+                self._dbfile.get_control_database(
+                    ).cursor().execute(statement, values)
                 del self._freed_record_number_pages[0]
                 continue
             return s * DB_SEGMENT_SIZE + first_zero_bit + 1

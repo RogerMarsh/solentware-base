@@ -10,4 +10,4 @@ if __name__ == '__main__':
     from basesup.api.filespec import FileSpec
 
     FileSpec()
-    print 'See testsuites/rmappsup/api/test_filespec.py for tests'
+    print('See testsuites/rmappsup/api/test_filespec.py for tests')
