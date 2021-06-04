@@ -8,32 +8,33 @@ import unittest
 
 try:
     from .. import sqlite3_database
-except ImportError: # Not ModuleNotFoundError for Pythons earlier than 3.6
+except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     sqlite3_database = None
 
 
 class SqliteDatabase(unittest.TestCase):
-
     def test__assumptions(self):
-        msg = 'Failure of this test invalidates all other tests'
+        msg = "Failure of this test invalidates all other tests"
         self.assertRaisesRegex(
             TypeError,
-            "".join((
-                "__init__\(\) missing 1 required positional argument: ",
-                "'specification'",
-                )),
+            "".join(
+                (
+                    "__init__\(\) missing 1 required positional argument: ",
+                    "'specification'",
+                )
+            ),
             sqlite3_database.Database,
-            )
+        )
         self.assertIsInstance(
             sqlite3_database.Database({}),
             sqlite3_database.Database,
-            )
+        )
 
     def test_open_database(self):
         self.assertEqual(sqlite3_database.Database({}).open_database(), None)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
 

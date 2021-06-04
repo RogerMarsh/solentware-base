@@ -8,27 +8,29 @@ import unittest
 
 try:
     from .. import unqlitedu_database
-except ImportError: # Not ModuleNotFoundError for Pythons earlier than 3.6
+except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     unqlitedu_database = None
 
 
 class UnqliteduDatabase(unittest.TestCase):
-
     def test__assumptions(self):
-        msg = 'Failure of this test invalidates all other tests'
+        msg = "Failure of this test invalidates all other tests"
         self.assertRaisesRegex(
             TypeError,
-            "".join((
-                "__init__\(\) missing 1 required positional argument: ",
-                "'specification'",
-                )),
+            "".join(
+                (
+                    "__init__\(\) missing 1 required positional argument: ",
+                    "'specification'",
+                )
+            ),
             unqlitedu_database.Database,
-            )
-        self.assertIsInstance(unqlitedu_database.Database({}),
-                              unqlitedu_database.Database)
+        )
+        self.assertIsInstance(
+            unqlitedu_database.Database({}), unqlitedu_database.Database
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
 

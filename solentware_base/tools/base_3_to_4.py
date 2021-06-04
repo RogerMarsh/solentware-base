@@ -2,26 +2,22 @@
 # Copyright 2019 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""Upgrade a solentware_base version 3 database to version 4.
-
-"""
+"""Upgrade a solentware_base version 3 database to version 4."""
 import os
 
 from ..core.filespec import FileSpec
-from ..core.segmentsize import SegmentSize
 from ..core import constants
 
 # Not defined in .core.constants at version 3 and defined here with V3_ prefix.
 # _exist is _ebm.
-V3_EXISTENCE_BITMAP_SUFFIX = '_exist'
+V3_EXISTENCE_BITMAP_SUFFIX = "_exist"
 
 
 class Base_3_to_4Error(Exception):
-    pass
+    """Exception raised in Base_3_to_4 class."""
 
 
 class Base_3_to_4:
-    
     """Convert database with filespec using segment size v4_segment_size.
 
     database: path name to directory containing database to be converted.
@@ -37,19 +33,23 @@ class Base_3_to_4:
     size at version 4 is the segment size always used at version 3.
 
     """
+
     def __init__(self, filespec, database, engine):
+        """Set solentware_base 3 and 4 table and index names for database."""
         if not isinstance(filespec, FileSpec):
             raise Base_3_to_4Error(
-                'filespec is not a FileSpec, or a subclass, instance')
+                "filespec is not a FileSpec, or a subclass, instance"
+            )
         if not os.path.isdir(database):
             raise Base_3_to_4Error(
-                ''.join((database, ' is not a directory or does not exist')))
+                "".join((database, " is not a directory or does not exist"))
+            )
 
         # If db_segment_size_bytes is not called, db_segment_size_bytes retains
         # it's default value of 8192, the same as version 3 segment size.
         # Note that a non-int v4_segment_size gives a db_segment_size_bytes of
         # 16 bytes, intended for testing, if db_segment_size_bytes is set here.
-        #if v4_segment_size is not None:
+        # if v4_segment_size is not None:
         #    SegmentSize.db_segment_size_bytes = v4_segment_size
 
         # The filemap and files dict()s are populated only for version 3 using
@@ -92,14 +92,19 @@ class Base_3_to_4:
         existmap = self.v3existmap
         exists = self.v3exists
         tables.add(constants.CONTROL_FILE)
-        for k, v in self.filespec.items():
-            primary = v[constants.PRIMARY]
-            tablemap[k,] = primary
+        for k, value in self.filespec.items():
+            primary = value[constants.PRIMARY]
+            tablemap[
+                k,
+            ] = primary
             tables.add(primary)
-            t = constants.SUBFILE_DELIMITER.join(
-                (primary, V3_EXISTENCE_BITMAP_SUFFIX))
-            existmap[k,] = t
-            exists.add(t)
+            name = constants.SUBFILE_DELIMITER.join(
+                (primary, V3_EXISTENCE_BITMAP_SUFFIX)
+            )
+            existmap[
+                k,
+            ] = name
+            exists.add(name)
 
     def _generate_v4_names(self):
         tablemap = self.v4tablemap
@@ -107,15 +112,20 @@ class Base_3_to_4:
         existmap = self.v4existmap
         exists = self.v4exists
         tables.add(constants.CONTROL_FILE)
-        for k, v in self.filespec.items():
-            secondary = v[constants.SECONDARY]
-            for ks, vs in secondary.items():
-                t = constants.SUBFILE_DELIMITER.join((k, ks))
-                tablemap[k, ks] = t
-                tables.add(t)
-            tablemap[k,] = k
+        for k, value in self.filespec.items():
+            secondary = value[constants.SECONDARY]
+            for key in secondary:
+                name = constants.SUBFILE_DELIMITER.join((k, key))
+                tablemap[k, key] = name
+                tables.add(name)
+            tablemap[
+                k,
+            ] = k
             tables.add(k)
-            t = constants.SUBFILE_DELIMITER.join(
-                (k, constants.EXISTENCE_BITMAP_SUFFIX))
-            existmap[k,] = t
-            exists.add(t)
+            name = constants.SUBFILE_DELIMITER.join(
+                (k, constants.EXISTENCE_BITMAP_SUFFIX)
+            )
+            existmap[
+                k,
+            ] = name
+            exists.add(name)

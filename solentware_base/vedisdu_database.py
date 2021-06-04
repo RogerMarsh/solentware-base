@@ -2,8 +2,11 @@
 # Copyright (c) 2019 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""Access a NoSQL database created from a FileSpec() definition with the vedis
-module in deferred update mode.
+"""Access a Vedis database deferring index updates.
+
+The vedis_database module provides the database interface.
+
+Prefer to use the vedis_database module normally.
 
 """
 from . import vedis_database
@@ -11,11 +14,9 @@ from .core import _nosqldu
 
 
 class Database(_nosqldu.Database, vedis_database.Database):
-    
-    """Define file and record access methods which subclasses may override if
-    necessary.
+    """Define deferred update Database class using vedis_database module.
 
-    Default methods using the vedis interface are taken from the
-    vedis_database.Database class, overridden or supplemented where necessary
-    by methods from the core._nosqldu.Database class.
+    Deferred update behaviour comes from the _nosqldu.Database class.
+
+    The Vedis engine comes from the vedis_database.Database class.
     """

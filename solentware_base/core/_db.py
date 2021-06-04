@@ -2,22 +2,16 @@
 # Copyright 2019 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""Access a Berkeley database created from a FileSpec() definition with the
-bsddb3 module.
-
-"""
+"""Access a Berkeley DB database with the bsddb3 module."""
 import os
 from ast import literal_eval
 import bisect
 import re
 
 import sys
-_openbsd_platform = sys.platform.startswith('openbsd')
-del sys
 
 from . import filespec
 from .constants import (
-    PRIMARY,
     SECONDARY,
     SUBFILE_DELIMITER,
     EXISTENCE_BITMAP_SUFFIX,
@@ -30,62 +24,70 @@ from .constants import (
     FIELDS,
     ACCESS_METHOD,
     HASH,
-    BTREE,
-    )
+)
 from . import _database
-from . import cursor
 from .bytebit import Bitarray, SINGLEBIT
 from .segmentsize import SegmentSize
+
+# Some names are imported '* as _*' to avoid confusion with sensible
+# object names within the _db module.
+# Did not bother about this until pylint with default settings gave
+# warnings.
+from . import cursor as _cursor
 from .recordset import (
     RecordsetSegmentBitarray,
     RecordsetSegmentInt,
     RecordsetSegmentList,
-    RecordsetCursor,
+    RecordsetCursor as _RecordsetCursor,
     RecordList,
-    )
+)
+
+# DBenv parameter maxlocks may need setting on OpenBSD.
+_openbsd_platform = sys.platform.startswith("openbsd")
+del sys
 
 
 class DatabaseError(Exception):
-    pass
+    """Exception for Database class."""
 
 
 class Database(_database.Database):
-    
-    """Define file and record access methods which subclasses may override if
-    necessary.
-    """
-
+    """Define file and record access methods."""
 
     class SegmentSizeError(Exception):
-        pass
+        """Raise when segment size in database is not in specification."""
 
-
-    def __init__(self,
-                 specification,
-                 folder=None,
-                 environment=None,
-                 segment_size_bytes=DEFAULT_SEGMENT_SIZE_BYTES,
-                 use_specification_items=None,
-                 file_per_database=False,
-                 **soak):
+    def __init__(
+        self,
+        specification,
+        folder=None,
+        environment=None,
+        segment_size_bytes=DEFAULT_SEGMENT_SIZE_BYTES,
+        use_specification_items=None,
+        file_per_database=False,
+        **soak
+    ):
+        """Initialize data structures."""
         if folder is not None:
             try:
                 path = os.path.abspath(folder)
             except:
-                msg = ' '.join(['Database folder name', str(folder),
-                                'is not valid'])
+                msg = " ".join(
+                    ["Database folder name", str(folder), "is not valid"]
+                )
                 raise DatabaseError(msg)
         else:
             path = None
         if not isinstance(specification, filespec.FileSpec):
             specification = filespec.FileSpec(
                 use_specification_items=use_specification_items,
-                **specification)
+                **specification
+            )
         self._use_specification_items = use_specification_items
         if environment is None:
             environment = {}
         if not isinstance(environment, dict):
-            raise DatabaseError('Database environment must be a dictionary')
+            raise DatabaseError("Database environment must be a dictionary")
         self._validate_segment_size_bytes(segment_size_bytes)
         if folder is not None:
             self.home_directory = path
@@ -125,9 +127,9 @@ class Database(_database.Database):
         if segment_size_bytes is None:
             return
         if not isinstance(segment_size_bytes, int):
-            raise DatabaseError('Database segment size must be an int')
+            raise DatabaseError("Database segment size must be an int")
         if not segment_size_bytes > 0:
-            raise DatabaseError('Database segment size must be more than 0')
+            raise DatabaseError("Database segment size must be more than 0")
 
     def start_transaction(self):
         """Start transaction if none and bind txn object to self._dbtxn."""
@@ -140,7 +142,7 @@ class Database(_database.Database):
             self.dbtxn.abort()
             self.dbtxn = None
             self.dbenv.txn_checkpoint(5)
-            
+
     def commit(self):
         """Commit the active transaction and remove binding to txn object."""
         if self.dbtxn is not None:
@@ -149,6 +151,11 @@ class Database(_database.Database):
             self.dbenv.txn_checkpoint(5)
 
     def file_name_for_database(self, database):
+        """Return filename for database.
+
+        Berkeley DB supports one database per file or all databases in
+        one file.
+        """
         if not self._file_per_database:
             return self.database_file
         if self.home_directory is not None:
@@ -172,32 +179,39 @@ class Database(_database.Database):
                     raise
             all_in_one = set()
             one_per_database = set()
-            for f in self.specification:
-                db = dbe.DB()
+            for name in self.specification:
+                dbo = dbe.DB()
                 try:
-                    db.open(self.database_file,
-                            dbname=f,
-                            flags=dbe.DB_RDONLY)
-                    all_in_one.add(f)
+                    dbo.open(
+                        self.database_file, dbname=name, flags=dbe.DB_RDONLY
+                    )
+                    all_in_one.add(name)
                 except:
                     pass
                 finally:
-                    db.close()
-                db = dbe.DB()
+                    dbo.close()
+                dbo = dbe.DB()
                 try:
-                    db.open(os.path.join(self.home_directory, f),
-                            dbname=f,
-                            flags=dbe.DB_RDONLY)
-                    one_per_database.add(f)
+                    dbo.open(
+                        os.path.join(self.home_directory, name),
+                        dbname=name,
+                        flags=dbe.DB_RDONLY,
+                    )
+                    one_per_database.add(name)
                 except:
                     pass
                 finally:
-                    db.close()
+                    dbo.close()
             if all_in_one and one_per_database:
                 raise DatabaseError(
-                    ''.join(("Specified databases exist in both 'one per ",
-                             "file' and 'all in one file' style")))
-            elif all_in_one:
+                    "".join(
+                        (
+                            "Specified databases exist in both 'one per ",
+                            "file' and 'all in one file' style",
+                        )
+                    )
+                )
+            if all_in_one:
                 self._file_per_database = False
             elif one_per_database:
                 self._file_per_database = True
@@ -213,26 +227,38 @@ class Database(_database.Database):
                 dbname=CONTROL_FILE,
                 dbtype=dbe.DB_BTREE,
                 flags=dbe.DB_RDONLY,
-                txn=self.dbtxn)
+                txn=self.dbtxn,
+            )
             try:
-                spec_from_db = literal_eval(control.get(SPECIFICATION_KEY
-                                            ).decode())
+                spec_from_db = literal_eval(
+                    control.get(SPECIFICATION_KEY).decode()
+                )
                 if self._use_specification_items is not None:
                     self.specification.is_consistent_with(
-                        {k:v for k, v in spec_from_db.items()
-                         if k in self._use_specification_items})
+                        {
+                            k: v
+                            for k, v in spec_from_db.items()
+                            if k in self._use_specification_items
+                        }
+                    )
                 else:
                     self.specification.is_consistent_with(spec_from_db)
                 segment_size = literal_eval(
-                    control.get(SEGMENT_SIZE_BYTES_KEY).decode())
+                    control.get(SEGMENT_SIZE_BYTES_KEY).decode()
+                )
                 if self._real_segment_size_bytes is not False:
                     self.segment_size_bytes = self._real_segment_size_bytes
                     self._real_segment_size_bytes = False
                 if segment_size != self.segment_size_bytes:
                     self._real_segment_size_bytes = segment_size
                     raise self.SegmentSizeError(
-                        ''.join(('Segment size recorded in database is not ',
-                                 'the one used attemping to open database')))
+                        "".join(
+                            (
+                                "Segment size recorded in database is not ",
+                                "the one used attemping to open database",
+                            )
+                        )
+                    )
             finally:
                 control.close()
             db_create = 0
@@ -241,19 +267,23 @@ class Database(_database.Database):
         finally:
             del control
         self.set_segment_size()
-        gbytes = self.environment.get('gbytes', 0)
-        bytes_ = self.environment.get('bytes', 0)
+        gbytes = self.environment.get("gbytes", 0)
+        bytes_ = self.environment.get("bytes", 0)
         self.dbenv = dbe.DBEnv()
         if gbytes or bytes_:
             self.dbenv.set_cachesize(gbytes, bytes_)
         if self.home_directory is not None:
             logdir = os.path.join(
                 self.home_directory,
-                ''.join((
-                    SUBFILE_DELIMITER * 3,
-                    'logs',
-                    SUBFILE_DELIMITER,
-                    os.path.basename(self.home_directory))))
+                "".join(
+                    (
+                        SUBFILE_DELIMITER * 3,
+                        "logs",
+                        SUBFILE_DELIMITER,
+                        os.path.basename(self.home_directory),
+                    )
+                ),
+            )
             if not os.path.exists(logdir):
                 os.mkdir(logdir)
             self.dbenv.set_lg_dir(logdir)
@@ -261,10 +291,14 @@ class Database(_database.Database):
         # To cope with log files created for in-memory databases, mainly when
         # running tests.  Deleted in tearDown() method of 'unittest' classes.
         else:
-            logdir = ''.join((SUBFILE_DELIMITER * 3,
-                              'memlogs',
-                              SUBFILE_DELIMITER,
-                              'memory_db'))
+            logdir = "".join(
+                (
+                    SUBFILE_DELIMITER * 3,
+                    "memlogs",
+                    SUBFILE_DELIMITER,
+                    "memory_db",
+                )
+            )
             if not os.path.exists(logdir):
                 os.mkdir(logdir)
             self.dbenv.set_lg_dir(logdir)
@@ -290,7 +324,7 @@ class Database(_database.Database):
         # maxlocks is added to the things taken from self.environment but is
         # only applied if non-zero and OS is OpenBSD.
         if _openbsd_platform:
-            maxlocks = self.environment.get('maxlocks', 0)
+            maxlocks = self.environment.get("maxlocks", 0)
             if maxlocks:
                 self.dbenv.set_lk_max_locks(maxlocks)
 
@@ -306,7 +340,8 @@ class Database(_database.Database):
                 dbname=CONTROL_FILE,
                 dbtype=dbe.DB_BTREE,
                 flags=db_create,
-                txn=self.dbtxn)
+                txn=self.dbtxn,
+            )
         except:
             self.table[CONTROL_FILE] = None
             raise
@@ -321,12 +356,14 @@ class Database(_database.Database):
                     dbname=file,
                     dbtype=dbe.DB_RECNO,
                     flags=db_create,
-                    txn=self.dbtxn)
+                    txn=self.dbtxn,
+                )
             except:
                 self.table[file] = None
                 raise
             self.ebm_control[file] = ExistenceBitmapControl(
-                file, self, dbe, db_create)
+                file, self, dbe, db_create
+            )
             segmentfile = SUBFILE_DELIMITER.join((file, SEGMENT_SUFFIX))
             self.segment_table[file] = dbe.DB(self.dbenv)
             try:
@@ -335,7 +372,8 @@ class Database(_database.Database):
                     dbname=segmentfile,
                     dbtype=dbe.DB_RECNO,
                     flags=db_create,
-                    txn=self.dbtxn)
+                    txn=self.dbtxn,
+                )
             except:
                 self.segment_table[file] = None
                 raise
@@ -361,11 +399,15 @@ class Database(_database.Database):
                         dbname=secondary,
                         dbtype=access_method,
                         flags=db_create,
-                        txn=self.dbtxn)
+                        txn=self.dbtxn,
+                    )
                 except dbe.DBInvalidArgError as exc:
                     if not str(exc) == secondary.join(
-                        ("(22, 'Invalid argument -- ",
-                         ": unexpected file type or format')")):
+                        (
+                            "(22, 'Invalid argument -- ",
+                            ": unexpected file type or format')",
+                        )
+                    ):
                         raise
                     if access_method is not dbe.DB_HASH:
                         raise
@@ -379,8 +421,9 @@ class Database(_database.Database):
                             self.file_name_for_database(secondary),
                             dbname=secondary,
                             dbtype=dbe.DB_BTREE,
-                            #flags=db_create,
-                            txn=self.dbtxn)
+                            # flags=db_create,
+                            txn=self.dbtxn,
+                        )
                     except:
                         self.table[secondary] = None
                         raise
@@ -388,27 +431,34 @@ class Database(_database.Database):
                 except:
                     self.table[secondary] = None
                     raise
-        if db_create:# and files:
-            self.table[CONTROL_FILE].put(SPECIFICATION_KEY,
-                                         repr(self.specification).encode(),
-                                         txn=self.dbtxn)
-            self.table[CONTROL_FILE].put(SEGMENT_SIZE_BYTES_KEY,
-                                         repr(self.segment_size_bytes).encode(),
-                                         txn=self.dbtxn)
+        if db_create:  # and files:
+            self.table[CONTROL_FILE].put(
+                SPECIFICATION_KEY,
+                repr(self.specification).encode(),
+                txn=self.dbtxn,
+            )
+            self.table[CONTROL_FILE].put(
+                SEGMENT_SIZE_BYTES_KEY,
+                repr(self.segment_size_bytes).encode(),
+                txn=self.dbtxn,
+            )
         self.commit()
         self._dbe = dbe
 
     def environment_flags(self, dbe):
-        return (dbe.DB_CREATE |
-                dbe.DB_RECOVER |
-                dbe.DB_INIT_MPOOL |
-                dbe.DB_INIT_LOCK |
-                dbe.DB_INIT_LOG |
-                dbe.DB_INIT_TXN |
-                dbe.DB_PRIVATE)
+        """Return environment flags for transaction update."""
+        return (
+            dbe.DB_CREATE
+            | dbe.DB_RECOVER
+            | dbe.DB_INIT_MPOOL
+            | dbe.DB_INIT_LOCK
+            | dbe.DB_INIT_LOG
+            | dbe.DB_INIT_TXN
+            | dbe.DB_PRIVATE
+        )
 
     def checkpoint_before_close_dbenv(self):
-
+        """Do a checkpoint call."""
         # Rely on environment_flags() call for transaction state.
         self.dbenv.txn_checkpoint()
 
@@ -429,8 +479,8 @@ class Database(_database.Database):
         for file, specification in self.specification.items():
             if file in self.table:
                 if self.table[file] is not None:
-                    for f in self.table[file]:
-                        f.close()
+                    for dbo in self.table[file]:
+                        dbo.close()
                     self.table[file] = None
             if file in self.segment_table:
                 if self.segment_table[file] is not None:
@@ -444,12 +494,12 @@ class Database(_database.Database):
             for field in specification[SECONDARY]:
                 secondary = SUBFILE_DELIMITER.join((file, field))
                 if secondary in self.table:
-                    for f in self.table[secondary]:
-                        f.close()
+                    for dbo in self.table[secondary]:
+                        dbo.close()
                     self.table[secondary] = None
-        for k, v in self.table.items():
-            if v is not None:
-                v.close()
+        for k, dbo in self.table.items():
+            if dbo is not None:
+                dbo.close()
                 self.table[k] = None
         if self.dbenv is not None:
             self.checkpoint_before_close_dbenv()
@@ -472,18 +522,26 @@ class Database(_database.Database):
         self.close_database_contexts()
 
     def put(self, file, key, value):
+        """Insert key, or replace key, in table for file using value."""
         assert file in self.specification
         if key is None:
             return self.table[file][0].append(value.encode(), txn=self.dbtxn)
-        else:
-            self.table[file][0].put(key, value.encode(), txn=self.dbtxn)
-            return None
+        self.table[file][0].put(key, value.encode(), txn=self.dbtxn)
+        return None
 
     def replace(self, file, key, oldvalue, newvalue):
+        """Replace key from table for file using newvalue.
+
+        oldvalue is ignored in _sqlite version of replace() method.
+        """
         assert file in self.specification
         self.table[file][0].put(key, newvalue.encode(), txn=self.dbtxn)
 
     def delete(self, file, key, value):
+        """Delete key from table for file.
+
+        value is ignored in _db version of delete() method.
+        """
         assert file in self.specification
         try:
             self.table[file][0].delete(key, txn=self.dbtxn)
@@ -505,7 +563,7 @@ class Database(_database.Database):
 
         Typically used to convert primary key, a record number, to secondary
         index format.
-        
+
         """
         return repr(key).encode()
 
@@ -523,11 +581,15 @@ class Database(_database.Database):
 
         Typically used to convert a key being used to search a secondary index
         to the form held on the database.
-        
+
         """
         return key.encode()
 
     def get_lowest_freed_record_number(self, dbset):
+        """Return lowest freed record number in existence bitmap.
+
+        The list of segments with freed record numbers is searched.
+        """
         ebmc = self.ebm_control[dbset]
         if ebmc.freed_record_number_pages is None:
             ebmc.freed_record_number_pages = []
@@ -536,32 +598,37 @@ class Database(_database.Database):
                 record = cursor.set(ebmc.ebmkey)
                 while record:
                     ebmc.freed_record_number_pages.append(
-                        int.from_bytes(record[1], byteorder='big'))
+                        int.from_bytes(record[1], byteorder="big")
+                    )
                     record = cursor.next_dup()
             finally:
                 cursor.close()
         while len(ebmc.freed_record_number_pages):
-            s = ebmc.freed_record_number_pages[0]
+            segment_number = ebmc.freed_record_number_pages[0]
 
             # Do not reuse record number on segment of high record number.
-            if s == ebmc.segment_count - 1:
+            if segment_number == ebmc.segment_count - 1:
                 return None
 
-            lfrns = ebmc.read_exists_segment(s, self.dbtxn)
+            lfrns = ebmc.read_exists_segment(segment_number, self.dbtxn)
             if lfrns is None:
 
                 # Segment does not exist now.
-                ebmc.freed_record_number_pages.remove(s)
+                ebmc.freed_record_number_pages.remove(segment_number)
                 continue
 
             try:
-                first_zero_bit = lfrns.index(False, 0 if s else 1)
+                first_zero_bit = lfrns.index(False, 0 if segment_number else 1)
             except ValueError:
                 cursor = self.table[CONTROL_FILE].cursor(txn=self.dbtxn)
                 try:
                     if cursor.set_both(
                         ebmc.ebmkey,
-                        s.to_bytes(1 + s.bit_length() // 8, byteorder='big')):
+                        segment_number.to_bytes(
+                            1 + segment_number.bit_length() // 8,
+                            byteorder="big",
+                        ),
+                    ):
                         cursor.delete()
                     else:
                         raise
@@ -569,16 +636,25 @@ class Database(_database.Database):
                     cursor.close()
                 del ebmc.freed_record_number_pages[0]
                 continue
-            return s * SegmentSize.db_segment_size + first_zero_bit
-        else:
-            return None
+            return (
+                segment_number * SegmentSize.db_segment_size + first_zero_bit
+            )
+        return None
 
     # high_record will become high_record_number to fit changed get_high_record.
     def note_freed_record_number_segment(
-        self, dbset, segment, record_number_in_segment, high_record):
+        self, dbset, segment, record_number_in_segment, high_record
+    ):
+        """Add existence bitmap segment to list with spare record numbers.
+
+        Caller should check segment has unused records before calling
+        note_freed_record_number_segment.  A successful record deletion
+        passes this test.
+        """
         try:
-            high_segment = divmod(high_record[0],
-                                  SegmentSize.db_segment_size)[0]
+            high_segment = divmod(high_record[0], SegmentSize.db_segment_size)[
+                0
+            ]
         except TypeError:
 
             # Implies attempt to delete record from empty database.
@@ -595,7 +671,8 @@ class Database(_database.Database):
                 record = cursor.set(ebmc.ebmkey)
                 while record:
                     ebmc.freed_record_number_pages.append(
-                        int.from_bytes(record[1], byteorder='big'))
+                        int.from_bytes(record[1], byteorder="big")
+                    )
                     record = cursor.next_dup()
             finally:
                 cursor.close()
@@ -613,26 +690,41 @@ class Database(_database.Database):
         ebmc.freed_record_number_pages.insert(insert, segment)
         self.table[CONTROL_FILE].put(
             ebmc.ebmkey,
-            segment.to_bytes(1 + segment.bit_length() // 8, byteorder='big'),
+            segment.to_bytes(1 + segment.bit_length() // 8, byteorder="big"),
             flags=self._dbe.DB_NODUPDATA,
-            txn=self.dbtxn)
+            txn=self.dbtxn,
+        )
 
     def remove_record_from_ebm(self, file, deletekey):
+        """Remove deletekey from file's existence bitmap; return key.
+
+        deletekey is split into segment number and record number within
+        segment to form the returned value.
+        """
         segment, record_number = divmod(deletekey, SegmentSize.db_segment_size)
-        ebmb = self.ebm_control[file].ebm_table.get(segment + 1, txn=self.dbtxn)
+        ebmb = self.ebm_control[file].ebm_table.get(
+            segment + 1, txn=self.dbtxn
+        )
         if ebmb is None:
-            raise DatabaseError('Existence bit map for segment does not exist')
-        else:
-            ebm = Bitarray()
-            ebm.frombytes(ebmb)
-            ebm[record_number] = False
-            self.ebm_control[file].ebm_table.put(
-                segment + 1, ebm.tobytes(), txn=self.dbtxn)
+            raise DatabaseError("Existence bit map for segment does not exist")
+        ebm = Bitarray()
+        ebm.frombytes(ebmb)
+        ebm[record_number] = False
+        self.ebm_control[file].ebm_table.put(
+            segment + 1, ebm.tobytes(), txn=self.dbtxn
+        )
         return segment, record_number
 
     def add_record_to_ebm(self, file, putkey):
+        """Add putkey to file's existence bitmap; return (segment, record).
+
+        putkey is split into segment number and record number within
+        segment to form the returned value.
+        """
         segment, record_number = divmod(putkey, SegmentSize.db_segment_size)
-        ebmb = self.ebm_control[file].ebm_table.get(segment + 1, txn=self.dbtxn)
+        ebmb = self.ebm_control[file].ebm_table.get(
+            segment + 1, txn=self.dbtxn
+        )
         if ebmb is None:
             ebm = SegmentSize.empty_bitarray.copy()
         else:
@@ -640,163 +732,228 @@ class Database(_database.Database):
             ebm.frombytes(ebmb)
         ebm[record_number] = True
         self.ebm_control[file].ebm_table.put(
-            segment + 1, ebm.tobytes(), txn=self.dbtxn)
+            segment + 1, ebm.tobytes(), txn=self.dbtxn
+        )
         return segment, record_number
 
     # Change to return just the record number, and the name to fit.
     # Only used in one place, and it is extra work to get the data in_nosql.
     def get_high_record(self, file):
-        c = self.table[file][0].cursor(txn=self.dbtxn)
+        """Return the high existing record number in table for file."""
+        cursor = self.table[file][0].cursor(txn=self.dbtxn)
         try:
-            return c.last()
+            return cursor.last()
         finally:
-            c.close()
-    
+            cursor.close()
+
     def _get_segment_record_numbers(self, file, reference):
-        bs = self.segment_table[file].get(reference, txn=self.dbtxn)
-        if len(bs) < SegmentSize.db_segment_size_bytes:
-            return [int.from_bytes(bs[i:i+2], byteorder='big')
-                    for i in range(0, len(bs), 2)]
+        segment_record = self.segment_table[file].get(
+            reference, txn=self.dbtxn
+        )
+        if len(segment_record) < SegmentSize.db_segment_size_bytes:
+            return [
+                int.from_bytes(segment_record[i : i + 2], byteorder="big")
+                for i in range(0, len(segment_record), 2)
+            ]
         recnums = Bitarray()
-        recnums.frombytes(bs)
+        recnums.frombytes(segment_record)
         return recnums
-    
+
     def add_record_to_field_value(
-        self, file, field, key, segment, record_number):
+        self, file, field, key, segment, record_number
+    ):
+        """Add record_number to set of records in segment for key.
+
+        key is a value of index field on segment table for file.
+
+        The representation of the set of records on the database is
+        converted from integer to list to bitmap if the addition
+        increases the number of records in the set above the relevant
+        limit.
+        """
         key = self.encode_record_selector(key)
         secondary = SUBFILE_DELIMITER.join((file, field))
         cursor = self.table[secondary][0].cursor(txn=self.dbtxn)
         try:
-            r = cursor.set_range(key)
-            while r:
-                k, v = r
-                if k != key:
+            record = cursor.set_range(key)
+            while record:
+                record_key, value = record
+                if record_key != key:
 
                     # No index entry for key.
                     cursor.put(
                         key,
-                        b''.join(
-                            (segment.to_bytes(4, byteorder='big'),
-                             record_number.to_bytes(2, byteorder='big'))),
-                        self._dbe.DB_KEYLAST)
+                        b"".join(
+                            (
+                                segment.to_bytes(4, byteorder="big"),
+                                record_number.to_bytes(2, byteorder="big"),
+                            )
+                        ),
+                        self._dbe.DB_KEYLAST,
+                    )
                     return
 
-                sr = int.from_bytes(v[:4], byteorder='big')
-                if sr < segment:
-                    r = cursor.next_dup()
+                segment_number = int.from_bytes(value[:4], byteorder="big")
+                if segment_number < segment:
+                    record = cursor.next_dup()
                     continue
-                elif sr > segment:
+                if segment_number > segment:
 
                     # No index entry for key in this segment.
                     cursor.put(
-                        k,
-                        b''.join(
-                            (segment.to_bytes(4, byteorder='big'),
-                             record_number.to_bytes(2, byteorder='big'))),
-                        self._dbe.DB_KEYLAST)
+                        key,
+                        b"".join(
+                            (
+                                segment.to_bytes(4, byteorder="big"),
+                                record_number.to_bytes(2, byteorder="big"),
+                            )
+                        ),
+                        self._dbe.DB_KEYLAST,
+                    )
                     return
 
-                if len(v) == SEGMENT_HEADER_LENGTH:
-                    rn = int.from_bytes(v[4:], byteorder='big')
-                    if rn != record_number:
-                        segnum = self.segment_table[file].append(
-                            b''.join(
-                                sorted([
-                                    record_number.to_bytes(
-                                        length=2, byteorder='big'),
-                                    rn.to_bytes(length=2, byteorder='big')])),
-                            txn=self.dbtxn)
+                if len(value) == SEGMENT_HEADER_LENGTH:
+                    existing_record_number = int.from_bytes(
+                        value[4:], byteorder="big"
+                    )
+                    if existing_record_number != record_number:
+                        segment_key = self.segment_table[file].append(
+                            b"".join(
+                                sorted(
+                                    [
+                                        record_number.to_bytes(
+                                            length=2, byteorder="big"
+                                        ),
+                                        existing_record_number.to_bytes(
+                                            length=2, byteorder="big"
+                                        ),
+                                    ]
+                                )
+                            ),
+                            txn=self.dbtxn,
+                        )
                         cursor.delete()
                         cursor.put(
-                            k,
-                            b''.join(
-                                (v[:4],
-                                 b'\x00\x02',
-                                 segnum.to_bytes(4, byteorder='big'),
-                                 )),
-                            self._dbe.DB_KEYLAST)
+                            key,
+                            b"".join(
+                                (
+                                    value[:4],
+                                    b"\x00\x02",
+                                    segment_key.to_bytes(4, byteorder="big"),
+                                )
+                            ),
+                            self._dbe.DB_KEYLAST,
+                        )
                     return
-                segnum = int.from_bytes(v[SEGMENT_HEADER_LENGTH:],
-                                        byteorder='big')
-                recnums = self._get_segment_record_numbers(file, segnum)
+                segment_key = int.from_bytes(
+                    value[SEGMENT_HEADER_LENGTH:], byteorder="big"
+                )
+                recnums = self._get_segment_record_numbers(file, segment_key)
                 if isinstance(recnums, list):
-                    ip = bisect.bisect_left(recnums, record_number)
-                    if ip < len(recnums):
-                        if recnums[ip] != record_number:
-                            recnums.insert(ip, record_number)
+                    i = bisect.bisect_left(recnums, record_number)
+                    if i < len(recnums):
+                        if recnums[i] != record_number:
+                            recnums.insert(i, record_number)
                     else:
                         recnums.append(record_number)
                     count = len(recnums)
                     if count > SegmentSize.db_upper_conversion_limit:
                         seg = SegmentSize.empty_bitarray.copy()
-                        for rn in recnums:
-                            seg[rn] = True
+                        for i in recnums:
+                            seg[i] = True
                         self.segment_table[file].put(
-                            segnum, seg.tobytes(), txn=self.dbtxn)
+                            segment_key, seg.tobytes(), txn=self.dbtxn
+                        )
                         cursor.delete()
                         cursor.put(
-                            k,
-                            b''.join(
-                                (v[:4],
-                                 count.to_bytes(2, byteorder='big'),
-                                 v[SEGMENT_HEADER_LENGTH:])),
-                            self._dbe.DB_KEYLAST)
+                            key,
+                            b"".join(
+                                (
+                                    value[:4],
+                                    count.to_bytes(2, byteorder="big"),
+                                    value[SEGMENT_HEADER_LENGTH:],
+                                )
+                            ),
+                            self._dbe.DB_KEYLAST,
+                        )
                     else:
                         self.segment_table[file].put(
-                            segnum,
-                            b''.join((
-                                rn.to_bytes(length=2, byteorder='big')
-                                for rn in recnums)),
-                            txn=self.dbtxn)
+                            segment_key,
+                            b"".join(
+                                (
+                                    rn.to_bytes(length=2, byteorder="big")
+                                    for rn in recnums
+                                )
+                            ),
+                            txn=self.dbtxn,
+                        )
                         cursor.delete()
                         cursor.put(
-                            k,
-                            b''.join(
-                                (v[:4],
-                                 count.to_bytes(2, byteorder='big'),
-                                 v[SEGMENT_HEADER_LENGTH:])),
-                            self._dbe.DB_KEYLAST)
+                            key,
+                            b"".join(
+                                (
+                                    value[:4],
+                                    count.to_bytes(2, byteorder="big"),
+                                    value[SEGMENT_HEADER_LENGTH:],
+                                )
+                            ),
+                            self._dbe.DB_KEYLAST,
+                        )
                     return
 
                 # ignore possibility record_number already present
                 recnums[record_number] = True
                 self.segment_table[file].put(
-                    segnum,
-                    recnums.tobytes(),
-                    txn=self.dbtxn)
+                    segment_key, recnums.tobytes(), txn=self.dbtxn
+                )
                 cursor.delete()
                 cursor.put(
-                    k,
-                    b''.join(
-                        (v[:4],
-                         recnums.count().to_bytes(2, byteorder='big'),
-                         v[SEGMENT_HEADER_LENGTH:])),
-                    self._dbe.DB_KEYLAST)
+                    key,
+                    b"".join(
+                        (
+                            value[:4],
+                            recnums.count().to_bytes(2, byteorder="big"),
+                            value[SEGMENT_HEADER_LENGTH:],
+                        )
+                    ),
+                    self._dbe.DB_KEYLAST,
+                )
                 return
 
-            else:
-
-                # No index entry for key because database is empty.
-                cursor.put(
-                    key,
-                    b''.join(
-                        (segment.to_bytes(4, byteorder='big'),
-                         record_number.to_bytes(2, byteorder='big'))),
-                    self._dbe.DB_KEYLAST)
+            # No index entry for key because database is empty.
+            cursor.put(
+                key,
+                b"".join(
+                    (
+                        segment.to_bytes(4, byteorder="big"),
+                        record_number.to_bytes(2, byteorder="big"),
+                    )
+                ),
+                self._dbe.DB_KEYLAST,
+            )
 
         finally:
             cursor.close()
 
     def remove_record_from_field_value(
-        self, file, field, key, segment, record_number):
+        self, file, field, key, segment, record_number
+    ):
+        """Remove record_number from set of records in segment for key.
+
+        key is a value of index field on segment table for file.
+
+        The representation of the set of records on the database is
+        converted from bitmap to list to integer if the removal reduces
+        the number of records in the set below the relevant limit.
+        """
         key = self.encode_record_selector(key)
         secondary = SUBFILE_DELIMITER.join((file, field))
         cursor = self.table[secondary][0].cursor(txn=self.dbtxn)
         try:
-            r = cursor.set_range(key)
-            while r:
-                k, v = r
-                if k != key:
+            record = cursor.set_range(key)
+            while record:
+                record_key, value = record
+                if record_key != key:
 
                     # Assume that multiple requests to delete an index value
                     # have been made for a record.  The segment_put method uses
@@ -805,48 +962,64 @@ class Database(_database.Database):
                     # of Value if this will happen a lot.
                     return
 
-                sr = int.from_bytes(v[:4], byteorder='big')
-                if sr < segment:
-                    r = cursor.next_dup()
+                segment_number = int.from_bytes(value[:4], byteorder="big")
+                if segment_number < segment:
+                    record = cursor.next_dup()
                     continue
-                elif sr > segment:
+                if segment_number > segment:
                     return
-                if len(v) == SEGMENT_HEADER_LENGTH:
-                    if record_number == int.from_bytes(v[4:], byteorder='big'):
+                if len(value) == SEGMENT_HEADER_LENGTH:
+                    if record_number == int.from_bytes(
+                        value[4:], byteorder="big"
+                    ):
                         cursor.delete()
                     return
-                segnum = int.from_bytes(v[SEGMENT_HEADER_LENGTH:],
-                                        byteorder='big')
-                recnums = self._get_segment_record_numbers(file, segnum)
+                segment_key = int.from_bytes(
+                    value[SEGMENT_HEADER_LENGTH:], byteorder="big"
+                )
+                recnums = self._get_segment_record_numbers(file, segment_key)
                 if isinstance(recnums, list):
                     discard = bisect.bisect_left(recnums, record_number)
                     if recnums[discard] == record_number:
                         del recnums[discard]
                     count = len(recnums)
                     if count < 2:
-                        for rn in recnums:
-                            ref = b''.join(
-                                (segment.to_bytes(4, byteorder='big'),
-                                 rn.to_bytes(2, byteorder='big')))
-                        self.segment_table[file].delete(segnum, txn=self.dbtxn)
+                        for i in recnums:
+                            ref = b"".join(
+                                (
+                                    segment.to_bytes(4, byteorder="big"),
+                                    i.to_bytes(2, byteorder="big"),
+                                )
+                            )
+                        self.segment_table[file].delete(
+                            segment_key, txn=self.dbtxn
+                        )
                         cursor.delete()
                         if count:
-                            cursor.put(k, ref, self._dbe.DB_KEYLAST)
+                            cursor.put(key, ref, self._dbe.DB_KEYLAST)
                     else:
                         self.segment_table[file].put(
-                            segnum,
-                            b''.join((
-                                rn.to_bytes(length=2, byteorder='big')
-                                for rn in sorted(recnums))),
-                            txn=self.dbtxn)
+                            segment_key,
+                            b"".join(
+                                (
+                                    i.to_bytes(length=2, byteorder="big")
+                                    for i in sorted(recnums)
+                                )
+                            ),
+                            txn=self.dbtxn,
+                        )
                         cursor.delete()
                         cursor.put(
-                            k,
-                            b''.join(
-                                (v[:4],
-                                 count.to_bytes(2, byteorder='big'),
-                                 v[SEGMENT_HEADER_LENGTH:])),
-                            self._dbe.DB_KEYLAST)
+                            key,
+                            b"".join(
+                                (
+                                    value[:4],
+                                    count.to_bytes(2, byteorder="big"),
+                                    value[SEGMENT_HEADER_LENGTH:],
+                                )
+                            ),
+                            self._dbe.DB_KEYLAST,
+                        )
                     return
 
                 # ignore possibility record_number already absent
@@ -855,384 +1028,460 @@ class Database(_database.Database):
                 count = recnums.count()
                 if count > SegmentSize.db_lower_conversion_limit:
                     self.segment_table[file].put(
-                        segnum, recnums.tobytes(), txn=self.dbtxn)
+                        segment_key, recnums.tobytes(), txn=self.dbtxn
+                    )
                     cursor.delete()
                     cursor.put(
-                        k,
-                        b''.join(
-                            (v[:4],
-                             recnums.count().to_bytes(2, byteorder='big'),
-                             v[SEGMENT_HEADER_LENGTH:])),
-                        self._dbe.DB_KEYLAST)
+                        key,
+                        b"".join(
+                            (
+                                value[:4],
+                                recnums.count().to_bytes(2, byteorder="big"),
+                                value[SEGMENT_HEADER_LENGTH:],
+                            )
+                        ),
+                        self._dbe.DB_KEYLAST,
+                    )
                 else:
-                    recnums = {rn for rn in recnums.search(SINGLEBIT)}
+                    recnums = set(recnums.search(SINGLEBIT))
                     self.segment_table[file].put(
-                        segnum,
-                        b''.join((
-                            rn.to_bytes(length=2, byteorder='big')
-                            for rn in sorted(recnums))),
-                        txn=self.dbtxn)
+                        segment_key,
+                        b"".join(
+                            (
+                                i.to_bytes(length=2, byteorder="big")
+                                for i in sorted(recnums)
+                            )
+                        ),
+                        txn=self.dbtxn,
+                    )
                     cursor.delete()
                     cursor.put(
-                        k,
-                        b''.join(
-                            (v[:4],
-                             len(recnums).to_bytes(2, byteorder='big'),
-                             v[SEGMENT_HEADER_LENGTH:])),
-                        self._dbe.DB_KEYLAST)
+                        key,
+                        b"".join(
+                            (
+                                value[:4],
+                                len(recnums).to_bytes(2, byteorder="big"),
+                                value[SEGMENT_HEADER_LENGTH:],
+                            )
+                        ),
+                        self._dbe.DB_KEYLAST,
+                    )
                 return
         finally:
             cursor.close()
 
     def populate_segment(self, segment_reference, file):
+        """Return records for segment_reference in segment table for file.
+
+        A RecordsetSegmentBitarray, RecordsetSegmentList, or
+        RecordsetSegmentInt, instance is returned.
+
+        segment_reference has a rowid, or the record number if there is
+        exactly one record in the segment.
+        """
         if len(segment_reference) == SEGMENT_HEADER_LENGTH:
             return RecordsetSegmentInt(
-                int.from_bytes(segment_reference[:4], byteorder='big'),
+                int.from_bytes(segment_reference[:4], byteorder="big"),
                 None,
-                records=segment_reference[4:])
-        bs = self.segment_table[file].get(
-            int.from_bytes(segment_reference[SEGMENT_HEADER_LENGTH:],
-                           byteorder='big'))
-        if bs is None:
-            raise DatabaseError('Segment record missing')
-        if len(bs) == SegmentSize.db_segment_size_bytes:
+                records=segment_reference[4:],
+            )
+        segment_record = self.segment_table[file].get(
+            int.from_bytes(
+                segment_reference[SEGMENT_HEADER_LENGTH:], byteorder="big"
+            )
+        )
+        if segment_record is None:
+            raise DatabaseError("Segment record missing")
+        if len(segment_record) == SegmentSize.db_segment_size_bytes:
             return RecordsetSegmentBitarray(
-                int.from_bytes(segment_reference[:4], byteorder='big'),
+                int.from_bytes(segment_reference[:4], byteorder="big"),
                 None,
-                records=bs)
+                records=segment_record,
+            )
         return RecordsetSegmentList(
-            int.from_bytes(segment_reference[:4], byteorder='big'),
+            int.from_bytes(segment_reference[:4], byteorder="big"),
             None,
-            records=bs)
+            records=segment_record,
+        )
 
     def find_values(self, valuespec, file):
         """Yield values in range defined in valuespec in index named file."""
         cursor = self.table[SUBFILE_DELIMITER.join((file, valuespec.field))][
-            0].cursor(txn=self.dbtxn)
+            0
+        ].cursor(txn=self.dbtxn)
         try:
             if valuespec.above_value and valuespec.below_value:
-                r = cursor.set_range(valuespec.above_value.encode())
-                if r:
-                    if r[0] == valuespec.above_value.encode():
-                        r = cursor.next_nodup()
-                while r:
-                    k = r[0].decode()
-                    if k >= valuespec.below_value:
+                record = cursor.set_range(valuespec.above_value.encode())
+                if record:
+                    if record[0] == valuespec.above_value.encode():
+                        record = cursor.next_nodup()
+                while record:
+                    key = record[0].decode()
+                    if key >= valuespec.below_value:
                         break
-                    if valuespec.apply_pattern_and_set_filters_to_value(k):
-                        yield k
-                    r = cursor.next_nodup()
+                    if valuespec.apply_pattern_and_set_filters_to_value(key):
+                        yield key
+                    record = cursor.next_nodup()
             elif valuespec.above_value and valuespec.to_value:
-                r = cursor.set_range(valuespec.above_value.encode())
-                if r:
-                    if r[0] == valuespec.above_value.encode():
-                        r = cursor.next_nodup()
-                while r:
-                    k = r[0].decode()
-                    if k > valuespec.to_value:
+                record = cursor.set_range(valuespec.above_value.encode())
+                if record:
+                    if record[0] == valuespec.above_value.encode():
+                        record = cursor.next_nodup()
+                while record:
+                    key = record[0].decode()
+                    if key > valuespec.to_value:
                         break
-                    if valuespec.apply_pattern_and_set_filters_to_value(k):
-                        yield k
-                    r = cursor.next_nodup()
+                    if valuespec.apply_pattern_and_set_filters_to_value(key):
+                        yield key
+                    record = cursor.next_nodup()
             elif valuespec.from_value and valuespec.to_value:
-                r = cursor.set_range(valuespec.from_value.encode())
-                while r:
-                    k = r[0].decode()
-                    if k > valuespec.to_value:
+                record = cursor.set_range(valuespec.from_value.encode())
+                while record:
+                    key = record[0].decode()
+                    if key > valuespec.to_value:
                         break
-                    if valuespec.apply_pattern_and_set_filters_to_value(k):
-                        yield k
-                    r = cursor.next_nodup()
+                    if valuespec.apply_pattern_and_set_filters_to_value(key):
+                        yield key
+                    record = cursor.next_nodup()
             elif valuespec.from_value and valuespec.below_value:
-                r = cursor.set_range(valuespec.from_value.encode())
-                while r:
-                    k = r[0].decode()
-                    if k >= valuespec.below_value:
+                record = cursor.set_range(valuespec.from_value.encode())
+                while record:
+                    key = record[0].decode()
+                    if key >= valuespec.below_value:
                         break
-                    if valuespec.apply_pattern_and_set_filters_to_value(k):
-                        yield k
-                    r = cursor.next_nodup()
+                    if valuespec.apply_pattern_and_set_filters_to_value(key):
+                        yield key
+                    record = cursor.next_nodup()
             elif valuespec.above_value:
-                r = cursor.set_range(valuespec.above_value.encode())
-                if r:
-                    if r[0] == valuespec.above_value.encode():
-                        r = cursor.next_nodup()
-                while r:
-                    k = r[0].decode()
-                    if valuespec.apply_pattern_and_set_filters_to_value(k):
-                        yield k
-                    r = cursor.next_nodup()
+                record = cursor.set_range(valuespec.above_value.encode())
+                if record:
+                    if record[0] == valuespec.above_value.encode():
+                        record = cursor.next_nodup()
+                while record:
+                    key = record[0].decode()
+                    if valuespec.apply_pattern_and_set_filters_to_value(key):
+                        yield key
+                    record = cursor.next_nodup()
             elif valuespec.from_value:
-                r = cursor.set_range(valuespec.from_value.encode())
-                while r:
-                    k = r[0].decode()
-                    if valuespec.apply_pattern_and_set_filters_to_value(k):
-                        yield k
-                    r = cursor.next_nodup()
+                record = cursor.set_range(valuespec.from_value.encode())
+                while record:
+                    key = record[0].decode()
+                    if valuespec.apply_pattern_and_set_filters_to_value(key):
+                        yield key
+                    record = cursor.next_nodup()
             elif valuespec.to_value:
-                r = cursor.first()
-                while r:
-                    k = r[0].decode()
-                    if k > valuespec.to_value:
+                record = cursor.first()
+                while record:
+                    key = record[0].decode()
+                    if key > valuespec.to_value:
                         break
-                    if valuespec.apply_pattern_and_set_filters_to_value(k):
-                        yield k
-                    r = cursor.next_nodup()
+                    if valuespec.apply_pattern_and_set_filters_to_value(key):
+                        yield key
+                    record = cursor.next_nodup()
             elif valuespec.below_value:
-                r = cursor.first()
-                while r:
-                    k = r[0].decode()
-                    if k >= valuespec.below_value:
+                record = cursor.first()
+                while record:
+                    key = record[0].decode()
+                    if key >= valuespec.below_value:
                         break
-                    if valuespec.apply_pattern_and_set_filters_to_value(k):
-                        yield k
-                    r = cursor.next_nodup()
+                    if valuespec.apply_pattern_and_set_filters_to_value(key):
+                        yield key
+                    record = cursor.next_nodup()
             else:
-                r = cursor.first()
-                while r:
-                    k = r[0].decode()
-                    if valuespec.apply_pattern_and_set_filters_to_value(k):
-                        yield k
-                    r = cursor.next_nodup()
+                record = cursor.first()
+                while record:
+                    key = record[0].decode()
+                    if valuespec.apply_pattern_and_set_filters_to_value(key):
+                        yield key
+                    record = cursor.next_nodup()
         finally:
             cursor.close()
 
     # The bit setting in existence bit map decides if a record is put on the
     # recordset created by the make_recordset_*() methods.
 
-    # Look at ebm_control.ebm_table even though the additional 'rn in r'
+    # Look at ebm_control.ebm_table even though the additional 'rn in record'
     # clause when populating the recordset makes table access cheaper.
     def recordlist_record_number(self, file, key=None, cache_size=1):
         """Return RecordList on file containing records for key."""
-        rs = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
+        recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
         if key is None:
-            return rs
-        s, rn = divmod(key, SegmentSize.db_segment_size)
-        r = self.ebm_control[file].ebm_table.get(s + 1, txn=self.dbtxn)
-        if r and rn in RecordsetSegmentBitarray(s, key, records=r):
-            rs[s] = RecordsetSegmentList(
-                s, None, records=rn.to_bytes(2, byteorder='big'))
-        return rs
+            return recordlist
+        segment_number, record_number = divmod(
+            key, SegmentSize.db_segment_size
+        )
+        record = self.ebm_control[file].ebm_table.get(
+            segment_number + 1, txn=self.dbtxn
+        )
+        if record and record_number in RecordsetSegmentBitarray(
+            segment_number, key, records=record
+        ):
+            recordlist[segment_number] = RecordsetSegmentList(
+                segment_number,
+                None,
+                records=record_number.to_bytes(2, byteorder="big"),
+            )
+        return recordlist
 
     def recordlist_record_number_range(
-        self, file, keystart=None, keyend=None, cache_size=1):
-        """Return RecordList on file containing record numbers whose record
-        exists in record number range."""
+        self, file, keystart=None, keyend=None, cache_size=1
+    ):
+        """Return RecordList of records on file in a record number range.
 
+        The records have record number between keystart and keyend.  Both
+        default to include all records to the respective edge of segment.
+        """
         # The keys in self.ebm_control[file].ebm_table are always
         # 'segment + 1', see note in recordlist_ebm method.
-        rs = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
+        recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
         if keystart is None:
             segment_start, recnum_start = 0, 1
         else:
-            segment_start, recnum_start = divmod(keystart,
-                                                 SegmentSize.db_segment_size)
+            segment_start, recnum_start = divmod(
+                keystart, SegmentSize.db_segment_size
+            )
         if keyend is not None:
-            segment_end, recnum_end = divmod(keyend,
-                                             SegmentSize.db_segment_size)
+            segment_end, recnum_end = divmod(
+                keyend, SegmentSize.db_segment_size
+            )
         else:
             segment_end, recnum_end = None, None
         cursor = self.ebm_control[file].ebm_table.cursor(txn=self.dbtxn)
         try:
-            so = None
-            eo = None
-            r = cursor.set(segment_start + 1)
-            while r:
-                s, b = r
-                s -= 1
-                if s < segment_start:
-                    r = cursor.next()
+            first_segment = None
+            final_segment = None
+            record = cursor.set(segment_start + 1)
+            while record:
+                segment_number, segment_record = record
+                segment_number -= 1
+                if segment_number < segment_start:
+                    record = cursor.next()
                     continue
-                if segment_end is not None and s > segment_end:
-                    r = cursor.next()
+                if segment_end is not None and segment_number > segment_end:
+                    record = cursor.next()
                     continue
-                if s == segment_start:
-                    if (s and recnum_start) or recnum_start > 1:
-                        so, sb = divmod(recnum_start, 8)
-                        b = b'\x00' * so + b[so:]
+                if segment_number == segment_start:
+                    if (segment_number and recnum_start) or recnum_start > 1:
+                        first_segment, start_byte = divmod(recnum_start, 8)
+                        segment_record = (
+                            b"\x00" * first_segment
+                            + segment_record[first_segment:]
+                        )
                 if keyend is not None:
-                    if s > segment_end:
+                    if segment_number > segment_end:
                         break
-                    if (s == segment_end and
-                        recnum_start < SegmentSize.db_segment_size - 1):
-                        eo, eb = divmod(recnum_end, 8)
-                        b = (b[:eo+1] +
-                             b'\x00' * (
-                                 SegmentSize.db_segment_size_bytes - eo - 1))
-                rs[s] = RecordsetSegmentBitarray(s, None, records=b)
-                r = cursor.next()
-            if so is not None:
-                for i in range(so * 8, so * 8 + sb):
-                    rs[segment_start][(segment_start, i)] = False
-            if eo is not None:
-                for i in range(eo * 8 + eb, (eo + 1) * 8):
-                    rs[segment_end][(segment_end, i)] = False
+                    if (
+                        segment_number == segment_end
+                        and recnum_start < SegmentSize.db_segment_size - 1
+                    ):
+                        final_segment, end_byte = divmod(recnum_end, 8)
+                        segment_record = segment_record[
+                            : final_segment + 1
+                        ] + b"\x00" * (
+                            SegmentSize.db_segment_size_bytes
+                            - final_segment
+                            - 1
+                        )
+                recordlist[segment_number] = RecordsetSegmentBitarray(
+                    segment_number, None, records=segment_record
+                )
+                record = cursor.next()
+            if first_segment is not None:
+                for i in range(
+                    first_segment * 8, first_segment * 8 + start_byte
+                ):
+                    recordlist[segment_start][(segment_start, i)] = False
+            if final_segment is not None:
+                for i in range(
+                    final_segment * 8 + end_byte, (final_segment + 1) * 8
+                ):
+                    recordlist[segment_end][(segment_end, i)] = False
         finally:
             cursor.close()
-        return rs
-    
+        return recordlist
+
     def recordlist_ebm(self, file, cache_size=1):
-        """Return RecordList on file containing record numbers whose record
-        exists."""
-        rs = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
+        """Return RecordList containing records on file."""
+        recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
         cursor = self.ebm_control[file].ebm_table.cursor(txn=self.dbtxn)
         try:
-            r = cursor.first()
-            while r:
+            record = cursor.first()
+            while record:
 
                 # The keys in self.ebm_control[file].ebm_table are always
                 # 'segment + 1' because automatically allocated RECNO keys
                 # start at 1 in an empty table and segment numbers start at 0.
                 # It is not possible to use the actual segment number because
                 # 0 is not allowed as a RECNO key.
-                rs[r[0] - 1] = RecordsetSegmentBitarray(
-                    r[0] - 1, None, records=r[1])
-                r = cursor.next()
+                recordlist[record[0] - 1] = RecordsetSegmentBitarray(
+                    record[0] - 1, None, records=record[1]
+                )
+                record = cursor.next()
 
         finally:
             cursor.close()
-        return rs
+        return recordlist
 
     def populate_recordset_segment(self, recordset, reference):
-        s = int.from_bytes(reference[:4], byteorder='big')
+        """Populate recordset with segment in reference.
+
+        The segement from reference is added to an existing segment in
+        recordset if there is one, or becomes recordset's segment for
+        that segment number if not.
+        """
+        segment_number = int.from_bytes(reference[:4], byteorder="big")
         if len(reference) == SEGMENT_HEADER_LENGTH:
             segment = RecordsetSegmentInt(
-                s,
-                None,
-                records=reference[4:])
+                segment_number, None, records=reference[4:]
+            )
         else:
-            bs = self.segment_table[recordset.dbset].get(
-                int.from_bytes(reference[SEGMENT_HEADER_LENGTH:],
-                               byteorder='big'))
-            if len(bs) == SegmentSize.db_segment_size_bytes:
+            segment_record = self.segment_table[recordset.dbset].get(
+                int.from_bytes(
+                    reference[SEGMENT_HEADER_LENGTH:], byteorder="big"
+                )
+            )
+            if len(segment_record) == SegmentSize.db_segment_size_bytes:
                 segment = RecordsetSegmentBitarray(
-                    s, None, records=bs)
+                    segment_number, None, records=segment_record
+                )
             else:
                 segment = RecordsetSegmentList(
-                    s, None, records=bs)
-        if s not in recordset:
-            recordset[s] = segment
+                    segment_number, None, records=segment_record
+                )
+        if segment_number not in recordset:
+            recordset[segment_number] = segment
         else:
-            recordset[s] |= segment
+            recordset[segment_number] |= segment
 
     def recordlist_key_like(self, file, field, keylike=None, cache_size=1):
-        """Return RecordList on file containing database records for field
-        with keys like key."""
-        rs = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
+        """Return RecordList containing records for field on file.
+
+        The records are indexed by keys containing keylike.
+        """
+        recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
         if keylike is None:
-            return rs
-        pattern = b'.*?' + keylike
-        cursor = self.table[SUBFILE_DELIMITER.join((file, field))
-                            ][0].cursor(txn=self.dbtxn)
+            return recordlist
+        pattern = b".*?" + keylike
+        cursor = self.table[SUBFILE_DELIMITER.join((file, field))][0].cursor(
+            txn=self.dbtxn
+        )
         try:
-            r = cursor.first()
-            while r:
-                k, v = r
-                if re.match(pattern, k, flags=re.IGNORECASE|re.DOTALL):
-                    self.populate_recordset_segment(rs, v)
-                r = cursor.next()
+            record = cursor.first()
+            while record:
+                key, value = record
+                if re.match(pattern, key, flags=re.IGNORECASE | re.DOTALL):
+                    self.populate_recordset_segment(recordlist, value)
+                record = cursor.next()
         finally:
             cursor.close()
-        return rs
+        return recordlist
 
     def recordlist_key(self, file, field, key=None, cache_size=1):
         """Return RecordList on file containing records for field with key."""
-        rs = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
-        cursor = self.table[SUBFILE_DELIMITER.join((file, field))
-                            ][0].cursor(txn=self.dbtxn)
+        recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
+        cursor = self.table[SUBFILE_DELIMITER.join((file, field))][0].cursor(
+            txn=self.dbtxn
+        )
         try:
-            r = cursor.set_range(key)
-            while r:
-                k, v = r
-                if k != key:
+            record = cursor.set_range(key)
+            while record:
+                record_key, value = record
+                if record_key != key:
                     break
-                self.populate_recordset_segment(rs, v)
-                r = cursor.next()
+                self.populate_recordset_segment(recordlist, value)
+                record = cursor.next()
         finally:
             cursor.close()
-        return rs
+        return recordlist
 
     def recordlist_key_startswith(
-        self, file, field, keystart=None, cache_size=1):
-        """Return RecordList on file containing records for field with
-        keys starting key.
+        self, file, field, keystart=None, cache_size=1
+    ):
+        """Return RecordList containing records for field on file.
+
+        The records are indexed by keys starting keystart.
         """
-        rs = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
+        recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
         if keystart is None:
-            return rs
-        cursor = self.table[SUBFILE_DELIMITER.join((file, field))
-                            ][0].cursor(txn=self.dbtxn)
+            return recordlist
+        cursor = self.table[SUBFILE_DELIMITER.join((file, field))][0].cursor(
+            txn=self.dbtxn
+        )
         try:
-            r = cursor.set_range(keystart)
-            while r:
-                if not r[0].startswith(keystart):
+            record = cursor.set_range(keystart)
+            while record:
+                if not record[0].startswith(keystart):
                     break
-                self.populate_recordset_segment(rs, r[1])
-                r = cursor.next()
+                self.populate_recordset_segment(recordlist, record[1])
+                record = cursor.next()
         finally:
             cursor.close()
-        return rs
+        return recordlist
 
     def recordlist_key_range(
-        self, file, field, ge=None, gt=None, le=None, lt=None, cache_size=1):
-        """Return RecordList on file containing records for field with
-        keys in range set by combinations of ge, gt, le, and lt.
+        self, file, field, ge=None, gt=None, le=None, lt=None, cache_size=1
+    ):
+        """Return RecordList containing records for field on file.
+
+        Keys are in range set by combinations of ge, gt, le, and lt.
         """
         if ge and gt:
             raise DatabaseError("Both 'ge' and 'gt' given in key range")
-        elif le and lt:
+        if le and lt:
             raise DatabaseError("Both 'le' and 'lt' given in key range")
-        rs = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
-        cursor = self.table[SUBFILE_DELIMITER.join((file, field))
-                            ][0].cursor(txn=self.dbtxn)
+        recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
+        cursor = self.table[SUBFILE_DELIMITER.join((file, field))][0].cursor(
+            txn=self.dbtxn
+        )
         try:
             if ge is None and gt is None:
-                r = cursor.first()
+                record = cursor.first()
             else:
-                r = cursor.set_range(ge or gt)
+                record = cursor.set_range(ge or gt)
             if gt:
-                while r:
-                    if r[0] > gt:
+                while record:
+                    if record[0] > gt:
                         break
-                    r = cursor.next()
+                    record = cursor.next()
             if le is None and lt is None:
-                while r:
-                    self.populate_recordset_segment(rs, r[1])
-                    r = cursor.next()
+                while record:
+                    self.populate_recordset_segment(recordlist, record[1])
+                    record = cursor.next()
             elif lt is None:
-                while r:
-                    if r[0] > le:
+                while record:
+                    if record[0] > le:
                         break
-                    self.populate_recordset_segment(rs, r[1])
-                    r = cursor.next()
+                    self.populate_recordset_segment(recordlist, record[1])
+                    record = cursor.next()
             else:
-                while r:
-                    if r[0] >= lt:
+                while record:
+                    if record[0] >= lt:
                         break
-                    self.populate_recordset_segment(rs, r[1])
-                    r = cursor.next()
+                    self.populate_recordset_segment(recordlist, record[1])
+                    record = cursor.next()
         finally:
             cursor.close()
-        return rs
+        return recordlist
 
     def recordlist_all(self, file, field, cache_size=1):
         """Return RecordList on file containing records for field."""
-        rs = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
-        cursor = self.table[SUBFILE_DELIMITER.join((file, field))
-                            ][0].cursor(txn=self.dbtxn)
+        recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
+        cursor = self.table[SUBFILE_DELIMITER.join((file, field))][0].cursor(
+            txn=self.dbtxn
+        )
         try:
-            r = cursor.first()
-            while r:
-                self.populate_recordset_segment(rs, r[1])
-                r = cursor.next()
+            record = cursor.first()
+            while record:
+                self.populate_recordset_segment(recordlist, record[1])
+                record = cursor.next()
         finally:
             cursor.close()
-        return rs
+        return recordlist
 
     def recordlist_nil(self, file, cache_size=1):
         """Return empty RecordList on file."""
         return RecordList(dbhome=self, dbset=file, cache_size=cache_size)
-    
+
     def unfile_records_under(self, file, field, key):
         """Delete the reference to records for index field[key].
 
@@ -1240,32 +1489,35 @@ class Database(_database.Database):
         is deleted.
 
         """
-        cursor = self.table[SUBFILE_DELIMITER.join((file, field))
-                            ][0].cursor(txn=self.dbtxn)
+        cursor = self.table[SUBFILE_DELIMITER.join((file, field))][0].cursor(
+            txn=self.dbtxn
+        )
         try:
 
             # Delete segment records.
-            r = cursor.set_range(key)
-            while r:
-                k, v = r
-                if k != key:
+            record = cursor.set_range(key)
+            while record:
+                record_key, value = record
+                if record_key != key:
                     break
-                if len(v) > SEGMENT_HEADER_LENGTH:
+                if len(value) > SEGMENT_HEADER_LENGTH:
                     self.segment_table[file].delete(
-                        int.from_bytes(v[SEGMENT_HEADER_LENGTH:],
-                                       byteorder='big'),
-                        txn=self.dbtxn)
+                        int.from_bytes(
+                            value[SEGMENT_HEADER_LENGTH:], byteorder="big"
+                        ),
+                        txn=self.dbtxn,
+                    )
 
                 # Delete segment references.
-                #cursor.delete()
+                # cursor.delete()
 
-                r = cursor.next()
+                record = cursor.next()
 
             # Delete segment references.
-            #try:
+            # try:
             #    self.table[SUBFILE_DELIMITER.join((file, field))
             #               ][0].delete(key, txn=self.dbtxn)
-            #except self._dbe.DBNotFoundError:
+            # except self._dbe.DBNotFoundError:
             #    pass
 
         finally:
@@ -1287,11 +1539,12 @@ class Database(_database.Database):
         # an exception.
         #
         try:
-            self.table[SUBFILE_DELIMITER.join((file, field))
-                       ][0].delete(key, txn=self.dbtxn)
+            self.table[SUBFILE_DELIMITER.join((file, field))][0].delete(
+                key, txn=self.dbtxn
+            )
         except self._dbe.DBNotFoundError:
             pass
-    
+
     def file_records_under(self, file, field, recordset, key):
         """Replace records for index field[key] with recordset records."""
         assert recordset.dbset == file
@@ -1300,76 +1553,98 @@ class Database(_database.Database):
         # Delete existing segments for key
         self.unfile_records_under(file, field, key)
 
-        cursor = self.table[SUBFILE_DELIMITER.join((file, field))
-                            ][0].cursor(txn=self.dbtxn)
+        cursor = self.table[SUBFILE_DELIMITER.join((file, field))][0].cursor(
+            txn=self.dbtxn
+        )
         try:
             recordset.normalize()
-            for sn in recordset.sorted_segnums:
-                if isinstance(recordset.rs_segments[sn], RecordsetSegmentInt):
+            for segment_number in recordset.sorted_segnums:
+                if isinstance(
+                    recordset.rs_segments[segment_number], RecordsetSegmentInt
+                ):
                     cursor.put(
                         key,
-                        b''.join(
-                            (sn.to_bytes(4, byteorder='big'),
-                             recordset.rs_segments[sn].tobytes(),
-                             )),
-                        self._dbe.DB_KEYLAST)
+                        b"".join(
+                            (
+                                segment_number.to_bytes(4, byteorder="big"),
+                                recordset.rs_segments[
+                                    segment_number
+                                ].tobytes(),
+                            )
+                        ),
+                        self._dbe.DB_KEYLAST,
+                    )
                 else:
-                    count = recordset.rs_segments[sn].count_records()
-                    sk = self.segment_table[file].append(
-                        recordset.rs_segments[sn].tobytes(), txn=self.dbtxn)
+                    count = recordset.rs_segments[
+                        segment_number
+                    ].count_records()
+                    segment_key = self.segment_table[file].append(
+                        recordset.rs_segments[segment_number].tobytes(),
+                        txn=self.dbtxn,
+                    )
                     cursor.put(
                         key,
-                        b''.join(
-                            (sn.to_bytes(4, byteorder='big'),
-                             count.to_bytes(2, byteorder='big'),
-                             sk.to_bytes(4, byteorder='big'))),
-                        self._dbe.DB_KEYLAST)
+                        b"".join(
+                            (
+                                segment_number.to_bytes(4, byteorder="big"),
+                                count.to_bytes(2, byteorder="big"),
+                                segment_key.to_bytes(4, byteorder="big"),
+                            )
+                        ),
+                        self._dbe.DB_KEYLAST,
+                    )
         finally:
             cursor.close()
 
     def database_cursor(self, file, field, keyrange=None):
         """Create and return a cursor on DB() for (file, field).
-        
+
         keyrange is an addition for DPT. It may yet be removed.
-        
+
         """
         assert file in self.specification
         if file == field:
-            return CursorPrimary(self.table[file][0],
-                                 keyrange=keyrange,
-                                 transaction=self.dbtxn,
-                                 ebm=self.ebm_control[file].ebm_table,
-                                 engine=self._dbe)
+            return CursorPrimary(
+                self.table[file][0],
+                keyrange=keyrange,
+                transaction=self.dbtxn,
+                ebm=self.ebm_control[file].ebm_table,
+                engine=self._dbe,
+            )
         return CursorSecondary(
             self.table[SUBFILE_DELIMITER.join((file, field))][0],
             keyrange=keyrange,
             transaction=self.dbtxn,
-            segment=self.segment_table[file])
+            segment=self.segment_table[file],
+        )
 
     def create_recordset_cursor(self, recordset):
         """Create and return a cursor for this recordset."""
-        return RecordsetCursor(recordset,
-                               transaction=self.dbtxn,
-                               database=self.table[recordset.dbset][0])
+        return RecordsetCursor(
+            recordset,
+            transaction=self.dbtxn,
+            database=self.table[recordset.dbset][0],
+        )
 
     # Comment in chess_ui for make_position_analysis_data_source method, only
     # call, suggests is_database_file_active should not be needed.
     def is_database_file_active(self, file):
         """Return True if the DB object for file exists."""
         return self.table[file][0] is not None
-    
+
     def get_table_connection(self, file):
         """Return main DB object for file."""
         if self.dbenv:
             return self.table[file][0]
+        return None
 
     def do_database_task(
         self,
         taskmethod,
         logwidget=None,
-        taskmethodargs={},
+        taskmethodargs=None,
         use_specification_items=None,
-        ):
+    ):
         """Run taskmethod to perform database task.
 
         This method is structured to be compatible with the requirements of
@@ -1405,19 +1680,21 @@ class Database(_database.Database):
                 super().__init__({}, folder, **k)
 
         """
-        #taskmethod(self, logwidget, **taskmethodargs)
+        # taskmethod(self, logwidget, **taskmethodargs)
         db = self.__class__(
             self.home_directory,
-            use_specification_items=use_specification_items)
+            use_specification_items=use_specification_items,
+        )
         db.open_database()
+        if taskmethodargs is None:
+            taskmethodargs = {}
         try:
             taskmethod(db, logwidget, **taskmethodargs)
         finally:
             db.close_database()
 
 
-class Cursor(cursor.Cursor):
-    
+class Cursor(_cursor.Cursor):
     """Define a cursor on the underlying database engine dbset.
 
     dbset - bsddb3 DB() object.
@@ -1444,7 +1721,7 @@ class Cursor(cursor.Cursor):
         self._transaction = transaction
         self._cursor = dbset.cursor(txn=transaction)
         self._current_segment = None
-        self._current_segment_number = None
+        self.current_segment_number = None
         self._current_record_number_in_segment = None
 
     def get_converted_partial(self):
@@ -1453,7 +1730,7 @@ class Cursor(cursor.Cursor):
 
     def get_partial_with_wildcard(self):
         """Return self._partial with wildcard suffix appended."""
-        raise DatabaseError('get_partial_with_wildcard not implemented')
+        raise DatabaseError("get_partial_with_wildcard not implemented")
 
     def get_converted_partial_with_wildcard(self):
         """Return converted self._partial with wildcard suffix appended."""
@@ -1467,29 +1744,29 @@ class Cursor(cursor.Cursor):
         could be inconsistent.
 
         """
-        pass
 
 
 class CursorPrimary(Cursor):
-    
     """Define a cursor on the underlying database engine dbset.
 
     dbset - bsddb3 DB() object.
     ebm - bsddb3 DB() object for existence bitmap.
     engine - bsddb3.db module.  Only the DB_FAST_STAT flag is used at present.
     kargs - superclass arguments and absorb arguments for other engines.
-    
+
     """
 
     def __init__(self, dbset, ebm=None, engine=None, **kargs):
+        """Extend, note existence bitmap table and engine."""
         super().__init__(dbset, **kargs)
         self._ebm = ebm
         self._engine = engine
 
     def count_records(self):
         """Return record count."""
-        return self._dbset.stat(flags=self._engine.DB_FAST_STAT,
-                                txn=self._transaction)['ndata']
+        return self._dbset.stat(
+            flags=self._engine.DB_FAST_STAT, txn=self._transaction
+        )["ndata"]
 
     def first(self):
         """Return first record taking partial key into account."""
@@ -1499,23 +1776,25 @@ class CursorPrimary(Cursor):
         """Return position of record in file or 0 (zero)."""
         if record is None:
             return 0
-        segment_number, record_number = divmod(record[0],
-                                        SegmentSize.db_segment_size)
+        segment_number, record_number = divmod(
+            record[0], SegmentSize.db_segment_size
+        )
         segment = self._ebm.get(segment_number + 1, txn=self._transaction)
         if segment is None:
             return 0
         position = 0
         for i in range(segment_number):
-            sebm = Bitarray()
-            sebm.frombytes(self._ebm.get(i + 1, txn=self._transaction))
-            position += sebm.count()
-        sebm = Bitarray()
-        sebm.frombytes(segment)
+            segment_ebm = Bitarray()
+            segment_ebm.frombytes(self._ebm.get(i + 1, txn=self._transaction))
+            position += segment_ebm.count()
+        segment_ebm = Bitarray()
+        segment_ebm.frombytes(segment)
         try:
-            position += sebm.search(SINGLEBIT).index(record_number)
+            position += segment_ebm.search(SINGLEBIT).index(record_number)
         except ValueError:
             position += bisect.bisect_left(
-                record_number, sebm.search(SINGLEBIT))
+                record_number, segment_ebm.search(SINGLEBIT)
+            )
         return position
 
     def get_record_at_position(self, position=None):
@@ -1524,38 +1803,40 @@ class CursorPrimary(Cursor):
             return None
         count = 0
         abspos = abs(position)
-        ebdc = self._ebm.cursor(txn=self._transaction)
+        ebm_cursor = self._ebm.cursor(txn=self._transaction)
         try:
             if position < 0:
-                r = ebdc.last()
-                while r:
-                    sebm = Bitarray()
-                    sebm.frombytes(r[1])
-                    sc = sebm.count()
-                    if count + sc < abspos:
-                        count += sc
-                        r = ebdc.prev()
+                record = ebm_cursor.last()
+                while record:
+                    segment_ebm = Bitarray()
+                    segment_ebm.frombytes(record[1])
+                    ebm_count = segment_ebm.count()
+                    if count + ebm_count < abspos:
+                        count += ebm_count
+                        record = ebm_cursor.prev()
                         continue
-                    recno = sebm.search(SINGLEBIT)[position + count] + (
-                        (r[0] - 1) * SegmentSize.db_segment_size)
-                    ebdc.close()
+                    recno = segment_ebm.search(SINGLEBIT)[position + count] + (
+                        (record[0] - 1) * SegmentSize.db_segment_size
+                    )
+                    # ebm_cursor.close()
                     return self._decode_record(self._cursor.set(recno))
             else:
-                r = ebdc.first()
-                while r:
-                    sebm = Bitarray()
-                    sebm.frombytes(r[1])
-                    sc = sebm.count()
-                    if count + sc < abspos:
-                        count += sc
-                        r = ebdc.next()
+                record = ebm_cursor.first()
+                while record:
+                    segment_ebm = Bitarray()
+                    segment_ebm.frombytes(record[1])
+                    ebm_count = segment_ebm.count()
+                    if count + ebm_count < abspos:
+                        count += ebm_count
+                        record = ebm_cursor.next()
                         continue
-                    recno = sebm.search(SINGLEBIT)[position - count] + (
-                        (r[0] - 1) * SegmentSize.db_segment_size)
-                    ebdc.close()
+                    recno = segment_ebm.search(SINGLEBIT)[position - count] + (
+                        (record[0] - 1) * SegmentSize.db_segment_size
+                    )
+                    # ebm_cursor.close()
                     return self._decode_record(self._cursor.set(recno))
         finally:
-            ebdc.close()
+            ebm_cursor.close()
         return None
 
     def last(self):
@@ -1578,7 +1859,7 @@ class CursorPrimary(Cursor):
         """Return current record after positioning cursor at record.
 
         Take partial key into account.
-        
+
         Words used in bsddb3 (Python) to describe set and set_both say
         (key, value) is returned while Berkeley DB description seems to
         say that value is returned by the corresponding C functions.
@@ -1591,8 +1872,8 @@ class CursorPrimary(Cursor):
     def _decode_record(self, record):
         """Return decoded (key, value) of record."""
         try:
-            k, v = record
-            return k, v.decode()
+            key, value = record
+            return key, value.decode()
         except:
             if record is None:
                 return record
@@ -1600,7 +1881,7 @@ class CursorPrimary(Cursor):
 
     def _get_record(self, record):
         """Return record matching key or partial key or None if no match."""
-        raise DatabaseError('_get_record not implemented')
+        raise DatabaseError("_get_record not implemented")
 
     def refresh_recordset(self, instance=None):
         """Refresh records for datagrid access after database update.
@@ -1608,20 +1889,20 @@ class CursorPrimary(Cursor):
         The bitmap for the record set may not match the existence bitmap.
 
         """
-        #raise DatabaseError('refresh_recordset not implemented')
+        # raise DatabaseError('refresh_recordset not implemented')
 
 
 class CursorSecondary(Cursor):
-    
     """Define a cursor on the underlying database engine dbset.
 
     dbset - bsddb3 DB() object.
     segment - bsddb3 DB() object for segment, list of record numbers or bitmap.
     kargs - superclass arguments and absorb arguments for other engines.
-    
+
     """
 
     def __init__(self, dbset, segment=None, **kargs):
+        """Extend, note segment table name."""
         super().__init__(dbset, **kargs)
         self._segment = segment
 
@@ -1629,114 +1910,107 @@ class CursorSecondary(Cursor):
         """Return record count."""
         if self.get_partial() in (None, False):
             count = 0
-            r = self._cursor.first()
-            while r:
-                if len(r[1]) > SEGMENT_HEADER_LENGTH:
-                    count += int.from_bytes(r[1][4:6], byteorder='big')
+            record = self._cursor.first()
+            while record:
+                if len(record[1]) > SEGMENT_HEADER_LENGTH:
+                    count += int.from_bytes(record[1][4:6], byteorder="big")
                 else:
                     count += 1
-                r = self._cursor.next()
+                record = self._cursor.next()
             return count
-        else:
-            count = 0
-            r = self._cursor.set_range(
-                self.get_converted_partial_with_wildcard())
-            while r:
-                if not r[0].startswith(self.get_converted_partial()):
-                    break
-                if len(r[1]) > SEGMENT_HEADER_LENGTH:
-                    count += int.from_bytes(r[1][4:6], byteorder='big')
-                else:
-                    count += 1
-                r = self._cursor.next()
-            return count
+        count = 0
+        record = self._cursor.set_range(
+            self.get_converted_partial_with_wildcard()
+        )
+        while record:
+            if not record[0].startswith(self.get_converted_partial()):
+                break
+            if len(record[1]) > SEGMENT_HEADER_LENGTH:
+                count += int.from_bytes(record[1][4:6], byteorder="big")
+            else:
+                count += 1
+            record = self._cursor.next()
+        return count
 
     def first(self):
         """Return first record taking partial key into account."""
         if self.get_partial() is None:
             try:
-                k, v = self._first()
+                key, value = self._first()
             except TypeError:
                 return None
-            return k.decode(), v
-        elif self.get_partial() is False:
+            return key.decode(), value
+        if self.get_partial() is False:
             return None
-        else:
-            record = self.nearest(self.get_converted_partial())
-            if record is not None:
-                if not record[0].startswith(self.get_partial()):
-                    return None
-            return record
+        record = self.nearest(self.get_converted_partial())
+        if record is not None:
+            if not record[0].startswith(self.get_partial()):
+                return None
+        return record
 
     def _get_segment(self, key, segment_number, reference):
         if len(reference) == SEGMENT_HEADER_LENGTH:
             return RecordsetSegmentInt(
-                segment_number,
-                key,
-                records=reference[4:])
-        if self._current_segment_number == segment_number:
-            if key == self._current_segment._key:
+                segment_number, key, records=reference[4:]
+            )
+        if self.current_segment_number == segment_number:
+            if key == self._current_segment.index_key:
                 return self._current_segment
-        bs = self._segment.get(
-            int.from_bytes(reference[SEGMENT_HEADER_LENGTH:],
-                           byteorder='big'),
-            txn=self._transaction)
-        if len(bs) < SegmentSize.db_segment_size_bytes:
-            return RecordsetSegmentList(
-                segment_number,
-                key,
-                records=bs)
-        return RecordsetSegmentBitarray(
-            segment_number,
-            key,
-            records=bs)
+        records = self._segment.get(
+            int.from_bytes(reference[SEGMENT_HEADER_LENGTH:], byteorder="big"),
+            txn=self._transaction,
+        )
+        if len(records) < SegmentSize.db_segment_size_bytes:
+            return RecordsetSegmentList(segment_number, key, records=records)
+        return RecordsetSegmentBitarray(segment_number, key, records=records)
 
     def get_position_of_record(self, record=None):
         """Return position of record in file or 0 (zero)."""
         if record is None:
             return 0
         key, value = record
-        segment_number, record_number = divmod(value,
-                                               SegmentSize.db_segment_size)
+        segment_number, record_number = divmod(
+            value, SegmentSize.db_segment_size
+        )
 
         # Define lambdas to handle presence or absence of partial key
-        low = lambda rk, recordkey: rk < recordkey
+        low = lambda jkey, recordkey: jkey < recordkey
         if not self.get_partial():
-            high = lambda rk, recordkey: rk > recordkey
+            high = lambda jkey, recordkey: jkey > recordkey
         else:
-            high = lambda rk, partial: not rk.startswith(partial)
+            high = lambda jkey, partial: not jkey.startswith(partial)
 
         # Get position of record relative to start point
         position = 0
         if not self.get_partial():
-            r = self._cursor.first()
+            j = self._cursor.first()
         else:
-            r = self._cursor.set_range(
-                self.get_converted_partial_with_wildcard())
-        while r:
-            if low(r[0].decode(), key):
-                if len(r[1]) > SEGMENT_HEADER_LENGTH:
-                    position += int.from_bytes(r[1][4:6], byteorder='big')
+            j = self._cursor.set_range(
+                self.get_converted_partial_with_wildcard()
+            )
+        while j:
+            if low(j[0].decode(), key):
+                if len(j[1]) > SEGMENT_HEADER_LENGTH:
+                    position += int.from_bytes(j[1][4:6], byteorder="big")
                 else:
                     position += 1
-            elif high(r[0].decode(), key):
+            elif high(j[0].decode(), key):
                 break
             else:
-                sr = int.from_bytes(r[1][:4], byteorder='big')
-                if sr < segment_number:
-                    if len(r[1]) > SEGMENT_HEADER_LENGTH:
-                        position += int.from_bytes(r[1][4:6], byteorder='big')
+                i = int.from_bytes(j[1][:4], byteorder="big")
+                if i < segment_number:
+                    if len(j[1]) > SEGMENT_HEADER_LENGTH:
+                        position += int.from_bytes(j[1][4:6], byteorder="big")
                     else:
                         position += 1
-                elif sr > segment_number:
+                elif i > segment_number:
                     break
                 else:
                     position += self._get_segment(
-                        key,
-                        segment_number,
-                        r[1]).get_position_of_record_number(record_number)
+                        key, segment_number, j[1]
+                    ).get_position_of_record_number(record_number)
                     break
-            r = self._cursor.next()
+            j = self._cursor.next()
         return position
 
     def get_record_at_position(self, position=None):
@@ -1763,88 +2037,88 @@ class CursorSecondary(Cursor):
             else:
                 start = lambda partial: self._first_partial(partial)
 
-        # Get record at position relative to start point
-        # r2 named for the way this is done in ._sqlite module.
+        # Get record at position relative to start point.
         count = 0
-        r = start(get_partial())
+        record = start(get_partial())
         if position < 0:
-            while r:
-                if len(r[1]) > SEGMENT_HEADER_LENGTH:
-                    r2 = int.from_bytes(r[1][4:6], byteorder='big')
+            while record:
+                if len(record[1]) > SEGMENT_HEADER_LENGTH:
+                    offset = int.from_bytes(record[1][4:6], byteorder="big")
                 else:
-                    r2 = 1
-                count -= r2
+                    offset = 1
+                count -= offset
                 if count > position:
-                    r = step()
+                    record = step()
                     continue
                 record_number = self._get_segment(
-                    r[0],
-                    int.from_bytes(r[1][:4], byteorder='big'),
-                    r[1]).get_record_number_at_position(position - count - r2)
+                    record[0],
+                    int.from_bytes(record[1][:4], byteorder="big"),
+                    record[1],
+                ).get_record_number_at_position(position - count - offset)
                 if record_number is not None:
-                    return r[0].decode(), record_number
+                    return record[0].decode(), record_number
                 break
         else:
-            while r:
-                if len(r[1]) > SEGMENT_HEADER_LENGTH:
-                    r2 = int.from_bytes(r[1][4:6], byteorder='big')
+            while record:
+                if len(record[1]) > SEGMENT_HEADER_LENGTH:
+                    offset = int.from_bytes(record[1][4:6], byteorder="big")
                 else:
-                    r2 = 1
-                count += r2
+                    offset = 1
+                count += offset
                 if count <= position:
-                    r = step()
+                    record = step()
                     continue
                 record_number = self._get_segment(
-                    r[0],
-                    int.from_bytes(r[1][:4], byteorder='big'),
-                    r[1]).get_record_number_at_position(position - count + r2)
+                    record[0],
+                    int.from_bytes(record[1][:4], byteorder="big"),
+                    record[1],
+                ).get_record_number_at_position(position - count + offset)
                 if record_number is not None:
-                    return r[0].decode(), record_number
+                    return record[0].decode(), record_number
                 break
 
     def last(self):
         """Return last record taking partial key into account."""
         if self.get_partial() is None:
             try:
-                k, v = self._last()
+                key, value = self._last()
             except TypeError:
                 return None
-            return k.decode(), v
-        elif self.get_partial() is False:
+            return key.decode(), value
+        if self.get_partial() is False:
             return None
-        else:
-            c = list(self.get_partial())
-            while True:
-                try:
-                    c[-1] = chr(ord(c[-1]) + 1)
-                except ValueError:
-                    c.pop()
-                    if not len(c):
-                        try:
-                            k, v = self._cursor.last()
-                        except TypeError:
-                            return None
-                        return k.decode(), v
-                    continue
-                self._set_range(''.join(c).encode())
-                try:
-                    k, v = self._prev()
-                except TypeError:
-                    return None
-                return k.decode(), v
+        chars = list(self.get_partial())
+        while True:
+            try:
+                chars[-1] = chr(ord(chars[-1]) + 1)
+            except ValueError:
+                chars.pop()
+                if not chars:
+                    try:
+                        key, value = self._cursor.last()
+                    except TypeError:
+                        return None
+                    return key.decode(), value
+                continue
+            self._set_range("".join(chars).encode())
+            try:
+                key, value = self._prev()
+            except TypeError:
+                return None
+            return key.decode(), value
 
     def nearest(self, key):
         """Return nearest record to key taking partial key into account."""
         if self.get_partial() is False:
             return None
         try:
-            k, v = self._set_range(key)
+            nearestkey, nearestvalue = self._set_range(key)
         except TypeError:
             return None
         if self.get_partial() is not None:
-            if not k.startswith(self.get_converted_partial()):
+            if not nearestkey.startswith(self.get_converted_partial()):
                 return None
-        return k.decode(), v
+        return nearestkey.decode(), nearestvalue
 
     def next(self):
         """Return next record taking partial key into account."""
@@ -1853,10 +2127,10 @@ class CursorSecondary(Cursor):
         if self.get_partial() is False:
             return None
         try:
-            k, v = self._next()
+            key, value = self._next()
         except TypeError:
             return None
-        return k.decode(), v
+        return key.decode(), value
 
     def prev(self):
         """Return previous record taking partial key into account."""
@@ -1865,16 +2139,16 @@ class CursorSecondary(Cursor):
         if self.get_partial() is False:
             return None
         try:
-            k, v = self._prev()
+            key, value = self._prev()
         except TypeError:
             return None
-        return k.decode(), v
+        return key.decode(), value
 
     def setat(self, record):
         """Return current record after positioning cursor at record.
 
         Take partial key into account.
-        
+
         Words used in bsddb3 (Python) to describe set and set_both say
         (key, value) is returned while Berkeley DB description seems to
         say that value is returned by the corresponding C functions.
@@ -1884,36 +2158,43 @@ class CursorSecondary(Cursor):
         """
         if self.get_partial() is False:
             return None
-        key, value = record
+        setkey, setvalue = record
         if self.get_partial() is not None:
-            if not key.startswith(self.get_partial()):
+            if not setkey.startswith(self.get_partial()):
                 return None
         try:
-            k, v = self._set_both(key.encode(), value)
+            key, value = self._set_both(setkey.encode(), setvalue)
         except TypeError:
             return None
-        return k.decode(), v
+        return key.decode(), value
 
     def set_partial_key(self, partial):
         """Set partial key and mark current segment as None."""
         self._partial = partial
         self._current_segment = None
-        self._current_segment_number = None
+        self.current_segment_number = None
 
     def _get_record(self, record):
-        raise DatabaseError('_get_record not implemented')
+        raise DatabaseError("_get_record not implemented")
 
     def set_current_segment(self, key, reference):
-        """Return a RecordsetSegmentBitarray, RecordsetSegmentInt, or
-        RecordsetSegmentList instance, depending on the current representation
-        of the segment on the database."""
-        segment_number = int.from_bytes(reference[:4], byteorder='big')
-        if self._current_segment_number == segment_number:
-            if key == self._current_segment._key:
+        """Return the recordset segment for key and reference.
+
+        The returned item is a RecordsetSegmentBitarray, RecordsetSegmentInt,
+        or RecordsetSegmentList instance, depending on the current
+        representation of the segment on the database.
+
+        reference is bytes containing segment number, count of records
+        in segment, and a key to access the segment record.
+
+        """
+        segment_number = int.from_bytes(reference[:4], byteorder="big")
+        if self.current_segment_number == segment_number:
+            if key == self._current_segment.index_key:
                 return self._current_segment
         segment = self._get_segment(key, segment_number, reference)
         self._current_segment = segment
-        self._current_segment_number = segment_number
+        self.current_segment_number = segment_number
         return segment
 
     def _first(self):
@@ -1938,8 +2219,7 @@ class CursorSecondary(Cursor):
                 if not record[0].startswith(self.get_converted_partial()):
                     return None
             return self.set_current_segment(*record).first()
-        else:
-            return record
+        return record
 
     def _prev(self):
         record = self._current_segment.prev()
@@ -1951,8 +2231,7 @@ class CursorSecondary(Cursor):
                 if not record[0].startswith(self.get_converted_partial()):
                     return None
             return self.set_current_segment(*record).last()
-        else:
-            return record
+        return record
 
     def _set_both(self, key, value):
         segment, record_number = divmod(value, SegmentSize.db_segment_size)
@@ -1962,7 +2241,7 @@ class CursorSecondary(Cursor):
             while record:
                 if record[0] != key:
                     return None
-                segment_number = int.from_bytes(record[1][:4], byteorder='big')
+                segment_number = int.from_bytes(record[1][:4], byteorder="big")
                 if segment_number > segment:
                     return None
                 if segment_number == segment:
@@ -1973,50 +2252,49 @@ class CursorSecondary(Cursor):
         finally:
             cursor.close()
         segment = self._get_segment(
-            key,
-            int.from_bytes(record[1][:4], byteorder='big'),
-            record[1])
+            key, int.from_bytes(record[1][:4], byteorder="big"), record[1]
+        )
         if segment.setat(value) is None:
             return None
         record = self._cursor.set_both(key, record[1])
         if record is None:
             return None
         self._current_segment = segment
-        self._current_segment_number = segment_number
+        self.current_segment_number = segment_number
         return key, value
 
     def _set_range(self, key):
         record = self._cursor.set_range(key)
         if record is None:
             self._current_segment = None
-            self._current_segment_number = None
+            self.current_segment_number = None
             self._current_record_number_in_segment = None
             return None
-        segment_number = int.from_bytes(record[1][:4], byteorder='big')
+        segment_number = int.from_bytes(record[1][:4], byteorder="big")
         segment = self._get_segment(record[0], segment_number, record[1])
         self._current_segment = segment
-        self._current_segment_number = segment_number
+        self.current_segment_number = segment_number
         return segment.first()
 
     def _first_partial(self, partial):
-        r = self._cursor.set_range(partial)
-        if r is None:
+        record = self._cursor.set_range(partial)
+        if record is None:
             return None
-        if not r[0].startswith(partial):
+        if not record[0].startswith(partial):
             return None
-        return r
+        return record
 
     def _last_partial(self, partial):
-        k = partial.encode()
-        record = self._cursor.set_range(k)
+        partial_key = partial.encode()
+        record = self._cursor.set_range(partial_key)
         while record is not None:
-            if not record[0].startswith(k):
+            if not record[0].startswith(partial_key):
                 break
             record = self._cursor.next_nodup()
         record = self._cursor.prev()
         if record is None:
             return None
-        if record[0].startswith(k):
+        if record[0].startswith(partial_key):
             return self.set_current_segment(*record).last()
 
     def refresh_recordset(self, instance=None):
@@ -2027,30 +2305,30 @@ class CursorSecondary(Cursor):
         """
         # See set_selection() hack in chesstab subclasses of DataGrid.
         # It seems not needed by this class.
-        
-        #raise DatabaseError('refresh_recordset not implemented')
+
+        # raise DatabaseError('refresh_recordset not implemented')
 
     def get_unique_primary_for_index_key(self, key):
         """Return the record number on primary table given key on index."""
-        r = self.nearest(key)
-        if not r:
+        record = self.nearest(key)
+        if not record:
             return None
-        if r[0].encode() != key:
+        if record[0].encode() != key:
             return None
-        nr = self.next()
-        if nr:
-            if r[0] == nr[0]:
-                raise DatabaseError('Index must refer to unique record')
-        return r[1]
+        next_record = self.next()
+        if next_record:
+            if record[0] == next_record[0]:
+                raise DatabaseError("Index must refer to unique record")
+        return record[1]
 
 
-class RecordsetCursor(RecordsetCursor):
-    
+class RecordsetCursor(_RecordsetCursor):
     """Add _get_record method and tranasction support to RecordsetCursor."""
 
     def __init__(self, recordset, transaction=None, database=None, **kargs):
-        """Note database and transaction identity and delegate recordset to
-        superclass.
+        """Delegate recordset to superclass.
+
+        Note database and transaction identity.
 
         kargs absorbs arguments relevant to other database engines.
 
@@ -2067,15 +2345,16 @@ class RecordsetCursor(RecordsetCursor):
         if use_cache:
             record = dbset.record_cache.get(record_number)
             if record is not None:
-                return record # maybe (record_number, record)
+                return record  # maybe (record_number, record)
         segment, recnum = divmod(record_number, SegmentSize.db_segment_size)
         if segment not in dbset.rs_segments:
-            return # maybe raise
+            return None  # maybe raise
         if recnum not in dbset.rs_segments[segment]:
-            return # maybe raise
+            return None  # maybe raise
         try:
-            record = self._database.get(record_number,
-                                        txn=self._transaction).decode()
+            record = self._database.get(
+                record_number, txn=self._transaction
+            ).decode()
         except AttributeError:
             # Assume get() returned None.
             record = None
@@ -2087,7 +2366,6 @@ class RecordsetCursor(RecordsetCursor):
 
 
 class ExistenceBitmapControl(_database.ExistenceBitmapControl):
-    
     """Access existence bit map for file in database.
 
     The dbe and create arguments are needed to open the Berkeley DB database
@@ -2095,28 +2373,35 @@ class ExistenceBitmapControl(_database.ExistenceBitmapControl):
     """
 
     def __init__(self, file, database, dbe, db_create):
-        """Note file whose existence bitmap is managed.
-        """
+        """Note file whose existence bitmap is managed."""
         super().__init__(file, database)
         self.ebm_table = dbe.DB(database.dbenv)
         try:
             self.ebm_table.set_re_pad(0)
-            self.ebm_table.set_re_len(
-                SegmentSize.db_segment_size_bytes)
+            self.ebm_table.set_re_len(SegmentSize.db_segment_size_bytes)
             dbname = SUBFILE_DELIMITER.join((file, EXISTENCE_BITMAP_SUFFIX))
             self.ebm_table.open(
                 database.file_name_for_database(dbname),
                 dbname=dbname,
                 dbtype=dbe.DB_RECNO,
                 flags=db_create,
-                txn=database.dbtxn)
+                txn=database.dbtxn,
+            )
             self._segment_count = self.ebm_table.stat(
-                flags=dbe.DB_FAST_STAT, txn=database.dbtxn)['ndata']
+                flags=dbe.DB_FAST_STAT, txn=database.dbtxn
+            )["ndata"]
         except:
             self.ebm_table = None
             raise
 
     def read_exists_segment(self, segment_number, dbtxn):
+        """Return existence bitmap for segment_number in database dbenv.
+
+        get_ebm_segment returns the record containing the existence bitmap,
+        read_exists_segment calls get_ebm_segment to get the bitmap record,
+        converts it to a bitmap, and then returns the bitmap.
+
+        """
         # Return existence bit map for segment_number.
         # record keys are 1-based but segment_numbers are 0-based.
         ebm = Bitarray()
@@ -2124,6 +2409,7 @@ class ExistenceBitmapControl(_database.ExistenceBitmapControl):
         return ebm
 
     def close(self):
+        """Close the table."""
         if self.ebm_table is not None:
             self.ebm_table.close()
             self.ebm_table = None

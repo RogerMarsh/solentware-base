@@ -2,8 +2,10 @@
 # Copyright (c) 2016 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""A record selection statement evaluator approximately equivalent to SQL
-Select statement where clause and DPT Find statement.
+"""Record selection statement evaluator.
+
+Approximately equivalent to SQL Select statement where clause, and DPT Find
+statement.
 
 The statement syntax is defined in where.py module docstring.
 
@@ -15,16 +17,15 @@ from . import where
 
 
 class FindError(Exception):
-    pass
+    """Exception for Find class."""
 
 
-class Find():
-
+class Find:
     """Selection statement evaluator for a Database instance primary table.
 
     The methods of the Database instance db are used to evaluate the request on
     the primary table named in dbset.
-    
+
     """
 
     def __init__(self, db, dbset, recordclass=None):
@@ -67,26 +68,33 @@ class Find():
             ((where.FROM, where.BELOW), False): self._from_below,
             ((where.ABOVE, where.TO), False): self._above_to,
             ((where.ABOVE, where.BELOW), False): self._above_below,
-            }
+        }
         self.boolean_operation = {
             where.AND: self._and,
             where.NOR: self._nor,
             where.OR: self._or,
-            }
-        
+        }
+
     @property
     def db(self):
+        """Retrun database to search."""
         return self._db
-        
+
     @property
     def dbset(self):
+        """Return table to search."""
         return self._dbset
-        
+
     def condition(self, obj):
-        """Set node's answer depending on condition (eg 'field eq value')."""
+        """Set obj.result.answer depending on obj.condition value."""
         if not self._db.exists(self._dbset, obj.field):
-            return None
-        if obj.condition in {where.IS, where.LIKE, where.STARTS, where.PRESENT}:
+            return
+        if obj.condition in {
+            where.IS,
+            where.LIKE,
+            where.STARTS,
+            where.PRESENT,
+        }:
             case = (obj.condition, None)
         elif obj.num is True:
             case = (obj.condition, False)
@@ -98,7 +106,7 @@ class Find():
         obj.result.answer = self.compare_field_value[case](obj)
         if bool(obj.not_condition) ^ bool(obj.not_phrase):
             obj.result.answer = self.get_existence() ^ obj.result.answer
-        
+
     def not_condition(self, obj):
         """Invert node's answer if not condition or not phrase specified.
 
@@ -107,7 +115,7 @@ class Find():
         """
         if bool(obj.not_condition) ^ bool(obj.not_phrase):
             obj.result.answer = self.get_existence() ^ obj.result.answer
-    
+
     def operator(self, obj):
         """Apply 'and', 'or', or 'nor', for obj to node and left node.
 
@@ -116,12 +124,12 @@ class Find():
         """
         obj.left.result.answer = self.boolean_operation[obj.operator](obj)
         obj.result = obj.left.result
-    
+
     def answer(self, obj):
-        """Set 'up node's answer to node's answer using node's 'not phrase'"""
+        """Set 'up node's answer to node's answer using node's 'not phrase'."""
         obj.up.result = obj.result
         self.not_condition(obj.up)
-    
+
     def initialize_answer(self, obj):
         """Initialise node's answer to an empty RecordList."""
         obj.result.answer = self._db.recordlist_nil(self._dbset)
@@ -129,19 +137,20 @@ class Find():
     def get_existence(self):
         """Return RecordList of all existing records."""
         return self._db.recordlist_ebm(self._dbset)
-    
+
     def get_record(self, recordset):
         """Yield each record from recordet."""
         # Support a single pass through recordset for index evaluation on data.
         instance = self._recordclass()
         for segment in recordset.rs_segments.values():
-            rp = segment.first()
-            while rp:
+            j = segment.first()
+            while j:
                 instance.load_record(
-                    self._db.get_primary_record(self._dbset, rp[1]))
-                yield rp[1], instance.value
-                rp = segment.next()
-        
+                    self._db.get_primary_record(self._dbset, j[1])
+                )
+                yield j[1], instance.value
+                j = segment.next()
+
     def non_index_condition(self, obj, record_number, record):
         """Evaluate a condition which cannot be done with indexes."""
         if obj.condition == where.IS:
@@ -161,21 +170,20 @@ class Find():
         # 'field is value' and 'field is not value' are allowed
         if obj.not_value:
             raise FindError("Attempt 'is' where 'is not' requested")
-        else:
-            return self._db.recordlist_key(
-                self._dbset,
-                obj.field,
-                key=self._db.encode_record_selector(obj.value))
+        return self._db.recordlist_key(
+            self._dbset,
+            obj.field,
+            key=self._db.encode_record_selector(obj.value),
+        )
 
     def _is_not(self, obj, record_number, record):
-        """Add record_number to obj answer if record has 'field is not value'.
-        """
+        """Add record_number to obj answer if record has 'field is not value'."""
         # 'field is value' and 'field is not value' are allowed
         if obj.not_value:
-            f = record.get_field_values(obj.field)
-            if f:
-                for v in f:
-                    if v != obj.value:
+            field_values = record.get_field_values(obj.field)
+            if field_values:
+                for value in field_values:
+                    if value != obj.value:
                         obj.result.answer.place_record_number(record_number)
                         break
         else:
@@ -186,22 +194,24 @@ class Find():
         return self._db.recordlist_key_like(
             self._dbset,
             obj.field,
-            keylike=self._db.encode_record_selector(obj.value))
+            keylike=self._db.encode_record_selector(obj.value),
+        )
 
     def _starts_by_index(self, obj):
         """Return RecordList for 'field starts value' condition."""
         return self._db.recordlist_key_startswith(
             self._dbset,
             obj.field,
-            keystart=self._db.encode_record_selector(obj.value))
+            keystart=self._db.encode_record_selector(obj.value),
+        )
 
     def _like(self, obj, record_number, record):
         """Add record_number to obj answer if record has 'field like value'."""
-        f = record.get_field_values(obj.field)
-        if f:
-            for v in f:
+        field_values = record.get_field_values(obj.field)
+        if field_values:
+            for value in field_values:
                 try:
-                    if re.search(obj.value, v):
+                    if re.search(obj.value, value):
                         obj.result.answer.place_record_number(record_number)
                         break
                 except:
@@ -209,10 +219,10 @@ class Find():
 
     def _starts(self, obj, record_number, record):
         """Add record_number to obj answer if 'field starts value'."""
-        f = record.get_field_values(obj.field)
-        if f:
-            for v in f:
-                if v.startswith(obj.value):
+        field_values = record.get_field_values(obj.field)
+        if field_values:
+            for value in field_values:
+                if value.startswith(obj.value):
                     obj.result.answer.place_record_number(record_number)
                     break
 
@@ -226,14 +236,15 @@ class Find():
         return self._db.recordlist_key(
             self._dbset,
             obj.field,
-            key=self._db.encode_record_selector(obj.value))
+            key=self._db.encode_record_selector(obj.value),
+        )
 
     def _ne(self, obj, record_number, record):
         """Add record_number to obj answer if record has 'field ne value'."""
-        f = record.get_field_values(obj.field)
-        if f:
-            for v in f:
-                if v != obj.value:
+        field_values = record.get_field_values(obj.field)
+        if field_values:
+            for value in field_values:
+                if value != obj.value:
                     obj.result.answer.place_record_number(record_number)
                     break
 
@@ -242,42 +253,48 @@ class Find():
         return self._db.recordlist_key_range(
             self._dbset,
             obj.field,
-            gt=self._db.encode_record_selector(obj.value))
+            gt=self._db.encode_record_selector(obj.value),
+        )
 
     def _lt(self, obj):
         """Return RecordList for 'field lt value' condition."""
         return self._db.recordlist_key_range(
             self._dbset,
             obj.field,
-            lt=self._db.encode_record_selector(obj.value))
+            lt=self._db.encode_record_selector(obj.value),
+        )
 
     def _le(self, obj):
         """Return RecordList for 'field le value' condition."""
         return self._db.recordlist_key_range(
             self._dbset,
             obj.field,
-            le=self._db.encode_record_selector(obj.value))
+            le=self._db.encode_record_selector(obj.value),
+        )
 
     def _ge(self, obj):
         """Return RecordList for 'field ge value' condition."""
         return self._db.recordlist_key_range(
             self._dbset,
             obj.field,
-            ge=self._db.encode_record_selector(obj.value))
+            ge=self._db.encode_record_selector(obj.value),
+        )
 
     def _before(self, obj):
         """Return RecordList for 'field before value' condition."""
         return self._db.recordlist_key_range(
             self._dbset,
             obj.field,
-            lt=self._db.encode_record_selector(obj.value))
+            lt=self._db.encode_record_selector(obj.value),
+        )
 
     def _after(self, obj):
         """Return RecordList for 'field after value' condition."""
         return self._db.recordlist_key_range(
             self._dbset,
             obj.field,
-            gt=self._db.encode_record_selector(obj.value))
+            gt=self._db.encode_record_selector(obj.value),
+        )
 
     def _from_to(self, obj):
         """Return RecordList for 'field from value1 to value2' condition."""
@@ -285,7 +302,8 @@ class Find():
             self._dbset,
             obj.field,
             ge=self._db.encode_record_selector(obj.value[0]),
-            le=self._db.encode_record_selector(obj.value[1]))
+            le=self._db.encode_record_selector(obj.value[1]),
+        )
 
     def _from_below(self, obj):
         """Return RecordList for 'field from value1 below value2' condition."""
@@ -293,7 +311,8 @@ class Find():
             self._dbset,
             obj.field,
             ge=self._db.encode_record_selector(obj.value[0]),
-            lt=self._db.encode_record_selector(obj.value[1]))
+            lt=self._db.encode_record_selector(obj.value[1]),
+        )
 
     def _above_to(self, obj):
         """Return RecordList for 'field above value1 to value2' condition."""
@@ -301,7 +320,8 @@ class Find():
             self._dbset,
             obj.field,
             gt=self._db.encode_record_selector(obj.value[0]),
-            le=self._db.encode_record_selector(obj.value[1]))
+            le=self._db.encode_record_selector(obj.value[1]),
+        )
 
     def _above_below(self, obj):
         """Return RecordList for 'field above value1 below value2' condition."""
@@ -309,8 +329,10 @@ class Find():
             self._dbset,
             obj.field,
             gt=self._db.encode_record_selector(obj.value[0]),
-            lt=self._db.encode_record_selector(obj.value[1]))
+            lt=self._db.encode_record_selector(obj.value[1]),
+        )
 
+    # This is wrong not to mention 'self', surely?
     def _and(self, obj):
         """Return this node's answer 'and'ed with left node's answer."""
         return obj.left.result.answer & obj.result.answer
@@ -318,8 +340,10 @@ class Find():
     def _nor(self, obj):
         """Return 'not' this node's answer 'and'ed with left node's answer."""
         return obj.left.result.answer & (
-            self.get_existence() ^ obj.result.answer)
+            self.get_existence() ^ obj.result.answer
+        )
 
+    # This is wrong not to mention 'self', surely?
     def _or(self, obj):
         """Return this node's answer 'or'ed with left node's answer."""
         return obj.left.result.answer | obj.result.answer

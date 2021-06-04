@@ -2,18 +2,13 @@
 # Copyright (c) 2017 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""The SegmentSize class defines constants fixing the segment size for Berkeley
-DB and Sqlite databases, and some constants controlling their use.
+"""Define default values for segment size constants.
 
-The default segment size is 32768 but 65536 is supported too.
-
-The original 65536 size segment more easily leads to memory problems: in
-particular Microsoft Windows with only 2Gb, and OpenBSD where a standard user
-process has a memory quota of 512Mb.
+The default segment size is 32768 but sizes between 4000 and 65536 are
+supported too.
 
 The propeties implementing the constants are listed here.  (Last thing in
-module is SegmentSize = SegmentSize() which causes pydoc to ignore the class
-definition.)
+module is SegmentSize = SegmentSize() because only one instance is useful.)
 
 db_segment_size_bytes
 segment_sort_scale
@@ -43,13 +38,14 @@ class SegmentSize:
 
     For both conversion limits 'conversion limit * byte size of record number'
     is less than segment size bytes.
-    
+
     Normalization converts a list with more than 'upper' records to a bitmap.
     Normalization converts a bitmap with less than 'lower' records to a list.
-    
+
     """
+
     def __init__(self):
-        """"""
+        """Set defaults for segment_size_bytes and segment_sort_scale."""
         self.db_segment_size_bytes = 4096
 
         # 30000 is chosen because reading 1000 key-value pairs from a segment
@@ -59,13 +55,13 @@ class SegmentSize:
 
     @property
     def db_segment_size_bytes(self):
-        """The byte size of a segment.
+        """Return byte size of a segment.
 
         By default 4096, or a value set between 500 and 8192, or 16 intended
         for testing.  The sibling database engine modules use the value set in
         constants.DEFAULT_SEGMENT_SIZE_BYTES (4000) as the default and call the
         setter as part of their initialisation to make it so.
-        
+
         """
         return self._db_segment_size_bytes
 
@@ -85,29 +81,37 @@ class SegmentSize:
         if isinstance(value, int):
             if value > 4096:
                 self._db_segment_size_bytes = min(
-                    self.db_segment_size_bytes_maximum, value)
+                    self.db_segment_size_bytes_maximum, value
+                )
                 self._db_upper_conversion_limit = (
-                    self._db_segment_size_bytes // 2 - 96)
+                    self._db_segment_size_bytes // 2 - 96
+                )
                 self._db_lower_conversion_limit = (
-                    self._db_upper_conversion_limit - 100)
+                    self._db_upper_conversion_limit - 100
+                )
             else:
                 self._db_segment_size_bytes = max(
-                    self.db_segment_size_bytes_minimum, value)
+                    self.db_segment_size_bytes_minimum, value
+                )
                 self._db_upper_conversion_limit = (
-                    self._db_segment_size_bytes // 2 - 48)
+                    self._db_segment_size_bytes // 2 - 48
+                )
                 self._db_lower_conversion_limit = (
-                    self._db_upper_conversion_limit - 50)
+                    self._db_upper_conversion_limit - 50
+                )
         else:
             self._db_segment_size_bytes = 16
             self._db_upper_conversion_limit = 7
             self._db_lower_conversion_limit = 4
         self._db_segment_size = self._db_segment_size_bytes * 8
         self._db_top_record_number_in_segment = self._db_segment_size - 1
-        self._empty_bitarray_bytes = b'\x00' * self._db_segment_size_bytes
+        self._empty_bitarray_bytes = b"\x00" * self._db_segment_size_bytes
         if bytebit.SINGLEBIT is True:
             self._empty_bitarray = bytebit.Bitarray(self._db_segment_size)
         else:
-            self._empty_bitarray = bytebit.Bitarray('0') * self._db_segment_size
+            self._empty_bitarray = (
+                bytebit.Bitarray("0") * self._db_segment_size
+            )
 
     @property
     def db_segment_size_bytes_maximum(self):
@@ -121,23 +125,40 @@ class SegmentSize:
 
     @property
     def segment_sort_scale(self):
-        """"""
+        """Return scaling factor for deferred updates.
+
+        After segment_sort_scale index entries have been added in
+        deferred update mode, the deferred index updates for those
+        records are done.
+
+        Value is chosen by application to limit the size of a deferred
+        update.  The number of index entries created per record and
+        available memory (for sorting index values) are the important
+        factors.
+
+        Deferred updates are a lot slower if the segment_sort_scale
+        limit for index entries is reached by less than segment_size
+        records.
+
+        """
         return self._segment_sort_scale
 
     @property
     def db_segment_size(self):
-        """The record number size of a segment.
+        """Return number of records represented in a segment.
 
-        Either 32768, the default, or 65536.
+        The record numbers are a range, the same in all segments.
+
+        Default is 32768.
 
         """
         return self._db_segment_size
 
     @property
     def db_top_record_number_in_segment(self):
-        """The high record number in each segment.
+        """Return high record number in a segment.
 
-        Either 32767, the default, or 65535.
+        Default is 32767.
 
         Most database engines count records from 1, so record number 0 in
         segment 0 in their databases is never used.
@@ -147,37 +168,41 @@ class SegmentSize:
 
     @property
     def db_upper_conversion_limit(self):
-        """The number of records in a segment which causes conversion of lists
+        """Return record count at which list is converted to bitarray.
+
+        The number of records in a segment which causes conversion of lists
         to bitmaps when reached by addition of a record to the segment.
 
-        Either 2000, the default, or 4000.
+        Default is 2000.
 
         """
         return self._db_upper_conversion_limit
 
     @property
     def db_lower_conversion_limit(self):
-        """The number of records in a segment which causes conversion of
+        """Return record count at which bitarray is converted to list.
+
+        The number of records in a segment which causes conversion of
         bitmaps to lists when reached by deletion of a record from the
         segment.
 
-        Either 1950, the default, or 3900.
+        Default is 1950.
 
         """
         return self._db_lower_conversion_limit
 
     @property
     def empty_bitarray_bytes(self):
-        """A segment sized bytes object with all bytes set to 0."""
+        """Return segment sized bytes object with all bytes set to 0."""
         return self._empty_bitarray_bytes
 
     @property
     def empty_bitarray(self):
-        """A segment sized bitarray object with all bits set to 0."""
+        """Return segment sized bitarray object with all bits set to 0."""
         return self._empty_bitarray
 
 
 SegmentSize = SegmentSize()
 
 # Hack: all databases are still 65536 record number segments.
-#SegmentSize.db_segment_size_bytes = 8192
+# SegmentSize.db_segment_size_bytes = 8192

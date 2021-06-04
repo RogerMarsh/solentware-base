@@ -2,8 +2,7 @@
 # Copyright 2013 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""A Recordset class using bitarrays and lists to represent sets of
-records.
+"""Classes that use bitarrays, lists, or ints, to represent sets of records.
 
 Follows the example of DPT's record sets (www.dptoolkit.com).
 
@@ -19,17 +18,16 @@ from . import cursor
 
 
 class RecordsetError(Exception):
-    pass
+    """Exception for classes in recordset module."""
 
 
 class RecordsetSegmentInt:
-    
-    """Segment for record number interval with one record.
-    """
+    """Segment for record number interval with one record."""
+
     # The refresh_recordset may be relevent in this class
 
     # Should records argument be like the RecordsetSegmentBitarray version?
-    def __init__(self, segment_number, key, records=b''):
+    def __init__(self, segment_number, key, records=b""):
         """Create segment for key for records (one record) in segment number.
 
         records is segment_record_number.to_bytes(n, byteorder='big') where
@@ -38,15 +36,10 @@ class RecordsetSegmentInt:
 
         """
         super().__init__()
-        self._record_number = int.from_bytes(records, byteorder='big')
-        self._key = key
-        self._segment_number = segment_number
-        self._current_position_in_segment = None
-
-    @property
-    def segment_number(self):
-        """Return the segment number of the segment (zero-based)."""
-        return self._segment_number
+        self.record_number = int.from_bytes(records, byteorder="big")
+        self.index_key = key
+        self.segment_number = segment_number
+        self.current_position_in_segment = None
 
     def count_records(self):
         """Return record count in segment."""
@@ -54,89 +47,95 @@ class RecordsetSegmentInt:
 
     def current(self):
         """Return current record in segment."""
-        if self._current_position_in_segment is not None:
+        if self.current_position_in_segment is not None:
             return (
-                self._key,
-                self._record_number + (self._segment_number *
-                                       SegmentSize.db_segment_size))
-        else:
-            return None
+                self.index_key,
+                self.record_number
+                + (self.segment_number * SegmentSize.db_segment_size),
+            )
+        return None
 
     def first(self):
         """Return first record in segment."""
-        if self._current_position_in_segment is None:
-            self._current_position_in_segment = 0
+        if self.current_position_in_segment is None:
+            self.current_position_in_segment = 0
         return (
-            self._key,
-            self._record_number + (self._segment_number *
-                                   SegmentSize.db_segment_size))
+            self.index_key,
+            self.record_number
+            + (self.segment_number * SegmentSize.db_segment_size),
+        )
 
     def get_position_of_record_number(self, recnum):
         """Return position of recnum in segment counting records that exist."""
-        return 0 if recnum < self._record_number else 1
+        return 0 if recnum < self.record_number else 1
 
     def get_record_number_at_position(self, position):
         """Return record number at position from start or end of segment."""
         if position in (0, -1):
-            return self._record_number + (self._segment_number *
-                                          SegmentSize.db_segment_size)
+            return self.record_number + (
+                self.segment_number * SegmentSize.db_segment_size
+            )
+        return None
 
     def last(self):
         """Return last record in segment."""
-        if self._current_position_in_segment is None:
-            self._current_position_in_segment = 0
+        if self.current_position_in_segment is None:
+            self.current_position_in_segment = 0
         return (
-            self._key,
-            self._record_number + (self._segment_number *
-                                   SegmentSize.db_segment_size))
+            self.index_key,
+            self.record_number
+            + (self.segment_number * SegmentSize.db_segment_size),
+        )
 
     def next(self):
         """Return next record in segment."""
-        if self._current_position_in_segment is None:
+        if self.current_position_in_segment is None:
             return self.first()
-        else:
-            return None
+        return None
 
     def prev(self):
         """Return previous record in segment."""
-        if self._current_position_in_segment is None:
+        if self.current_position_in_segment is None:
             return self.last()
-        else:
-            return None
+        return None
 
     def setat(self, record):
         """Return current record after positioning cursor at record."""
-        if record == (self._record_number +
-                      (self._segment_number * SegmentSize.db_segment_size)):
-            self._current_position_in_segment = 0
-            return (self._key, record)
-        else:
-            return None
+        if record == (
+            self.record_number
+            + (self.segment_number * SegmentSize.db_segment_size)
+        ):
+            self.current_position_in_segment = 0
+            return (self.index_key, record)
+        return None
 
     def _empty_segment(self):
         """Create and return an empty instance of RecordsetSegmentInt."""
-        class E(RecordsetSegmentInt):
+
+        class _E(RecordsetSegmentInt):
             def __init__(self):
+                # Do nothing.
                 pass
-        e = E()
-        e.__class__ = RecordsetSegmentInt
-        return e
+
+        k = _E()
+        k.__class__ = RecordsetSegmentInt
+        return k
 
     def __deepcopy__(self, memo):
         """Return a customized copy of self."""
-        sc = self._empty_segment()
+        segment = self._empty_segment()
         # deepcopy the object representing the records in the segment
-        sc._record_number = deepcopy(self._record_number, memo)
+        segment.record_number = deepcopy(self.record_number, memo)
         # bind the immutable attributes
-        sc._key = self._key
-        sc._segment_number = self._segment_number
+        segment.index_key = self.index_key
+        segment.segment_number = self.segment_number
         # the copy forgets the current position in segment
-        sc._current_position_in_segment = None
-        return sc
+        segment.current_position_in_segment = None
+        return segment
 
     def __contains__(self, relative_record_number):
         """Return True if relative record number is in self, else False."""
-        return bool(relative_record_number == self._record_number)
+        return bool(relative_record_number == self.record_number)
 
     def normalize(self, use_upper_limit=True):
         """Return version of self appropriate to record count of self.
@@ -148,43 +147,52 @@ class RecordsetSegmentInt:
 
     def promote(self):
         """Return RecordsetSegmentBitarray version of self."""
-        sb = RecordsetSegmentBitarray(
-            self._segment_number, self._key, SegmentSize.empty_bitarray_bytes)
-        sb._bitarray[self._record_number] = True
-        return sb
+        segment = RecordsetSegmentBitarray(
+            self.segment_number,
+            self.index_key,
+            SegmentSize.empty_bitarray_bytes,
+        )
+        segment.bitarray[self.record_number] = True
+        return segment
 
     def __or__(self, other):
         """Return new segment of self records with other records included."""
-        if self._segment_number != other._segment_number:
+        if self.segment_number != other.segment_number:
             raise RecordsetError(
-                "Attempt to 'or' segments with different segment numbers")
+                "Attempt to 'or' segments with different segment numbers"
+            )
         return self.promote() | other.promote()
 
     def __and__(self, other):
         """Return new segment of records in both self and other segments."""
-        if self._segment_number != other._segment_number:
+        if self.segment_number != other.segment_number:
             raise RecordsetError(
-                "Attempt to 'and' segments with different segment numbers")
+                "Attempt to 'and' segments with different segment numbers"
+            )
         return self.promote() & other.promote()
 
     def __xor__(self, other):
         """Return new segment of self records with other records included."""
-        if self._segment_number != other._segment_number:
+        if self.segment_number != other.segment_number:
             raise RecordsetError(
-                "Attempt to 'xor' segments with different segment numbers")
+                "Attempt to 'xor' segments with different segment numbers"
+            )
         return self.promote() ^ other.promote()
 
     def tobytes(self):
-        """Return self._record_number as bytes."""
-        return self._record_number.to_bytes(2, byteorder='big')
+        """Return self.record_number as bytes."""
+        return self.record_number.to_bytes(2, byteorder="big")
 
 
 class RecordsetSegmentBitarray:
-    
-    """Segment for record number interval with over db_upper_conversion_limit
+    """Bitarray of record numbers in a segment.
+
+    Segment for record number interval with over db_upper_conversion_limit
     records.  Note that a segment which is losing records remains a bitmap
     until db_lower_conversion_limit records are in segment.
+
     """
+
     # The refresh_recordset may be relevent in this class
 
     def __init__(self, segment_number, key, records=None):
@@ -201,46 +209,42 @@ class RecordsetSegmentBitarray:
         super().__init__()
         if records is None:
             records = SegmentSize.empty_bitarray_bytes
-        self._bitarray = Bitarray()
-        self._bitarray.frombytes(records)
-        self._key = key
-        self._segment_number = segment_number
-        self._current_position_in_segment = None
+        self.bitarray = Bitarray()
+        self.bitarray.frombytes(records)
+        self.index_key = key
+        self.segment_number = segment_number
+        self.current_position_in_segment = None
         self._reversed = None
-
-    @property
-    def segment_number(self):
-        """Return the segment number of the segment (zero-based)."""
-        return self._segment_number
 
     def count_records(self):
         """Return record count in segment."""
-        return self._bitarray.count()
+        return self.bitarray.count()
 
     def current(self):
         """Return current record in segment."""
-        if self._current_position_in_segment is not None:
+        if self.current_position_in_segment is not None:
             return (
-                self._key,
-                self._current_position_in_segment +
-                (self._segment_number * SegmentSize.db_segment_size))
-        else:
-            return None
+                self.index_key,
+                self.current_position_in_segment
+                + (self.segment_number * SegmentSize.db_segment_size),
+            )
+        return None
 
     def first(self):
         """Return first record in segment."""
         try:
-            self._current_position_in_segment = self._bitarray.index(True, 0)
+            self.current_position_in_segment = self.bitarray.index(True, 0)
             return (
-                self._key,
-                self._current_position_in_segment +
-                (self._segment_number * SegmentSize.db_segment_size))
+                self.index_key,
+                self.current_position_in_segment
+                + (self.segment_number * SegmentSize.db_segment_size),
+            )
         except ValueError:
             return None
 
     def get_position_of_record_number(self, recnum):
         """Return position of recnum in segment counting records that exist."""
-        return bisect_left(self._bitarray.search(SINGLEBIT), recnum)
+        return bisect_left(self.bitarray.search(SINGLEBIT), recnum)
 
     def get_record_number_at_position(self, position):
         """Return record number at position in segment.
@@ -250,76 +254,81 @@ class RecordsetSegmentBitarray:
 
         """
         try:
-            record = self._bitarray.search(SINGLEBIT)[position]
-            return (record + (self._segment_number *
-                              SegmentSize.db_segment_size))
+            record = self.bitarray.search(SINGLEBIT)[position]
+            return record + (self.segment_number * SegmentSize.db_segment_size)
         except IndexError:
             return None
 
     def last(self):
         """Return last record in segment."""
         if self._reversed is None:
-            self._reversed = self._bitarray.copy()
+            self._reversed = self.bitarray.copy()
             self._reversed.reverse()
         try:
             rcpis = self._reversed.index(True, 0)
-            self._current_position_in_segment = (
-                SegmentSize.db_segment_size - rcpis - 1)
+            self.current_position_in_segment = (
+                SegmentSize.db_segment_size - rcpis - 1
+            )
             return (
-                self._key,
-                self._current_position_in_segment +
-                (self._segment_number * SegmentSize.db_segment_size))
+                self.index_key,
+                self.current_position_in_segment
+                + (self.segment_number * SegmentSize.db_segment_size),
+            )
         except ValueError:
             return None
 
     def next(self):
         """Return next record in segment."""
-        if self._current_position_in_segment is None:
+        if self.current_position_in_segment is None:
             return self.first()
         try:
-            self._current_position_in_segment = self._bitarray.index(
+            self.current_position_in_segment = self.bitarray.index(
                 True,
-                self._current_position_in_segment + 1,
-                SegmentSize.db_segment_size - 1)
+                self.current_position_in_segment + 1,
+                SegmentSize.db_segment_size - 1,
+            )
             return (
-                self._key,
-                self._current_position_in_segment +
-                (self._segment_number * SegmentSize.db_segment_size))
+                self.index_key,
+                self.current_position_in_segment
+                + (self.segment_number * SegmentSize.db_segment_size),
+            )
         except ValueError:
             return None
 
     def prev(self):
         """Return previous record in segment."""
-        if self._current_position_in_segment is None:
+        if self.current_position_in_segment is None:
             return self.last()
         if self._reversed is None:
-            self._reversed = self._bitarray.copy()
+            self._reversed = self.bitarray.copy()
             self._reversed.reverse()
         try:
             rcpis = (
-                SegmentSize.db_segment_size - self._current_position_in_segment)
+                SegmentSize.db_segment_size - self.current_position_in_segment
+            )
             rcpis = self._reversed.index(
-                True,
-                rcpis,
-                SegmentSize.db_segment_size - 1)
-            self._current_position_in_segment = (
-                SegmentSize.db_segment_size - rcpis - 1)
+                True, rcpis, SegmentSize.db_segment_size - 1
+            )
+            self.current_position_in_segment = (
+                SegmentSize.db_segment_size - rcpis - 1
+            )
             return (
-                self._key,
-                self._current_position_in_segment +
-                (self._segment_number * SegmentSize.db_segment_size))
+                self.index_key,
+                self.current_position_in_segment
+                + (self.segment_number * SegmentSize.db_segment_size),
+            )
         except ValueError:
             return None
 
     def setat(self, record):
         """Return current record after positioning cursor at record."""
-        segment, record_in_segment = divmod(record, SegmentSize.db_segment_size)
-        if (self._bitarray[record_in_segment] and
-            self._segment_number == segment):
-            self._current_position_in_segment = record_in_segment
-            return (self._key, record)
-        else:
-            return None
+        segment, record_in_segment = divmod(
+            record, SegmentSize.db_segment_size
+        )
+        if self.bitarray[record_in_segment] and self.segment_number == segment:
+            self.current_position_in_segment = record_in_segment
+            return (self.index_key, record)
+        return None
 
     def normalize(self, use_upper_limit=True):
         """Return version of self appropriate to record count of self.
@@ -331,26 +340,27 @@ class RecordsetSegmentBitarray:
         conversion point.
 
         """
-        c = self._bitarray.count()
-        if c > SegmentSize.db_upper_conversion_limit:
+        k = self.bitarray.count()
+        if k > SegmentSize.db_upper_conversion_limit:
             return self
         if use_upper_limit:
             limit = SegmentSize.db_upper_conversion_limit
         else:
             limit = SegmentSize.db_lower_conversion_limit
-        if c > limit:
+        if k > limit:
             return self
-        elif c == 1:
+        if k == 1:
             return RecordsetSegmentInt(
-                self._segment_number,
-                self._key,
-                records=self._bitarray.search(
-                    SINGLEBIT)[0].to_bytes(2, byteorder='big'))
-        else:
-            # RecordsetSegmentInt style, above, may be better here.
-            sl = RecordsetSegmentList(self._segment_number, self._key)
-            sl._list.extend(self._bitarray.search(SINGLEBIT))
-            return sl
+                self.segment_number,
+                self.index_key,
+                records=self.bitarray.search(SINGLEBIT)[0].to_bytes(
+                    2, byteorder="big"
+                ),
+            )
+        # RecordsetSegmentInt style, above, may be better here.
+        j = RecordsetSegmentList(self.segment_number, self.index_key)
+        j.list.extend(self.bitarray.search(SINGLEBIT))
+        return j
 
     def promote(self):
         """Return RecordsetSegmentBitarray version of self."""
@@ -358,109 +368,126 @@ class RecordsetSegmentBitarray:
 
     def _empty_segment(self):
         """Create and return an empty instance of RecordsetSegmentBitarray."""
-        class E(RecordsetSegmentBitarray):
+
+        class _E(RecordsetSegmentBitarray):
             def __init__(self):
+                # Do nothing.
                 pass
-        e = E()
-        e.__class__ = RecordsetSegmentBitarray
-        return e
+
+        k = _E()
+        k.__class__ = RecordsetSegmentBitarray
+        return k
 
     def __deepcopy__(self, memo):
         """Return a customized copy of self."""
-        sc = self._empty_segment()
+        segment = self._empty_segment()
         # deepcopy the object representing the records in the segment
-        sc._bitarray = deepcopy(self._bitarray, memo)
+        segment.bitarray = deepcopy(self.bitarray, memo)
         # bind the immutable attributes
-        sc._key = self._key
-        sc._segment_number = self._segment_number
+        segment.index_key = self.index_key
+        segment.segment_number = self.segment_number
         # the copy forgets the current position in segment
-        sc._current_position_in_segment = None
+        segment.current_position_in_segment = None
         # the copy makes its own reverse when needed
         # the original may be wrong when copy used in boolean operations
-        sc._reversed = None
-        return sc
+        segment._reversed = None
+        return segment
 
     def __contains__(self, relative_record_number):
         """Return True if relative record number is in self, else False."""
-        return self._bitarray[relative_record_number]
+        return self.bitarray[relative_record_number]
 
     def __or__(self, other):
         """Return new segment of self records with other records included."""
-        if self._segment_number != other._segment_number:
+        if self.segment_number != other.segment_number:
             raise RecordsetError(
-                "Attempt to 'or' segments with different segment numbers")
-        sb = deepcopy(self)
-        sb._bitarray |= other.promote()._bitarray
-        return sb
+                "Attempt to 'or' segments with different segment numbers"
+            )
+        segment = deepcopy(self)
+        segment.bitarray |= other.promote().bitarray
+        return segment
 
     def __ior__(self, other):
         """Include records in other segment in self segment."""
-        if self._segment_number != other._segment_number:
+        if self.segment_number != other.segment_number:
             raise RecordsetError(
-                "Attempt to 'ior' segments with different segment numbers")
-        self._bitarray |= other.promote()._bitarray
+                "Attempt to 'ior' segments with different segment numbers"
+            )
+        self.bitarray |= other.promote().bitarray
         return self
 
     def __and__(self, other):
         """Return new segment of records in both self and other segments."""
-        if self._segment_number != other._segment_number:
+        if self.segment_number != other.segment_number:
             raise RecordsetError(
-                "Attempt to 'and' segments with different segment numbers")
-        sb = deepcopy(self)
-        sb._bitarray &= other.promote()._bitarray
-        return sb
+                "Attempt to 'and' segments with different segment numbers"
+            )
+        segment = deepcopy(self)
+        segment.bitarray &= other.promote().bitarray
+        return segment
 
     def __iand__(self, other):
         """Remove records from self which are not in other."""
-        if self._segment_number != other._segment_number:
+        if self.segment_number != other.segment_number:
             raise RecordsetError(
-                "Attempt to 'iand' segments with different segment numbers")
-        self._bitarray &= other.promote()._bitarray
+                "Attempt to 'iand' segments with different segment numbers"
+            )
+        self.bitarray &= other.promote().bitarray
         return self
 
     def __xor__(self, other):
         """Return new segment of self records with other records included."""
-        if self._segment_number != other._segment_number:
+        if self.segment_number != other.segment_number:
             raise RecordsetError(
-                "Attempt to 'xor' segments with different segment numbers")
-        sb = deepcopy(self)
-        sb._bitarray ^= other.promote()._bitarray
-        return sb
+                "Attempt to 'xor' segments with different segment numbers"
+            )
+        segment = deepcopy(self)
+        segment.bitarray ^= other.promote().bitarray
+        return segment
 
     def __ixor__(self, other):
         """Include records in other segment in self segment."""
-        if self._segment_number != other._segment_number:
+        if self.segment_number != other.segment_number:
             raise RecordsetError(
-                "Attempt to 'ixor' segments with different segment numbers")
-        self._bitarray ^= other.promote()._bitarray
+                "Attempt to 'ixor' segments with different segment numbers"
+            )
+        self.bitarray ^= other.promote().bitarray
         return self
 
     def tobytes(self):
-        """Return self._bitarray as bytes."""
-        return self._bitarray.tobytes()
+        """Return self.bitarray as bytes."""
+        return self.bitarray.tobytes()
 
     def __setitem__(self, key, value):
-        """"""
+        """Set bit for key in segment to value (1 or 0)."""
         segment, offset = key
-        if segment != self._segment_number:
+        if segment != self.segment_number:
             raise RecordsetError(
-                ''.join((
-                    "'", self.__class__.__name__,
-                    "' segment is not the one for this 'key'")))
-        self._bitarray[offset] = value
+                "".join(
+                    (
+                        "'",
+                        self.__class__.__name__,
+                        "' segment is not the one for this 'key'",
+                    )
+                )
+            )
+        self.bitarray[offset] = value
 
 
 class RecordsetSegmentList:
-    
-    """Segment for record number interval of up to, but not including,
+    """List of record numbers in a segment.
+
+    Segment for record number interval of up to, but not including,
     db_upper_conversion_limit records.  Note that bitmaps for segments with
     less than db_upper_conversion_limit records may exist when a segment is
     losing records, until db_lower_conversion_limit is reached.
+
     """
+
     # The refresh_recordset may be relevent in this class
 
     # Should records argument be like the RecordsetSegmentBitarray version?
-    def __init__(self, segment_number, key, records=b''):
+    def __init__(self, segment_number, key, records=b""):
         """Create list segment for key for records in segment number.
 
         records is ''.join([rn.to_bytes(n, byteorder='big') for rn in rnlist}
@@ -470,131 +497,129 @@ class RecordsetSegmentList:
 
         """
         super().__init__()
-        self._list = []
+        self.list = []
         for i in range(0, len(records), 2):
             self.insort_left_nodup(
-                int.from_bytes(records[i:i+2], byteorder='big'))
-        self._key = key
-        self._segment_number = segment_number
-        self._current_position_in_segment = None
-
-    @property
-    def segment_number(self):
-        """Return the segment number of the segment (zero-based)."""
-        return self._segment_number
+                int.from_bytes(records[i : i + 2], byteorder="big")
+            )
+        self.index_key = key
+        self.segment_number = segment_number
+        self.current_position_in_segment = None
 
     def count_records(self):
         """Return record count in segment."""
-        return len(self._list)
+        return len(self.list)
 
     def current(self):
         """Return current record in segment."""
-        if self._current_position_in_segment is not None:
+        if self.current_position_in_segment is not None:
             return (
-                self._key,
-                self._list[self._current_position_in_segment] +
-                (self._segment_number * SegmentSize.db_segment_size))
-        else:
-            return None
+                self.index_key,
+                self.list[self.current_position_in_segment]
+                + (self.segment_number * SegmentSize.db_segment_size),
+            )
+        return None
 
     def first(self):
         """Return first record in segment."""
         try:
-            self._current_position_in_segment = 0
+            self.current_position_in_segment = 0
             return (
-                self._key,
-                self._list[self._current_position_in_segment] +
-                (self._segment_number * SegmentSize.db_segment_size))
+                self.index_key,
+                self.list[self.current_position_in_segment]
+                + (self.segment_number * SegmentSize.db_segment_size),
+            )
         except TypeError:
-            if self._segment_number is None:
+            if self.segment_number is None:
                 return None
-            else:
-                raise
+            raise
 
     def get_position_of_record_number(self, recnum):
         """Return position of recnum in segment counting records that exist."""
         try:
-            return self._list.index(recnum)# + 1
+            return self.list.index(recnum)  # + 1
         except ValueError:
-            return len([e for e in self._list if recnum > e])#= e])
+            return len([e for e in self.list if recnum > e])  # = e])
 
     def get_record_number_at_position(self, position):
         """Return record number at position from start or end of segment."""
         try:
-            return (
-                self._list[position] +
-                (self._segment_number * SegmentSize.db_segment_size))
+            return self.list[position] + (
+                self.segment_number * SegmentSize.db_segment_size
+            )
         except IndexError:
             return None
 
     def last(self):
         """Return last record in segment."""
         try:
-            self._current_position_in_segment = len(self._list) - 1
+            self.current_position_in_segment = len(self.list) - 1
             return (
-                self._key,
-                self._list[self._current_position_in_segment] +
-                (self._segment_number * SegmentSize.db_segment_size))
+                self.index_key,
+                self.list[self.current_position_in_segment]
+                + (self.segment_number * SegmentSize.db_segment_size),
+            )
         except TypeError:
-            if self._segment_number is None:
+            if self.segment_number is None:
                 return None
-            else:
-                raise
+            raise
 
     def next(self):
         """Return next record in segment."""
-        if self._current_position_in_segment is None:
+        if self.current_position_in_segment is None:
             return self.first()
-        else:
-            self._current_position_in_segment += 1
-            if self._current_position_in_segment < len(self._list):
-                return (
-                    self._key,
-                    self._list[self._current_position_in_segment] +
-                    (self._segment_number * SegmentSize.db_segment_size))
-            self._current_position_in_segment = len(self._list) - 1
-            return None
+        self.current_position_in_segment += 1
+        if self.current_position_in_segment < len(self.list):
+            return (
+                self.index_key,
+                self.list[self.current_position_in_segment]
+                + (self.segment_number * SegmentSize.db_segment_size),
+            )
+        self.current_position_in_segment = len(self.list) - 1
+        return None
 
     def prev(self):
         """Return previous record in segment."""
-        if self._current_position_in_segment is None:
+        if self.current_position_in_segment is None:
             return self.last()
-        else:
-            self._current_position_in_segment -= 1
-            if self._current_position_in_segment < 0:
-                self._current_position_in_segment = 0
-                return None
-            return (
-                self._key,
-                self._list[self._current_position_in_segment] +
-                (self._segment_number * SegmentSize.db_segment_size))
+        self.current_position_in_segment -= 1
+        if self.current_position_in_segment < 0:
+            self.current_position_in_segment = 0
+            return None
+        return (
+            self.index_key,
+            self.list[self.current_position_in_segment]
+            + (self.segment_number * SegmentSize.db_segment_size),
+        )
 
     def setat(self, record):
         """Return current record after positioning cursor at record."""
         segment, record_number = divmod(record, SegmentSize.db_segment_size)
-        if self._segment_number == segment:
+        if self.segment_number == segment:
             try:
-                self._current_position_in_segment = self._list.index(
-                    record_number)
-                return (self._key, record)
+                self.current_position_in_segment = self.list.index(
+                    record_number
+                )
+                return (self.index_key, record)
             except ValueError:
                 return None
         else:
             return None
 
     def insort_left_nodup(self, record_number):
-        #Insert record_number in sorted order without duplicating entries.
-        i = bisect_left(self._list, record_number)
-        if i != len(self._list) and self._list[i] == record_number:
+        """Insert record_number in sorted order without duplication."""
+        i = bisect_left(self.list, record_number)
+        if i != len(self.list) and self.list[i] == record_number:
             return
-        self._list.insert(i, record_number)
+        self.list.insert(i, record_number)
 
     # Only if RecordsetSegmentList items are guaranteed sorted ascending order.
     def __contains__(self, relative_record_number):
         """Return True if relative record number is in self, else False."""
-        i = bisect_left(self._list, relative_record_number)
-        return bool(i != len(self._list) and
-                    self._list[i] == relative_record_number)
+        i = bisect_left(self.list, relative_record_number)
+        return bool(
+            i != len(self.list) and self.list[i] == relative_record_number
+        )
 
     def normalize(self, use_upper_limit=True):
         """Return version of self appropriate to record count of self.
@@ -606,83 +631,91 @@ class RecordsetSegmentList:
         conversion point.
 
         """
-        c = self.count_records()
-        if c > SegmentSize.db_upper_conversion_limit:
+        k = self.count_records()
+        if k > SegmentSize.db_upper_conversion_limit:
             return self.promote()
         if use_upper_limit:
             limit = SegmentSize.db_upper_conversion_limit
         else:
             limit = SegmentSize.db_lower_conversion_limit
-        if c > limit:
+        if k > limit:
             # It seems the option to promote when use_upper_limit is False is
             # not taken!
             return self
-        elif c == 1:
+        if k == 1:
             # See comment in RecordsetSegmentBitarray.normalize()
             return RecordsetSegmentInt(
-                self._segment_number,
-                self._key,
-                records=self._list[0].to_bytes(2, byteorder='big'))
-        else:
-            return self
+                self.segment_number,
+                self.index_key,
+                records=self.list[0].to_bytes(2, byteorder="big"),
+            )
+        return self
 
     def promote(self):
         """Return RecordsetSegmentBitarray version of self."""
-        sb = RecordsetSegmentBitarray(
-            self._segment_number, self._key, SegmentSize.empty_bitarray_bytes)
-        for r in self._list:
-            sb._bitarray[r] = True
-        return sb
+        segment = RecordsetSegmentBitarray(
+            self.segment_number,
+            self.index_key,
+            SegmentSize.empty_bitarray_bytes,
+        )
+        for k in self.list:
+            segment.bitarray[k] = True
+        return segment
 
     def __or__(self, other):
         """Return new segment of self records with other records included."""
-        if self._segment_number != other._segment_number:
+        if self.segment_number != other.segment_number:
             raise RecordsetError(
-                "Attempt to 'or' segments with different segment numbers")
+                "Attempt to 'or' segments with different segment numbers"
+            )
         return self.promote() | other.promote()
 
     def __and__(self, other):
         """Return new segment of records in both self and other segments."""
-        if self._segment_number != other._segment_number:
+        if self.segment_number != other.segment_number:
             raise RecordsetError(
-                "Attempt to 'and' segments with different segment numbers")
+                "Attempt to 'and' segments with different segment numbers"
+            )
         return self.promote() & other.promote()
 
     def __xor__(self, other):
         """Return new segment of self records with other records included."""
-        if self._segment_number != other._segment_number:
+        if self.segment_number != other.segment_number:
             raise RecordsetError(
-                "Attempt to 'xor' segments with different segment numbers")
+                "Attempt to 'xor' segments with different segment numbers"
+            )
         return self.promote() ^ other.promote()
 
     def _empty_segment(self):
         """Create and return an empty instance of RecordsetSegmentList."""
-        class E(RecordsetSegmentList):
+
+        class _E(RecordsetSegmentList):
             def __init__(self):
+                # Do nothing.
                 pass
-        e = E()
-        e.__class__ = RecordsetSegmentList
-        return e
+
+        k = _E()
+        k.__class__ = RecordsetSegmentList
+        return k
 
     def __deepcopy__(self, memo):
         """Return a customized copy of self."""
-        sc = self._empty_segment()
+        segment = self._empty_segment()
         # deepcopy the object representing the records in the segment
-        sc._list = deepcopy(self._list, memo)
+        segment.list = deepcopy(self.list, memo)
         # bind the immutable attributes
-        sc._key = self._key
-        sc._segment_number = self._segment_number
+        segment.index_key = self.index_key
+        segment.segment_number = self.segment_number
         # the copy forgets the current position in segment
-        sc._current_position_in_segment = None
-        return sc
+        segment.current_position_in_segment = None
+        return segment
 
     def tobytes(self):
-        """Return self._list as bytes."""
-        return b''.join([n.to_bytes(2, byteorder='big')for n in self._list])
+        """Return self.list as bytes."""
+        return b"".join([n.to_bytes(2, byteorder="big") for n in self.list])
 
 
 class _Recordset:
-    
     """Define a record set on a database with record access.
 
     May need nearest get_position_of_record and get_record_at_position as well.
@@ -698,7 +731,7 @@ class _Recordset:
         dbhome = instance of a subclass of Database.
         dbset = name of set of associated databases in dbhome to be accessed.
         cache_size = size of cache for recently accessed records
-        
+
         Specifying cache_size less than 1, or None, gives deque(maxlen=1).
 
         A recordset is associated with dbset.  There is no dbname argument,
@@ -712,12 +745,12 @@ class _Recordset:
         self.record_deque = deque(maxlen=max(1, cache_size))
         self._current_segment = None
         self._sorted_segnums = []
-        #self._clientcursors = dict()
+        # self._clientcursors = dict()
         if dbhome.exists(dbset, dbset):
             self._dbhome = dbhome
             self._dbset = dbset
             self._database = dbhome.get_table_connection(dbset)
-            #dbhome.get_database_instance(dbset, dbset)._recordsets[self] = True
+            # dbhome.get_database_instance(dbset, dbset)._recordsets[self] = True
         else:
             self._dbhome = None
             self._dbset = None
@@ -725,19 +758,19 @@ class _Recordset:
 
     # Commented because unittest does not like cache_size='a'. Not understood!
     # Look at this later, but maybe __del__ is not essential?
-    #def __del__(self):
+    # def __del__(self):
     #    """Delete record set."""
     #    self.close()
 
     def close(self):
         """Close record set making it unusable."""
-        #for c in list(self._clientcursors.keys()):
-        #    c.close()
-        #self._clientcursors.clear()
-        #try:
+        # for k in list(self._clientcursors.keys()):
+        #    k.close()
+        # self._clientcursors.clear()
+        # try:
         #    del self._dbhome.get_database_instance(
         #        self._dbset, self._dbset)._recordsets[self]
-        #except:
+        # except:
         #    pass
         self._dbhome = None
         self._dbset = None
@@ -815,34 +848,42 @@ class _Recordset:
         """Return recnum position in recordset counting records that exist."""
         segment, record_number = divmod(recnum, SegmentSize.db_segment_size)
         try:
-            position = self._rs_segments[segment].get_position_of_record_number(
-                record_number)
+            position = self._rs_segments[
+                segment
+            ].get_position_of_record_number(record_number)
         except KeyError:
             position = 0
-        return (sum([self._rs_segments[s].count_records()
-                     for s in self._rs_segments if s < segment]) +
-                position)
+        return (
+            sum(
+                [
+                    self._rs_segments[s].count_records()
+                    for s in self._rs_segments
+                    if s < segment
+                ]
+            )
+            + position
+        )
 
     def get_record_number_at_position(self, position):
         """Return record number at position from start or end of recordset."""
-        c = 0
+        k = 0
         segments = self.rs_segments
         if position < 0:
-            for s in reversed(self.sorted_segnums):
-                segcount = segments[s].count_records()
-                c -= segcount
-                if c > position:
+            for i in reversed(self.sorted_segnums):
+                segcount = segments[i].count_records()
+                k -= segcount
+                if k > position:
                     continue
-                c += segcount
-                return segments[s].get_record_number_at_position(position - c)
+                k += segcount
+                return segments[i].get_record_number_at_position(position - k)
         else:
-            for s in self.sorted_segnums:
-                segcount = segments[s].count_records()
-                c += segcount
-                if c <= position:
+            for i in self.sorted_segnums:
+                segcount = segments[i].count_records()
+                k += segcount
+                if k <= position:
                     continue
-                c -= segcount
-                return segments[s].get_record_number_at_position(position - c)
+                k -= segcount
+                return segments[i].get_record_number_at_position(position - k)
 
     def insort_left_nodup(self, segment):
         """Insert item in sorted order without duplicating entries."""
@@ -855,24 +896,24 @@ class _Recordset:
     def first(self):
         """Return first record in recordset."""
         try:
-            sn = self._sorted_segnums[0]
+            i = self._sorted_segnums[0]
         except IndexError:
             return None
         try:
             self._current_segment = 0
-            return self._rs_segments[sn].first()
+            return self._rs_segments[i].first()
         except ValueError:
             return None
 
     def last(self):
         """Return last record in recordset."""
         try:
-            sn = self._sorted_segnums[-1]
+            i = self._sorted_segnums[-1]
         except IndexError:
             return None
         try:
             self._current_segment = len(self._rs_segments) - 1
-            return self._rs_segments[sn].last()
+            return self._rs_segments[i].last()
         except ValueError:
             return None
 
@@ -880,115 +921,128 @@ class _Recordset:
         """Return next record in recordset."""
         if self._current_segment is None:
             return self.first()
-        r = self._rs_segments[
-            self._sorted_segnums[self._current_segment]].next()
-        if r is not None:
-            return r
+        j = self._rs_segments[
+            self._sorted_segnums[self._current_segment]
+        ].next()
+        if j is not None:
+            return j
         if self._current_segment + 1 == len(self._sorted_segnums):
             return None
         self._current_segment += 1
         return self._rs_segments[
-            self._sorted_segnums[self._current_segment]].first()
+            self._sorted_segnums[self._current_segment]
+        ].first()
 
     def prev(self):
         """Return previous record in recordset."""
         if self._current_segment is None:
             return self.last()
-        r = self._rs_segments[
-            self._sorted_segnums[self._current_segment]].prev()
-        if r is not None:
-            return r
+        j = self._rs_segments[
+            self._sorted_segnums[self._current_segment]
+        ].prev()
+        if j is not None:
+            return j
         if self._current_segment == 0:
             return None
         self._current_segment -= 1
         return self._rs_segments[
-            self._sorted_segnums[self._current_segment]].last()
+            self._sorted_segnums[self._current_segment]
+        ].last()
 
     def current(self):
         """Return current record in recordset."""
         if self._current_segment is None:
             return None
         return self._rs_segments[
-            self._sorted_segnums[self._current_segment]].current()
+            self._sorted_segnums[self._current_segment]
+        ].current()
 
     def setat(self, record):
         """Return current record after positioning cursor at record."""
         segment, record_number = divmod(record, SegmentSize.db_segment_size)
         if segment not in self:
             return None
-        r = self._rs_segments[segment].setat(record)
-        if r is None:
+        j = self._rs_segments[segment].setat(record)
+        if j is None:
             return None
         self._current_segment = self._sorted_segnums.index(segment)
-        return r
+        return j
 
     def __or__(self, other):
         """Return new record set of self records with other records included."""
         if self._database is not other._database:
             raise RecordsetError(
-                "Attempt to 'or' record sets for different databases")
+                "Attempt to 'or' record sets for different databases"
+            )
         if self._dbset != other._dbset:
             raise RecordsetError(
-                "Attempt to 'or' record sets for different tables")
-        rs = _Recordset(self._dbhome, self._dbset)
-        for segment, v in self._rs_segments.items():
+                "Attempt to 'or' record sets for different tables"
+            )
+        recordset = _Recordset(self._dbhome, self._dbset)
+        for segment, value in self._rs_segments.items():
             if segment in other:
                 # Maybe both being RecordsetSegmentInt should be special case
-                rs[segment] = v | other[segment]
+                recordset[segment] = value | other[segment]
             else:
-                rs[segment] = deepcopy(v)
-        for segment, v in other._rs_segments.items():
+                recordset[segment] = deepcopy(value)
+        for segment, value in other._rs_segments.items():
             if segment not in self:
-                rs[segment] = deepcopy(v)
-        return rs
+                recordset[segment] = deepcopy(value)
+        return recordset
 
     def __ior__(self, other):
         """Include records in other record set in self record set."""
         if self._database is not other._database:
             raise RecordsetError(
-                "Attempt to 'ior' record sets for different databases")
+                "Attempt to 'ior' record sets for different databases"
+            )
         if self._dbset != other._dbset:
             raise RecordsetError(
-                "Attempt to 'ior' record sets for different tables")
-        for segment, v in self._rs_segments.items():
+                "Attempt to 'ior' record sets for different tables"
+            )
+        for segment, value in self._rs_segments.items():
             if segment in other:
                 # Maybe both being RecordsetSegmentInt should be special case
-                self[segment] = v | other[segment]
-        for segment, v in other._rs_segments.items():
+                self[segment] = value | other[segment]
+        for segment, value in other._rs_segments.items():
             if segment not in self:
-                self[segment] = deepcopy(v)
+                self[segment] = deepcopy(value)
         return self
 
     def __and__(self, other):
         """Return record set of records in both self and other record sets."""
         if self._database is not other._database:
             raise RecordsetError(
-                "Attempt to 'and' record sets for different databases")
+                "Attempt to 'and' record sets for different databases"
+            )
         if self._dbset != other._dbset:
             raise RecordsetError(
-                "Attempt to 'and' record sets for different tables")
-        rs = _Recordset(self._dbhome, self._dbset)
-        for segment, v in self._rs_segments.items():
+                "Attempt to 'and' record sets for different tables"
+            )
+        recordset = _Recordset(self._dbhome, self._dbset)
+        for segment, value in self._rs_segments.items():
             if segment in other:
                 # Maybe both being RecordsetSegmentInt should be special case
-                rs[segment] = v & other[segment]
-                if rs[segment].count_records() == 0:
-                    del rs[segment]
-        return rs
+                recordset[segment] = value & other[segment]
+                if recordset[segment].count_records() == 0:
+                    del recordset[segment]
+        return recordset
 
     def __iand__(self, other):
         """Remove records from self which are not in other."""
         if self._database is not other._database:
             raise RecordsetError(
-                "Attempt to 'iand' record sets for different databases")
+                "Attempt to 'iand' record sets for different databases"
+            )
         if self._dbset != other._dbset:
             raise RecordsetError(
-                "Attempt to 'iand' record sets for different tables")
+                "Attempt to 'iand' record sets for different tables"
+            )
         drs = []
-        for segment, v in self._rs_segments.items():
+        for segment, value in self._rs_segments.items():
             if segment in other:
                 # Maybe both being RecordsetSegmentInt should be special case
-                self[segment] = v & other[segment]
+                self[segment] = value & other[segment]
                 if self[segment].count_records() == 0:
                     drs.append(segment)
             else:
@@ -1001,42 +1055,46 @@ class _Recordset:
         """Return record set of self records with other records included."""
         if self._database is not other._database:
             raise RecordsetError(
-                "Attempt to 'xor' record sets for different databases")
+                "Attempt to 'xor' record sets for different databases"
+            )
         if self._dbset != other._dbset:
             raise RecordsetError(
-                "Attempt to 'xor' record sets for different tables")
-        rs = _Recordset(self._dbhome, self._dbset)
-        for segment, v in self._rs_segments.items():
+                "Attempt to 'xor' record sets for different tables"
+            )
+        recordset = _Recordset(self._dbhome, self._dbset)
+        for segment, value in self._rs_segments.items():
             if segment in other:
                 # Maybe both being RecordsetSegmentInt should be special case
-                rs[segment] = v ^ other[segment]
-                if rs[segment].count_records() == 0:
-                    del rs[segment]
+                recordset[segment] = value ^ other[segment]
+                if recordset[segment].count_records() == 0:
+                    del recordset[segment]
             else:
-                rs[segment] = deepcopy(v)
-        for segment, v in other._rs_segments.items():
+                recordset[segment] = deepcopy(value)
+        for segment, value in other._rs_segments.items():
             if segment not in self:
-                rs[segment] = deepcopy(v)
-        return rs
+                recordset[segment] = deepcopy(value)
+        return recordset
 
     def __ixor__(self, other):
         """Include records in other record set in self record sets."""
         if self._database is not other._database:
             raise RecordsetError(
-                "Attempt to 'ixor' record sets for different databases")
+                "Attempt to 'ixor' record sets for different databases"
+            )
         if self._dbset != other._dbset:
             raise RecordsetError(
-                "Attempt to 'ixor' record sets for different tables")
+                "Attempt to 'ixor' record sets for different tables"
+            )
         drs = []
-        for segment, v in self._rs_segments.items():
+        for segment, value in self._rs_segments.items():
             if segment in other:
                 # Maybe both being RecordsetSegmentInt should be special case
-                self[segment] = v ^ other[segment]
+                self[segment] = value ^ other[segment]
                 if self[segment].count_records() == 0:
                     drs.append(segment)
-        for segment, v in other._rs_segments.items():
+        for segment, value in other._rs_segments.items():
             if segment not in self:
-                self[segment] = deepcopy(v)
+                self[segment] = deepcopy(value)
         for segment in drs:
             del self[segment]
         return self
@@ -1047,39 +1105,45 @@ class _Recordset:
         limit is relevant to lists and bitarrays of record numbers.
 
         """
-        for s in self._sorted_segnums:
-            self._rs_segments[s] = self._rs_segments[s].normalize(
-                use_upper_limit=use_upper_limit)
+        for i in self._sorted_segnums:
+            self._rs_segments[i] = self._rs_segments[i].normalize(
+                use_upper_limit=use_upper_limit
+            )
 
     def is_record_number_in_record_set(self, record_number):
         """Return True if record number is in self, a record set, else False."""
-        segment, record_number = divmod(record_number,
-                                        SegmentSize.db_segment_size)
-        return (False if segment not in self else
-                record_number in self._rs_segments[segment])
+        segment, record_number = divmod(
+            record_number, SegmentSize.db_segment_size
+        )
+        return (
+            False
+            if segment not in self
+            else record_number in self._rs_segments[segment]
+        )
 
     def __deepcopy__(self, memo):
         """Return a customized copy of self."""
-        sc = _empty__recordset()
+        recordset = _empty__recordset()
         # deepcopy the objects representing the records in the segment
-        sc._rs_segments = deepcopy(self._rs_segments, memo)
-        sc._sorted_segnums = deepcopy(self._sorted_segnums, memo)
+        recordset._rs_segments = deepcopy(self._rs_segments, memo)
+        recordset._sorted_segnums = deepcopy(self._sorted_segnums, memo)
         # bind the immutable attributes
-        sc._dbhome = self._dbhome
-        sc._dbset = self._dbset
-        sc._database = self._database
+        recordset._dbhome = self._dbhome
+        recordset._dbset = self._dbset
+        recordset._database = self._database
         # the copy forgets the current position in recordset
-        sc._current_segment = None
+        recordset._current_segment = None
         # the copy forgets the current recordset cursors
-        #sc._clientcursors = dict()
+        # recordset._clientcursors = dict()
         # the copy forgets the current recordset cache
-        sc.record_cache = dict()
-        sc.record_deque = deque(maxlen=self.record_deque.maxlen)
+        recordset.record_cache = dict()
+        recordset.record_deque = deque(maxlen=self.record_deque.maxlen)
         # register the copy with the database
-        #if sc._dbhome is not None:
-        #    sc._dbhome.get_database_instance(
-        #        sc._dbset, sc._dbset)._recordsets[sc] = True
-        return sc
+        # if recordset._dbhome is not None:
+        #    recordset._dbhome.get_database_instance(
+        #        recordset._dbset, recordset._dbset)._recordsets[recordset
+        #                                                        ] = True
+        return recordset
 
     def place_record_number(self, record_number):
         """Set the bit representing record_number."""
@@ -1095,10 +1159,10 @@ class _Recordset:
         segment, offset = divmod(record_number, SegmentSize.db_segment_size)
         if segment not in self._rs_segments:
             return
-        elif not isinstance(self[segment], RecordsetSegmentBitarray):
+        if not isinstance(self[segment], RecordsetSegmentBitarray):
             self[segment] = self[segment].promote()
         self[segment][(segment, offset)] = False
-        #self[segment] = self[segment].normalize()
+        # self[segment] = self[segment].normalize()
 
     def create_recordset_cursor(self):
         """Create and return a cursor for this recordset."""
@@ -1106,7 +1170,6 @@ class _Recordset:
 
 
 class RecordsetCursor(cursor.Cursor):
-    
     """Provide a bsddb3 style cursor for a recordset of arbitrary records.
 
     The cursor does not support partial keys because the records in the
@@ -1117,20 +1180,20 @@ class RecordsetCursor(cursor.Cursor):
 
     @property
     def recordset(self):
-        """"""
+        """Return recordset."""
         return self._dbset
 
     def close(self):
         """Delete record set cursor."""
-        #try:
+        # try:
         #    del self._dbset._clientcursors[self]
-        #except:
+        # except:
         #    pass
-        #self._dbset = None
+        # self._dbset = None
         super().close()
 
     def count_records(self):
-        """return record count or None."""
+        """Return record count or None."""
         try:
             return self._dbset.count_records()
         except TypeError:
@@ -1152,15 +1215,16 @@ class RecordsetCursor(cursor.Cursor):
         """Return first record."""
         if len(self._dbset):
             try:
-                #return self._dbset.get_record(self._dbset.first()[1])
+                # return self._dbset.get_record(self._dbset.first()[1])
                 return self._get_record(self._dbset.first()[1])
             except TypeError:
                 return None
             except:
                 raise
+        return None
 
     def get_position_of_record(self, record=None):
-        """return position of record in file or 0 (zero)."""
+        """Return position of record in file or 0 (zero)."""
         try:
             return self._dbset.get_position_of_record_number(record[0])
         except ValueError:
@@ -1169,10 +1233,11 @@ class RecordsetCursor(cursor.Cursor):
             return 0
 
     def get_record_at_position(self, position=None):
-        """return record for positionth record in file or None."""
+        """Return record for positionth record in file or None."""
         try:
             return self._get_record(
-                self._dbset.get_record_number_at_position(position))
+                self._dbset.get_record_number_at_position(position)
+            )
         except IndexError:
             return None
         except TypeError:
@@ -1189,12 +1254,13 @@ class RecordsetCursor(cursor.Cursor):
                 return None
             except:
                 raise
-        
+        return None
+
     def nearest(self, key):
         """Return nearest record. An absent record has no nearest record.
 
         Perhaps get_record_at_position() is the method to use.
-        
+
         The recordset is created with arbitrary criteria.  The selected records
         are displayed in record number order for consistency.  Assumption is
         that all records on the recordset are equally near the requested record
@@ -1209,6 +1275,7 @@ class RecordsetCursor(cursor.Cursor):
                 return None
             except:
                 raise
+        return None
 
     def next(self):
         """Return next record."""
@@ -1219,6 +1286,7 @@ class RecordsetCursor(cursor.Cursor):
                 return None
             except:
                 raise
+        return None
 
     def prev(self):
         """Return previous record."""
@@ -1229,21 +1297,22 @@ class RecordsetCursor(cursor.Cursor):
                 return None
             except:
                 raise
+        return None
 
     def setat(self, record):
         """Return record after positioning cursor at record."""
         if len(self._dbset):
             try:
-                return self._get_record(
-                    self._dbset.setat(record[0])[1])
+                return self._get_record(self._dbset.setat(record[0])[1])
             except TypeError:
                 return None
             except:
                 raise
+        return None
 
     def _get_record(self, record_number, use_cache=False):
         """Raise exception.  Must be implemented in a subclass."""
-        raise RecordsetError('_get_record must be implemented in a subclass')
+        raise RecordsetError("_get_record must be implemented in a subclass")
 
     # Should this method be in solentware_misc datagrid module, or perhaps in
     # .record module?
@@ -1258,13 +1327,12 @@ class RecordsetCursor(cursor.Cursor):
             return
         if self.recordset.is_record_number_in_record_set(instance.key.recno):
             if instance.newrecord is not None:
-                raise RecordsetError('refresh_recordset not implemented')
+                raise RecordsetError("refresh_recordset not implemented")
             self.recordset.remove_record_number(instance.key.recno)
 
 
 # __init__ may follow _DPTRecordSet example eventually.
 class _RecordSetBase:
-    
     """Wrapper for _Recordset compatible with _dpt._DPTRecordSet.
 
     _Recordset is roughly equivalent to dptapi.APIRecordList and RecordList is
@@ -1275,129 +1343,155 @@ class _RecordSetBase:
     __iand__, __ixor__, __ior__, and __del__, for itself.
 
     """
+
     # The RecordsetCursor methods may go directly to the _Recordset methods.
 
     def __init__(self, dbhome, dbset, cache_size=1):
         """Create a _Recordset instance."""
-        self._recordset = _Recordset(dbhome, dbset, cache_size=cache_size)
+        self.recordset = _Recordset(dbhome, dbset, cache_size=cache_size)
 
     # Added for compatibility with _DPTRecordList class in _dpt module where
     # explicit destruction of underlying APIRecordList instance is mandatory.
     # At time of writing an explicit __del__ does not seem necessary.
     def __del__(self):
         """Destroy _Recordset instance if not done by explicit close()."""
-
         # hasattr test so calls like _RecordSetBase() raise argument exceptions
-        # rather than 'attribute _recordset does not exist' exception.
-        if hasattr(self, '_recordset') and self._recordset:
+        # rather than 'attribute recordset does not exist' exception.
+        if hasattr(self, "recordset") and self.recordset:
             self.close()
 
     def __setitem__(self, key, value):
-        self._recordset[key] = value
+        self.recordset[key] = value
 
     def __getitem__(self, key):
-        return self._recordset[key]
+        return self.recordset[key]
 
     def __delitem__(self, segment):
-        del self._recordset[segment]
+        del self.recordset[segment]
 
     def __contains__(self, segment):
-        return segment in self._recordset
+        return segment in self.recordset
 
     def __len__(self):
-        return len(self._recordset)
+        return len(self.recordset)
 
     @property
     def dbhome(self):
-        return self._recordset.dbhome
-    
+        """Return dbhome."""
+        return self.recordset.dbhome
+
     @property
     def dbset(self):
-        return self._recordset.dbset
-    
+        """Return table identity from which recordset was created."""
+        return self.recordset.dbset
+
     @property
     def dbidentity(self):
-        return self._recordset.dbidentity
-    
+        """Return database identity of recordset."""
+        return self.recordset.dbidentity
+
     @property
     def rs_segments(self):
-        return self._recordset.rs_segments
-    
+        """Return segments in recordset."""
+        return self.recordset.rs_segments
+
     @property
     def sorted_segnums(self):
-        return self._recordset.sorted_segnums
+        """Return segment numbers in recordset sorted in ascending order."""
+        return self.recordset.sorted_segnums
 
     def count_records(self):
-        return self._recordset.count_records()
+        """Return count of records in recordset."""
+        return self.recordset.count_records()
 
-    # _recordset set to None for compatibility with _DPTRecordList class in
+    # recordset set to None for compatibility with _DPTRecordList class in
     # _dpt module.
     def close(self):
-        self._recordset.close()
-        self._recordset = None
+        """Close recordset."""
+        self.recordset.close()
+        self.recordset = None
 
     def get_position_of_record_number(self, recnum):
-        return self._recordset.get_position_of_record_number(recnum)
+        """Return position of record number in recordset."""
+        return self.recordset.get_position_of_record_number(recnum)
 
     def get_record_number_at_position(self, position):
-        return self._recordset.get_record_number_at_position(position)
+        """Return record number of record at position in recordset."""
+        return self.recordset.get_record_number_at_position(position)
 
     def insort_left_nodup(self, segment):
-        self._recordset.insort_left_nodup(segment)
+        """Insert segment into recordset maintaining segment number order."""
+        self.recordset.insort_left_nodup(segment)
 
     def first(self):
-        return self._recordset.first()
+        """Position at first record in recordset and return record."""
+        return self.recordset.first()
 
     def last(self):
-        return self._recordset.last()
+        """Position at last record in recordset and return record."""
+        return self.recordset.last()
 
     def next(self):
-        return self._recordset.next()
+        """Position at next record in recordset and return record."""
+        return self.recordset.next()
 
     def prev(self):
-        return self._recordset.prev()
+        """Position at previous record in recordset and return record."""
+        return self.recordset.prev()
 
     def current(self):
-        return self._recordset.current()
+        """Return current record."""
+        return self.recordset.current()
 
     def setat(self, record):
-        return self._recordset.setat(record)
-    
+        """Position at record and return record."""
+        return self.recordset.setat(record)
+
     def __or__(self, other):
         """Return new record set of self records with other records included."""
-        rs = self._recordset | other._recordset
-        r = _empty_recordlist()
-        r._recordset = rs
-        return r
+        recordset = self.recordset | other.recordset
+        recordlist = _empty_recordlist()
+        recordlist.recordset = recordset
+        return recordlist
 
     def __and__(self, other):
         """Return record set of records in both self and other record sets."""
-        rs = self._recordset & other._recordset
-        r = _empty_recordlist()
-        r._recordset = rs
-        return r
+        recordset = self.recordset & other.recordset
+        recordlist = _empty_recordlist()
+        recordlist.recordset = recordset
+        return recordlist
 
     def __xor__(self, other):
         """Return record set of self records with other records included."""
-        rs = self._recordset ^ other._recordset
-        r = _empty_recordlist()
-        r._recordset = rs
-        return r
+        recordset = self.recordset ^ other.recordset
+        recordlist = _empty_recordlist()
+        recordlist.recordset = recordset
+        return recordlist
 
     def normalize(self, use_upper_limit=True):
-        self._recordset.normalize(use_upper_limit=use_upper_limit)
+        """Convert recordset segments to form for number of records held.
+
+        Each segment will be a RecordsetSegmentInt, RecordsetSegmentList,
+        or RecordsetSegmentBitarray, instance.
+
+        Recordsets are manipulated in bitarray form, and will need to be
+        normalized before storing on a database.
+
+        """
+        self.recordset.normalize(use_upper_limit=use_upper_limit)
 
     def is_record_number_in_record_set(self, record_number):
-        return self._recordset.is_record_number_in_record_set(record_number)
+        """Return True if record_number is in recordset."""
+        return self.recordset.is_record_number_in_record_set(record_number)
 
     def create_recordset_cursor(self):
-        return self._recordset.create_recordset_cursor()
+        """Create a recordset cursor and return it."""
+        return self.recordset.create_recordset_cursor()
 
 
 # To be renamed RecordList.
 # __init__ may follow _DPTRecordList example eventually.
 class RecordList(_RecordSetBase):
-    
     """Wrapper for _Recordset compatible with _dpt._DPTRecordList.
 
     _Recordset is roughly equivalent to dptapi.APIRecordList and RecordList is
@@ -1411,37 +1505,38 @@ class RecordList(_RecordSetBase):
 
     def __ior__(self, other):
         """Include records in other record set in self record set."""
-        self._recordset |= other._recordset
+        self.recordset |= other.recordset
         return self
 
     def __iand__(self, other):
         """Remove records from self which are not in other."""
-        self._recordset &= other._recordset
+        self.recordset &= other.recordset
         return self
 
     def __ixor__(self, other):
         """Include records in other record set in self record sets."""
-        self._recordset ^= other._recordset
+        self.recordset ^= other.recordset
         return self
 
     def clear_recordset(self):
-        self._recordset.clear_recordset()
+        """Remove all records from recordset."""
+        self.recordset.clear_recordset()
 
     def place_record_number(self, record_number):
         """Place record record_number on self, a RecordList."""
-        self._recordset.place_record_number(record_number)
+        self.recordset.place_record_number(record_number)
 
     def remove_record_number(self, record_number):
         """Remove record record_number on self, a RecordList."""
-        self._recordset.remove_record_number(record_number)
+        self.recordset.remove_record_number(record_number)
 
     def remove_recordset(self, recordset):
         """Remove other's records from recordset using '|=' and '^=' operators.
 
         Equivalent to the Romove() method of DPT recordsets.
         """
-        self._recordset |= recordset._recordset
-        self._recordset ^= recordset._recordset
+        self.recordset |= recordset.recordset
+        self.recordset ^= recordset.recordset
 
     def replace_records(self, newrecords):
         """Replace records in recordset with newrecords.
@@ -1451,7 +1546,7 @@ class RecordList(_RecordSetBase):
 
         """
         self.clear_recordset()
-        self._recordset |= newrecords._recordset
+        self.recordset |= newrecords.recordset
 
 
 # Following the class hierarchy in _dpt module.
@@ -1459,7 +1554,6 @@ class RecordList(_RecordSetBase):
 # record locks but dptapi.RecordList does not.
 # __init__ may follow _DPTFoundSet example eventually.
 class FoundSet(_RecordSetBase):
-    
     """Wrapper for _Recordset compatible with _dpt._DPTFoundSet.
 
     _Recordset is roughly equivalent to dptapi.APIRecordList and RecordList is
@@ -1475,20 +1569,24 @@ class FoundSet(_RecordSetBase):
 # This is for actual recordset.
 def _empty__recordset():
     """Create and return an empty instance of _Recordset."""
-    class E(_Recordset):
+
+    class _E(_Recordset):
         def __init__(self):
-            pass
-    e = E()
-    e.__class__ = _Recordset
-    return e
+            """Do nothing."""
+
+    k = _E()
+    k.__class__ = _Recordset
+    return k
 
 
 # This is for wrapper.
 def _empty_recordlist():
     """Create and return an empty instance of RecordList."""
-    class E(RecordList):
+
+    class _E(RecordList):
         def __init__(self):
-            pass
-    e = E()
-    e.__class__ = RecordList
-    return e
+            """Do nothing."""
+
+    k = _E()
+    k.__class__ = RecordList
+    return k

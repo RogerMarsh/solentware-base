@@ -7,34 +7,36 @@
 import unittest
 
 from .. import vedis_database
+
 try:
     from .. import vedis_database
-except ImportError: # Not ModuleNotFoundError for Pythons earlier than 3.6
+except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     vedis_database = None
 
 
 class VedisDatabase(unittest.TestCase):
-
     def test__assumptions(self):
-        msg = 'Failure of this test invalidates all other tests'
+        msg = "Failure of this test invalidates all other tests"
         self.assertRaisesRegex(
             TypeError,
-            "".join((
-                "__init__\(\) missing 1 required positional argument: ",
-                "'specification'",
-                )),
+            "".join(
+                (
+                    "__init__\(\) missing 1 required positional argument: ",
+                    "'specification'",
+                )
+            ),
             vedis_database.Database,
-            )
+        )
         self.assertIsInstance(
             vedis_database.Database({}),
             vedis_database.Database,
-            )
+        )
 
     def test_open_database(self):
         self.assertEqual(vedis_database.Database({}).open_database(), None)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
 

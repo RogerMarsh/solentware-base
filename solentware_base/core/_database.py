@@ -16,26 +16,23 @@ from .findvalues import FindValues
 from .wherevalues import WhereValues
 from .constants import (
     SECONDARY,
-    )
+)
 from .recordset import (
     RecordsetSegmentBitarray,
     RecordsetSegmentInt,
     RecordsetSegmentList,
-    )
+)
 
 
 class Database:
-    
-    """Define file and record access methods which subclasses may override if
-    necessary.
-    """
+    """Define file and record access methods; which subclasses may override."""
 
     def delete_instance(self, dbset, instance):
         """Delete an existing instance on databases in dbset.
-        
+
         Deletes are direct while callbacks handle subsidiary databases
         and non-standard inverted indexes.
-        
+
         """
         deletekey = instance.key.pack()
         instance.set_packed_value_and_indexes()
@@ -44,21 +41,23 @@ class Database:
         instance.srkey = self.encode_record_number(deletekey)
         srindex = instance.srindex
         segment, record_number = self.remove_record_from_ebm(dbset, deletekey)
-        dcb = instance._deletecallbacks
+        dcb = instance.deletecallbacks
         for secondary in srindex:
             if secondary not in self.specification[dbset][SECONDARY]:
                 if secondary in dcb:
                     dcb[secondary](instance, srindex[secondary])
                 continue
-            for v in srindex[secondary]:
+            for value in srindex[secondary]:
                 self.remove_record_from_field_value(
-                    dbset, secondary, v, segment, record_number)
+                    dbset, secondary, value, segment, record_number
+                )
         self.note_freed_record_number_segment(
-            dbset, segment, record_number, high_record)
+            dbset, segment, record_number, high_record
+        )
 
     def edit_instance(self, dbset, instance):
         """Edit an existing instance on databases in dbset.
-        
+
         Edits are direct while callbacks handle subsidiary databases
         and non-standard inverted indexes.
 
@@ -69,25 +68,23 @@ class Database:
         instance.newrecord.set_packed_value_and_indexes()
         srindex = instance.srindex
         nsrindex = instance.newrecord.srindex
-        dcb = instance._deletecallbacks
-        ndcb = instance.newrecord._deletecallbacks
-        pcb = instance._putcallbacks
-        npcb = instance.newrecord._putcallbacks
+        dcb = instance.deletecallbacks
+        npcb = instance.newrecord.putcallbacks
 
         # Changing oldkey to newkey should not be allowed
         # Not changed by default.  See oldkey != newkey below.
-        
+
         ionly = []
         nionly = []
         iandni = []
-        for f in srindex:
-            if f in nsrindex:
-                iandni.append(f)
+        for field in srindex:
+            if field in nsrindex:
+                iandni.append(field)
             else:
-                ionly.append(f)
-        for f in nsrindex:
-            if f not in srindex:
-                nionly.append(f)
+                ionly.append(field)
+        for field in nsrindex:
+            if field not in srindex:
+                nionly.append(field)
 
         if oldkey != newkey:
             self.delete(dbset, oldkey, instance.srvalue)
@@ -101,23 +98,25 @@ class Database:
                 newkey = key
 
             old_segment, old_record_number = self.remove_record_from_ebm(
-                dbset, oldkey)
+                dbset, oldkey
+            )
             new_segment, new_record_number = self.add_record_to_ebm(
-                dbset, newkey)
+                dbset, newkey
+            )
         elif instance.srvalue != instance.newrecord.srvalue:
             self.replace(
-                dbset,
-                oldkey,
-                instance.srvalue,
-                instance.newrecord.srvalue)
+                dbset, oldkey, instance.srvalue, instance.newrecord.srvalue
+            )
             old_segment, old_record_number = divmod(
-                oldkey, SegmentSize.db_segment_size)
+                oldkey, SegmentSize.db_segment_size
+            )
             new_segment, new_record_number = old_segment, old_record_number
         else:
             old_segment, old_record_number = divmod(
-                oldkey, SegmentSize.db_segment_size)
+                oldkey, SegmentSize.db_segment_size
+            )
             new_segment, new_record_number = old_segment, old_record_number
-        
+
         instance.srkey = self.encode_record_number(oldkey)
         instance.newrecord.srkey = self.encode_record_number(newkey)
 
@@ -126,19 +125,20 @@ class Database:
                 if secondary in dcb:
                     dcb[secondary](instance, srindex[secondary])
                 continue
-            for v in srindex[secondary]:
+            for value in srindex[secondary]:
                 self.remove_record_from_field_value(
-                    dbset, secondary, v, old_segment, old_record_number)
+                    dbset, secondary, value, old_segment, old_record_number
+                )
 
         for secondary in nionly:
             if secondary not in self.specification[dbset][SECONDARY]:
                 if secondary in npcb:
-                    npcb[secondary](
-                        instance.newrecord, nsrindex[secondary])
+                    npcb[secondary](instance.newrecord, nsrindex[secondary])
                 continue
-            for v in nsrindex[secondary]:
+            for value in nsrindex[secondary]:
                 self.add_record_to_field_value(
-                    dbset, secondary, v, new_segment, new_record_number)
+                    dbset, secondary, value, new_segment, new_record_number
+                )
 
         for secondary in iandni:
             if secondary not in self.specification[dbset][SECONDARY]:
@@ -148,31 +148,34 @@ class Database:
                 if secondary in dcb:
                     dcb[secondary](instance, srindex[secondary])
                 if secondary in npcb:
-                    npcb[secondary](
-                        instance.newrecord, nsrindex[secondary])
+                    npcb[secondary](instance.newrecord, nsrindex[secondary])
                 continue
             srset = set(srindex[secondary])
             nsrset = set(nsrindex[secondary])
             if oldkey == newkey:
-                for v in sorted(srset - nsrset):
+                for value in sorted(srset - nsrset):
                     self.remove_record_from_field_value(
-                        dbset, secondary, v, old_segment, old_record_number)
-                for v in sorted(nsrset - srset):
+                        dbset, secondary, value, old_segment, old_record_number
+                    )
+                for value in sorted(nsrset - srset):
                     self.add_record_to_field_value(
-                        dbset, secondary, v, new_segment, new_record_number)
+                        dbset, secondary, value, new_segment, new_record_number
+                    )
             else:
-                for v in srset:
+                for value in srset:
                     self.remove_record_from_field_value(
-                        dbset, secondary, v, old_segment, old_record_number)
-                for v in nsrset:
+                        dbset, secondary, value, old_segment, old_record_number
+                    )
+                for value in nsrset:
                     self.add_record_to_field_value(
-                        dbset, secondary, v, new_segment, new_record_number)
+                        dbset, secondary, value, new_segment, new_record_number
+                    )
 
     def put_instance(self, dbset, instance):
         """Put new instance on database dbset.
-        
+
         This method assumes all primary databases are integer primary key.
-        
+
         """
         putkey = instance.key.pack()
         instance.set_packed_value_and_indexes()
@@ -197,32 +200,31 @@ class Database:
         instance.srkey = self.encode_record_number(putkey)
         srindex = instance.srindex
         segment, record_number = self.add_record_to_ebm(dbset, putkey)
-        pcb = instance._putcallbacks
+        pcb = instance.putcallbacks
         for secondary in srindex:
             if secondary not in self.specification[dbset][SECONDARY]:
                 if secondary in pcb:
                     pcb[secondary](instance, srindex[secondary])
                 continue
-            for v in srindex[secondary]:
+            for value in srindex[secondary]:
                 self.add_record_to_field_value(
-                    dbset, secondary, v, segment, record_number)
+                    dbset, secondary, value, segment, record_number
+                )
 
     def record_finder(self, dbset, recordclass=None):
-        """Return an instance of solentware_base.core.find.Find class."""
+        """Return a solentware_base.core.find.Find instance."""
         return Find(self, dbset, recordclass=recordclass)
 
     def record_selector(self, statement):
-        """Return an instance of solentware_base.core.where.Where class."""
+        """Return a solentware_base.core.where.Where instance."""
         return Where(statement)
 
     def values_finder(self, dbset):
-        """Return an instance of solentware_base.core.findvalues.FindValues
-        class."""
+        """Return a solentware_base.core.findvalues.FindValues instance."""
         return FindValues(self, dbset)
 
     def values_selector(self, statement):
-        """Return an instance of solentware_base.core.wherevalues.WhereValues
-        class."""
+        """Return a solentware_base.core.wherevalues.WhereValues instance."""
         return WhereValues(statement)
 
     def make_segment(self, key, segment_number, record_count, records):
@@ -231,14 +233,13 @@ class Database:
             return RecordsetSegmentInt(
                 segment_number,
                 None,
-                records=records.to_bytes(2, byteorder='big'))
-        else:
-            if len(records) == SegmentSize.db_segment_size_bytes:
-                return RecordsetSegmentBitarray(
-                    segment_number, None, records=records)
-            else:
-                return RecordsetSegmentList(
-                    segment_number, None, records=records)
+                records=records.to_bytes(2, byteorder="big"),
+            )
+        if len(records) == SegmentSize.db_segment_size_bytes:
+            return RecordsetSegmentBitarray(
+                segment_number, None, records=records
+            )
+        return RecordsetSegmentList(segment_number, None, records=records)
 
     def set_segment_size(self):
         """Copy the database segment size to the SegmentSize object.
@@ -260,8 +261,11 @@ class Database:
         return field in self.specification[file][SECONDARY]
 
     def is_primary(self, file, field):
-        """Return True if database specification defines field as primary
-        database (Berkeley DB terminology) in file."""
+        """Return True if field in file is specified as primary database.
+
+        The terminology is from the Berkeley DB database engine.
+
+        """
         assert file in self.specification
         if field == file:
             return True
@@ -269,17 +273,20 @@ class Database:
         return False
 
     def is_recno(self, file, field):
-        """Return True if database specification defines field in file as
-        record number (Berkeley DB terminology)."""
+        """Return True if field in file is specified as record number.
 
+        The terminology is from the Berkeley DB database engine where
+        field would be a DB_RECNO database.
+
+        """
         # Same answer as is_primary() by definition now.
         # Originally Berkeley DB primary databases were potentially not record
         # number, but addition of DPT and SQLite led to primary databases being
         # record number only.
         return self.is_primary(file, field)
 
-    def repair_cursor(self, cursor, *a):
-        """Return cursor for compatibility with DPT database engine.
+    def repair_cursor(self, oldcursor, *a):
+        """Return oldcursor for compatibility with DPT database engine.
 
         When using the DPT database engine an application may need to replace
         cursor with a new cursor attached to a new Recordset.  The existing
@@ -293,7 +300,7 @@ class Database:
         *a absorbs the arguments needed by the DPT version of this method.
 
         """
-        return cursor
+        return oldcursor
 
     def allocate_and_open_contexts(self, files=None):
         """Re-open files in the database specification.
@@ -318,7 +325,6 @@ class Database:
 
 
 class ExistenceBitmapControl:
-    
     """Base class for managing existence bitmap of file in database.
 
     Note the primary or secondary database instance to be managed.
@@ -327,14 +333,13 @@ class ExistenceBitmapControl:
     """
 
     def __init__(self, file, database):
-        """Note file whose existence bitmap record number re-use is managed.
-        """
+        """Note file whose existence bitmap record number re-use is managed."""
         super().__init__()
         self.ebm_table = None
         self.freed_record_number_pages = None
         self._segment_count = None
         self._file = file
-        self.ebmkey = database.encode_record_selector('E' + file)
+        self.ebmkey = database.encode_record_selector("E" + file)
 
     @property
     def segment_count(self):

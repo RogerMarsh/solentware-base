@@ -2,8 +2,11 @@
 # Copyright (c) 2020 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""Access a NoSQL database created from a FileSpec() definition with Python's
-dbm.gnu module in deferred update mode.
+"""Access a dbm.gnu database deferring index updates.
+
+The gnu_database module provides the database interface.
+
+Prefer to use the gnu_database module normally.
 
 """
 from . import gnu_database
@@ -11,11 +14,9 @@ from .core import _nosqldu
 
 
 class Database(_nosqldu.Database, gnu_database.Database):
-    
-    """Define file and record access methods which subclasses may override if
-    necessary.
+    """Define deferred update Database class using gnu_database module.
 
-    Default methods using the gnu interface are taken from the
-    gnu_database.Database class, overridden or supplemented where necessary
-    by methods from the core._nosqldu.Database class.
+    Deferred update behaviour comes from the _nosqldu.Database class.
+
+    The dbm.gnu engine comes from the gnu_database.Database class.
     """

@@ -15,7 +15,6 @@ from .. import bytebit, _bytebit
 
 
 class Bitarray(unittest.TestCase):
-
     def setUp(self):
         pass
 
@@ -30,12 +29,12 @@ class Bitarray(unittest.TestCase):
 
     def test_SINGLEBIT(self):
         if bitarray:
-            self.assertEqual(bytebit.SINGLEBIT, bitarray('1'))
+            self.assertEqual(bytebit.SINGLEBIT, bitarray("1"))
         else:
             self.assertIs(bytebit.SINGLEBIT, True)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
 

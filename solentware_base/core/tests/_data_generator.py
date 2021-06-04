@@ -13,26 +13,51 @@ import bz2
 
 from .. import record
 from ..constants import (
-    PRIMARY, SECONDARY, DEFER,
-    BTOD_FACTOR, DEFAULT_RECORDS, DEFAULT_INCREASE_FACTOR, BTOD_CONSTANT,
-    DDNAME, FILE, FOLDER, FIELDS, FILEDESC,
-    FLT, INV, UAE, ORD, ONM, SPT, EO, RRN, 
-    BSIZE, BRECPPG, BRESERVE, BREUSE,
-    DSIZE, DRESERVE, DPGSRES, FILEORG,
+    PRIMARY,
+    SECONDARY,
+    DEFER,
+    BTOD_FACTOR,
+    DEFAULT_RECORDS,
+    DEFAULT_INCREASE_FACTOR,
+    BTOD_CONSTANT,
+    DDNAME,
+    FILE,
+    FOLDER,
+    FIELDS,
+    FILEDESC,
+    FLT,
+    INV,
+    UAE,
+    ORD,
+    ONM,
+    SPT,
+    EO,
+    RRN,
+    BSIZE,
+    BRECPPG,
+    BRESERVE,
+    BREUSE,
+    DSIZE,
+    DRESERVE,
+    DPGSRES,
+    FILEORG,
     DPT_PRIMARY_FIELD_LENGTH,
-    ACCESS_METHOD, HASH, BTREE,
-    )
+    ACCESS_METHOD,
+    HASH,
+    BTREE,
+)
 from .. import filespec
 
 
 def generate_filespec(data):
-    # Define a minimal FileSpec.
+    """Define a minimal FileSpec and return it."""
     ordered, unordered = data.fields()
-    games = 'Games'
-    filedef = {PRIMARY: games,
-               FILE: filespec.FileSpec.dpt_dsn(games),
-               DDNAME: games.upper(),
-               }
+    games = "Games"
+    filedef = {
+        PRIMARY: games,
+        FILE: filespec.FileSpec.dpt_dsn(games),
+        DDNAME: games.upper(),
+    }
     filedef[SECONDARY] = {}
     filedef[FIELDS] = {filedef[PRIMARY]: None}
     for f in ordered:
@@ -48,11 +73,14 @@ def generate_filespec(data):
 
 
 class Value(record.ValueData):
+    """A value for a record."""
 
     def __init__(self):
+        """Extend, (does nothing else so method will be removed)."""
         super().__init__()
 
     def pack(self):
+        """Extend, populate indicies, and return tuple of value and indicies."""
         v = super().pack()
         i = v[1]
         i[self.movetextkey] = self.movetext
@@ -62,6 +90,7 @@ class Value(record.ValueData):
 
 
 def populate(database, data, transaction=True):
+    """Create record on database using data, in a transaction by default."""
     Record = record.Record
     for tags, moves, score in data.records():
         r = Record(valueclass=Value)
@@ -71,48 +100,45 @@ def populate(database, data, transaction=True):
         r.value.tags = tags
         if transaction:
             database.start_transaction()
-        database.put_instance('Games', r)
+        database.put_instance("Games", r)
         if transaction:
             database.commit()
 
 
 class _DataGenerator:
-
     def __init__(self):
-        datafile = os.path.join(
-            os.path.dirname(__file__),
-            '96-97.pgn.bz2')
-        blocks = bz2.open(datafile, mode='rt').read().split('\n\n')
+        datafile = os.path.join(os.path.dirname(__file__), "96-97.pgn.bz2")
+        blocks = bz2.open(datafile, mode="rt").read().split("\n\n")
         games = []
         data = []
-        for g in range(0, len(blocks)-1, 2):
-            data.append((blocks[g], blocks[g+1]))
-            games.append('\n\n'.join((blocks[g], blocks[g+1])))
+        for g in range(0, len(blocks) - 1, 2):
+            data.append((blocks[g], blocks[g + 1]))
+            games.append("\n\n".join((blocks[g], blocks[g + 1])))
         self.data = data
         self.games = games
 
     def fields(self):
-        ordered = set() # All the Tag names in the PGN file.
-        unordered = {'Movetext'} # For whitespace delimited items in Movetext.
+        ordered = set()  # All the Tag names in the PGN file.
+        unordered = {"Movetext"}  # For whitespace delimited items in Movetext.
         for g in self.data:
-            for fn in [u[1:-1]
-                       for u, v in [t.split('"', 1)
-                                    for t in g[0].split('\n')]]:
+            for fn in [
+                u[1:-1] for u, v in [t.split('"', 1) for t in g[0].split("\n")]
+            ]:
                 ordered.add(fn)
         return ordered, unordered
 
     def records(self):
         games = self.games
         for e, g in enumerate(self.data):
-            yield [(u[1:-1], v[:-2])
-                   for u, v in [t.split('"', 1)
-                                for t in g[0].split('\n')]
-                   ], ('Movetext', g[1].split()), repr(games[e])
+            yield [
+                (u[1:-1], v[:-2])
+                for u, v in [t.split('"', 1) for t in g[0].split("\n")]
+            ], ("Movetext", g[1].split()), repr(games[e])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     dg = _DataGenerator()
-    dg.fields() # Create a database with these fields.
+    dg.fields()  # Create a database with these fields.
     for i in dg.records():
-        pass # Populate the database with these records.
+        pass  # Populate the database with these records.

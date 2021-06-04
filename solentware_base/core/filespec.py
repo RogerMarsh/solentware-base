@@ -38,15 +38,14 @@ from .constants import (
     ACCESS_METHOD,
     HASH,
     BTREE,
-    )
+)
 
 
 class FileSpecError(Exception):
-    pass
+    """Exception for FileSpec class."""
 
 
 class FileSpec(dict):
-
     """Create FileSpec from database specification in **kargs.
 
     The simplest database specification is a dictionary where the keys are
@@ -68,16 +67,17 @@ class FileSpec(dict):
     @staticmethod
     def dpt_dsn(file_def):
         """Return a standard filename (DSN name) for DPT from file_def."""
-        return ''.join((file_def.lower(), '.dpt'))
-    
+        return "".join((file_def.lower(), ".dpt"))
+
     @staticmethod
     def field_name(field_def):
         """Return standard fieldname to be the implementation resource name."""
-        return ''.join((field_def[0].upper(), field_def[1:]))
+        return "".join((field_def[0].upper(), field_def[1:]))
 
-    def __init__(self, use_specification_items=None, dpt_records=None, **kargs):
-        """Provide default values for essential parameters for the DPT database
-        engine.
+    def __init__(
+        self, use_specification_items=None, dpt_records=None, **kargs
+    ):
+        """Define defaults for essential parameters for DPT database engine.
 
          use_specification_items=<items in kargs to be used as specification>
              Use all items if use_specification_items is None
@@ -98,91 +98,118 @@ class FileSpec(dict):
         super().__init__(**kargs)
 
         if use_specification_items is not None:
-            for usi in [k for k in self.keys()
-                        if k not in use_specification_items]:
+            for usi in [
+                k for k in self.keys() if k not in use_specification_items
+            ]:
                 del self[usi]
 
         if dpt_records is None:
             dpt_records = {}
         if not isinstance(dpt_records, dict):
-            raise FileSpecError('dpt_default_records must be a dict')
+            raise FileSpecError("dpt_default_records must be a dict")
         ddi = 0
-        for k, v in self.items():
-            if SUBFILE_DELIMITER in k: # Just startswith?
-                raise FileSpecError(''.join(
-                    ("Primary name '",
-                     k,
-                     "' contains '",
-                     SUBFILE_DELIMITER,
-                     "'.",
-                     )))
+        for k, value in self.items():
+            if SUBFILE_DELIMITER in k:  # Just startswith?
+                raise FileSpecError(
+                    "".join(
+                        (
+                            "Primary name '",
+                            k,
+                            "' contains '",
+                            SUBFILE_DELIMITER,
+                            "'.",
+                        )
+                    )
+                )
             dpt_filesize = dpt_records.setdefault(
-                k, DEFAULT_INITIAL_NUMBER_OF_RECORDS)
+                k, DEFAULT_INITIAL_NUMBER_OF_RECORDS
+            )
             if not isinstance(dpt_filesize, int):
-                raise FileSpecError(''.join(
-                    ('number of records must be a positive integer for item ',
-                     k,
-                     ' in filespec.',
-                     )))
+                raise FileSpecError(
+                    "".join(
+                        (
+                            "number of records must be a positive integer for item ",
+                            k,
+                            " in filespec.",
+                        )
+                    )
+                )
             if dpt_filesize < 1:
-                raise FileSpecError(''.join(
-                    ('number of records must be a positive integer for item ',
-                     k,
-                     ' in filespec.',
-                     )))
+                raise FileSpecError(
+                    "".join(
+                        (
+                            "number of records must be a positive integer for item ",
+                            k,
+                            " in filespec.",
+                        )
+                    )
+                )
 
             # A set of secondary names, however presented, is converted to a
             # minimal dictionary representing a valid, but probably useless,
             # specification for a set of DPT files.
-            if not isinstance(v, dict):
-                if len(v) != len(set(v)):
-                    duplicated = [f for f in set(v) if v.count(f) > 1]
-                    raise FileSpecError(''.join(
-                        ("Secondary names '",
-                         "', '".join(sorted(duplicated)),
-                         "' are duplicated",
-                         )))
-                names = v
+            if not isinstance(value, dict):
+                if len(value) != len(set(value)):
+                    duplicated = [f for f in set(value) if value.count(f) > 1]
+                    raise FileSpecError(
+                        "".join(
+                            (
+                                "Secondary names '",
+                                "', '".join(sorted(duplicated)),
+                                "' are duplicated",
+                            )
+                        )
+                    )
+                names = value
                 ddi += 1
-                v = {PRIMARY: k,
-                     DDNAME: DDNAME.upper() + str(ddi),
-                     FILE: FileSpec.dpt_dsn(k),
-                     SECONDARY: {},
-                     FIELDS: {k: None},
-                     }
-                for n in names:
-                    if n.startswith(SUBFILE_DELIMITER):
-                        raise FileSpecError(''.join(
-                            ("Secondary name '",
-                             n,
-                             "' starts with '",
-                             SUBFILE_DELIMITER,
-                             "'.",
-                             )))
-                    if n.lower() == k.lower():
-                        raise FileSpecError(''.join(
-                            ("Secondary name '",
-                             n,
-                             "' cannot be same as ",
-                             "primary name '",
-                             k,
-                             "' in filespec.",
-                             )))
-                    v[SECONDARY][n] = None
-                    v[FIELDS][FileSpec.field_name(n)] = {}
-                self[k] = v
-            records = v.setdefault(DEFAULT_RECORDS, dpt_filesize)
-            filedesc = v.setdefault(FILEDESC, {})
+                value = {
+                    PRIMARY: k,
+                    DDNAME: DDNAME.upper() + str(ddi),
+                    FILE: FileSpec.dpt_dsn(k),
+                    SECONDARY: {},
+                    FIELDS: {k: None},
+                }
+                for fieldname in names:
+                    if fieldname.startswith(SUBFILE_DELIMITER):
+                        raise FileSpecError(
+                            "".join(
+                                (
+                                    "Secondary name '",
+                                    fieldname,
+                                    "' starts with '",
+                                    SUBFILE_DELIMITER,
+                                    "'.",
+                                )
+                            )
+                        )
+                    if fieldname.lower() == k.lower():
+                        raise FileSpecError(
+                            "".join(
+                                (
+                                    "Secondary name '",
+                                    fieldname,
+                                    "' cannot be same as ",
+                                    "primary name '",
+                                    k,
+                                    "' in filespec.",
+                                )
+                            )
+                        )
+                    value[SECONDARY][fieldname] = None
+                    value[FIELDS][FileSpec.field_name(fieldname)] = {}
+                self[k] = value
+            records = value.setdefault(DEFAULT_RECORDS, dpt_filesize)
+            filedesc = value.setdefault(FILEDESC, {})
             brecppg = filedesc.setdefault(BRECPPG, 10)
             filedesc.setdefault(FILEORG, RRN)
-            btod_factor = v.setdefault(BTOD_FACTOR, 8)
+            btod_factor = value.setdefault(BTOD_FACTOR, 8)
             bsize = records // brecppg
             if bsize * brecppg < records:
                 bsize += 1
-            v[FILEDESC][BSIZE] = bsize
-            v[FILEDESC][DSIZE] = int(round(bsize * btod_factor))
-            v.setdefault(BTOD_CONSTANT, 0)
-        
+            value[FILEDESC][BSIZE] = bsize
+            value[FILEDESC][DSIZE] = int(round(bsize * btod_factor))
+            value.setdefault(BTOD_CONSTANT, 0)
+
         # Validate the specification, which may have been expanded in the
         # preceding section.
         # The name of the specification is usually, but does not have to be,
@@ -194,119 +221,197 @@ class FileSpec(dict):
         pathnames = dict()
         for name, specification in self.items():
             if not isinstance(specification, dict):
-                msg = ' '.join(
-                    ['Specification for', repr(name),
-                     'must be a dictionary'])
+                msg = " ".join(
+                    ["Specification for", repr(name), "must be a dictionary"]
+                )
                 raise FileSpecError(msg)
             if PRIMARY not in specification:
-                msg = ' '.join(['Specification for', repr(name),
-                                'must contain a primary name'])
+                msg = " ".join(
+                    [
+                        "Specification for",
+                        repr(name),
+                        "must contain a primary name",
+                    ]
+                )
                 raise FileSpecError(msg)
             primary = specification[PRIMARY]
             if SUBFILE_DELIMITER in primary:
-                raise FileSpecError(''.join(
-                    ('Primary name ',
-                     primary,
-                     " contains '",
-                     SUBFILE_DELIMITER,
-                     )))
+                raise FileSpecError(
+                    "".join(
+                        (
+                            "Primary name ",
+                            primary,
+                            " contains '",
+                            SUBFILE_DELIMITER,
+                        )
+                    )
+                )
             if primary in definitions:
-                msg = ' '.join(['Primary name', primary,
-                                'for', name,
-                                'already used'])
+                msg = " ".join(
+                    ["Primary name", primary, "for", name, "already used"]
+                )
                 raise FileSpecError(msg)
             if SECONDARY in specification:
-                for k, v in specification[SECONDARY].items():
-                    if v is None:
+                for k, value in specification[SECONDARY].items():
+                    if value is None:
                         if k.lower() == primary.lower():
-                            msg = ' '.join(
-                                ['Primary name', primary,
-                                 'for', name,
-                                 'must not be in secondary definition',
-                                 '(ignoring case)'])
+                            msg = " ".join(
+                                [
+                                    "Primary name",
+                                    primary,
+                                    "for",
+                                    name,
+                                    "must not be in secondary definition",
+                                    "(ignoring case)",
+                                ]
+                            )
                             raise FileSpecError(msg)
-                    elif primary.lower() in (k.lower(), v.lower()):
-                        msg = ' '.join(
-                            ['Primary name', primary,
-                             'for', name,
-                             'must not be in secondary definition',
-                             '(ignoring case)'])
+                    elif primary.lower() in (k.lower(), value.lower()):
+                        msg = " ".join(
+                            [
+                                "Primary name",
+                                primary,
+                                "for",
+                                name,
+                                "must not be in secondary definition",
+                                "(ignoring case)",
+                            ]
+                        )
                         raise FileSpecError(msg)
-                    if (v if v else FileSpec.field_name(k)
-                        ) not in specification[FIELDS]:
-                        msg = ' '.join(['Secondary field name',
-                                        str(k),
-                                        'for', name, 'does not have',
-                                        'a field description'])
+                    if (
+                        value if value else FileSpec.field_name(k)
+                    ) not in specification[FIELDS]:
+                        msg = " ".join(
+                            [
+                                "Secondary field name",
+                                str(k),
+                                "for",
+                                name,
+                                "does not have",
+                                "a field description",
+                            ]
+                        )
                         raise FileSpecError(msg)
             if FIELDS not in specification:
-                msg = ' '.join(['Field definitions must be present in',
-                                'specification for primary fields'])
+                msg = " ".join(
+                    [
+                        "Field definitions must be present in",
+                        "specification for primary fields",
+                    ]
+                )
                 raise FileSpecError(msg)
             if primary not in specification[FIELDS]:
-                msg = ' '.join(['Primary name', primary,
-                                'for', name,
-                                'must be in fields definition'])
+                msg = " ".join(
+                    [
+                        "Primary name",
+                        primary,
+                        "for",
+                        name,
+                        "must be in fields definition",
+                    ]
+                )
                 raise FileSpecError(msg)
-            if specification.get(DPT_PRIMARY_FIELD_LENGTH,
-                                 SAFE_DPT_FIELD_LENGTH) > 255:
-                msg = ' '.join(
-                    ['Safe unicode length for utf-8 encoding is greater than',
-                     '255 for primary field in DPT file',
-                     dbset])
+            if (
+                specification.get(
+                    DPT_PRIMARY_FIELD_LENGTH, SAFE_DPT_FIELD_LENGTH
+                )
+                > 255
+            ):
+                msg = " ".join(
+                    [
+                        "Safe unicode length for utf-8 encoding is greater than",
+                        "255 for primary field in DPT file",
+                        name,
+                    ]
+                )
                 raise FileSpecError(msg)
             try:
                 os.path.join(specification.get(FILE))
             except TypeError:
-                msg = ' '.join(['File name for', name,
-                                'must be a valid path name'])
+                msg = " ".join(
+                    ["File name for", name, "must be a valid path name"]
+                )
                 raise FileSpecError(msg)
             try:
-                os.path.join(specification.get(FOLDER, ''))
+                os.path.join(specification.get(FOLDER, ""))
             except TypeError:
-                msg = ' '.join(['Folder name for', name,
-                                'must be a valid path name'])
+                msg = " ".join(
+                    ["Folder name for", name, "must be a valid path name"]
+                )
                 raise FileSpecError(msg)
             filedesc = specification.get(FILEDESC)
             if not isinstance(filedesc, dict):
-                msg = ' '.join(['Description of file', name,
-                                'must be a dictionary'])
+                msg = " ".join(
+                    ["Description of file", name, "must be a dictionary"]
+                )
                 raise FileSpecError(msg)
             for attr in MANDATORY_FILEATTS:
                 if attr not in filedesc:
-                    msg = ' '.join(['Attribute', repr(attr),
-                                    'for file', name,
-                                    'must be present'])
+                    msg = " ".join(
+                        [
+                            "Attribute",
+                            repr(attr),
+                            "for file",
+                            name,
+                            "must be present",
+                        ]
+                    )
                     raise FileSpecError(msg)
             for attr in filedesc:
                 if attr not in FILEATTS:
-                    msg = ' '.join(['Attribute', repr(attr),
-                                    'for file', name,
-                                    'is not allowed'])
+                    msg = " ".join(
+                        [
+                            "Attribute",
+                            repr(attr),
+                            "for file",
+                            name,
+                            "is not allowed",
+                        ]
+                    )
                     raise FileSpecError(msg)
 
                 if attr not in MANDATORY_FILEATTS:
                     if not isinstance(filedesc[attr], int):
-                        msg = ' '.join(['Attribute', repr(attr),
-                                        'for file', name,
-                                        'must be a number'])
+                        msg = " ".join(
+                            [
+                                "Attribute",
+                                repr(attr),
+                                "for file",
+                                name,
+                                "must be a number",
+                            ]
+                        )
                         raise FileSpecError(msg)
-                elif not isinstance(filedesc[attr],
-                                    MANDATORY_FILEATTS[attr]):
-                    msg = ' '.join(['Attribute', repr(attr),
-                                    'for file', name,
-                                    'is not correct type'])
+                elif not isinstance(filedesc[attr], MANDATORY_FILEATTS[attr]):
+                    msg = " ".join(
+                        [
+                            "Attribute",
+                            repr(attr),
+                            "for file",
+                            name,
+                            "is not correct type",
+                        ]
+                    )
                     raise FileSpecError(msg)
             if filedesc.get(FILEORG, None) not in SUPPORTED_FILEORGS:
-                msg = ' '.join(
-                    ['File', name,
-                     'must be "Entry Order" or',
-                     '"Unordered and Reuse Record Number"'])
+                msg = " ".join(
+                    [
+                        "File",
+                        name,
+                        'must be "Entry Order" or',
+                        '"Unordered and Reuse Record Number"',
+                    ]
+                )
                 raise FileSpecError(msg)
             fields = specification[FIELDS]
             if not isinstance(fields, dict):
-                msg = ' '.join(['Field description of file', repr(name),
-                                'must be a dictionary'])
+                msg = " ".join(
+                    [
+                        "Field description of file",
+                        repr(name),
+                        "must be a dictionary",
+                    ]
+                )
                 raise FileSpecError(msg)
 
             # Mostly for DPT, but one or two field attributes are relevant to
@@ -317,9 +422,15 @@ class FileSpec(dict):
                 if description is None:
                     description = dict()
                 if not isinstance(description, dict):
-                    msg = ' '.join(['Attributes for field', fieldname,
-                                    'in file', repr(name),
-                                    'must be a dictionary or "None"'])
+                    msg = " ".join(
+                        [
+                            "Attributes for field",
+                            fieldname,
+                            "in file",
+                            repr(name),
+                            'must be a dictionary or "None"',
+                        ]
+                    )
                     raise FileSpecError(msg)
                 if fieldname == primary:
                     fieldatts = PRIMARY_FIELDATTS
@@ -327,82 +438,138 @@ class FileSpec(dict):
                     fieldatts = SECONDARY_FIELDATTS
                 for attr in description:
                     if attr not in fieldatts:
-                        msg = ' '.join(['Attribute', repr(attr),
-                                        'for field', fieldname,
-                                        'in file', name,
-                                        'is not allowed'])
+                        msg = " ".join(
+                            [
+                                "Attribute",
+                                repr(attr),
+                                "for field",
+                                fieldname,
+                                "in file",
+                                name,
+                                "is not allowed",
+                            ]
+                        )
                         raise FileSpecError(msg)
-                    if not isinstance(description[attr], type(fieldatts[attr])):
-                        msg = ' '.join([attr, 'for field', fieldname,
-                                        'in file', name, 'is wrong type'])
+                    if not isinstance(
+                        description[attr], type(fieldatts[attr])
+                    ):
+                        msg = " ".join(
+                            [
+                                attr,
+                                "for field",
+                                fieldname,
+                                "in file",
+                                name,
+                                "is wrong type",
+                            ]
+                        )
                         raise FileSpecError(msg)
                     if attr == SPT:
-                        if (description[attr] < 0 or
-                            description[attr] > 100):
-                            msg = ' '.join(['Split percentage for field',
-                                            fieldname, 'in file', name,
-                                            'is invalid'])
+                        if description[attr] < 0 or description[attr] > 100:
+                            msg = " ".join(
+                                [
+                                    "Split percentage for field",
+                                    fieldname,
+                                    "in file",
+                                    name,
+                                    "is invalid",
+                                ]
+                            )
                             raise FileSpecError(msg)
             try:
                 ddname = specification[DDNAME]
             except KeyError:
-                msg = ' '.join(['Specification for', name,
-                                'must have a DD name'])
+                msg = " ".join(
+                    ["Specification for", name, "must have a DD name"]
+                )
                 raise FileSpecError(msg)
             if len(ddname) == 0:
-                msg = ' '.join(['DD name', repr(ddname),
-                                'for', name,
-                                'is zero length'])
+                msg = " ".join(
+                    ["DD name", repr(ddname), "for", name, "is zero length"]
+                )
                 raise FileSpecError(msg)
-            elif len(ddname) > 8:
-                msg = ' '.join(['DD name', ddname,
-                                'for', name,
-                                'is over 8 characters'])
+            if len(ddname) > 8:
+                msg = " ".join(
+                    ["DD name", ddname, "for", name, "is over 8 characters"]
+                )
                 raise FileSpecError(msg)
-            elif not ddname.isalnum():
-                msg = ' '.join(['DD name', ddname,
-                                'for', name,
-                                'must be upper case alphanum',
-                                'starting with alpha'])
+            if not ddname.isalnum():
+                msg = " ".join(
+                    [
+                        "DD name",
+                        ddname,
+                        "for",
+                        name,
+                        "must be upper case alphanum",
+                        "starting with alpha",
+                    ]
+                )
                 raise FileSpecError(msg)
-            elif not ddname.isupper():
-                msg = ' '.join(['DD name', ddname,
-                                'for', name,
-                                'must be upper case alphanum',
-                                'starting with alpha'])
+            if not ddname.isupper():
+                msg = " ".join(
+                    [
+                        "DD name",
+                        ddname,
+                        "for",
+                        name,
+                        "must be upper case alphanum",
+                        "starting with alpha",
+                    ]
+                )
                 raise FileSpecError(msg)
-            elif not ddname[0].isupper():
-                msg = ' '.join(['DD name', ddname,
-                                'for', name,
-                                'must be upper case alphanum',
-                                'starting with alpha'])
+            if not ddname[0].isupper():
+                msg = " ".join(
+                    [
+                        "DD name",
+                        ddname,
+                        "for",
+                        name,
+                        "must be upper case alphanum",
+                        "starting with alpha",
+                    ]
+                )
                 raise FileSpecError(msg)
-            else:
-                try:
+            try:
 
-                    # At Python26+ need to convert unicode to str for DPT.
-                    fname = str(os.path.join(
-                        specification.get(FOLDER, ''),
-                        specification.get(FILE, None)))
+                # At Python26+ need to convert unicode to str for DPT.
+                fname = str(
+                    os.path.join(
+                        specification.get(FOLDER, ""),
+                        specification.get(FILE, None),
+                    )
+                )
 
-                except:
-                    msg = ' '.join(
-                        ['Relative path name of DPT file for', name,
-                         'is invalid'])
-                    raise FileSpecError(msg)
-                if fname in pathnames:
-                    msg = ' '.join(['File name', os.path.basename(fname),
-                                    'linked to', pathnames[fname],
-                                    'cannot link to', name])
-                    raise FileSpecError(msg)
-                pathnames[fname] = name
+            except:
+                msg = " ".join(
+                    [
+                        "Relative path name of DPT file for",
+                        name,
+                        "is invalid",
+                    ]
+                )
+                raise FileSpecError(msg)
+            if fname in pathnames:
+                msg = " ".join(
+                    [
+                        "File name",
+                        os.path.basename(fname),
+                        "linked to",
+                        pathnames[fname],
+                        "cannot link to",
+                        name,
+                    ]
+                )
+                raise FileSpecError(msg)
 
+            pathnames[fname] = name
             definitions.add(primary)
 
-    def is_consistent_with(self, specification):
-        """Raise FileSpecError if specification is not consistent with self.
+    def is_consistent_with(self, stored_specification):
+        """Raise FileSpecError if stored_specification is not as expected.
 
-        The specification is expected to be one stored with a database.
+        The stored_specification is expected to be consistent with the one
+        in the FileSpec instance (self).  The stored_specification should
+        be the one read from the database being opened.
 
         In particular the access method for fields in the database version is
         allowed to be different from the version in self, by being BTREE rather
@@ -412,56 +579,72 @@ class FileSpec(dict):
         # access methods to differ.  Specification can say, or imply by
         # default, BTREE while reference version can say HASH instead.
         # (Matters for _db and _nosql modules.)
-        if self == specification:
+        if self == stored_specification:
             return
-        sdbspec = sorted([s for s in specification])
-        ssspec = sorted([s for s in self])
-        if sdbspec != ssspec:
+        sdbspec = sorted(stored_specification)
+        sfsspec = sorted(self)
+        if sdbspec != sfsspec:
             raise FileSpecError(
-                ''.join(
-                    ('Specification does not have same files as defined in ',
-                     'this FileSpec')))
-        msgdh = ''.join(
-            ('Specification does not have same detail headings for each file ',
-             'as defined in this FileSpec'))
-        msgd = ''.join(
-            ('Specification does not have same detail for each file as ',
-             'defined in this FileSpec'))
-        msgfield = ''.join(
-            ('Specification does not have same fields for each file as ',
-             'defined in this FileSpec'))
-        msgam = ''.join(
-            ('Specification does not have same descriptions for each field ',
-             'in each file as defined in this FileSpec'))
-        for dbs, ss in zip(sdbspec, ssspec):
-            sdbs = sorted(s for s in specification[dbs])
-            sss = sorted(s for s in self[ss])
-            if sdbs != sss:
+                "".join(
+                    (
+                        "Specification does not have same files as defined in ",
+                        "this FileSpec",
+                    )
+                )
+            )
+        msgdh = "".join(
+            (
+                "Specification does not have same detail headings for each file ",
+                "as defined in this FileSpec",
+            )
+        )
+        msgd = "".join(
+            (
+                "Specification does not have same detail for each file as ",
+                "defined in this FileSpec",
+            )
+        )
+        msgfield = "".join(
+            (
+                "Specification does not have same fields for each file as ",
+                "defined in this FileSpec",
+            )
+        )
+        msgam = "".join(
+            (
+                "Specification does not have same descriptions for each field ",
+                "in each file as defined in this FileSpec",
+            )
+        )
+        for dbs, fss in zip(sdbspec, sfsspec):
+            sdbs = sorted(s for s in stored_specification[dbs])
+            sfss = sorted(s for s in self[fss])
+            if sdbs != sfss:
                 raise FileSpecError(msgdh)
             for dbsd in sdbs:
                 if dbsd != FIELDS:
-                    if (specification[dbs][dbsd] != self[ss][dbsd]):
+                    if stored_specification[dbs][dbsd] != self[fss][dbsd]:
                         raise FileSpecError(msgd)
                     continue
-                sdbsf = specification[dbs][dbsd]
-                sssf = self[dbs][dbsd]
-                if sorted(sdbsf) != sorted(sssf):
+                sdbsf = stored_specification[dbs][dbsd]
+                sfssf = self[dbs][dbsd]
+                if sorted(sdbsf) != sorted(sfssf):
                     raise FileSpecError(msgfield)
-                for fn in sdbsf:
-                    if sdbsf[fn] == sssf[fn]:
+                for fieldname in sdbsf:
+                    if sdbsf[fieldname] == sfssf[fieldname]:
                         continue
-                    dbfp = sdbsf[fn].copy()
-                    sfp = sssf[fn].copy()
+                    dbfp = sdbsf[fieldname].copy()
+                    fsfp = sfssf[fieldname].copy()
                     if ACCESS_METHOD in dbfp:
                         del dbfp[ACCESS_METHOD]
-                    if ACCESS_METHOD in sfp:
-                        del sfp[ACCESS_METHOD]
-                    if dbfp != sfp:
+                    if ACCESS_METHOD in fsfp:
+                        del fsfp[ACCESS_METHOD]
+                    if dbfp != fsfp:
                         raise FileSpecError(msgam)
-                    dbfpam = sdbsf[fn].get(ACCESS_METHOD, BTREE)
-                    sfpam = sssf[fn].get(ACCESS_METHOD, BTREE)
-                    if dbfpam == sfpam:
+                    dbfpam = sdbsf[fieldname].get(ACCESS_METHOD, BTREE)
+                    fsfpam = sfssf[fieldname].get(ACCESS_METHOD, BTREE)
+                    if dbfpam == fsfpam:
                         continue
-                    if dbfpam == BTREE and sfpam == HASH:
+                    if dbfpam == BTREE and fsfpam == HASH:
                         continue
                     raise FileSpecError(msgam)

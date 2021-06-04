@@ -12,216 +12,263 @@ from ..segmentsize import SegmentSize
 
 
 class RecordsetSegmentBitarray(unittest.TestCase):
-
     def setUp(self):
         self.__ssb = SegmentSize.db_segment_size_bytes
         SegmentSize.db_segment_size_bytes = None
-        self.sbytes = b''.join((b'\x01\x00\xff\x00\x00\x00\x00\x00',
-                                b'\x00\x00\x00\x00\x00\x00\x00\x00'))
+        self.sbytes = b"".join(
+            (
+                b"\x01\x00\xff\x00\x00\x00\x00\x00",
+                b"\x00\x00\x00\x00\x00\x00\x00\x00",
+            )
+        )
         self.rsi = recordset.RecordsetSegmentBitarray(
-            2, 'key', records=self.sbytes)
+            2, "key", records=self.sbytes
+        )
 
     def tearDown(self):
         SegmentSize.db_segment_size_bytes = self.__ssb
         self.rsi = None
 
     def test__assumptions(self):
-        msg = 'Failure of this test invalidates all other tests'
+        msg = "Failure of this test invalidates all other tests"
         self.assertRaisesRegex(
             TypeError,
-            "".join((
-                "__init__\(\) missing 2 required positional arguments: ",
-                "'segment_number' and 'key'",
-                )),
+            "".join(
+                (
+                    "__init__\(\) missing 2 required positional arguments: ",
+                    "'segment_number' and 'key'",
+                )
+            ),
             recordset.RecordsetSegmentBitarray,
-            )
+        )
         self.assertRaisesRegex(
             TypeError,
-            "".join((
-                "__init__\(\) got an unexpected keyword argument 'xxxxx'",
-                )),
+            "".join(
+                ("__init__\(\) got an unexpected keyword argument 'xxxxx'",)
+            ),
             recordset.RecordsetSegmentBitarray,
             *(None, None),
             **dict(xxxxx=None),
-            )
+        )
+        # Matches "'bool' ..." before Python 3.8 but "can't ..." otherwise.
         self.assertRaisesRegex(
             TypeError,
-            "".join((
-                "'bool' object is not iterable",
-                )),
+            "|".join(
+                (
+                    "'bool' object is not iterable",
+                    "can't extend bytearray with bool",
+                )
+            ),
             recordset.RecordsetSegmentBitarray,
             *(None, None),
             **dict(records=False),
-            )
-        self.assertEqual(sorted(self.rsi.__dict__.keys()),
-                         ['_bitarray',
-                          '_current_position_in_segment',
-                          '_key',
-                          '_reversed',
-                          '_segment_number',
-                          ])
+        )
+        self.assertEqual(
+            sorted(self.rsi.__dict__.keys()),
+            [
+                "_reversed",
+                "bitarray",
+                "current_position_in_segment",
+                "index_key",
+                "segment_number",
+            ],
+        )
         self.assertRaisesRegex(
             TypeError,
-            "".join((
-                "count_records\(\) takes 1 positional argument ",
-                "but 2 were given",
-                )),
+            "".join(
+                (
+                    "count_records\(\) takes 1 positional argument ",
+                    "but 2 were given",
+                )
+            ),
             self.rsi.count_records,
             *(None,),
-            )
+        )
         self.assertRaisesRegex(
             TypeError,
-            "".join((
-                "current\(\) takes 1 positional argument ",
-                "but 2 were given",
-                )),
+            "".join(
+                (
+                    "current\(\) takes 1 positional argument ",
+                    "but 2 were given",
+                )
+            ),
             self.rsi.current,
             *(None,),
-            )
+        )
         self.assertRaisesRegex(
             TypeError,
-            "".join((
-                "first\(\) takes 1 positional argument ",
-                "but 2 were given",
-                )),
+            "".join(
+                (
+                    "first\(\) takes 1 positional argument ",
+                    "but 2 were given",
+                )
+            ),
             self.rsi.first,
             *(None,),
-            )
+        )
         self.assertRaisesRegex(
             TypeError,
-            "".join((
-                "get_position_of_record_number\(\) missing 1 required ",
-                "positional argument: ",
-                "'recnum'",
-                )),
+            "".join(
+                (
+                    "get_position_of_record_number\(\) missing 1 required ",
+                    "positional argument: ",
+                    "'recnum'",
+                )
+            ),
             self.rsi.get_position_of_record_number,
-            )
+        )
         self.assertRaisesRegex(
             TypeError,
-            "".join((
-                "get_record_number_at_position\(\) takes 2 ",
-                "positional arguments but 3 were given",
-                )),
+            "".join(
+                (
+                    "get_record_number_at_position\(\) takes 2 ",
+                    "positional arguments but 3 were given",
+                )
+            ),
             self.rsi.get_record_number_at_position,
             *(None, None),
-            )
+        )
         self.assertRaisesRegex(
             TypeError,
-            "".join((
-                "last\(\) takes 1 positional argument ",
-                "but 2 were given",
-                )),
+            "".join(
+                (
+                    "last\(\) takes 1 positional argument ",
+                    "but 2 were given",
+                )
+            ),
             self.rsi.last,
             *(None,),
-            )
+        )
         self.assertRaisesRegex(
             TypeError,
-            "".join((
-                "next\(\) takes 1 positional argument ",
-                "but 2 were given",
-                )),
+            "".join(
+                (
+                    "next\(\) takes 1 positional argument ",
+                    "but 2 were given",
+                )
+            ),
             self.rsi.next,
             *(None,),
-            )
+        )
         self.assertRaisesRegex(
             TypeError,
-            "".join((
-                "prev\(\) takes 1 positional argument ",
-                "but 2 were given",
-                )),
+            "".join(
+                (
+                    "prev\(\) takes 1 positional argument ",
+                    "but 2 were given",
+                )
+            ),
             self.rsi.prev,
             *(None,),
-            )
+        )
         self.assertRaisesRegex(
             TypeError,
-            "".join((
-                "setat\(\) missing 1 required positional argument: 'record'",
-                )),
+            "".join(
+                ("setat\(\) missing 1 required positional argument: 'record'",)
+            ),
             self.rsi.setat,
-            )
+        )
         self.assertRaisesRegex(
             TypeError,
-            "".join((
-                "_empty_segment\(\) takes 1 positional argument ",
-                "but 2 were given",
-                )),
+            "".join(
+                (
+                    "_empty_segment\(\) takes 1 positional argument ",
+                    "but 2 were given",
+                )
+            ),
             self.rsi._empty_segment,
             *(None,),
-            )
+        )
         self.assertRaisesRegex(
             TypeError,
-            "".join((
-                "__deepcopy__\(\) missing 1 required positional argument: ",
-                "'memo'",
-                )),
+            "".join(
+                (
+                    "__deepcopy__\(\) missing 1 required positional argument: ",
+                    "'memo'",
+                )
+            ),
             self.rsi.__deepcopy__,
-            )
+        )
         self.assertRaisesRegex(
             TypeError,
-            "".join((
-                "__contains__\(\) missing 1 required positional argument: ",
-                "'relative_record_number'",
-                )),
+            "".join(
+                (
+                    "__contains__\(\) missing 1 required positional argument: ",
+                    "'relative_record_number'",
+                )
+            ),
             self.rsi.__contains__,
-            )
+        )
         self.assertRaisesRegex(
             TypeError,
-            "".join((
-                "normalize\(\) takes from 1 to 2 ",
-                "positional arguments but 3 were given",
-                )),
+            "".join(
+                (
+                    "normalize\(\) takes from 1 to 2 ",
+                    "positional arguments but 3 were given",
+                )
+            ),
             self.rsi.normalize,
             *(None, None),
-            )
+        )
         self.assertRaisesRegex(
             TypeError,
-            "".join((
-                "promote\(\) takes 1 positional argument ",
-                "but 2 were given",
-                )),
+            "".join(
+                (
+                    "promote\(\) takes 1 positional argument ",
+                    "but 2 were given",
+                )
+            ),
             self.rsi.promote,
             *(None,),
-            )
+        )
         self.assertRaisesRegex(
             TypeError,
-            "".join((
-                "__or__\(\) missing 1 required positional argument: ",
-                "'other'",
-                )),
+            "".join(
+                (
+                    "__or__\(\) missing 1 required positional argument: ",
+                    "'other'",
+                )
+            ),
             self.rsi.__or__,
-            )
+        )
         self.assertRaisesRegex(
             TypeError,
-            "".join((
-                "__and__\(\) missing 1 required positional argument: ",
-                "'other'",
-                )),
+            "".join(
+                (
+                    "__and__\(\) missing 1 required positional argument: ",
+                    "'other'",
+                )
+            ),
             self.rsi.__and__,
-            )
+        )
         self.assertRaisesRegex(
             TypeError,
-            "".join((
-                "__xor__\(\) missing 1 required positional argument: ",
-                "'other'",
-                )),
+            "".join(
+                (
+                    "__xor__\(\) missing 1 required positional argument: ",
+                    "'other'",
+                )
+            ),
             self.rsi.__xor__,
-            )
+        )
         self.assertRaisesRegex(
             TypeError,
-            "".join((
-                "tobytes\(\) takes 1 positional argument ",
-                "but 2 were given",
-                )),
+            "".join(
+                (
+                    "tobytes\(\) takes 1 positional argument ",
+                    "but 2 were given",
+                )
+            ),
             self.rsi.tobytes,
             *(None,),
-            )
+        )
 
     def test___init__(self):
         s = self.rsi
-        self.assertEqual(s._bitarray._ba, self.sbytes)
-        self.assertEqual(s._key, 'key')
-        self.assertEqual(s._segment_number, 2)
-        self.assertEqual(s._current_position_in_segment, None)
+        self.assertEqual(s.bitarray.bitarray_bytes, self.sbytes)
+        self.assertEqual(s.index_key, "key")
+        self.assertEqual(s.segment_number, 2)
+        self.assertEqual(s.current_position_in_segment, None)
         self.assertEqual(s._reversed, None)
 
     def test_segment_number(self):
@@ -234,31 +281,31 @@ class RecordsetSegmentBitarray(unittest.TestCase):
         self.assertEqual(self.rsi.current(), None)
 
     def test_current_02(self):
-        self.rsi._current_position_in_segment = 1
-        self.assertEqual(self.rsi.current(), ('key', 257))
+        self.rsi.current_position_in_segment = 1
+        self.assertEqual(self.rsi.current(), ("key", 257))
 
     def test_current_03(self):
         # Different to RecordsetSegmentInt?
-        self.rsi._current_position_in_segment = 200
-        self.assertEqual(self.rsi.current(), ('key', 456))
+        self.rsi.current_position_in_segment = 200
+        self.assertEqual(self.rsi.current(), ("key", 456))
 
     def test_first_01(self):
-        self.assertEqual(self.rsi.first(), ('key', 263))
-        self.assertEqual(self.rsi._current_position_in_segment, 7)
+        self.assertEqual(self.rsi.first(), ("key", 263))
+        self.assertEqual(self.rsi.current_position_in_segment, 7)
 
     def test_first_02(self):
-        self.rsi._current_position_in_segment = 2
-        self.assertEqual(self.rsi.first(), ('key', 263))
+        self.rsi.current_position_in_segment = 2
+        self.assertEqual(self.rsi.first(), ("key", 263))
 
     def test_first_03(self):
-        self.rsi._segment_number = 'a'
+        self.rsi.segment_number = "a"
         self.assertRaisesRegex(
             TypeError,
-            "".join((
-                "unsupported operand type\(s\) for \+: 'int' and 'str'",
-                )),
+            "".join(
+                ("unsupported operand type\(s\) for \+: 'int' and 'str'",)
+            ),
             self.rsi.first,
-            )
+        )
 
     def test_get_position_of_record_number(self):
         self.assertEqual(self.rsi.get_position_of_record_number(16), 1)
@@ -295,46 +342,46 @@ class RecordsetSegmentBitarray(unittest.TestCase):
         self.assertEqual(self.rsi.get_record_number_at_position(-10), None)
 
     def test_last_01(self):
-        self.assertEqual(self.rsi.last(), ('key', 279))
-        self.assertEqual(self.rsi._current_position_in_segment, 23)
+        self.assertEqual(self.rsi.last(), ("key", 279))
+        self.assertEqual(self.rsi.current_position_in_segment, 23)
 
     def test_last_02(self):
-        self.rsi._current_position_in_segment = 2
-        self.assertEqual(self.rsi.last(), ('key', 279))
+        self.rsi.current_position_in_segment = 2
+        self.assertEqual(self.rsi.last(), ("key", 279))
 
     def test_last_03(self):
-        self.rsi._segment_number = 'a'
+        self.rsi.segment_number = "a"
         self.assertRaisesRegex(
             TypeError,
-            "".join((
-                "unsupported operand type\(s\) for \+: 'int' and 'str'",
-                )),
+            "".join(
+                ("unsupported operand type\(s\) for \+: 'int' and 'str'",)
+            ),
             self.rsi.last,
-            )
+        )
 
     def test_next(self):
-        self.assertEqual(self.rsi.next(), ('key', 263))
-        self.assertEqual(self.rsi._current_position_in_segment, 7)
-        self.assertEqual(self.rsi.next(), ('key', 272))
-        self.assertEqual(self.rsi.next(), ('key', 273))
+        self.assertEqual(self.rsi.next(), ("key", 263))
+        self.assertEqual(self.rsi.current_position_in_segment, 7)
+        self.assertEqual(self.rsi.next(), ("key", 272))
+        self.assertEqual(self.rsi.next(), ("key", 273))
         for i in range(5):
             self.rsi.next()
-        self.assertEqual(self.rsi.next(), ('key', 279))
+        self.assertEqual(self.rsi.next(), ("key", 279))
         self.assertEqual(self.rsi.next(), None)
 
     def test_prev(self):
-        self.assertEqual(self.rsi.prev(), ('key', 279))
-        self.assertEqual(self.rsi._current_position_in_segment, 23)
-        self.assertEqual(self.rsi.prev(), ('key', 278))
-        self.assertEqual(self.rsi.prev(), ('key', 277))
+        self.assertEqual(self.rsi.prev(), ("key", 279))
+        self.assertEqual(self.rsi.current_position_in_segment, 23)
+        self.assertEqual(self.rsi.prev(), ("key", 278))
+        self.assertEqual(self.rsi.prev(), ("key", 277))
         for i in range(5):
             self.rsi.prev()
-        self.assertEqual(self.rsi.prev(), ('key', 263))
+        self.assertEqual(self.rsi.prev(), ("key", 263))
         self.assertEqual(self.rsi.prev(), None)
 
     def test_setat_01(self):
-        self.assertEqual(self.rsi.setat(263), ('key', 263))
-        self.assertEqual(self.rsi._current_position_in_segment, 7)
+        self.assertEqual(self.rsi.setat(263), ("key", 263))
+        self.assertEqual(self.rsi.current_position_in_segment, 7)
 
     def test_setat_02(self):
         self.assertEqual(self.rsi.setat(68000), None)
@@ -346,40 +393,45 @@ class RecordsetSegmentBitarray(unittest.TestCase):
     def test_normalize_02(self):
         for i in 272, 273, 274, 275, 276, 277, 278, 279:
             s, o = divmod(i, SegmentSize.db_segment_size)
-            self.rsi._bitarray[o] = False
-        self.assertIsInstance(self.rsi.normalize(),
-                              recordset.RecordsetSegmentInt)
+            self.rsi.bitarray[o] = False
+        self.assertIsInstance(
+            self.rsi.normalize(), recordset.RecordsetSegmentInt
+        )
 
     def test_normalize_03(self):
         for i in 273, 274, 275, 276, 277, 278, 279:
             s, o = divmod(i, SegmentSize.db_segment_size)
-            self.rsi._bitarray[o] = False
-        self.assertIsInstance(self.rsi.normalize(),
-                              recordset.RecordsetSegmentList)
+            self.rsi.bitarray[o] = False
+        self.assertIsInstance(
+            self.rsi.normalize(), recordset.RecordsetSegmentList
+        )
 
     def test_normalize_04(self):
         for i in 278, 279:
             s, o = divmod(i, SegmentSize.db_segment_size)
-            self.rsi._bitarray[o] = False
-        self.assertIsInstance(self.rsi.normalize(),
-                              recordset.RecordsetSegmentList)
+            self.rsi.bitarray[o] = False
+        self.assertIsInstance(
+            self.rsi.normalize(), recordset.RecordsetSegmentList
+        )
 
     def test_normalize_05(self):
         for i in range(65544, 65550):
             s, o = divmod(i, SegmentSize.db_segment_size)
-            self.rsi._bitarray[o] = False
+            self.rsi.bitarray[o] = False
         self.assertIs(self.rsi.normalize(use_upper_limit=False), self.rsi)
 
     def test_promote(self):
         self.assertIs(self.rsi.promote(), self.rsi)
 
     def test__empty_segment(self):
-        self.assertIsInstance(self.rsi._empty_segment(),
-                              recordset.RecordsetSegmentBitarray)
+        self.assertIsInstance(
+            self.rsi._empty_segment(), recordset.RecordsetSegmentBitarray
+        )
 
     def test___deepcopy__(self):
-        self.assertIsInstance(self.rsi.__deepcopy__({}),
-                              recordset.RecordsetSegmentBitarray)
+        self.assertIsInstance(
+            self.rsi.__deepcopy__({}), recordset.RecordsetSegmentBitarray
+        )
 
     def test___contains__(self):
         self.assertEqual(self.rsi.__contains__(6), False)
@@ -388,10 +440,16 @@ class RecordsetSegmentBitarray(unittest.TestCase):
     def test___or__01(self):
         s2 = recordset.RecordsetSegmentBitarray(
             2,
-            'key',
+            "key",
             records=(
-                b''.join((b'\x03\x00\xf0\x00\xff\x00\x00\x00',
-                          b'\x00\x00\x00\x00\x00\x00\x00\x00'))))
+                b"".join(
+                    (
+                        b"\x03\x00\xf0\x00\xff\x00\x00\x00",
+                        b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                    )
+                )
+            ),
+        )
         s = self.rsi | s2
         self.assertIsInstance(s, recordset.RecordsetSegmentBitarray)
         self.assertEqual(5 in s, False)
@@ -404,26 +462,38 @@ class RecordsetSegmentBitarray(unittest.TestCase):
     def test___or__02(self):
         s3 = recordset.RecordsetSegmentBitarray(
             3,
-            'key',
+            "key",
             records=(
-                b''.join((b'\x03\x00\xf0\x00\xff\x00\x00\x00',
-                          b'\x00\x00\x00\x00\x00\x00\x00\x00'))))
+                b"".join(
+                    (
+                        b"\x03\x00\xf0\x00\xff\x00\x00\x00",
+                        b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                    )
+                )
+            ),
+        )
         self.assertRaisesRegex(
             recordset.RecordsetError,
-            "".join((
-                "Attempt to 'or' segments with different segment numbers",
-                )),
+            "".join(
+                ("Attempt to 'or' segments with different segment numbers",)
+            ),
             self.rsi.__or__,
             *(s3,),
-            )
+        )
 
     def test___and__01(self):
         s2 = recordset.RecordsetSegmentBitarray(
             2,
-            'key',
+            "key",
             records=(
-                b''.join((b'\x03\x00\xf0\x00\xff\x00\x00\x00',
-                          b'\x00\x00\x00\x00\x00\x00\x00\x00'))))
+                b"".join(
+                    (
+                        b"\x03\x00\xf0\x00\xff\x00\x00\x00",
+                        b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                    )
+                )
+            ),
+        )
         s = self.rsi & s2
         self.assertIsInstance(s, recordset.RecordsetSegmentBitarray)
         self.assertEqual(5 in s, False)
@@ -436,27 +506,33 @@ class RecordsetSegmentBitarray(unittest.TestCase):
     def test___and__02(self):
         s3 = recordset.RecordsetSegmentBitarray(
             3,
-            'key',
+            "key",
             records=(
-                b'\x03' +
-                b'\x00' * (SegmentSize.db_segment_size_bytes - 1))
-            )
+                b"\x03" + b"\x00" * (SegmentSize.db_segment_size_bytes - 1)
+            ),
+        )
         self.assertRaisesRegex(
             recordset.RecordsetError,
-            "".join((
-                "Attempt to 'and' segments with different segment numbers",
-                )),
+            "".join(
+                ("Attempt to 'and' segments with different segment numbers",)
+            ),
             self.rsi.__and__,
             *(s3,),
-            )
+        )
 
     def test___xor__01(self):
         s2 = recordset.RecordsetSegmentBitarray(
             2,
-            'key',
+            "key",
             records=(
-                b''.join((b'\x03\x00\xf0\x00\xff\x00\x00\x00',
-                          b'\x00\x00\x00\x00\x00\x00\x00\x00'))))
+                b"".join(
+                    (
+                        b"\x03\x00\xf0\x00\xff\x00\x00\x00",
+                        b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                    )
+                )
+            ),
+        )
         s = self.rsi ^ s2
         self.assertIsInstance(s, recordset.RecordsetSegmentBitarray)
         self.assertEqual(6 in s, True)
@@ -471,19 +547,19 @@ class RecordsetSegmentBitarray(unittest.TestCase):
     def test___xor__02(self):
         s3 = recordset.RecordsetSegmentBitarray(
             3,
-            'key',
+            "key",
             records=(
-                b'\x03' +
-                b'\x00' * (SegmentSize.db_segment_size_bytes - 1))
-            )
+                b"\x03" + b"\x00" * (SegmentSize.db_segment_size_bytes - 1)
+            ),
+        )
         self.assertRaisesRegex(
             recordset.RecordsetError,
-            "".join((
-                "Attempt to 'xor' segments with different segment numbers",
-                )),
+            "".join(
+                ("Attempt to 'xor' segments with different segment numbers",)
+            ),
             self.rsi.__xor__,
             *(s3,),
-            )
+        )
 
     def test_tobytes(self):
         self.assertEqual(self.rsi.tobytes(), self.sbytes)
@@ -495,16 +571,18 @@ class RecordsetSegmentBitarray(unittest.TestCase):
     def test___setitem__02(self):
         self.assertRaisesRegex(
             recordset.RecordsetError,
-            "".join((
-                "'RecordsetSegmentBitarray' segment is not the one for ",
-                "this 'key'",
-                )),
+            "".join(
+                (
+                    "'RecordsetSegmentBitarray' segment is not the one for ",
+                    "this 'key'",
+                )
+            ),
             self.rsi.__setitem__,
             *(divmod(18541, SegmentSize.db_segment_size), True),
-            )
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
     runner().run(loader(RecordsetSegmentBitarray))

@@ -2,8 +2,10 @@
 # Copyright (c) 2015 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""A record selection statement parser approximately equivalent to SQL Select
-statement where clause and DPT Find statement retrieval conditions.
+"""Record selection statement parser.
+
+Approximately equivalent to SQL Select statement where clause, and DPT Find
+statement, retrieval conditions.
 
 The syntax is:
 
@@ -33,116 +35,126 @@ particularly the last of these.
 
 """
 
-import re, sre_constants
+import re
+import sre_constants
 from tkinter import simpledialog
 
 from .constants import SECONDARY
 
 DOUBLE_QUOTE_STRING = '".*?"'
 SINGLE_QUOTE_STRING = "'.*?'"
-LEFT_PARENTHESIS = '('
-RIGHT_PARENTHESIS = ')'
-OR = 'or'
-TO = 'to'
-IS = 'is'
-EQ = 'eq'
-NE = 'ne'
-LT = 'lt'
-LE = 'le'
-GT = 'gt'
-GE = 'ge'
-NOT = 'not'
-NOR = 'nor'
-AND = 'and'
-NUM = 'num'
-LIKE = 'like'
-FROM = 'from'
-ALPHA = 'alpha'
-ABOVE = 'above'
-AFTER = 'after'
-BELOW = 'below'
-BEFORE = 'before'
-STARTS = 'starts'
-PRESENT = 'present'
-STRING = '.+?'
+LEFT_PARENTHESIS = "("
+RIGHT_PARENTHESIS = ")"
+OR = "or"
+TO = "to"
+IS = "is"
+EQ = "eq"
+NE = "ne"
+LT = "lt"
+LE = "le"
+GT = "gt"
+GE = "ge"
+NOT = "not"
+NOR = "nor"
+AND = "and"
+NUM = "num"
+LIKE = "like"
+FROM = "from"
+ALPHA = "alpha"
+ABOVE = "above"
+AFTER = "after"
+BELOW = "below"
+BEFORE = "before"
+STARTS = "starts"
+PRESENT = "present"
+STRING = ".+?"
 
-LEADING_SPACE = '(?<=\s)'
-TRAILING_SPACE = '(?=\s)'
+LEADING_SPACE = r"(?<=\s)"
+TRAILING_SPACE = r"(?=\s)"
 
 WHERE_RE = re.compile(
-    '|'.join((DOUBLE_QUOTE_STRING,
-              SINGLE_QUOTE_STRING,
-              ''.join(('\\', LEFT_PARENTHESIS)),
-              ''.join(('\\', RIGHT_PARENTHESIS)),
-              OR.join(('(?<=\s|\))', '(?=\s|\()')),
-              TO.join((LEADING_SPACE, TRAILING_SPACE)),
-              IS.join((LEADING_SPACE, TRAILING_SPACE)),
-              EQ.join((LEADING_SPACE, TRAILING_SPACE)),
-              NE.join((LEADING_SPACE, TRAILING_SPACE)),
-              LT.join((LEADING_SPACE, TRAILING_SPACE)),
-              LE.join((LEADING_SPACE, TRAILING_SPACE)),
-              GT.join((LEADING_SPACE, TRAILING_SPACE)),
-              GE.join((LEADING_SPACE, TRAILING_SPACE)),
-              NOT.join(('\A', '(?=\s|\()')),
-              NOT.join(('(?<=\s|\()', '(?=\s|\()')),
-              NOR.join(('(?<=\s|\()', '(?=\s|\()')),
-              AND.join(('(?<=\s|\))', '(?=\s|\()')),
-              NUM.join((LEADING_SPACE, TRAILING_SPACE)),
-              LIKE.join((LEADING_SPACE, TRAILING_SPACE)),
-              FROM.join((LEADING_SPACE, TRAILING_SPACE)),
-              ALPHA.join((LEADING_SPACE, TRAILING_SPACE)),
-              ABOVE.join((LEADING_SPACE, TRAILING_SPACE)),
-              AFTER.join((LEADING_SPACE, TRAILING_SPACE)),
-              BELOW.join((LEADING_SPACE, TRAILING_SPACE)),
-              BEFORE.join((LEADING_SPACE, TRAILING_SPACE)),
-              STARTS.join((LEADING_SPACE, TRAILING_SPACE)),
-              PRESENT.join((LEADING_SPACE, '(?=\s|\)|\Z)')),
-              STRING,
-              )).join(('(', ')')),
-    flags=re.IGNORECASE|re.DOTALL)
+    "|".join(
+        (
+            DOUBLE_QUOTE_STRING,
+            SINGLE_QUOTE_STRING,
+            "".join(("\\", LEFT_PARENTHESIS)),
+            "".join(("\\", RIGHT_PARENTHESIS)),
+            OR.join((r"(?<=\s|\))", r"(?=\s|\()")),
+            TO.join((LEADING_SPACE, TRAILING_SPACE)),
+            IS.join((LEADING_SPACE, TRAILING_SPACE)),
+            EQ.join((LEADING_SPACE, TRAILING_SPACE)),
+            NE.join((LEADING_SPACE, TRAILING_SPACE)),
+            LT.join((LEADING_SPACE, TRAILING_SPACE)),
+            LE.join((LEADING_SPACE, TRAILING_SPACE)),
+            GT.join((LEADING_SPACE, TRAILING_SPACE)),
+            GE.join((LEADING_SPACE, TRAILING_SPACE)),
+            NOT.join((r"\A", r"(?=\s|\()")),
+            NOT.join((r"(?<=\s|\()", r"(?=\s|\()")),
+            NOR.join((r"(?<=\s|\()", r"(?=\s|\()")),
+            AND.join((r"(?<=\s|\))", r"(?=\s|\()")),
+            NUM.join((LEADING_SPACE, TRAILING_SPACE)),
+            LIKE.join((LEADING_SPACE, TRAILING_SPACE)),
+            FROM.join((LEADING_SPACE, TRAILING_SPACE)),
+            ALPHA.join((LEADING_SPACE, TRAILING_SPACE)),
+            ABOVE.join((LEADING_SPACE, TRAILING_SPACE)),
+            AFTER.join((LEADING_SPACE, TRAILING_SPACE)),
+            BELOW.join((LEADING_SPACE, TRAILING_SPACE)),
+            BEFORE.join((LEADING_SPACE, TRAILING_SPACE)),
+            STARTS.join((LEADING_SPACE, TRAILING_SPACE)),
+            PRESENT.join((LEADING_SPACE, r"(?=\s|\)|\Z)")),
+            STRING,
+        )
+    ).join(("(", ")")),
+    flags=re.IGNORECASE | re.DOTALL,
+)
 
-KEYWORDS = frozenset((LEFT_PARENTHESIS,
-                      RIGHT_PARENTHESIS,
-                      OR,
-                      TO,
-                      IS,
-                      EQ,
-                      NE,
-                      LT,
-                      LE,
-                      GT,
-                      GE,
-                      NOT,
-                      NOR,
-                      AND,
-                      NUM,
-                      LIKE,
-                      FROM,
-                      ALPHA,
-                      ABOVE,
-                      AFTER,
-                      BELOW,
-                      BEFORE,
-                      STARTS,
-                      PRESENT,
-                      ))
+KEYWORDS = frozenset(
+    (
+        LEFT_PARENTHESIS,
+        RIGHT_PARENTHESIS,
+        OR,
+        TO,
+        IS,
+        EQ,
+        NE,
+        LT,
+        LE,
+        GT,
+        GE,
+        NOT,
+        NOR,
+        AND,
+        NUM,
+        LIKE,
+        FROM,
+        ALPHA,
+        ABOVE,
+        AFTER,
+        BELOW,
+        BEFORE,
+        STARTS,
+        PRESENT,
+    )
+)
 SINGLE_CONDITIONS = frozenset((EQ, NE, LT, LE, GT, GE, AFTER, BEFORE))
 FIRST_CONDITIONS = frozenset((ABOVE, FROM))
 SECOND_CONDITIONS = frozenset((TO, BELOW))
 ALPHANUMERIC = frozenset((ALPHA, NUM))
 BOOLEAN = frozenset((AND, OR, NOR))
-STRUCTURE_TOKENS = frozenset((LEFT_PARENTHESIS,
-                              RIGHT_PARENTHESIS,
-                              None,
-                              ))
+STRUCTURE_TOKENS = frozenset(
+    (
+        LEFT_PARENTHESIS,
+        RIGHT_PARENTHESIS,
+        None,
+    )
+)
 
 
 class WhereError(Exception):
-    pass
+    """Exception for Where class."""
 
 
 class Where:
-
     """Find records matching the query in statement."""
 
     def __init__(self, statement):
@@ -154,26 +166,26 @@ class Where:
         self._processors = None
         self._f_or_v = None
         self._not = None
-        
+
     @property
     def error_information(self):
-        """The WhereStatementError object for the Where object."""
+        """Return WhereStatementError object for the Where object."""
         return self._error_information
-        
+
     def lex(self):
         """Split instance's statement into tokens."""
         tokens = []
         strings = []
-        for w in WHERE_RE.split(self.statement):
-            if w.lower() in KEYWORDS:
+        for word in WHERE_RE.split(self.statement):
+            if word.lower() in KEYWORDS:
                 if strings:
-                    tokens.append(''.join([_trim(s) for s in strings if s]))
+                    tokens.append("".join([_trim(s) for s in strings if s]))
                     strings.clear()
-                tokens.append(w.lower())
-            elif w.strip():
-                strings.append(w.strip())
+                tokens.append(word.lower())
+            elif word.strip():
+                strings.append(word.strip())
         if strings:
-            tokens.append(''.join([_trim(s) for s in strings if s]))
+            tokens.append("".join([_trim(s) for s in strings if s]))
             strings.clear()
         self.tokens = tokens
 
@@ -181,10 +193,10 @@ class Where:
         """Parse instance's tokens to create node structure to do query."""
         self.node = WhereClause()
         state = self._set_field_not_leftp_start
-        for e, t in enumerate(self.tokens):
-            state = state(t)
+        for i, token in enumerate(self.tokens):
+            state = state(token)
             if not state:
-                self._error_information.tokens = self.tokens[:e+1]
+                self._error_information.tokens = self.tokens[: i + 1]
                 break
         else:
             if self._f_or_v is not None:
@@ -206,13 +218,13 @@ class Where:
         # but mis-spelling an operator will produce the value ' '.join((value,
         # operator, field)) and ignore some tokens.
         fields = set()
-        for c in clauses:
-            if c.field is not None:
-                if not db.exists(dbset, c.field):
-                    fields.add(c.field)
+        for node in clauses:
+            if node.field is not None:
+                if not db.exists(dbset, node.field):
+                    fields.add(node.field)
 
         # field attribute of each clause must be None or exist as a field.
-        if len(fields):
+        if fields:
             self._error_information.fields = fields
             return self._error_information
 
@@ -222,26 +234,25 @@ class Where:
     # to put '(' or ')' directly in values because it is picked as a reserved
     # word.
     def fill_placeholders(self, replacements=None):
-        """Substitute replacement values or prompt for value if none supplied.
-
-        """
+        """Substitute replacement values or prompt for value if none supplied."""
         if self.node is None:
-            return None
+            return
         if replacements is None:
             replacements = {}
-        for n in self.node.get_clauses_from_root_in_walk_order():
-            v = n.value
-            if v is not None:
-                if v.startswith('?') and v.endswith('?'):
-                    if v in replacements:
-                        n.value = replacements.pop(v)
+        for node in self.node.get_clauses_from_root_in_walk_order():
+            value = node.value
+            if value is not None:
+                if value.startswith("?") and value.endswith("?"):
+                    if value in replacements:
+                        node.value = replacements.pop(value)
                     else:
-                        n.value = simpledialog.askstring(
-                            'Supply replacement value',
-                            ''.join(('Placeholder is ', v)))
-                        #raise WhereError(
+                        node.value = simpledialog.askstring(
+                            "Supply replacement value",
+                            "".join(("Placeholder is ", value)),
+                        )
+                        # raise WhereError(
                         #    ''.join(('Expected replacement value for ',
-                        #             v,
+                        #             value,
                         #             ' is missing.')))
 
     def evaluate(self, processors):
@@ -252,20 +263,20 @@ class Where:
 
         """
         if self.node is None:
-            return None
+            return
         self._processors = processors
         try:
-            rn = self.node.get_root()
-            rn.evaluate_index_condition_node(self._index_rules_engine)
-            if rn.result is not None:
+            node = self.node.get_root()
+            node.evaluate_index_condition_node(self._index_rules_engine)
+            if node.result is not None:
                 return
             non_index_nodes = []
-            rn.get_non_index_condition_node(non_index_nodes)
-            rn.constraint.result = WhereResult()
-            rn.constraint.result.answer = processors.get_existence()
-            rn.set_non_index_node_constraint(processors.initialize_answer)
+            node.get_non_index_condition_node(non_index_nodes)
+            node.constraint.result = WhereResult()
+            node.constraint.result.answer = processors.get_existence()
+            node.set_non_index_node_constraint(processors.initialize_answer)
             self._evaluate_non_index_conditions(non_index_nodes)
-            rn.evaluate_node_result(self._result_rules_engine)
+            node.evaluate_node_result(self._result_rules_engine)
         finally:
             self._processors = None
 
@@ -297,72 +308,75 @@ class Where:
 
         """
         processors = self._processors
-        cn = WhereConstraint()
-        cn.result = WhereResult()
-        processors.initialize_answer(cn)
-        for c in {n.constraint for n in non_index_nodes}:
-            if c.result:
-                cn.result.answer |= c.result.answer
+        constraint = WhereConstraint()
+        constraint.result = WhereResult()
+        processors.initialize_answer(constraint)
+        for condition in {n.constraint for n in non_index_nodes}:
+            if condition.result:
+                constraint.result.answer |= condition.result.answer
             else:
-                cn.result.answer = processors.get_existence()
+                constraint.result.answer = processors.get_existence()
                 break
-        for record in processors.get_record(cn.result.answer):
-            for n in non_index_nodes:
-                processors.non_index_condition(n, *record)
-        for n in non_index_nodes:
-            processors.not_condition(n)
+        for record in processors.get_record(constraint.result.answer):
+            for node in non_index_nodes:
+                processors.non_index_condition(node, *record)
+        for node in non_index_nodes:
+            processors.not_condition(node)
 
-    def _index_rules_engine(self, op, obj):
+    def _index_rules_engine(self, operator, obj):
         """Evaluate the rule in each node where an index is available."""
-        if op in {IS,
-                  LIKE,
-                  STARTS,
-                  PRESENT,
-                  EQ,
-                  NE,
-                  GT,
-                  LT,
-                  LE,
-                  GE,
-                  BEFORE,
-                  AFTER,
-                  (FROM, TO),
-                  (FROM, BELOW),
-                  (ABOVE, TO),
-                  (ABOVE, BELOW),
-                  }:
+        if operator in {
+            IS,
+            LIKE,
+            STARTS,
+            PRESENT,
+            EQ,
+            NE,
+            GT,
+            LT,
+            LE,
+            GE,
+            BEFORE,
+            AFTER,
+            (FROM, TO),
+            (FROM, BELOW),
+            (ABOVE, TO),
+            (ABOVE, BELOW),
+        }:
             obj.result = WhereResult()
             self._processors.condition(obj)
-        elif op in {NOR, AND, OR}:
+        elif operator in {NOR, AND, OR}:
             self._processors.operator(obj)
         else:
             self._processors.answer(obj)
 
-    def _result_rules_engine(self, op, obj):
+    def _result_rules_engine(self, operator, obj):
         """Combine the results evaluated for each node."""
-        if op in {EQ,
-                  GT,
-                  LT,
-                  LE,
-                  GE,
-                  BEFORE,
-                  AFTER,
-                  (FROM, TO),
-                  (FROM, BELOW),
-                  (ABOVE, TO),
-                  (ABOVE, BELOW),
-                  }:
+        if operator in {
+            EQ,
+            GT,
+            LT,
+            LE,
+            GE,
+            BEFORE,
+            AFTER,
+            (FROM, TO),
+            (FROM, BELOW),
+            (ABOVE, TO),
+            (ABOVE, BELOW),
+        }:
             pass
-        elif op in {LIKE,
-                    STARTS,
-                    PRESENT,
-                    NE,
-                    }:
+        elif operator in {
+            LIKE,
+            STARTS,
+            PRESENT,
+            NE,
+        }:
             self._processors.not_condition(obj)
-        elif op == IS:
+        elif operator == IS:
             if obj.not_value:
                 self._processors.not_condition(obj)
-        elif op in {NOR, AND, OR}:
+        elif operator in {NOR, AND, OR}:
             if obj.result is not obj.left.result:
                 self._processors.operator(obj)
         else:
@@ -370,164 +384,151 @@ class Where:
                 self._processors.answer(obj)
 
     def _set_field_not_leftp_start(self, token):
-        """Expecting fieldname, 'not', or '(' at start."""
-        t = token.lower()
-        if t == NOT:
+        """Expect fieldname, 'not', or '(' at start."""
+        token_lower = token.lower()
+        if token_lower == NOT:
             self._first_token_invert(token)
             return self._set_field_leftp
-        elif t == LEFT_PARENTHESIS:
+        if token_lower == LEFT_PARENTHESIS:
             self._first_token_left_parenthesis(token)
             return self._set_field_not_leftp
-        elif t not in KEYWORDS:
+        if token_lower not in KEYWORDS:
             self._first_token_field(token)
             return self._set_not_num_alpha_condition
-        else:
-            return self.error(token)
+        return self.error(token)
 
     def _set_field_leftp(self, token):
-        """Expecting fieldname, or '(', after 'not'."""
-        t = token.lower()
-        if t == LEFT_PARENTHESIS:
+        """Expect fieldname, or '(', after 'not'."""
+        token_lower = token.lower()
+        if token_lower == LEFT_PARENTHESIS:
             self._boolean_left_parenthesis(token)
             return self._set_field_not_leftp
-        elif t not in KEYWORDS:
+        if token_lower not in KEYWORDS:
             self._deferred_not_phrase()
             self.node.field = token
             return self._set_not_num_alpha_condition
-        else:
-            return self.error(token)
+        return self.error(token)
 
     def _set_field_not_leftp(self, token):
-        """Expecting fieldname, 'not', or '(', after '(' or boolean."""
-        t = token.lower()
-        if t == NOT:
+        """Expect fieldname, 'not', or '(', after '(' or boolean."""
+        token_lower = token.lower()
+        if token_lower == NOT:
             self._not = True
             return self._set_field_leftp
-        elif t == LEFT_PARENTHESIS:
+        if token_lower == LEFT_PARENTHESIS:
             self._boolean_left_parenthesis(token)
             return self._set_field_not_leftp
-        elif t not in KEYWORDS:
+        if token_lower not in KEYWORDS:
             self._deferred_not_phrase()
             self.node.field = token
             return self._set_not_num_alpha_condition
-        else:
-            return self.error(token)
+        return self.error(token)
 
     def _set_not_num_alpha_condition(self, token):
-        """Expecting 'not', 'num', 'alpha', or a condition, after fieldname."""
-        t = token.lower()
-        if t == NOT:
+        """Expect 'not', 'num', 'alpha', or a condition, after fieldname."""
+        token_lower = token.lower()
+        if token_lower == NOT:
             self._not = True
             return self._set_num_alpha_condition
-        else:
-            return self._set_num_alpha_condition(token)
+        return self._set_num_alpha_condition(token)
 
     def _set_num_alpha_condition(self, token):
-        """Expecting 'num', 'alpha', or condition, after fieldname or 'not'."""
-        t = token.lower()
-        if t == IS:
+        """Expect 'num', 'alpha', or condition, after fieldname or 'not'."""
+        token_lower = token.lower()
+        if token_lower == IS:
 
             # Rather than a separate state in _set_not_num_alpha_condition
-            # for the t == NOT case because 'is' is never preceded by 'not'.
+            # for the token_lower == NOT case because 'is' is never preceded by 'not'.
             if self._not:
                 return self.error(token)
-            else:
-                self.node.condition = t
-                return self._set_not_value
-            
-        elif t == LIKE:
+            self.node.condition = token_lower
+            return self._set_not_value
+
+        if token_lower == LIKE:
             self._deferred_not_condition()
-            self.node.condition = t
+            self.node.condition = token_lower
             return self._set_value_like
-        elif t == STARTS:
+        if token_lower == STARTS:
             self._deferred_not_condition()
-            self.node.condition = t
+            self.node.condition = token_lower
             return self._set_value
-        elif t == PRESENT:
+        if token_lower == PRESENT:
             self._deferred_not_condition()
-            self.node.condition = t
+            self.node.condition = token_lower
             return self._set_and_or_nor_rightp__double_condition_or_present
-        elif t in ALPHANUMERIC:
+        if token_lower in ALPHANUMERIC:
             self._deferred_not_condition()
-            self._alphanum_condition(t)
+            self._alphanum_condition(token_lower)
             return self._set_condition
-        else:
-            return self._set_condition(token)
+        return self._set_condition(token)
 
     def _set_condition(self, token):
-        """Expecting condition after 'alpha' or 'num'."""
-        t = token.lower()
-        if t in SINGLE_CONDITIONS:
+        """Expect condition after 'alpha' or 'num'."""
+        token_lower = token.lower()
+        if token_lower in SINGLE_CONDITIONS:
             self._deferred_not_condition()
-            self.node.condition = t
+            self.node.condition = token_lower
             return self._set_value
-        elif t in FIRST_CONDITIONS:
+        if token_lower in FIRST_CONDITIONS:
             self._deferred_not_condition()
-            self.node.condition = t
+            self.node.condition = token_lower
             return self._set_first_value
-        else:
-            return self.error(token)
+        return self.error(token)
 
     def _set_second_condition(self, token):
-        """Expecting second condition after first value of double condition."""
-        t = token.lower()
-        if t in SECOND_CONDITIONS:
-            self.node.condition = self.node.condition, t
+        """Expect second condition after first value of double condition."""
+        token_lower = token.lower()
+        if token_lower in SECOND_CONDITIONS:
+            self.node.condition = self.node.condition, token_lower
             return self._set_second_value
-        else:
-            return self.error(token)
+        return self.error(token)
 
     def _set_not_value(self, token):
-        """Expecting 'not', or a value, after a condition."""
-        t = token.lower()
-        if t == NOT:
+        """Expect 'not', or a value, after a condition."""
+        token_lower = token.lower()
+        if token_lower == NOT:
             self.node.not_value = True
             return self._set_value
-        else:
-            return self._set_value(token)
+        return self._set_value(token)
 
     def _set_value(self, token):
-        """Expecting value after single condition."""
-        t = token.lower()
-        if t not in KEYWORDS:
+        """Expect value after single condition."""
+        token_lower = token.lower()
+        if token_lower not in KEYWORDS:
             self.node.value = token
             return self._set_and_or_nor_rightp__single_condition
-        else:
-            return self.error(token)
+        return self.error(token)
 
     def _set_value_like(self, token):
-        """Expecting value, a regular expression, after like."""
-        t = token.lower()
-        if t not in KEYWORDS:
+        """Expect value, a regular expression, after like."""
+        token_lower = token.lower()
+        if token_lower not in KEYWORDS:
             try:
-                re.compile(token, flags=re.IGNORECASE|re.DOTALL)
+                re.compile(token, flags=re.IGNORECASE | re.DOTALL)
             except sre_constants.error:
                 return self.error(token)
             self.node.value = token
             return self._set_and_or_nor_rightp__single_condition
-        else:
-            return self.error(token)
+        return self.error(token)
 
     def _set_first_value(self, token):
-        """Expecting first value after first condition in double condition."""
-        t = token.lower()
-        if t not in KEYWORDS:
+        """Expect first value after first condition in double condition."""
+        token_lower = token.lower()
+        if token_lower not in KEYWORDS:
             self.node.value = token
             return self._set_second_condition
-        else:
-            return self.error(token)
+        return self.error(token)
 
     def _set_second_value(self, token):
-        """Expecting second value after second condition in double condition."""
-        t = token.lower()
-        if t not in KEYWORDS:
+        """Expect second value after second condition in double condition."""
+        token_lower = token.lower()
+        if token_lower not in KEYWORDS:
             self.node.value = self.node.value, token
             return self._set_and_or_nor_rightp__single_condition
-        else:
-            return self.error(token)
+        return self.error(token)
 
     def _set_and_or_nor_rightp__single_condition(self, token):
-        """Expecting boolean or rightp after value in single condition phrase.
+        """Expect boolean or rightp after value in single condition phrase.
 
         The construct 'field eq value1 or value2 or ...' makes sense because a
         condition, 'eq', has been specified.
@@ -536,15 +537,14 @@ class Where:
         express redundant or contradictory conditions.
 
         """
-        t = token.lower()
-        if t in BOOLEAN:
-            self._right_parenthesis_boolean(t)
+        token_lower = token.lower()
+        if token_lower in BOOLEAN:
+            self._right_parenthesis_boolean(token_lower)
             return self._set_field_leftp_not_condition_value
-        else:
-            return self._set_rightp(token)
+        return self._set_rightp(token)
 
     def _set_and_or_nor_rightp__double_condition_or_present(self, token):
-        """Expecting boolean or rightp after present or double condition phrase.
+        """Expect boolean or rightp after present or double condition phrase.
 
         The construct 'field present or value or ...' makes no sense because a
         condition has not been specified.
@@ -558,201 +558,184 @@ class Where:
         in 'field from value1 to value2 or eq value3 or value4 or ...'.
 
         """
-        t = token.lower()
-        if t in BOOLEAN:
-            self._right_parenthesis_boolean(t)
+        token_lower = token.lower()
+        if token_lower in BOOLEAN:
+            self._right_parenthesis_boolean(token_lower)
             return self._set_field_leftp_not_condition
-        else:
-            return self._set_rightp(token)
+        return self._set_rightp(token)
 
     def _set_and_or_nor_rightp(self, token):
-        """Expecting boolean or rightp after rightp.
+        """Expect boolean or rightp after rightp.
 
         A fieldname must be given at start of next phrase.
 
         """
-        t = token.lower()
-        if t in BOOLEAN:
-            self._right_parenthesis_boolean(t)
+        token_lower = token.lower()
+        if token_lower in BOOLEAN:
+            self._right_parenthesis_boolean(token_lower)
             return self._set_field_not_leftp
-        else:
-            return self._set_rightp(token)
+        return self._set_rightp(token)
 
     # This is never set as state, but called when ')' is remaining valid token.
     def _set_rightp(self, token):
-        """Expecting rightp after rightp.
+        """Expect rightp after rightp.
 
         A fieldname must be given at start of next phrase.
 
         """
-        t = token.lower()
-        if t == RIGHT_PARENTHESIS:
+        token_lower = token.lower()
+        if token_lower == RIGHT_PARENTHESIS:
             if self.node.up is None:
-                raise WhereError('No unmatched left-parentheses')
-            else:
-                self.node = self.node.up
-                return self._set_and_or_nor_rightp
-        else:
-            return self.error(token)
+                raise WhereError("No unmatched left-parentheses")
+            self.node = self.node.up
+            return self._set_and_or_nor_rightp
+        return self.error(token)
 
     def _set_field_leftp_not_condition(self, token):
-        """Expecting fieldname, '(', 'not', or condition after rightp."""
-        t = token.lower()
-        if t == NOT:
+        """Expect fieldname, '(', 'not', or condition after rightp."""
+        token_lower = token.lower()
+        if token_lower == NOT:
             self._not = True
             return self._set_field_leftp_condition
-        else:
-            return self._set_field_leftp_condition(token)
+        return self._set_field_leftp_condition(token)
 
     def _set_field_leftp_condition(self, token):
-        """Expecting fieldname, '(', or condition after rightp 'not'."""
-        t = token.lower()
-        if t not in KEYWORDS:
+        """Expect fieldname, '(', or condition after rightp 'not'."""
+        token_lower = token.lower()
+        if token_lower not in KEYWORDS:
             self._deferred_not_phrase()
             self.node.field = token
             return self._set_not_num_alpha_condition
-        else:
-            return self._set_leftp_condition(token)
+        return self._set_leftp_condition(token)
 
     def _set_field_leftp_not_condition_value(self, token):
-        """Expecting fieldname, '(', 'not', condition, or value, after rightp.
-        """
-        t = token.lower()
-        if t == NOT:
+        """Expect fieldname, '(', 'not', condition, or value, after rightp."""
+        token_lower = token.lower()
+        if token_lower == NOT:
             self._not = True
             return self._set_field_leftp_condition_value
-        else:
-            return self._set_field_leftp_condition_value(token)
+        return self._set_field_leftp_condition_value(token)
 
     def _set_field_leftp_condition_value(self, token):
-        """Expecting fieldname, '(', condition, or value, after rightp 'not'.
-        """
-        t = token.lower()
-        if t not in KEYWORDS:
+        """Expect fieldname, '(', condition, or value, after rightp 'not'."""
+        token_lower = token.lower()
+        if token_lower not in KEYWORDS:
             self._f_or_v = token
             return self._set_field_or_value__not
-        else:
-            return self._set_leftp_condition(token)
+        return self._set_leftp_condition(token)
 
     def _set_field_or_value__not(self, token):
-        """Expecting keyword to interpret previous token as field or value."""
-        t = token.lower()
-        if t == NOT:
-            
+        """Expect keyword to interpret previous token as field or value."""
+        token_lower = token.lower()
+        if token_lower == NOT:
+
             # '... or not f not like b and ...' or similar might be happening
             # so treat existing 'not' as phrase not.
             self._deferred_not_phrase()
 
             self._not = True
             return self._set_field_or_value
-        elif t == RIGHT_PARENTHESIS:
+        if token_lower == RIGHT_PARENTHESIS:
             if self._f_or_v is not None:
                 self._deferred_value()
             else:
-                raise WhereError('No token to use as value')
+                raise WhereError("No token to use as value")
             if self.node.up is None:
-                raise WhereError('No unmatched left-parentheses')
+                raise WhereError("No unmatched left-parentheses")
             self.node = self.node.up
             return self._set_and_or_nor_rightp
-        else:
-            self._deferred_not_phrase()
-            return self._set_field_or_value(token)
+        self._deferred_not_phrase()
+        return self._set_field_or_value(token)
 
     def _set_field_or_value(self, token):
-        """Expecting keyword to interpret previous token as field or value."""
-        t = token.lower()
-        if t in BOOLEAN:
-            self._value_boolean(t)
+        """Expect keyword to interpret previous token as field or value."""
+        token_lower = token.lower()
+        if token_lower in BOOLEAN:
+            self._value_boolean(token_lower)
             return self._set_field_leftp_condition_value
-        elif t == IS:
+        if token_lower == IS:
 
             # Rather than a separate state in _set_not_num_alpha_condition
-            # for the t == NOT case because 'is' is never preceded by 'not'.
+            # for the token_lower == NOT case because 'is' is never preceded by 'not'.
             if self._not:
                 return self.error(token)
-            else:
-                self._field_condition(t)
-                return self._set_not_value
-            
-        elif t in SINGLE_CONDITIONS:
-            self._field_condition(t)
+            self._field_condition(token_lower)
+            return self._set_not_value
+
+        if token_lower in SINGLE_CONDITIONS:
+            self._field_condition(token_lower)
             return self._set_value
-        elif t in FIRST_CONDITIONS:
-            self._field_condition(t)
+        if token_lower in FIRST_CONDITIONS:
+            self._field_condition(token_lower)
             return self._set_first_value
-        elif t == LIKE:
-            self._field_condition(t)
+        if token_lower == LIKE:
+            self._field_condition(token_lower)
             return self._set_value_like
-        elif t == STARTS:
-            self._field_condition(t)
+        if token_lower == STARTS:
+            self._field_condition(token_lower)
             return self._set_value
-        elif t == PRESENT:
-            self._field_condition(t)
+        if token_lower == PRESENT:
+            self._field_condition(token_lower)
             return self._set_and_or_nor_rightp__double_condition_or_present
-        elif t in ALPHANUMERIC:
-            self._field_condition(t)
-            self._alphanum_condition(t)
+        if token_lower in ALPHANUMERIC:
+            self._field_condition(token_lower)
+            self._alphanum_condition(token_lower)
             return self._set_condition
-        else:
-            return self.error(token)
+        return self.error(token)
 
     # Why is this not the same as _set_num_alpha_condition?
     # Perhaps the question should be the other way round!
     def _set_leftp_condition(self, token):
-        """Expecting '(' or condition after rightp 'not'.
+        """Expect '(' or condition after rightp 'not'.
 
         Called by methods which deal with fieldnames and values.
 
         """
-        t = token.lower()
-        if t == LEFT_PARENTHESIS:
+        token_lower = token.lower()
+        if token_lower == LEFT_PARENTHESIS:
             self._boolean_left_parenthesis(token)
             return self._set_field_not_leftp
-        elif t == IS:
+        if token_lower == IS:
 
             # Rather than a separate state in _set_not_num_alpha_condition
-            # for the t == NOT case because 'is' is never preceded by 'not'.
+            # for the token_lower == NOT case because 'is' is never preceded by 'not'.
             if self._not:
                 return self.error(token)
-            else:
-                self.node.condition = t
-                return self._set_not_value
-            
-        elif t in SINGLE_CONDITIONS:
-            self._copy_pre_condition()
-            self.node.condition = t
-            return self._set_value
-        elif t in FIRST_CONDITIONS:
-            self._copy_pre_condition()
-            self.node.condition = t
-            return self._set_first_value
-        elif t == LIKE:
-            self._copy_pre_like_starts_present()
-            self.node.condition = t
-            return self._set_value_like
-        elif t == STARTS:
-            self._copy_pre_like_starts_present()
-            self.node.condition = t
-            return self._set_value
-        elif t == PRESENT:
-            self._copy_pre_like_starts_present()
-            self.node.condition = t
-            return self._set_and_or_nor_rightp__double_condition_or_present
-        elif t in ALPHANUMERIC:
-            self._copy_pre_alphanumeric()
-            self._alphanum_condition(t)
-            return self._set_condition
-        else:
-            return self.error(token)
+            self.node.condition = token_lower
+            return self._set_not_value
 
+        if token_lower in SINGLE_CONDITIONS:
+            self._copy_pre_condition()
+            self.node.condition = token_lower
+            return self._set_value
+        if token_lower in FIRST_CONDITIONS:
+            self._copy_pre_condition()
+            self.node.condition = token_lower
+            return self._set_first_value
+        if token_lower == LIKE:
+            self._copy_pre_like_starts_present()
+            self.node.condition = token_lower
+            return self._set_value_like
+        if token_lower == STARTS:
+            self._copy_pre_like_starts_present()
+            self.node.condition = token_lower
+            return self._set_value
+        if token_lower == PRESENT:
+            self._copy_pre_like_starts_present()
+            self.node.condition = token_lower
+            return self._set_and_or_nor_rightp__double_condition_or_present
+        if token_lower in ALPHANUMERIC:
+            self._copy_pre_alphanumeric()
+            self._alphanum_condition(token_lower)
+            return self._set_condition
+        return self.error(token)
+
+    # Returning False always cannot possibly be correct, surely?
     def error(self, token):
-        """Return False.  (Not correct surely - tests if token is a keyword
-        ignoring case).
-        """
+        """Return False."""
         if token.lower() in KEYWORDS:
             return False
-        else:
-            return False
+        return False
 
     def _deferred_not_condition(self):
         """Nearest 'not' to left inverts a condition such as 'eq'."""
@@ -809,16 +792,16 @@ class Where:
         """Copy pre-value attributes from nearest node to left."""
         snl = self.node.left
         if snl.condition == PRESENT:
-            raise WhereError('PRESENT phrase followed by value phrase')
-        elif snl.condition == (FROM, TO):
-            raise WhereError('FROM-TO phrase followed by value phrase')
-        elif snl.condition == (FROM, BELOW):
-            raise WhereError('FROM-BELOW phrase followed by value phrase')
-        elif snl.condition == (ABOVE, TO):
-            raise WhereError('ABOVE-TO phrase followed by value phrase')
-        elif snl.condition == (ABOVE, BELOW):
-            raise WhereError('ABOVE-BELOW phrase followed by value phrase')
-        elif snl.condition == LIKE:
+            raise WhereError("PRESENT phrase followed by value phrase")
+        if snl.condition == (FROM, TO):
+            raise WhereError("FROM-TO phrase followed by value phrase")
+        if snl.condition == (FROM, BELOW):
+            raise WhereError("FROM-BELOW phrase followed by value phrase")
+        if snl.condition == (ABOVE, TO):
+            raise WhereError("ABOVE-TO phrase followed by value phrase")
+        if snl.condition == (ABOVE, BELOW):
+            raise WhereError("ABOVE-BELOW phrase followed by value phrase")
+        if snl.condition == LIKE:
             self._copy_pre_like_starts_present()
         elif snl.condition == STARTS:
             self._copy_pre_like_starts_present()
@@ -828,50 +811,49 @@ class Where:
             self._copy_pre_condition()
         self.node.condition = snl.condition
 
-    def _first_token_field(self, t):
+    def _first_token_field(self, token):
         """Set nodes for first token is a field name."""
-        wc = WhereClause()
-        wc.field = t
-        wc.up = self.node
-        self.node.down = wc
-        self.node = wc
+        node = WhereClause()
+        node.field = token
+        node.up = self.node
+        self.node.down = node
+        self.node = node
 
-    def _first_token_left_parenthesis(self, t):
-        """Set nodes for first token is '('"""
-        wc = WhereClause()
-        wc.down = WhereClause()
-        wc.down.up = wc
-        wc.up = self.node
-        self.node.down = wc
-        self.node = wc.down
+    def _first_token_left_parenthesis(self, token):
+        """Set nodes for first token is '('."""
+        node = WhereClause()
+        node.down = WhereClause()
+        node.down.up = node
+        node.up = self.node
+        self.node.down = node
+        self.node = node.down
 
-    def _boolean_left_parenthesis(self, t):
+    def _boolean_left_parenthesis(self, token):
         """Set nodes for '(' token after 'and', 'or', or 'nor'."""
         self._deferred_not_phrase()
-        wc = self.node
-        wc.down = WhereClause()
-        wc.down.up = wc
-        self.node = wc.down
+        node = self.node
+        node.down = WhereClause()
+        node.down.up = node
+        self.node = node.down
 
-    def _first_token_invert(self, t):
+    def _first_token_invert(self, token):
         """Set nodes for first token is 'not'."""
-        wc = WhereClause()
-        wc.not_phrase = True
-        wc.up = self.node
-        self.node.down = wc
-        self.node = wc
+        node = WhereClause()
+        node.not_phrase = True
+        node.up = self.node
+        self.node.down = node
+        self.node = node
 
-    def _right_parenthesis_boolean(self, t):
+    def _right_parenthesis_boolean(self, token):
         """Set nodes for 'and', 'or', or 'nor', after ')' or 'f <cond> v'."""
-        s = self.node
-        wc = WhereClause()
-        s.right = wc
-        wc.up = s.up
-        wc.left = s
-        self.node = wc
-        wc.operator = t
+        node = WhereClause()
+        self.node.right = node
+        node.up = self.node.up
+        node.left = self.node
+        self.node = node
+        node.operator = token
 
-    def _value_boolean(self, t):
+    def _value_boolean(self, token):
         """Set nodes for 'and', 'or', or 'nor', after 'f <cond> v1 <token> v2'.
 
         Fill in the assumed field, condition, and invert operations, then
@@ -881,23 +863,22 @@ class Where:
         self._copy_pre_value()
         self.node.value = self._f_or_v
         self._f_or_v = None
-        self._right_parenthesis_boolean(t)
+        self._right_parenthesis_boolean(token)
 
-    def _field_condition(self, t):
+    def _field_condition(self, token):
         """Set nodes for a condition: nearest value to left is a field name."""
         self.node.field = self._f_or_v
         self._f_or_v = None
-        self.node.condition = t
+        self.node.condition = token
         self._deferred_not_condition()
 
-    def _alphanum_condition(self, t):
+    def _alphanum_condition(self, token):
         """Set nodes for 'alpha' or 'num'."""
-        self.node.alpha = t == ALPHA
-        self.node.num = t == NUM
+        self.node.alpha = token == ALPHA
+        self.node.num = token == NUM
 
 
 class WhereClause:
-
     """Phrase in Where specification.
 
     The Where parser binds WhereClause attributes to the field name, condition,
@@ -952,14 +933,14 @@ class WhereClause:
 
     def get_root(self):
         """Return root node of tree containing self."""
-        wc = self
+        node = self
         while True:
-            if wc.left is None and wc.up is None:
-                return wc
-            if wc.up is not None:
-                wc = wc.up
+            if node.left is None and node.up is None:
+                return node
+            if node.up is not None:
+                node = node.up
             else:
-                wc = wc.left
+                node = node.left
 
     def get_clauses_from_current_in_walk_order(self, clauses=None):
         """Add nodes to clauses in walk, down then right, order."""
@@ -997,13 +978,17 @@ class WhereClause:
             self.right.evaluate_node_result(rules)
         if self.down is not None:
             self.down.evaluate_node_result(rules)
-            for operator in NOR, AND, OR,:
-                n = self.down
-                while n:
-                    if n.operator == operator:
-                        if n.constraint.pending:
-                            rules(operator, n)
-                    n = n.right
+            for operator in (
+                NOR,
+                AND,
+                OR,
+            ):
+                node = self.down
+                while node:
+                    if node.operator == operator:
+                        if node.constraint.pending:
+                            rules(operator, node)
+                    node = node.right
             rules(None, self.down)
 
     def evaluate_index_condition_node(self, rules):
@@ -1025,7 +1010,11 @@ class WhereClause:
         # well as non-index fields.  Add test to pass non-index LIKE on to
         # get_non_index_condition_node() method.
         # STARTS, meaning '<value>.*', will be added to reduce index scans.
-        elif self.condition not in (None, PRESENT, NE,):
+        elif self.condition not in (
+            None,
+            PRESENT,
+            NE,
+        ):
             rules(self.condition, self)
         if self.operator in {NOR, AND}:
             self.constraint = self.left.constraint
@@ -1037,24 +1026,28 @@ class WhereClause:
             self.right.evaluate_index_condition_node(rules)
         if self.down is not None:
             self.down.evaluate_index_condition_node(rules)
-            for operator in NOR, AND, OR,:
-                n = self.down
-                while n:
-                    if n.operator == operator:
-                        if n.result and n.left.result:
-                            if not n.constraint.pending:
-                                rules(operator, n)
-                    n = n.right
-            n = self.down
+            for operator in (
+                NOR,
+                AND,
+                OR,
+            ):
+                node = self.down
+                while node:
+                    if node.operator == operator:
+                        if node.result and node.left.result:
+                            if not node.constraint.pending:
+                                rules(operator, node)
+                    node = node.right
+            node = self.down
             while True:
-                if n.result is None:
+                if node.result is None:
                     self.constraint.pending = True
                     break
-                if n.right is None:
-                    rules(None, n.up.down)
+                if node.right is None:
+                    rules(None, node.up.down)
                     break
-                n = n.right
-    
+                node = node.right
+
     def get_non_index_condition_node(self, non_index_nodes):
         """Add nodes which cannot be evaluated by index to non_index_nodes."""
         if self.down is not None:
@@ -1063,7 +1056,12 @@ class WhereClause:
             if self.not_value:
                 self.result = WhereResult()
                 non_index_nodes.append(self)
-        elif self.condition in (LIKE, STARTS, PRESENT, NE,):
+        elif self.condition in (
+            LIKE,
+            STARTS,
+            PRESENT,
+            NE,
+        ):
             self.result = WhereResult()
             non_index_nodes.append(self)
         if self.right is not None:
@@ -1112,11 +1110,11 @@ class WhereConstraint:
         self.pending = False
 
 
-def _trim(s):
+def _trim(string):
     """Remove one leading and trailing ' or " used in values with whitespace."""
-    if s[0] in '\'"':
-        return s[1:-1]
-    return s
+    if string[0] in "'\"":
+        return string[1:-1]
+    return string
 
 
 class WhereStatementError:
@@ -1131,83 +1129,116 @@ class WhereStatementError:
     """
 
     def __init__(self, statement):
-        """"""
+        """Initialize statement and set no token or field errors."""
         self._statement = statement
         self._tokens = None
         self._fields = None
 
     @property
     def statement(self):
+        """Return statement."""
         return self._statement
 
     @property
     def tokens(self):
+        """Return tokens."""
         return self._tokens
 
     @tokens.setter
     def tokens(self, value):
         if self._tokens is not None:
-            raise WhereError('A token error already exists.')
+            raise WhereError("A token error already exists.")
         self._tokens = value
 
     @property
     def fields(self):
+        """Return frozenset of fields."""
         return frozenset(self._fields)
 
     @fields.setter
     def fields(self, value):
         if self._fields is not None:
-            raise WhereError('A field error already exists.')
+            raise WhereError("A field error already exists.")
         self._fields = value
 
     def get_error_report(self, datasource):
         """Return a str for error dialogue using database's field names."""
         if not self._tokens and not self._fields:
-            return ' '.join(('No error information available for query ',
-                             repr(self._statement),
-                             ))
+            return " ".join(
+                (
+                    "No error information available for query ",
+                    repr(self._statement),
+                )
+            )
 
         # The program's name for a field is used in query statements because
         # database engines may have different restrictions on the characters,
         # and their case, in field names.
         # (Remove comment when 'k if v else k' is discarded?)
-        report = [''.join(('Fields in file are:\n\n',
-                           '\n'.join(sorted(
-                               [k if v else k
-                                for k, v
-                                in datasource.dbhome.specification[
-                                    datasource.dbset][SECONDARY].items()])),
-                           )),
-                  ''.join(('Keywords are:\n\n',
-                           '  '.join(k for k in sorted(KEYWORDS)),
-                           )),
-                  ]
+        report = [
+            "".join(
+                (
+                    "Fields in file are:\n\n",
+                    "\n".join(
+                        sorted(
+                            [
+                                k if v else k
+                                for k, v in datasource.dbhome.specification[
+                                    datasource.dbset
+                                ][SECONDARY].items()
+                            ]
+                        )
+                    ),
+                )
+            ),
+            "".join(
+                (
+                    "Keywords are:\n\n",
+                    "  ".join(k for k in sorted(KEYWORDS)),
+                )
+            ),
+        ]
 
         if not self._fields:
-            report.insert(-2,
-                          ''.join(('Error found in query, probably near end ',
-                                   'of:\n\n',
-                                   ' '.join(self._tokens),
-                                   '\n\nelements.',
-                                   )))
-            return '\n\n'.join(report)
+            report.insert(
+                -2,
+                "".join(
+                    (
+                        "Error found in query, probably near end ",
+                        "of:\n\n",
+                        " ".join(self._tokens),
+                        "\n\nelements.",
+                    )
+                ),
+            )
+            return "\n\n".join(report)
         probf = []
         probt = []
-        for f in self._fields:
-            if len(f.split()) > 1:
-                probt.append(f)
+        for fieldname in self._fields:
+            if len(fieldname.split()) > 1:
+                probt.append(fieldname)
             else:
-                probf.append(f)
+                probf.append(fieldname)
         if probt:
-            report.insert(-2, ''.join(
-                ('Probably keywords are missing or have spelling mistakes:\n\n',
-                 '\n'.join(probt),
-                 '\n\nalthough these could be field names if the list of ',
-                 'allowed field names has names with spaces.',
-                 )))
+            report.insert(
+                -2,
+                "".join(
+                    (
+                        "Probably keywords are missing or have spelling mistakes:\n\n",
+                        "\n".join(probt),
+                        "\n\nalthough these could be field names if the list of ",
+                        "allowed field names has names with spaces.",
+                    )
+                ),
+            )
         if probf:
-            report.insert(-2, ''.join(
-                ('Probably field names with spelling mistakes:\n\n',
-                 '\n'.join(sorted(probf)),
-                 )))
-        return '\n\n'.join(report)
+            report.insert(
+                -2,
+                "".join(
+                    (
+                        "Probably field names with spelling mistakes:\n\n",
+                        "\n".join(sorted(probf)),
+                    )
+                ),
+            )
+        return "\n\n".join(report)

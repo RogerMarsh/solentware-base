@@ -1,0 +1,39 @@
+# './_run_core_tests' will do
+# 'python -m solentware_base.core.tests.test_<modulename> for each modulename in
+# directory.
+# './_run_core_tests 3.7' will do
+# 'python3.7 -m solentware_base.core.tests.test_<modulename> for each
+# modulename in directory.
+python$1 -m solentware_base.core.tests.test___deferred_update
+python$1 -m solentware_base.core.tests.test___update
+python$1 -m solentware_base.core.tests.test__bytebit
+python$1 -m solentware_base.core.tests.test__database
+python$1 -m solentware_base.core.tests.test__databasedu
+python$1 -m solentware_base.core.tests.test__db
+python$1 -m solentware_base.core.tests.test__db_cursor
+python$1 -m solentware_base.core.tests.test__dbdu
+python$1 -m solentware_base.core.tests.test__nosql
+python$1 -m solentware_base.core.tests.test__nosql_cursor
+python$1 -m solentware_base.core.tests.test__nosql_database
+python$1 -m solentware_base.core.tests.test__nosql_segmentset
+python$1 -m solentware_base.core.tests.test__nosqldu
+python$1 -m solentware_base.core.tests.test__sqlite
+python$1 -m solentware_base.core.tests.test__sqlite_cursor
+python$1 -m solentware_base.core.tests.test__sqlitedu
+python$1 -m solentware_base.core.tests.test_bytebit
+python$1 -m solentware_base.core.tests.test_constants
+python$1 -m solentware_base.core.tests.test_cursor
+python$1 -m solentware_base.core.tests.test_filespec
+python$1 -m solentware_base.core.tests.test_find
+python$1 -m solentware_base.core.tests.test_findvalues
+python$1 -m solentware_base.core.tests.test_record
+python$1 -m solentware_base.core.tests.test_recordset
+python$1 -m solentware_base.core.tests.test_recordset_bitarray
+python$1 -m solentware_base.core.tests.test_recordset_cursor
+python$1 -m solentware_base.core.tests.test_recordset_int
+python$1 -m solentware_base.core.tests.test_recordset_list
+python$1 -m solentware_base.core.tests.test_recordset_wrappers
+python$1 -m solentware_base.core.tests.test_segmentsize
+python$1 -m solentware_base.core.tests.test_tree
+python$1 -m solentware_base.core.tests.test_where
+python$1 -m solentware_base.core.tests.test_wherevalues

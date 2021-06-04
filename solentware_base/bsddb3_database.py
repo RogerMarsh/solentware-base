@@ -2,8 +2,12 @@
 # Copyright 2019 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""Access a Berkeley database created from a FileSpec() definition with the
-bsddb3 module.
+"""Access a Berkeley DB database without deferring index updates.
+
+The bsddb3 module provides the database interface.
+
+Prefer to use the bsddb3du_database module when adding lots of new
+records.  It will be a lot quicker because it defers index updates.
 
 """
 
@@ -15,19 +19,22 @@ from .core import _db
 
 
 class Database(_db.Database):
-    
-    """Define file and record access methods which subclasses may override if
-    necessary.
+    """Define Database class using bsddb3 module.
+
+    Behaviour comes from the _sqlite.Database class.
+
+    The Berkeley DB engine comes from the bsddb3 module.
     """
 
     def open_database(self, **k):
-        """Use bsddb3.db to access Berkeley DB and delegate to superclass."""
+        """Delegate to superclass with bsddb3.db as database engine module.
 
-        # The first super().open_database() call in a run will raise a
-        # SegmentSizeError, if the actual segment size is not the size given in
-        # the FileSpec, after setting segment size to that found in database.
-        # Then the super().open_database() call in except path should succeed
-        # because segment size is now same as that on the database.
+        The first super().open_database() call in a run will raise a
+        SegmentSizeError, if the actual segment size is not the size given in
+        the FileSpec, after setting segment size to that found in database.
+        Then the super().open_database() call in except path should succeed
+        because segment size is now same as that on the database.
+        """
         try:
             super().open_database(bsddb3.db, **k)
         except self.__class__.SegmentSizeError:

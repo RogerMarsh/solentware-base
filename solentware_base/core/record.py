@@ -2,8 +2,7 @@
 # Copyright 2008 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""Base classes for record definitions where a record consists of a key and a
-value.
+"""Classes for key, value, and record definitions.
 
 Key can be string or integer.  Value must be string.
 
@@ -19,11 +18,12 @@ Subclasses of Record will have different defaults.
 
 from pickle import dumps, loads
 from ast import literal_eval
-#import collections
+
+# import collections
 
 
 class _Comparison:
-    # Comparison methods for inclusion in Key and Value classes.
+    """Define comparison methods for inclusion in Key and Value classes."""
 
     # The attributes which contribute to comparision.
     # Empty by default, meaning use the instance dictionary.
@@ -35,14 +35,14 @@ class _Comparison:
 
         Attributes common to both objects are compared but existence of any
         attributes in just one of the objects evaluates to False.
-        
+
         """
-        s = self.__class__.comparison_attributes or self.__dict__
-        o = other.__class__.comparison_attributes or other.__dict__
-        if len(s) != len(o):
+        self_attrs = self.__class__.comparison_attributes or self.__dict__
+        other_attrs = other.__class__.comparison_attributes or other.__dict__
+        if len(self_attrs) != len(other_attrs):
             return False
-        for i in o:
-            if i not in s:
+        for i in other_attrs:
+            if i not in self_attrs:
                 return False
             if self.__dict__[i] != other.__dict__[i]:
                 return False
@@ -54,12 +54,12 @@ class _Comparison:
         Attributes common to both objects are compared but attributes in just
         one of the objects are ignored.  Evaluates True when there are no
         attributes in common.
-        
+
         """
-        s = self.__class__.comparison_attributes or self.__dict__
-        o = other.__class__.comparison_attributes or other.__dict__
-        for i in o:
-            if i in s:
+        self_attrs = self.__class__.comparison_attributes or self.__dict__
+        other_attrs = other.__class__.comparison_attributes or other.__dict__
+        for i in other_attrs:
+            if i in self_attrs:
                 try:
                     if self.__dict__[i] < other.__dict__[i]:
                         return False
@@ -73,12 +73,12 @@ class _Comparison:
         Attributes common to both objects are compared but attributes in just
         one of the objects are ignored.  Evaluates True when there are no
         attributes in common.
-        
+
         """
-        s = self.__class__.comparison_attributes or self.__dict__
-        o = other.__class__.comparison_attributes or other.__dict__
-        for i in o:
-            if i in s:
+        self_attrs = self.__class__.comparison_attributes or self.__dict__
+        other_attrs = other.__class__.comparison_attributes or other.__dict__
+        for i in other_attrs:
+            if i in self_attrs:
                 try:
                     if self.__dict__[i] <= other.__dict__[i]:
                         return False
@@ -92,12 +92,12 @@ class _Comparison:
         Attributes common to both objects are compared but attributes in just
         one of the objects are ignored.  Evaluates True when there are no
         attributes in common.
-        
+
         """
-        s = self.__class__.comparison_attributes or self.__dict__
-        o = other.__class__.comparison_attributes or other.__dict__
-        for i in o:
-            if i in s:
+        self_attrs = self.__class__.comparison_attributes or self.__dict__
+        other_attrs = other.__class__.comparison_attributes or other.__dict__
+        for i in other_attrs:
+            if i in self_attrs:
                 try:
                     if self.__dict__[i] > other.__dict__[i]:
                         return False
@@ -111,12 +111,12 @@ class _Comparison:
         Attributes common to both objects are compared but attributes in just
         one of the objects are ignored.  Evaluates True when there are no
         attributes in common.
-        
+
         """
-        s = self.__class__.comparison_attributes or self.__dict__
-        o = other.__class__.comparison_attributes or other.__dict__
-        for i in o:
-            if i in s:
+        self_attrs = self.__class__.comparison_attributes or self.__dict__
+        other_attrs = other.__class__.comparison_attributes or other.__dict__
+        for i in other_attrs:
+            if i in self_attrs:
                 try:
                     if self.__dict__[i] >= other.__dict__[i]:
                         return False
@@ -129,14 +129,14 @@ class _Comparison:
 
         Attributes common to both objects are compared but existence of any
         attributes in just one of the objects evaluates to True.
-        
+
         """
-        s = self.__class__.comparison_attributes or self.__dict__
-        o = other.__class__.comparison_attributes or other.__dict__
-        if len(s) != len(o):
+        self_attrs = self.__class__.comparison_attributes or self.__dict__
+        other_attrs = other.__class__.comparison_attributes or other.__dict__
+        if len(self_attrs) != len(other_attrs):
             return True
-        for i in o:
-            if i not in s:
+        for i in other_attrs:
+            if i not in self_attrs:
                 return True
             if self.__dict__[i] != other.__dict__[i]:
                 return True
@@ -144,13 +144,7 @@ class _Comparison:
 
 
 class Key(_Comparison):
-
-    """Define key and methods for conversion to database format.
-    """
-
-    def __init__(self):
-
-        super().__init__()
+    """Define key and methods for conversion to database format."""
 
     def load(self, key):
         """Set self.__dict__ to ast.literal_eval(key).
@@ -168,7 +162,7 @@ class Key(_Comparison):
 
     def pack(self):
         """Return repr(self.__dict__).
-        
+
         Subclasses must override this method if the return value
         is not pickled before use as record key.
 
@@ -177,41 +171,34 @@ class Key(_Comparison):
 
         """
         return repr(self.__dict__)
-    
+
 
 class KeyData(Key):
-
-    """Define key and methods for a string or integer key.
-    """
+    """Define key and methods for a string or integer key."""
 
     def __init__(self):
-
+        """Extend then set self.recno to None."""
         super().__init__()
         self.recno = None
 
     def load(self, key):
-        
+        """Bind self.recno to key."""
         self.recno = key
-        
-    def pack(self):
 
+    def pack(self):
+        """Return self.recno."""
         return self.recno
-        
+
 
 class KeydBaseIII(KeyData):
-
-    """Define key and methods for a dBaseIII record key.
-    """
+    """Define key and methods for a dBaseIII record key."""
 
 
 class KeyText(KeyData):
+    """Define key and methods for a text file line number key."""
 
-    """Define key and methods for a text file line number key.
-    """
-        
 
 class Value(_Comparison):
-
     """Define value and conversion to database format methods.
 
     Subclasses must extend pack method to populate indexes.  Subclasses should
@@ -220,10 +207,6 @@ class Value(_Comparison):
 
     """
 
-    def __init__(self):
-
-        super().__init__()
-
     def empty(self):
         """Set all existing attributes to None.
 
@@ -231,7 +214,7 @@ class Value(_Comparison):
 
         """
         self.__dict__.clear()
-        
+
     def load(self, value):
         """Set self.__dict__ to ast.literal_eval(value).
 
@@ -248,15 +231,15 @@ class Value(_Comparison):
 
     def pack(self):
         """Return packed value and empty index dictionary.
-        
+
         Subclasses must extend pack method to populate indexes.
 
         """
         return (self.pack_value(), dict())
-        
+
     def pack_value(self):
         """Return repr(self.__dict__).
-        
+
         Subclasses must override this method if the return value
         is not pickled before use as record value.
 
@@ -282,11 +265,11 @@ class Value(_Comparison):
         """
         values = self.get_field_value(fieldname)
         if values is not None:
-            return values,
-    
+            return (values,)
+        return None
+
 
 class ValueData(Value):
-
     """Define value and methods for string or integer data.
 
     Subclasses must extend inherited pack method to populate indexes.
@@ -294,7 +277,7 @@ class ValueData(Value):
     """
 
     def __init__(self):
-
+        """Extend then set self.data to None."""
         super().__init__()
         self.data = None
 
@@ -306,28 +289,26 @@ class ValueData(Value):
         """
         super().empty()
         self.data = None
-        
-    def load(self, value):
-        
-        self.data = literal_eval(value)
-        
-    def pack_value(self):
 
+    def load(self, value):
+        """Bind self.data to ast.literal_eval(value)."""
+        self.data = literal_eval(value)
+
+    def pack_value(self):
+        """Return repr(self.data)."""
         return repr(self.data)
-        
+
 
 class ValueDict(Value):
-
-    """Define value and methods for a pickled instance __dict__ value.
+    """Define methods to manipulate a dict of self.__dict__ attributes.
 
     Subclasses must extend inherited pack method to populate indexes.
 
     """
-        
+
 
 class ValueList(Value):
-
-    """Define value and methods for a pickled ordered list of attributes value.
+    """Define methods to manipulate a list of self.__dict__ attributes.
 
     This class should not be used directly.  Rather define a subclass and
     and set it's class attributes 'attributes' and '_attribute_order' to
@@ -336,12 +317,12 @@ class ValueList(Value):
     Subclasses must extend inherited pack method to populate indexes.
 
     """
-    
+
     attributes = dict()
     _attribute_order = tuple()
-    
-    def __init__(self):
 
+    def __init__(self):
+        """Extend then call self._empty to initialize self.__dict__."""
         super().__init__()
         self._empty()
 
@@ -353,29 +334,33 @@ class ValueList(Value):
         """
         self.__dict__.clear()
         self._empty()
-        
+
     def load(self, value):
-        
+        """Bind attributes in self._attributes_order to items in value.
+
+        self.__dict__ is populated with keys from self._attribute_order
+        mapped by position to values in ast.literal_eval(value).
+        """
         try:
-            for a, v in zip(self._attribute_order, literal_eval(value)):
-                self.__dict__[a] = v
+            for attr, data in zip(self._attribute_order, literal_eval(value)):
+                self.__dict__[attr] = data
         except:
             self.__dict__ = dict()
 
     def pack_value(self):
-
+        """Return repr(list(<attributes in self._attribute_order>))."""
         return repr([self.__dict__.get(a) for a in self._attribute_order])
 
     def _empty(self):
         """Set initial attributes to default values."""
         attributes = self.attributes
         if isinstance(attributes, dict):
-            for a in attributes:
-                #if isinstance(attributes[a], collections.Callable):
-                if callable(attributes[a]):
-                    setattr(self, a, attributes[a]())
+            for name in attributes:
+                # if isinstance(attributes[a], collections.Callable):
+                if callable(attributes[name]):
+                    setattr(self, name, attributes[name]())
                 else:
-                    setattr(self, a, attributes[a])
+                    setattr(self, name, attributes[name])
 
     def get_field_value(self, fieldname, occurrence=0):
         """Return value of a field occurrence, the first by default.
@@ -398,10 +383,9 @@ class ValueList(Value):
 
         """
         return tuple(self.__dict__.get(fieldname, ()))
-        
+
 
 class ValueText(Value):
-
     """Define value and methods for a line from a text file value.
 
     Subclasses must extend inherited pack method to populate indexes.
@@ -409,29 +393,28 @@ class ValueText(Value):
     """
 
     def load(self, value):
-        
+        """Bind self.text to value."""
         self.text = value
 
     def pack_value(self):
-
+        """Return self.text."""
         return self.text
-        
+
 
 class Record:
-    
     """Define record and database interface.
 
     Subclasses of Record manage the storage and retrieval of data using
     values managed by subclasses of Value and keys managed by subclasses
     of Key.
 
-    The class attributes _deletecallbacks and _putcallbacks control the
+    The class attributes deletecallbacks and putcallbacks control the
     application of index updates where the update is not the simple case:
-    one index value per index per record.  _putcallbacks allows a record
+    one index value per index per record.  putcallbacks allows a record
     to be referenced from records on subsidiary files using the record key
-    as the link.  _deletecallbacks allows the records on subsidiary files
+    as the link.  deletecallbacks allows the records on subsidiary files
     to be deleted when the main record is deleted.
-    
+
     The pack method of the Key and Value classes, or subclasses, is used
     to generate the values for Record attributes srkey and srvalue.  These
     attributes are used by the Database subclass methods put_instance
@@ -448,16 +431,13 @@ class Record:
     equality tests involving pickled dictionaries.
 
     """
-    
-    def __init__(
-        self,
-        keyclass=None,
-        valueclass=None):
+
+    def __init__(self, keyclass=None, valueclass=None):
         """Initialize Record instance.
 
         keyclass - a subclass of Key
         valueclass - a subclass of Value
-        
+
         """
         super().__init__()
         if keyclass is None:
@@ -480,27 +460,22 @@ class Record:
         self.srindex = None
 
     def __eq__(self, other):
-        """True if values and keys are equal."""
-
+        """Return bool(self.value, self.key) == (other.value, other.key)."""
         # Test keys first because keys are always record numbers, even though
         # keys not equal is just the tie breaker when values are equal.
         return self.key == other.key and self.value == other.value
-    
+
     def __ge__(self, other):
-        """True if self.value > other.value or self.key >= other.key when
-        values are equal.
-        """
+        """Return bool(self.value, self.key) >= (other.value, other.key)."""
         if self.value > other.value:
             return True
         if self.value == other.value:
             if self.key >= other.key:
                 return True
         return False
-    
+
     def __gt__(self, other):
-        """True if self.value > other.value or self.key > other.key when
-        values are equal.
-        """
+        """Return bool(self.value, self.key) > (other.value, other.key)."""
         if self.value > other.value:
             return True
         if self.value == other.value:
@@ -509,36 +484,29 @@ class Record:
         return False
 
     def __le__(self, other):
-        """True if self.value < other.value or self.key <= other.key when
-        values are equal.
-        """
+        """Return bool(self.value, self.key) <= (other.value, other.key)."""
         if self.value < other.value:
             return True
         if self.value == other.value:
             if self.key <= other.key:
                 return True
         return False
-    
+
     def __lt__(self, other):
-        """True if self.value < other.value or self.key < other.key when
-        values are equal.
-        """
+        """Return bool(self.value, self.key) < (other.value, other.key)."""
         if self.value < other.value:
             return True
         if self.value == other.value:
             if self.key < other.key:
                 return True
         return False
-    
-    def __ne__(self, other):
-        """True if values are not equal or keys are not equal when values are
-        equal.
-        """
 
+    def __ne__(self, other):
+        """Return True if values are not equal or keys are not equal."""
         # Test keys first because keys are always record numbers, even though
         # keys not equal is just the tie breaker when values are equal.
         return self.key != other.key or self.value != other.value
-    
+
     def clone(self):
         """Return a copy of self.
 
@@ -546,7 +514,7 @@ class Record:
         with separately as it cannot be pickled.  Assume that
         self.key and self.value can be pickled because these
         attributes are stored on the database.
-        
+
         """
         database = self.database
         self.database = None
@@ -557,51 +525,43 @@ class Record:
 
     def delete_record(self, database, dbset):
         """Delete a record."""
-        database.delete_instance(
-            dbset,
-            self)
+        database.delete_instance(dbset, self)
 
     def edit_record(self, database, dbset, dbname, newrecord):
         """Change database record for self to values in newrecord."""
         if self.srkey == newrecord.srkey:
             self.newrecord = newrecord
-            database.edit_instance(
-                dbset,
-                self)
+            database.edit_instance(dbset, self)
             # Needing self.newrecord = None makes the technique suspect
             # Changing the 'newobject' conditionals in DataGrid.on_data_change
             # allows this statement to be removed leaving the new record data
             # available in post-commit callbacks.
-            #self.newrecord = None
+            # self.newrecord = None
         else:
-            database.delete_instance(
-                dbset,
-                self)
+            database.delete_instance(dbset, self)
             # KEYCHANGE
             # can newrecord.key.data be used instead, or even the
             # decode_record_number function directly because this is only use
             # of decode_as_primary_key which calls decode_record_number anyway.
-            r = database.get_primary_record(
+            record = database.get_primary_record(
                 dbset,
-                #database.decode_as_primary_key(dbset, newrecord.srkey))
+                # database.decode_as_primary_key(dbset, newrecord.srkey))
                 database.decode_record_number(newrecord.srkey)
-                if isinstance(newrecord.srkey, int) else newrecord.srkey)
-            if r == None:
-                database.put_instance(
-                    dbset,
-                    newrecord)
+                if isinstance(newrecord.srkey, int)
+                else newrecord.srkey,
+            )
+            if record is None:
+                database.put_instance(dbset, newrecord)
             else:
                 i = self.__class__()
-                i.load_instance(database, dbset, dbname, r)
+                i.load_instance(database, dbset, dbname, record)
                 i.newrecord = newrecord
-                database.edit_instance(
-                    dbset,
-                    i)
-                
+                database.edit_instance(dbset, i)
+
     def empty(self):
         """Delete all self.value attributes and set to initial values."""
         self.value.empty()
-        
+
     def get_primary_key_from_index_record(self):
         """Return self.record[1].  Assumes self.record is from an index.
 
@@ -617,8 +577,8 @@ class Record:
 
         An empty list is returned if a partial key is defined.  Subclasses
         must override this method to deal with indexes handled using
-        _deletecallbacks and _putcallbacks.
-        
+        deletecallbacks and putcallbacks.
+
         Important uses of the return value are in ...Delete ...Edit and
         ...Put methods of subclasses and in various on_data_change methods.
         This method assumes the existence of attributes in the instances
@@ -627,15 +587,14 @@ class Record:
 
         """
         try:
-            if partial != None:
+            if partial is not None:
                 return []
-            elif datasource.primary:
+            if datasource.primary:
                 return [(self.key.recno, self.srvalue)]
-            else:
-                return [(self.value.__dict__[datasource.dbname], self.srkey)]
+            return [(self.value.__dict__[datasource.dbname], self.srkey)]
         except:
             return []
-        
+
     def load_instance(self, database, dbset, dbname, record):
         """Load a class instance from database record."""
         self.record = record
@@ -647,15 +606,16 @@ class Record:
         else:
             self.load_record(
                 database.get_primary_record(
-                    dbset,
-                    self.get_primary_key_from_index_record()))
+                    dbset, self.get_primary_key_from_index_record()
+                )
+            )
 
     def load_key(self, key):
         """Load self.key from key."""
         # Huh?
         # Looking for an utf8 encoded repr() so key should be bytes but
         # database engine may have returned an iso-8859-1 str.
-        #if isinstance(key, str):
+        # if isinstance(key, str):
         #    key = key.encode('iso-8859-1')
         # end Huh?
         self.key.load(key)
@@ -680,37 +640,35 @@ class Record:
 
     def put_record(self, database, dbset):
         """Add a record to the database."""
-        database.put_instance(
-            dbset,
-            self)
+        database.put_instance(dbset, self)
 
     def set_database(self, database):
         """Set database with which record is associated.
 
         Typical uses are when inserting a record or after closing and
         re-opening database from which record was read.
-        
+
         """
         self.database = database
 
-    _deletecallbacks = dict()
-    _putcallbacks = dict()
+    deletecallbacks = dict()
+    putcallbacks = dict()
 
     def packed_key(self):
         """Return self.key converted to string representation.
 
         Call from the database get_packed_key method only as this may deal with
         some cases first.
-        
+
         """
         # Database engine interface will decode to iso-8859-1 str if necessary.
-        return self.key.pack().encode('utf8')
+        return self.key.pack().encode("utf8")
 
     def packed_value(self):
         """Return (value, indexes)."""
-        v, i = self.value.pack()
+        value, i = self.value.pack()
         # Database engine interface will decode to iso-8859-1 str if necessary.
-        return (v, i)
+        return (value, i)
 
     def get_srvalue(self):
         """Apply ast.literal_eval to self.srvalue and return created object."""
@@ -734,7 +692,6 @@ class Record:
 
 
 class RecorddBaseIII(Record):
-
     """Define a dBaseIII record.
 
     .ndx files are not supported. Files are read-only.
@@ -743,7 +700,7 @@ class RecorddBaseIII(Record):
     import of data from these files.
 
     """
-    
+
     def __init__(self, keyclass=None, valueclass=None, **k):
         """Initialize dBaseIII record instance."""
         if keyclass is None:
@@ -755,26 +712,22 @@ class RecorddBaseIII(Record):
         elif not issubclass(valueclass, Value):
             valueclass = Value
 
-        super().__init__(
-            keyclass=keyclass,
-            valueclass=valueclass)
+        super().__init__(keyclass=keyclass, valueclass=valueclass)
 
     def packed_value(self):
         """Return (value, indexes)."""
-        v, i = self.value.pack()
+        value, i = self.value.pack()
         # Database engine interface will decode to iso-8859-1 str if necessary.
-        return (v.encode('utf8'), i)
+        return (value.encode("utf8"), i)
 
     def get_srvalue(self):
         """Return self.srvalue, assumed to be a bytes object."""
-
         # Wrong, but the is_engine_uses_bytes() test caused this to happen
         # given Database.engine_uses_bytes_or_str was not overridden.
         return self.srvalue
 
 
 class RecordText(Record):
-
     """Define a text record.
 
     Records are newline delimited on text file. Files are read-only.
@@ -796,9 +749,7 @@ class RecordText(Record):
         elif not issubclass(valueclass, ValueText):
             valueclass = ValueText
 
-        super().__init__(
-            keyclass=keyclass,
-            valueclass=valueclass)
+        super().__init__(keyclass=keyclass, valueclass=valueclass)
 
     def packed_value(self):
         """Return (value, indexes)."""
@@ -806,8 +757,6 @@ class RecordText(Record):
 
     def get_srvalue(self):
         """Return self.srvalue, assumed to be a bytes object."""
-
         # Wrong, but the is_engine_uses_bytes() test caused this to happen
         # given Database.engine_uses_bytes_or_str was not overridden.
         return self.srvalue
-

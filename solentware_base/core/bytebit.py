@@ -24,7 +24,7 @@ try:
     # more restricted interface defined if the import fails.
     from bitarray import bitarray as Bitarray
 
-    SINGLEBIT = Bitarray('1')
+    SINGLEBIT = Bitarray("1")
 
 except ImportError:
 

@@ -41,28 +41,31 @@ import sys
 import os
 
 _deny_sqlite3 = bool(
-    sys.version_info.major < 3 or
-    (sys.version_info.major == 3 and sys.version_info.minor < 6))
+    sys.version_info.major < 3
+    or (sys.version_info.major == 3 and sys.version_info.minor < 6)
+)
 
 
 def _allow(option):
     argv1 = sys.argv[1:]
-    if 'allow_all' in argv1 or '--a' in argv1:
+    if "allow_all" in argv1 or "--a" in argv1:
         return True
     return option in argv1
 
 
-if _allow('allow_unqlite') or _allow('-u'):
+# An import name is bound to None if 'import <name>' gives an exception
+# or the import is not allowed.
+if _allow("allow_unqlite") or _allow("-u"):
     try:
         import unqlite
-    except ImportError: # Not ModuleNotFoundError for Pythons earlier than 3.6
+    except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
         unqlite = None
 else:
     unqlite = None
-if _allow('allow_vedis') or _allow('-v'):
+if _allow("allow_vedis") or _allow("-v"):
     try:
         import vedis
-    except ImportError: # Not ModuleNotFoundError for Pythons earlier than 3.6
+    except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
         vedis = None
 else:
     vedis = None
@@ -71,42 +74,43 @@ if _deny_sqlite3:
 else:
     try:
         import sqlite3
-    except ImportError: # Not ModuleNotFoundError for Pythons earlier than 3.6
+    except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
         sqlite3 = None
 try:
     import apsw
-except ImportError: # Not ModuleNotFoundError for Pythons earlier than 3.6
+except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     apsw = None
 try:
     import bsddb
-except ImportError: # Not ModuleNotFoundError for Pythons earlier than 3.6
+except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     bsddb = None
 try:
     import bsddb3
-except ImportError: # Not ModuleNotFoundError for Pythons earlier than 3.6
+except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     bsddb3 = None
 try:
     from dptdb import dptapi
-except ImportError: # Not ModuleNotFoundError for Pythons earlier than 3.6
+except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     dptapi = None
-if _allow('allow_ndbm') or _allow('-n'):
+if _allow("allow_ndbm") or _allow("-n"):
     try:
         from dbm import ndbm
-    except ImportError: # Not ModuleNotFoundError for Pythons earlier than 3.6
+    except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
         ndbm = None
 else:
     ndbm = None
-if _allow('allow_gnu') or _allow('-g'):
+if _allow("allow_gnu") or _allow("-g"):
     try:
         from dbm import gnu
-    except ImportError: # Not ModuleNotFoundError for Pythons earlier than 3.6
+    except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
         gnu = None
 else:
     gnu = None
 
+# Linters may say this import is in the wrong place.
+# This appears to follow from the option to not allow some imports.
 from .core.constants import (
     FILE,
-    PRIMARY,
     BSDDB_MODULE,
     BSDDB3_MODULE,
     SQLITE3_MODULE,
@@ -116,10 +120,10 @@ from .core.constants import (
     VEDIS_MODULE,
     GNU_MODULE,
     NDBM_MODULE,
-    )
+)
 
 if _deny_sqlite3:
-    if sys.platform == 'win32':
+    if sys.platform == "win32":
         DATABASE_MODULES_IN_DEFAULT_PREFERENCE_ORDER = (
             DPT_MODULE,
             BSDDB3_MODULE,
@@ -127,7 +131,7 @@ if _deny_sqlite3:
             UNQLITE_MODULE,
             APSW_MODULE,
             BSDDB_MODULE,
-            )
+        )
     else:
         DATABASE_MODULES_IN_DEFAULT_PREFERENCE_ORDER = (
             BSDDB3_MODULE,
@@ -137,9 +141,9 @@ if _deny_sqlite3:
             BSDDB_MODULE,
             GNU_MODULE,
             NDBM_MODULE,
-            )
+        )
 else:
-    if sys.platform == 'win32':
+    if sys.platform == "win32":
         DATABASE_MODULES_IN_DEFAULT_PREFERENCE_ORDER = (
             DPT_MODULE,
             BSDDB3_MODULE,
@@ -148,7 +152,7 @@ else:
             APSW_MODULE,
             SQLITE3_MODULE,
             BSDDB_MODULE,
-            )
+        )
     else:
         DATABASE_MODULES_IN_DEFAULT_PREFERENCE_ORDER = (
             BSDDB3_MODULE,
@@ -159,11 +163,12 @@ else:
             BSDDB_MODULE,
             GNU_MODULE,
             NDBM_MODULE,
-            )
+        )
 
 del sys
 del _allow
 del _deny_sqlite3
+
 
 def installed_database_modules():
     """Return dict of preferred database modules supported and installed.
@@ -173,187 +178,210 @@ def installed_database_modules():
     module if available for use.
 
     """
-    dbm = {d:None for d in DATABASE_MODULES_IN_DEFAULT_PREFERENCE_ORDER}
-    for m in unqlite, vedis, sqlite3, apsw, bsddb, bsddb3, dptapi, ndbm, gnu,:
-        if m:
-            dbm[m.__name__] = m
+    dbm = {d: None for d in DATABASE_MODULES_IN_DEFAULT_PREFERENCE_ORDER}
+    for module in (
+        unqlite,
+        vedis,
+        sqlite3,
+        apsw,
+        bsddb,
+        bsddb3,
+        dptapi,
+        ndbm,
+        gnu,
+    ):
+        if module:
+            dbm[module.__name__] = module
     if dbm[BSDDB_MODULE] and dbm[BSDDB3_MODULE]:
         dbm[BSDDB_MODULE] = False
     if dbm[APSW_MODULE] and dbm[SQLITE3_MODULE]:
         dbm[SQLITE3_MODULE] = False
-    return {d:m for d, m in dbm.items() if m}
+    return {d: m for d, m in dbm.items() if m}
 
 
 def modules_for_existing_databases(folder, filespec):
     """Return [set(modulename, ...), ...] for filespec databases in folder.
 
-    For each module in supported_database_modules() status is None if database
-    module not installed or supported, False if no part of the database defined
-    in filespec exists, and True otherwise.
+    For each module in supported_database_modules() status is None if
+    database module not installed or supported, False if no part of the
+    database defined in filespec exists, and True otherwise.
 
     """
     if not os.path.exists(folder):
         return []
     if not os.listdir(folder):
         return []
-    dbm = {d:None for d in DATABASE_MODULES_IN_DEFAULT_PREFERENCE_ORDER}
-    for d, module in installed_database_modules().items():
-        if d in (SQLITE3_MODULE, APSW_MODULE):
-            sf = os.path.join(folder, os.path.split(folder)[1])
-            if os.path.isfile(sf):
-                c = module.Connection(sf)
-                cur = c.cursor()
+    dbm = {d: None for d in DATABASE_MODULES_IN_DEFAULT_PREFERENCE_ORDER}
+    for name, module in installed_database_modules().items():
+        if name in (SQLITE3_MODULE, APSW_MODULE):
+            filepath = os.path.join(folder, os.path.split(folder)[1])
+            if os.path.isfile(filepath):
+                connection = module.Connection(filepath)
+                cursor = connection.cursor()
                 try:
 
                     # Various websites quote this pragma as a practical
                     # way to determine if a file is a sqlite3 database.
-                    cur.execute('pragma schema_version')
+                    cursor.execute("pragma schema_version")
 
-                    dbm[d] = module
+                    dbm[name] = module
                 except:
-                    dbm[d] = False
+                    dbm[name] = False
                 finally:
-                    cur.close()
-                    c.close()
-        elif d == DPT_MODULE:
-            for f in filespec:
-                if os.path.isfile(os.path.join(folder, filespec[f][FILE])):
-                    dbm[d] = module
+                    cursor.close()
+                    connection.close()
+        elif name == DPT_MODULE:
+            for filename in filespec:
+                if os.path.isfile(
+                    os.path.join(folder, filespec[filename][FILE])
+                ):
+                    dbm[name] = module
                     break
             else:
-                dbm[d] = False
-        elif d in (BSDDB_MODULE, BSDDB3_MODULE):
-            sf = os.path.join(folder, os.path.split(folder)[1])
-            if os.path.isfile(sf):
-                for f in filespec:
+                dbm[name] = False
+        elif name in (BSDDB_MODULE, BSDDB3_MODULE):
+            filepath = os.path.join(folder, os.path.split(folder)[1])
+            if os.path.isfile(filepath):
+                for filename in filespec:
                     try:
-                        db = module.db.DB()
+                        dbo = module.db.DB()
                         try:
-                            db.open(sf, dbname=f, flags=module.db.DB_RDONLY)
+                            dbo.open(
+                                filepath,
+                                dbname=filename,
+                                flags=module.db.DB_RDONLY,
+                            )
 
-                        # Catch cases where 'f' is not a database in 'sf'
+                        # Catch cases where 'filename' is not a database
+                        # in 'filepath'
                         except module.db.DBNoSuchFileError:
                             continue
 
                         finally:
-                            db.close()
-                        dbm[d] = module
+                            dbo.close()
+                        dbm[name] = module
 
-                    # Catch cases where 'sf' is not a Berkeley DB database.
+                    # Catch cases where 'filepath' is not a Berkeley DB
+                    # database.
                     except module.db.DBInvalidArgError:
-                        dbm[d] = False
+                        dbm[name] = False
                         break
 
             else:
-                for f in filespec:
-                    df = os.path.join(folder, f)
+                for filename in filespec:
+                    filepath = os.path.join(folder, filename)
                     try:
-                        db = module.db.DB()
+                        dbo = module.db.DB()
                         try:
-                            db.open(df, flags=module.db.DB_RDONLY)
+                            dbo.open(filepath, flags=module.db.DB_RDONLY)
 
-                        # Catch cases where 'df' does not exist.
+                        # Catch cases where 'filepath' does not exist.
                         except module.db.DBNoSuchFileError:
                             continue
 
                         finally:
-                            db.close()
-                        dbm[d] = module
+                            dbo.close()
+                        dbm[name] = module
 
-                    # Catch cases where df is not a Berkeley DB database.
+                    # Catch cases where filepath is not a Berkeley DB database.
                     except module.db.DBInvalidArgError:
-                        dbm[d] = False
+                        dbm[name] = False
                         break
 
-        elif d == VEDIS_MODULE:
-            sf = os.path.join(folder, os.path.split(folder)[1])
-            if os.path.isfile(sf):
-                db = module.Vedis(sf)
+        elif name == VEDIS_MODULE:
+            filepath = os.path.join(folder, os.path.split(folder)[1])
+            if os.path.isfile(filepath):
+                dbo = module.Vedis(filepath)
                 try:
-                    db['something']
-                    dbm[d] = module
+                    # KeyError or no exception if dbo is vedis database.
+                    dbo["something"]
+                    dbm[name] = module
                 except OSError as exc:
 
                     # At 0.7.1 should not do exact match because repeating
-                    # the db['key'] gives repeated error text.
+                    # the dbo['key'] gives repeated error text.
                     # Or perhaps it should since a repeat is not expected!
-                    if str(exc).find('Malformed database image') < 0:
+                    if str(exc).find("Malformed database image") < 0:
                         raise
 
-                    dbm[d] = False
+                    dbm[name] = False
                 except KeyError:
-                    dbm[d] = module
+                    dbm[name] = module
                 finally:
-                    db.close()
-        elif d == UNQLITE_MODULE:
-            sf = os.path.join(folder, os.path.split(folder)[1])
-            if os.path.isfile(sf):
-                db = module.UnQLite(sf)
+                    dbo.close()
+        elif name == UNQLITE_MODULE:
+            filepath = os.path.join(folder, os.path.split(folder)[1])
+            if os.path.isfile(filepath):
+                dbo = module.UnQLite(filepath)
                 try:
-                    db['something']
-                    dbm[d] = module
+                    # KeyError or no exception if dbo is unqlite database.
+                    dbo["something"]
+                    dbm[name] = module
                 except module.UnQLiteError as exc:
 
                     # At 0.7.1 should not do exact match because repeating
-                    # the db['key'] gives repeated error text.
+                    # the dbo['key'] gives repeated error text.
                     # Or perhaps it should since a repeat is not expected!
-                    if str(exc).find('Malformed database image') < 0:
+                    if str(exc).find("Malformed database image") < 0:
                         raise
 
-                    dbm[d] = False
+                    dbm[name] = False
                 except KeyError:
-                    dbm[d] = module
+                    dbm[name] = module
                 finally:
-                    db.close()
-        elif d == GNU_MODULE:
-            sf = os.path.join(folder, os.path.split(folder)[1])
-            if os.path.isfile(sf):
+                    dbo.close()
+        elif name == GNU_MODULE:
+            filepath = os.path.join(folder, os.path.split(folder)[1])
+            if os.path.isfile(filepath):
                 try:
-                    db = module.open(sf)
+                    dbo = module.open(filepath)
                     try:
-                        db['something']
-                        dbm[d] = module
+                        # KeyError or no exception if dbo is dbm.gnu database.
+                        dbo["something"]
+                        dbm[name] = module
                     except module.error as exc:
 
                         # At 0.7.1 should not do exact match because repeating
-                        # the db['key'] gives repeated error text.
+                        # the dbo['key'] gives repeated error text.
                         # Or perhaps it should since a repeat is not expected!
-                        if str(exc).find('Malformed database image') < 0:
+                        if str(exc).find("Malformed database image") < 0:
                             raise
 
-                        dbm[d] = False
+                        dbm[name] = False
                     except KeyError:
-                        dbm[d] = module
+                        dbm[name] = module
                     finally:
-                        db.close()
+                        dbo.close()
                 except module.error as exc:
-                    if str(exc).find('Bad magic number') < 0:
+                    if str(exc).find("Bad magic number") < 0:
                         raise
-                    dbm[d] = False
-        elif d == NDBM_MODULE:
-            sf = os.path.join(
-                folder, '.'.join((os.path.split(folder)[1], 'db')))
-            if os.path.isfile(sf):
-                db = module.open(os.path.splitext(sf)[0])
+                    dbm[name] = False
+        elif name == NDBM_MODULE:
+            filepath = os.path.join(
+                folder, ".".join((os.path.split(folder)[1], "db"))
+            )
+            if os.path.isfile(filepath):
+                dbo = module.open(os.path.splitext(filepath)[0])
                 try:
-                    db['something']
-                    dbm[d] = module
+                    # KeyError or no exception if dbo is dbm.ndbm database.
+                    dbo["something"]
+                    dbm[name] = module
                 except module.error as exc:
 
                     # At 0.7.1 should not do exact match because repeating
-                    # the db['key'] gives repeated error text.
+                    # the dbo['key'] gives repeated error text.
                     # Or perhaps it should since a repeat is not expected!
-                    if str(exc).find('Malformed database image') < 0:
+                    if str(exc).find("Malformed database image") < 0:
                         raise
 
-                    dbm[d] = False
+                    dbm[name] = False
                 except KeyError:
-                    dbm[d] = module
+                    dbm[name] = module
                 finally:
-                    db.close()
+                    dbo.close()
         else:
-            dbm[d] = False
-    cm = {
+            dbm[name] = False
+    module_sets = {
         (SQLITE3_MODULE, APSW_MODULE): set(),
         (DPT_MODULE,): set(),
         (BSDDB_MODULE, BSDDB3_MODULE): set(),
@@ -361,13 +389,13 @@ def modules_for_existing_databases(folder, filespec):
         (VEDIS_MODULE,): set(),
         (GNU_MODULE,): set(),
         (NDBM_MODULE,): set(),
-        }
-    for d, module in dbm.items():
+    }
+    for name, module in dbm.items():
         if module:
-            for c in cm:
-                if d in c:
-                    cm[c].add(module)
-    modules = [v for v in cm.values() if len(v)]
+            for module_names in module_sets:
+                if name in module_names:
+                    module_sets[module_names].add(module)
+    modules = [v for v in module_sets.values() if len(v)]
     if modules:
         return modules
     return None

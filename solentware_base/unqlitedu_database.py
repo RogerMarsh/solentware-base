@@ -2,8 +2,11 @@
 # Copyright (c) 2019 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""Access a NoSQL database created from a FileSpec() definition with the unqlite
-module in deferred update mode.
+"""Access an UnQLite database deferring index updates.
+
+The unqlite_database module provides the database interface.
+
+Prefer to use the unqlite_database module normally.
 
 """
 from . import unqlite_database
@@ -11,11 +14,9 @@ from .core import _nosqldu
 
 
 class Database(_nosqldu.Database, unqlite_database.Database):
-    
-    """Define file and record access methods which subclasses may override if
-    necessary.
+    """Define deferred update Database class using unqlite_database module.
 
-    Default methods using the unqlite interface are taken from the
-    unqlite_database.Database class, overridden or supplemented where necessary
-    by methods from the core._nosqldu.Database class.
+    Deferred update behaviour comes from the _nosqldu.Database class.
+
+    The UnQLite engine comes from the unqlite_database.Database class.
     """

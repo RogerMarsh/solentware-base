@@ -2,17 +2,19 @@
 # Copyright 2017 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""Define the cursor interface using method names taken from Berkeley DB to
-indicate preference for that style of cursor.
+"""Define the cursor interface.
 
-Subclasses will provided appropriate implementations for the record definition
-classes to use.
+Method names are taken from Berkeley DB to indicate preference for that
+style of cursor.
+
+Subclasses will provided appropriate implementations for the record
+definition classes to use.
 
 """
 
 
 class CursorError(Exception):
-    pass
+    """Exception for Cursor class."""
 
 
 class Cursor:
@@ -37,7 +39,7 @@ class Cursor:
     The DB() object implies the file and field from the database specification
     in a FileSpec() object, but the other kinds of dbset require field, or file
     and field, to be supplied to the relevant subclass of this class.
-    
+
     """
 
     def __init__(self, dbset):
@@ -62,54 +64,52 @@ class Cursor:
         self.close()
 
     def count_records(self):
-        """return record count or None if implemented."""
-        raise CursorError('count_records not implemented')
+        """Return record count or None."""
+        raise CursorError("count_records not implemented")
 
     def database_cursor_exists(self):
         """Return True if database cursor exists and False otherwise."""
         return bool(self._cursor)
 
     def first(self):
-        """return (key, value) or None if implemented."""
-        raise CursorError('first not implemented')
+        """Return (key, value) or None."""
+        raise CursorError("first not implemented")
 
     def get_position_of_record(self, record=None):
-        """return position of record in file or 0 (zero) if implemented."""
-        raise CursorError('get_position_of_record not implemented')
+        """Return position of record in file or 0 (zero)."""
+        raise CursorError("get_position_of_record not implemented")
 
     def get_record_at_position(self, position=None):
-        """return record for positionth record in file or None if implemented.
-        """
-        raise CursorError('get_record_at_position not implemented')
+        """Return record for positionth record in file or None."""
+        raise CursorError("get_record_at_position not implemented")
 
     def last(self):
-        """return (key, value) or None if implemented."""
-        raise CursorError('last not implemented')
+        """Return (key, value) or None."""
+        raise CursorError("last not implemented")
 
     def nearest(self, key):
-        """return (key, value) or None if implemented."""
-        raise CursorError('nearest not implemented')
+        """Return (key, value) or None."""
+        raise CursorError("nearest not implemented")
 
     def next(self):
-        """return (key, value) or None if implemented."""
-        raise CursorError('next not implemented')
+        """Return (key, value) or None."""
+        raise CursorError("next not implemented")
 
     def prev(self):
-        """return (key, value) or None if implemented."""
-        raise CursorError('prev not implemented')
+        """Return (key, value) or None."""
+        raise CursorError("prev not implemented")
 
     def refresh_recordset(self, instance=None):
-        """Amend data structures after database update and return None if
-        implemented.
+        """Amend data structures after database update and return None.
 
         It may be correct to do nothing.
 
         """
-        raise CursorError('refresh_recordset not implemented')
+        raise CursorError("refresh_recordset not implemented")
 
     def setat(self, record):
-        """return (key, value) or None if implemented."""
-        raise CursorError('setat not implemented')
+        """Return (key, value) or None if implemented."""
+        raise CursorError("setat not implemented")
 
     def set_partial_key(self, partial):
         """Set partial key to None.  Override to use partial argument.
@@ -133,16 +133,15 @@ class Cursor:
         return self._partial
 
     def get_converted_partial(self):
-        """return self._partial as it would be held on database if implemented.
-        """
-        raise CursorError('get_converted_partial not implemented')
+        """Return self._partial as it would be held on database."""
+        raise CursorError("get_converted_partial not implemented")
 
     def get_partial_with_wildcard(self):
-        """return self._partial with wildcard suffix appended if implemented."""
-        raise CursorError('get_partial_with_wildcard not implemented')
+        """Return self._partial with wildcard suffix appended."""
+        raise CursorError("get_partial_with_wildcard not implemented")
 
     def get_converted_partial_with_wildcard(self):
-        """return converted self._partial with wildcard suffix appended if
-        implemented."""
+        """Return converted self._partial with wildcard suffix appended."""
         raise CursorError(
-            'get_converted_partial_with_wildcard not implemented')
+            "get_converted_partial_with_wildcard not implemented"
+        )

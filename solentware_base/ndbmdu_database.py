@@ -2,8 +2,11 @@
 # Copyright (c) 2020 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""Access a NoSQL database created from a FileSpec() definition with Python's
-dbm.ndbm module in deferred update mode.
+"""Access a dbm.ndbm database deferring index updates.
+
+The ndbm_database module provides the database interface.
+
+Prefer to use the ndbm_database module normally.
 
 """
 from . import ndbm_database
@@ -11,11 +14,9 @@ from .core import _nosqldu
 
 
 class Database(_nosqldu.Database, ndbm_database.Database):
-    
-    """Define file and record access methods which subclasses may override if
-    necessary.
+    """Define deferred update Database class using ndbm_database module.
 
-    Default methods using the ndbm interface are taken from the
-    ndbm_database.Database class, overridden or supplemented where necessary
-    by methods from the core._nosqldu.Database class.
+    Deferred update behaviour comes from the _nosqldu.Database class.
+
+    The dbm.ndbm engine comes from the ndbm_database.Database class.
     """

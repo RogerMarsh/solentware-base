@@ -2,9 +2,10 @@
 # Copyright (c) 2016 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""A index value selection statement parser approximately equivalent to SQL
-Select statement where clause and DPT Find All Values statement retrieval
-conditions.
+"""Index value selection statement parser.
+
+Approximately equivalent to the SQL Select statement where clause, or the
+DPT Find All Values statement, retrieval conditions.
 
 The syntax is:
 
@@ -18,50 +19,56 @@ fieldname [<FROM|ABOVE> value] [<TO|BELOW> value] [[NOT] LIKE pattern]
 
 import re
 
-DOUBLE_QUOTE_STRING = '".*?"'
-SINGLE_QUOTE_STRING = "'.*?'"
-IN = 'in'
-TO = 'to'
-NOT = 'not'
-LIKE = 'like'
-FROM = 'from'
-ABOVE = 'above'
-BELOW = 'below'
-STRING = '[^\s]+'
+DOUBLE_QUOTE_STRING = r'".*?"'
+SINGLE_QUOTE_STRING = r"'.*?'"
+IN = r"in"
+TO = r"to"
+NOT = r"not"
+LIKE = r"like"
+FROM = r"from"
+ABOVE = r"above"
+BELOW = r"below"
+STRING = r"[^\s]+"
 
-LEADING_SPACE = '(?<=\s)'
-TRAILING_SPACE = '(?=\s)'
+LEADING_SPACE = r"(?<=\s)"
+TRAILING_SPACE = r"(?=\s)"
 
 WHEREVALUES_RE = re.compile(
-    '|'.join((DOUBLE_QUOTE_STRING,
-              SINGLE_QUOTE_STRING,
-              NOT.join((LEADING_SPACE, TRAILING_SPACE)),
-              LIKE.join((LEADING_SPACE, TRAILING_SPACE)),
-              FROM.join((LEADING_SPACE, TRAILING_SPACE)),
-              ABOVE.join((LEADING_SPACE, TRAILING_SPACE)),
-              BELOW.join((LEADING_SPACE, TRAILING_SPACE)),
-              TO.join((LEADING_SPACE, TRAILING_SPACE)),
-              IN.join((LEADING_SPACE, TRAILING_SPACE)),
-              STRING,
-              )).join(('(', ')')),
-    flags=re.IGNORECASE|re.DOTALL)
+    r"|".join(
+        (
+            DOUBLE_QUOTE_STRING,
+            SINGLE_QUOTE_STRING,
+            NOT.join((LEADING_SPACE, TRAILING_SPACE)),
+            LIKE.join((LEADING_SPACE, TRAILING_SPACE)),
+            FROM.join((LEADING_SPACE, TRAILING_SPACE)),
+            ABOVE.join((LEADING_SPACE, TRAILING_SPACE)),
+            BELOW.join((LEADING_SPACE, TRAILING_SPACE)),
+            TO.join((LEADING_SPACE, TRAILING_SPACE)),
+            IN.join((LEADING_SPACE, TRAILING_SPACE)),
+            STRING,
+        )
+    ).join((r"(", r")")),
+    flags=re.IGNORECASE | re.DOTALL,
+)
 
-KEYWORDS = frozenset((TO,
-                      IN,
-                      NOT,
-                      LIKE,
-                      FROM,
-                      ABOVE,
-                      BELOW,
-                      ))
+KEYWORDS = frozenset(
+    (
+        TO,
+        IN,
+        NOT,
+        LIKE,
+        FROM,
+        ABOVE,
+        BELOW,
+    )
+)
 
 
 class WhereValuesError(Exception):
-    pass
+    """Exception for WhereValues class."""
 
 
 class WhereValues:
-
     """Find index values matching the query in statement."""
 
     def __init__(self, statement):
@@ -72,21 +79,21 @@ class WhereValues:
         self._error_token_offset = None
         self._not = False
         self._processors = None
-        
+
     def lex(self):
         """Split instance's statement into tokens."""
         tokens = []
         strings = []
-        for w in WHEREVALUES_RE.split(self.statement):
-            if w.lower() in KEYWORDS:
+        for word in WHEREVALUES_RE.split(self.statement):
+            if word.lower() in KEYWORDS:
                 if strings:
-                    tokens.append(' '.join([_trim(s) for s in strings if s]))
+                    tokens.append(" ".join([_trim(s) for s in strings if s]))
                     strings.clear()
-                tokens.append(w.lower())
-            elif w.strip():
-                strings.append(w.strip())
+                tokens.append(word.lower())
+            elif word.strip():
+                strings.append(word.strip())
         if strings:
-            tokens.append(' '.join([_trim(s) for s in strings if s]))
+            tokens.append(" ".join([_trim(s) for s in strings if s]))
             strings.clear()
         self.tokens = tokens
 
@@ -99,17 +106,16 @@ class WhereValues:
         """
         self.node = ValuesClause()
         state = self._set_fieldname
-        for e, t in enumerate(self.tokens):
-            state = state(t)
+        for item, token in enumerate(self.tokens):
+            state = state(token)
             if not state:
-                self._error_token_offset = e
+                self._error_token_offset = item
                 break
         else:
             self.node.valid_phrase = True
 
     def validate(self, db, dbset):
-        """Check the node derived from statement contains a valid search
-        specification for db and dbset.
+        """Verify self's statement has a valid search for db and dbset.
 
         db - the database.
         dbset - the table in the database.
@@ -120,26 +126,26 @@ class WhereValues:
 
         """
         if self._error_token_offset is not None:
-            return self.tokens[:self._error_token_offset]
+            return self.tokens[: self._error_token_offset]
         if self.node is None:
             return None
-        n = self.node
+        node = self.node
 
         # Valid values are None or a compiled regular expression.
         # The attribute is bound to the string which failed to compile if the
         # compilation failed.
-        if isinstance(n.like_pattern, str):
+        if isinstance(node.like_pattern, str):
             return False
-        
-        if not n.valid_phrase:
-            return n.valid_phrase
-        if n.field is None:
+
+        if not node.valid_phrase:
+            return node.valid_phrase
+        if node.field is None:
             return False
-        elif not db.exists(dbset, n.field):
+        if not db.exists(dbset, node.field):
             return False
-        if n.above_value is not None and n.from_value is not None:
+        if node.above_value is not None and node.from_value is not None:
             return False
-        if n.below_value is not None and n.to_value is not None:
+        if node.below_value is not None and node.to_value is not None:
             return False
         return True
 
@@ -155,185 +161,178 @@ class WhereValues:
 
         """
         if self.node is None:
-            return None
+            return
         self._processors = processors
         try:
             self.node.evaluate_node_result(processors)
         finally:
             self._processors = None
 
-    def error(self, t):
-        """Return False, t is an unexpected keyword or value."""
+    def error(self, token):
+        """Return False, token is an unexpected keyword or value."""
         return False
 
-    def _set_fieldname(self, t):
+    def _set_fieldname(self, token):
         """Set field name and return method to process next token."""
-        if t.lower() in KEYWORDS:
-            return self.error(t)
-        self.node.field = t
+        if token.lower() in KEYWORDS:
+            return self.error(token)
+        self.node.field = token
         return self._set_not_from_to_like_in_
 
-    def _set_from_value(self, t):
+    def _set_from_value(self, token):
         """Set from value and return method to process next token."""
-        if t.lower() in KEYWORDS:
-            return self.error(t)
-        self.node.from_value = t
+        if token.lower() in KEYWORDS:
+            return self.error(token)
+        self.node.from_value = token
         return self._set_not_to_like_in_
 
-    def _set_above_value(self, t):
+    def _set_above_value(self, token):
         """Set above value and return method to process next token."""
-        if t.lower() in KEYWORDS:
-            return self.error(t)
-        self.node.above_value = t
+        if token.lower() in KEYWORDS:
+            return self.error(token)
+        self.node.above_value = token
         return self._set_not_to_like_in_
 
-    def _set_to_value(self, t):
+    def _set_to_value(self, token):
         """Set to value and return method to process next token."""
-        if t.lower() in KEYWORDS:
-            return self.error(t)
-        self.node.to_value = t
+        if token.lower() in KEYWORDS:
+            return self.error(token)
+        self.node.to_value = token
         return self._set_not_like_in_
 
-    def _set_below_value(self, t):
+    def _set_below_value(self, token):
         """Set to value and return method to process next token."""
-        if t.lower() in KEYWORDS:
-            return self.error(t)
-        self.node.below_value = t
+        if token.lower() in KEYWORDS:
+            return self.error(token)
+        self.node.below_value = token
         return self._set_not_like_in_
 
-    def _set_like_value(self, t):
+    def _set_like_value(self, token):
         """Set like value and return method to process next token."""
-
-        # If 't' really must be one of the keywords the construct
-        # "fieldname from 't' to 't'" must be used to achieve the same result.
+        # If 'token' really must be one of the keywords the construct
+        # "fieldname from 'token' to 'token'" must be used to achieve the
+        # same result.
         # Normally "fieldname like \At\Z" will do.
-        if t.lower() in KEYWORDS:
-            return self.error(t)
+        if token.lower() in KEYWORDS:
+            return self.error(token)
         try:
-            self.node.like_pattern = re.compile(t)
+            self.node.like_pattern = re.compile(token)
         except:
-            self.node.like_pattern = t
+            self.node.like_pattern = token
         if self._not:
             self.node.like = False
             self._not = False
         return self._set_not_in_
 
-    def _set_in__value(self, t):
+    def _set_in__value(self, token):
         """Set 'in set' value and return method to process next token."""
-        if t.lower() in KEYWORDS:
-            return self.error(t)
-        self.node.in__set = t
+        if token.lower() in KEYWORDS:
+            return self.error(token)
+        self.node.in__set = token
         if self._not:
             self.node.in_ = False
             self._not = False
         return self._finish
 
-    def _set_not_from_to_like_in_(self, t):
+    def _set_not_from_to_like_in_(self, token):
         """Set not or condition and return method to process next token.
 
         'from', 'above', 'to', 'below', 'like', and 'in', are accepted
         conditions.
 
         """
-        if t.lower() == NOT:
+        if token.lower() == NOT:
             self._not = True
             return self._set_like_in_
-        elif t.lower() == FROM:
+        if token.lower() == FROM:
             return self._set_from_value
-        elif t.lower() == ABOVE:
+        if token.lower() == ABOVE:
             return self._set_above_value
-        elif t.lower() == TO:
+        if token.lower() == TO:
             return self._set_to_value
-        elif t.lower() == BELOW:
+        if token.lower() == BELOW:
             return self._set_below_value
-        elif t.lower() == LIKE:
+        if token.lower() == LIKE:
             return self._set_like_value
-        elif t.lower() == IN:
+        if token.lower() == IN:
             return self._set_in__value
-        else:
-            return self.error(t)
+        return self.error(token)
 
-    def _set_not_to_like_in_(self, t):
+    def _set_not_to_like_in_(self, token):
         """Set not or condition and return method to process next token.
 
         'to', 'below', 'like', and 'in', are accepted conditions.
 
         """
-        if t.lower() == NOT:
+        if token.lower() == NOT:
             self._not = True
             return self._set_like_in_
-        elif t.lower() == TO:
+        if token.lower() == TO:
             return self._set_to_value
-        elif t.lower() == BELOW:
+        if token.lower() == BELOW:
             return self._set_below_value
-        elif t.lower() == LIKE:
+        if token.lower() == LIKE:
             return self._set_like_value
-        elif t.lower() == IN:
+        if token.lower() == IN:
             return self._set_in__value
-        else:
-            return self.error(t)
+        return self.error(token)
 
-    def _set_not_like_in_(self, t):
+    def _set_not_like_in_(self, token):
         """Set not or condition and return method to process next token.
 
         'like' and 'in' are accepted conditions.
 
         """
-        if t.lower() == NOT:
+        if token.lower() == NOT:
             self._not = True
             return self._set_like_in_
-        elif t.lower() == LIKE:
+        if token.lower() == LIKE:
             return self._set_like_value
-        elif t.lower() == IN:
+        if token.lower() == IN:
             return self._set_in__value
-        else:
-            return self.error(t)
+        return self.error(token)
 
-    def _set_not_in_(self, t):
+    def _set_not_in_(self, token):
         """Set not or condition and return method to process next token.
 
         'in' is accepted condition.
 
         """
-        if t.lower() == NOT:
+        if token.lower() == NOT:
             self._not = True
             return self._set_in_
-        elif t.lower() == IN:
+        if token.lower() == IN:
             return self._set_in__value
-        else:
-            return self.error(t)
+        return self.error(token)
 
-    def _set_like_in_(self, t):
+    def _set_like_in_(self, token):
         """Set condition and return method to process next token.
 
         'like' and 'in' are accepted conditions.
 
         """
-        if t.lower() == LIKE:
+        if token.lower() == LIKE:
             return self._set_like_value
-        elif t.lower() == IN:
+        if token.lower() == IN:
             return self._set_in__value
-        else:
-            return self.error(t)
+        return self.error(token)
 
-    def _set_in_(self, t):
+    def _set_in_(self, token):
         """Set condition and return method to process next token.
 
         'in' is accepted condition.
 
         """
-        if t.lower() == IN:
+        if token.lower() == IN:
             return self._set_in__value
-        else:
-            return self.error(t)
+        return self.error(token)
 
-    def _finish(self, t):
+    def _finish(self, token):
         """Set error if any token found after final valid token."""
-        return self.error(t)
+        return self.error(token)
 
 
 class ValuesClause:
-
     """Phrase in WhereValues specification.
 
     The WhereValues parser binds ValuesClause attributes to the field name,
@@ -375,7 +374,7 @@ class ValuesClause:
     Any pairing of the 'like' and 'in_' attribute sets above.
 
     A range and a filter may appear in the same phrase.
-    
+
     """
 
     def __init__(self):
@@ -400,10 +399,10 @@ class ValuesClause:
         self.result = None
 
     def evaluate_node_result(self, processors):
-        """Call processor's find_values() method to evaluate node's phrase and
-        bind node's result attribute to the answer.
+        """Evaluate self's phrase with the processors FindValues object.
 
-        processors - FindValues object which does the evaluation.
+        Call processor's find_values() method to evaluate node's phrase and
+        bind node's result attribute to the answer.
 
         """
         if self.valid_phrase:
@@ -430,13 +429,12 @@ class ValuesClause:
         if self.in__set is not None:
             if self.in_:
                 return value in self.in__set
-            else:
-                return value not in self.in__set
+            return value not in self.in__set
         return True
 
 
-def _trim(s):
+def _trim(string):
     """Remove one leading and trailing ' or " used in values with whitespace."""
-    if s[0] in '\'"':
-        return s[1:-1]
-    return s
+    if string[0] in "'\"":
+        return string[1:-1]
+    return string

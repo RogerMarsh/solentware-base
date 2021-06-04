@@ -2,8 +2,11 @@
 # Copyright (c) 2019 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""Access a SQLite database created from a FileSpec() definition with the
-sqlite3 module in deferred update mode.
+"""Access a SQLite database deferring index updates.
+
+The sqlite3_database module provides the database interface.
+
+Prefer to use the sqlite3_database module normally.
 
 """
 from . import sqlite3_database
@@ -11,11 +14,9 @@ from .core import _sqlitedu
 
 
 class Database(_sqlitedu.Database, sqlite3_database.Database):
-    
-    """Define file and record access methods which subclasses may override if
-    necessary.
+    """Define deferred update Database class using sqlite3 module.
 
-    Default methods for SQLite using the apsw interface are taken from the
-    apsw_database.Database class, overridden or supplemented where necessary
-    by methods from the core._sqlitedu.Database class.
+    Deferred update behaviour comes from the _sqlitedu.Database class.
+
+    The SQL engine comes from the sqlite3_database.Database class.
     """

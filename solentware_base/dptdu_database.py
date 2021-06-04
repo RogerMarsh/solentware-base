@@ -2,12 +2,11 @@
 # Copyright 2019 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""Access a DPT database created from a FileSpec() definition with the dptdb
-module.
+"""Access a DPT database deferring index updates.
 
-Index updates are deferred.  Transactions are disabled so explicit external
-backups should be used.  Use dpt_database for transactions, but adding lots of
-new records will be a lot slower.
+Index updates are deferred.  Transactions are disabled so explicit
+external backups should be used.  Use dpt_database for transactions,
+but adding lots of new records will be a lot slower.
 
 """
 import os
@@ -17,11 +16,10 @@ from .core.constants import DPT_SYS_FOLDER
 
 
 class DptduDatabaseError(Exception):
-    pass
+    """Exception for Database class."""
 
 
 class Database(_dpt.Database):
-    
     """Bulk insert to DPT database in folder using specification.
 
     Support DPT single-step deferred updates.
@@ -31,18 +29,18 @@ class Database(_dpt.Database):
     records.
 
     """
-    
+
     def __init__(self, specification, folder=None, sysfolder=None, **kargs):
         """Create DPT single-step deferred update environment."""
         if folder:
             folder = os.path.abspath(folder)
             if sysfolder is None:
-                sysfolder = os.path.join(folder, DPT_SYS_FOLDER, DPT_SYS_FOLDER)
+                sysfolder = os.path.join(
+                    folder, DPT_SYS_FOLDER, DPT_SYS_FOLDER
+                )
         super().__init__(
-            specification,
-            folder=folder,
-            sysfolder=sysfolder,
-            **kargs)
+            specification, folder=folder, sysfolder=sysfolder, **kargs
+        )
 
     # Set default parameters for single-step deferred update use.
     def create_default_parms(self):
@@ -52,12 +50,12 @@ class Database(_dpt.Database):
 
         """
         if not os.path.exists(self.parms):
-            pf = open(self.parms, 'w')
+            parms = open(self.parms, "w")
             try:
-                pf.write("RCVOPT=X'00' " + os.linesep)
-                pf.write("MAXBUF=100 " + os.linesep)
+                parms.write("RCVOPT=X'00' " + os.linesep)
+                parms.write("MAXBUF=100 " + os.linesep)
             finally:
-                pf.close()
+                parms.close()
 
     def deferred_update_housekeeping(self):
         """Call Commit() if a non-TBO update is in progress.
@@ -70,23 +68,25 @@ class Database(_dpt.Database):
         if self.dbenv:
             if self.dbenv.UpdateIsInProgress():
                 self.dbenv.Commit()
-                
+
     def delete_instance(self, file, instance):
         """Delete an instance is not available in deferred update mode."""
         raise DptduDatabaseError(
-            'delete_instance not available in deferred update mode')
+            "delete_instance not available in deferred update mode"
+        )
 
     def edit_instance(self, file, instance):
         """Edit an instance is not available in deferred update mode."""
         raise DptduDatabaseError(
-            'edit_instance not available in deferred update mode')
-    
+            "edit_instance not available in deferred update mode"
+        )
+
     def _dptfileclass(self):
         return _DPTFile
 
     def set_defer_update(self):
         """Do nothing.  Provided for compatibility with other engines."""
-        
+
     def unset_defer_update(self):
         """Do nothing.  Provided for compatibility with other engines."""
 
@@ -100,64 +100,68 @@ class _DPTFile(_dpt._DPTFile):
     deferred update mode and ban editing and deleting records on the database.
 
     """
-    
+
     # Call dbenv.OpenContext_DUSingle by default.
     # Python is crashed if more than one 'OpenContext'-style calls are made per
     # file in a process when any of them is OpenContext_DUSingle.
     def _open_context(self, dbenv, cs):
         return dbenv.OpenContext_DUSingle(cs)
-                
+
     def delete_instance(self, instance):
         raise DptduDatabaseError(
-            'delete_instance not available in deferred update mode')
+            "delete_instance not available in deferred update mode"
+        )
 
     def edit_instance(self, instance):
         raise DptduDatabaseError(
-            'edit_instance not available in deferred update mode')
+            "edit_instance not available in deferred update mode"
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     import sys
-    import os
 
     from dptdb import dptapi
 
     from .core import filespec
     from .core import record
 
-    class V(record.Value):
+    class _V(record.Value):
         def pack(self):
-            p = super(V, self).pack()
-            index = p[1]
-            index['b'] = [w for w in self.v.split()]
-            index['c'] = [str(len(index['b']))]
-            return p
+            packed = super().pack()
+            index = packed[1]
+            index["b"] = self.v.split()
+            index["c"] = [str(len(index["b"]))]
+            return packed
 
-    class R(record.Record):
+    class _R(record.Record):
         def __init__(self):
-            super(R, self).__init__(valueclass=V)
+            super().__init__(valueclass=_V)
 
-    class W(record.Value):
+    class _W(record.Value):
         def pack(self):
-            p = super(W, self).pack()
-            index = p[1]
-            index['e'] = [w for w in self.v.split()]
-            index['f'] = [str(len(index['e']))]
-            return p
+            packed = super().pack()
+            index = packed[1]
+            index["e"] = self.v.split()
+            index["f"] = [str(len(index["e"]))]
+            return packed
 
-    class S(record.Record):
+    class _S(record.Record):
         def __init__(self):
-            super(S, self).__init__(valueclass=W)
+            super().__init__(valueclass=_W)
 
-    d = Database(filespec.FileSpec(**{'a':'bc', 'd':'ef'}),
-                 folder=os.path.expanduser(os.path.join(
-                     '~',
-                     ''.join((str(sys.version_info[0]),
-                              str(sys.version_info[1]))
-                             ).join(('cccc_', '_dptdu_single')),
-                     )),
-                 )
+    d = Database(
+        filespec.FileSpec(**{"a": "bc", "d": "ef"}),
+        folder=os.path.expanduser(
+            os.path.join(
+                "~",
+                "".join(
+                    (str(sys.version_info[0]), str(sys.version_info[1]))
+                ).join(("cccc_", "_dptdu_single")),
+            )
+        ),
+    )
     print(d.home_directory)
     d.open_database()
 
@@ -165,47 +169,56 @@ if __name__ == '__main__':
     # Only one open context call per file is allowed in a process if one of
     # these calls is to OpenContext_DUSingle().
     # See _open_database() definition above.
-    #super(Database, d).open_database()
-    #d.close_database()
+    # super(Database, d).open_database()
+    # d.close_database()
 
     # Repeat .core._dpt 'insert' sequence to verify the different 'opencontext'.
     a = record.Record()
-    r = R()
-    rd = R()
+    r = _R()
+    rd = _R()
     print(d.home_directory)
-    #d.open_database()
-    a.load_record((repr(dict(k=None)), repr(dict(v='A record value'))))
-    d.put_instance('a', a)
+    # d.open_database()
+    a.load_record((repr(dict(k=None)), repr(dict(v="A record value"))))
+    d.put_instance("a", a)
     r.key.recno = None
-    r.value.__dict__['v'] = 'Another record value'
-    r.put_record(d, 'a')
+    r.value.__dict__["v"] = "Another record value"
+    r.put_record(d, "a")
     d.commit()
-    s = S()
+    s = _S()
     s.key.recno = None
-    s.value.__dict__['v'] = 'Another record value for another file'
-    s.put_record(d, 'd')
+    s.value.__dict__["v"] = "Another record value for another file"
+    s.put_record(d, "d")
     d.commit()
-    print(d.get_primary_record('d', 0))
-    print(d.table['d'].foundset_all_records('d').Count())
-    print(d.table['d'].foundset_all_records('e').Count())
-    print(d.table['d'].foundset_all_records('f').Count())
-    print(d.table['d'].foundset_field_equals_value('d', '').Count())
-    print(d.table['d'].foundset_field_equals_value('e', 'An').Count())
-    print(d.table['d'].foundset_field_equals_value('f', str(3)).Count())
-    print(d.table['d'].foundset_field_equals_value(
-        'd', dptapi.APIFieldValue('')).Count())
-    print(d.table['d'].foundset_field_equals_value(
-        'e', dptapi.APIFieldValue('An')).Count())
-    print(d.table['d'].foundset_field_equals_value(
-        'f', dptapi.APIFieldValue(str(3))).Count())
-    print(d.table['d'].foundset_record_number(1).Count())
-    print(d.table['d'].foundset_records_before_record_number(4).Count())
-    print(d.table['d'].foundset_records_not_before_record_number(5).Count())
-    c = d.database_cursor('d', 'e')
+    print(d.get_primary_record("d", 0))
+    print(d.table["d"].foundset_all_records("d").Count())
+    print(d.table["d"].foundset_all_records("e").Count())
+    print(d.table["d"].foundset_all_records("f").Count())
+    print(d.table["d"].foundset_field_equals_value("d", "").Count())
+    print(d.table["d"].foundset_field_equals_value("e", "An").Count())
+    print(d.table["d"].foundset_field_equals_value("f", str(3)).Count())
+    print(
+        d.table["d"]
+        .foundset_field_equals_value("d", dptapi.APIFieldValue(""))
+        .Count()
+    )
+    print(
+        d.table["d"]
+        .foundset_field_equals_value("e", dptapi.APIFieldValue("An"))
+        .Count()
+    )
+    print(
+        d.table["d"]
+        .foundset_field_equals_value("f", dptapi.APIFieldValue(str(3)))
+        .Count()
+    )
+    print(d.table["d"].foundset_record_number(1).Count())
+    print(d.table["d"].foundset_records_before_record_number(4).Count())
+    print(d.table["d"].foundset_records_not_before_record_number(5).Count())
+    c = d.database_cursor("d", "e")
     try:
         print(c.count_records())
     finally:
         c.close()
     d.close_database()
-    #d.open_database()
-    #d.close_database()
+    # d.open_database()
+    # d.close_database()
