@@ -6,8 +6,6 @@
 
 import unittest
 
-from .. import unqlite_database
-
 try:
     from .. import unqlite_database
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6

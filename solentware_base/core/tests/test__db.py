@@ -8,6 +8,10 @@ import unittest
 import os
 
 try:
+    import berkeleydb
+except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
+    berkeleydb = None
+try:
     import bsddb3
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     bsddb3 = None
@@ -57,11 +61,13 @@ class Database___init__(_DB):
         )
 
     def test_02(self):
+        t = r"(?:type object|solentware_base\.core\.filespec\.FileSpec\(\))"
         self.assertRaisesRegex(
             TypeError,
             "".join(
                 (
-                    "type object argument after \*\* must be a mapping, ",
+                    t,
+                    " argument after \*\* must be a mapping, ",
                     "not NoneType",
                 )
             ),
@@ -771,7 +777,7 @@ class Database_methods(_DBOpen):
         )
 
     def test_16_recordset_record_number(self):
-        self.database.table["file1"][0].put(1, "Some value")
+        self.database.table["file1"][0].put(1, encode("Some value"))
         values = b"\x40" + b"\x00" * (SegmentSize.db_segment_size_bytes - 1)
         self.database.ebm_control["file1"].ebm_table.put(1, values)
         rl = self.database.recordlist_record_number("file1", key=1)
@@ -956,7 +962,7 @@ class Database_find_values(_DBOpen):
         )
 
     def test_11_find_values(self):
-        self.database.table["file1_field1"][0].put(b"d", "values")
+        self.database.table["file1_field1"][0].put(b"d", encode("values"))
         self.assertEqual(
             [i for i in self.database.find_values(self.valuespec, "file1")],
             ["d"],
@@ -1589,7 +1595,7 @@ class Database_make_recordset(_DBOpen):
         rs = self.database.recordlist_key("file1", "field1", key=b"ba_o")
         # self.database.file_records_under('file1', 'field1', rs, b'www')
         self.assertRaisesRegex(
-            bsddb3.db.DBKeyEmptyError,
+            bdb.DBKeyEmptyError,
             r"".join(
                 (
                     r"(?:\(-30995, 'BDB0066 |\(-30997, ')",
@@ -1616,7 +1622,7 @@ class Database_make_recordset(_DBOpen):
             self.database._get_segment_record_numbers("file1", 8), list
         )
         self.assertRaisesRegex(
-            bsddb3.db.DBInvalidArgError,
+            bdb.DBInvalidArgError,
             r"".join(
                 (
                     r"\(22, 'Invalid argument -- (?:BDB1002 )?",
@@ -1681,35 +1687,6 @@ class Database_make_recordset(_DBOpen):
 class Database_freed_record_number(_DBOpen):
     def setUp(self):
         super().setUp()
-        self.database.ebm_control["file1"] = _db.ExistenceBitmapControl(
-            "file1", self.database
-        )
-        self.statement = " ".join(
-            (
-                "insert into",
-                "file1",
-                "(",
-                "file1",
-                ",",
-                "Value",
-                ")",
-                "values ( ? , ? )",
-            )
-        )
-        cursor = self.database.dbenv.cursor()
-        for i in range(SegmentSize.db_segment_size * 3 - 1):
-            cursor.execute(
-                self.statement, (None, "_".join((str(i + 1), "value")))
-            )
-            self.database.add_record_to_ebm("file1", i + 1)
-        cursor.close()
-        self.high_record = self.database.get_high_record("file1")
-        self.database.ebm_control["file1"].segment_count = divmod(
-            self.high_record[0], SegmentSize.db_segment_size
-        )[0]
-
-    def setUp(self):
-        super().setUp()
         self.database.start_transaction()
         self.database.ebm_control["file1"] = _db.ExistenceBitmapControl(
             "file1", self.database, dbe_module.db, dbe_module.db.DB_CREATE
@@ -1718,7 +1695,7 @@ class Database_freed_record_number(_DBOpen):
             self.database.add_record_to_ebm(
                 "file1",
                 self.database.table["file1"][0].append(
-                    "value", txn=self.database.dbtxn
+                    encode("value"), txn=self.database.dbtxn
                 ),
             )
         self.high_record = self.database.get_high_record("file1")
@@ -1852,7 +1829,7 @@ class Database_freed_record_number(_DBOpen):
             self.database.add_record_to_ebm(
                 "file1",
                 self.database.table["file1"][0].append(
-                    "value", txn=self.database.dbtxn
+                    encode("value"), txn=self.database.dbtxn
                 ),
             )
         self.assertEqual(
@@ -1914,7 +1891,9 @@ class RecordsetCursor(_DBOpen):
         )
         keys = ("a_o",)
         for i in range(380):
-            self.database.table["file1"][0].append(str(i + 1) + "Any value")
+            self.database.table["file1"][0].append(
+                encode(str(i + 1) + "Any value")
+            )
         bits = b"\x7f" + b"\xff" * (SegmentSize.db_segment_size_bytes - 1)
         self.database.ebm_control["file1"].ebm_table.put(1, bits)
         bits = b"\xff" * SegmentSize.db_segment_size_bytes
@@ -1986,9 +1965,20 @@ class RecordsetCursor(_DBOpen):
 if __name__ == "__main__":
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
-    for dbe_module in (bsddb3,):
+    for dbe_module in (berkeleydb, bsddb3):
         if dbe_module is None:
             continue
+        bdb = dbe_module.db
+        if dbe_module is berkeleydb:
+
+            def encode(value):
+                return value.encode()
+
+        else:
+
+            def encode(value):
+                return value
+
         runner().run(loader(Database___init__))
         runner().run(loader(Database_transaction_methods))
         runner().run(loader(DatabaseInstance))

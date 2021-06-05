@@ -57,22 +57,22 @@ class Modulequery(unittest.TestCase):
                     r,
                     (
                         "dptdb.dptapi",
+                        "berkeleydb",
                         "bsddb3",
                         "vedis",
                         "unqlite",
                         "apsw",
-                        "bsddb",
                     ),
                 )
             else:
                 self.assertEqual(
                     r,
                     (
+                        "berkeleydb",
                         "bsddb3",
                         "vedis",
                         "unqlite",
                         "apsw",
-                        "bsddb",
                         "dbm.gnu",
                         "dbm.ndbm",
                     ),
@@ -83,24 +83,24 @@ class Modulequery(unittest.TestCase):
                     r,
                     (
                         "dptdb.dptapi",
+                        "berkeleydb",
                         "bsddb3",
                         "vedis",
                         "unqlite",
                         "apsw",
                         "sqlite3",
-                        "bsddb",
                     ),
                 )
             else:
                 self.assertEqual(
                     r,
                     (
+                        "berkeleydb",
                         "bsddb3",
                         "vedis",
                         "unqlite",
                         "apsw",
                         "sqlite3",
-                        "bsddb",
                         "dbm.gnu",
                         "dbm.ndbm",
                     ),
@@ -114,7 +114,7 @@ class Modulequery(unittest.TestCase):
             set(r).intersection(
                 (
                     "apsw",
-                    "bsddb",
+                    "berkeleydb",
                     "bsddb3",
                     "dbm.gnu",
                     "dbm.ndbm",
@@ -130,7 +130,7 @@ class Modulequery(unittest.TestCase):
             i
             for i in (
                 modulequery.apsw,
-                modulequery.bsddb,
+                modulequery.berkeleydb,
                 modulequery.bsddb3,
                 modulequery.gnu,
                 modulequery.ndbm,
@@ -143,9 +143,9 @@ class Modulequery(unittest.TestCase):
         }
         self.assertEqual(len(m) >= len(r), True)
         if len(m) > len(r):
-            if modulequery.bsddb in m and modulequery.bsddb3 in m:
-                self.assertEqual("bsddb" not in r, True)
-                self.assertEqual("bsddb3" in r, True)
+            if modulequery.berkeleydb in m and modulequery.bsddb3 in m:
+                self.assertEqual("berkeleydb" in r, True)
+                self.assertEqual("bsddb3" not in r, True)
             if modulequery.apsw in m and modulequery.sqlite3 in m:
                 self.assertEqual("sqlite3" not in r, True)
                 self.assertEqual("apsw" in r, True)

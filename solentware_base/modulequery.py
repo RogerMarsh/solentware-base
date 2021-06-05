@@ -81,9 +81,9 @@ try:
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     apsw = None
 try:
-    import bsddb
+    import berkeleydb
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
-    bsddb = None
+    berkeleydb = None
 try:
     import bsddb3
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
@@ -111,7 +111,7 @@ else:
 # This appears to follow from the option to not allow some imports.
 from .core.constants import (
     FILE,
-    BSDDB_MODULE,
+    BERKELEYDB_MODULE,
     BSDDB3_MODULE,
     SQLITE3_MODULE,
     APSW_MODULE,
@@ -126,19 +126,19 @@ if _deny_sqlite3:
     if sys.platform == "win32":
         DATABASE_MODULES_IN_DEFAULT_PREFERENCE_ORDER = (
             DPT_MODULE,
+            BERKELEYDB_MODULE,
             BSDDB3_MODULE,
             VEDIS_MODULE,
             UNQLITE_MODULE,
             APSW_MODULE,
-            BSDDB_MODULE,
         )
     else:
         DATABASE_MODULES_IN_DEFAULT_PREFERENCE_ORDER = (
+            BERKELEYDB_MODULE,
             BSDDB3_MODULE,
             VEDIS_MODULE,
             UNQLITE_MODULE,
             APSW_MODULE,
-            BSDDB_MODULE,
             GNU_MODULE,
             NDBM_MODULE,
         )
@@ -146,21 +146,21 @@ else:
     if sys.platform == "win32":
         DATABASE_MODULES_IN_DEFAULT_PREFERENCE_ORDER = (
             DPT_MODULE,
+            BERKELEYDB_MODULE,
             BSDDB3_MODULE,
             VEDIS_MODULE,
             UNQLITE_MODULE,
             APSW_MODULE,
             SQLITE3_MODULE,
-            BSDDB_MODULE,
         )
     else:
         DATABASE_MODULES_IN_DEFAULT_PREFERENCE_ORDER = (
+            BERKELEYDB_MODULE,
             BSDDB3_MODULE,
             VEDIS_MODULE,
             UNQLITE_MODULE,
             APSW_MODULE,
             SQLITE3_MODULE,
-            BSDDB_MODULE,
             GNU_MODULE,
             NDBM_MODULE,
         )
@@ -184,7 +184,7 @@ def installed_database_modules():
         vedis,
         sqlite3,
         apsw,
-        bsddb,
+        berkeleydb,
         bsddb3,
         dptapi,
         ndbm,
@@ -192,8 +192,8 @@ def installed_database_modules():
     ):
         if module:
             dbm[module.__name__] = module
-    if dbm[BSDDB_MODULE] and dbm[BSDDB3_MODULE]:
-        dbm[BSDDB_MODULE] = False
+    if dbm[BERKELEYDB_MODULE] and dbm[BSDDB3_MODULE]:
+        dbm[BSDDB3_MODULE] = False
     if dbm[APSW_MODULE] and dbm[SQLITE3_MODULE]:
         dbm[SQLITE3_MODULE] = False
     return {d: m for d, m in dbm.items() if m}
@@ -239,7 +239,7 @@ def modules_for_existing_databases(folder, filespec):
                     break
             else:
                 dbm[name] = False
-        elif name in (BSDDB_MODULE, BSDDB3_MODULE):
+        elif name in (BERKELEYDB_MODULE, BSDDB3_MODULE):
             filepath = os.path.join(folder, os.path.split(folder)[1])
             if os.path.isfile(filepath):
                 for filename in filespec:
@@ -384,7 +384,7 @@ def modules_for_existing_databases(folder, filespec):
     module_sets = {
         (SQLITE3_MODULE, APSW_MODULE): set(),
         (DPT_MODULE,): set(),
-        (BSDDB_MODULE, BSDDB3_MODULE): set(),
+        (BERKELEYDB_MODULE, BSDDB3_MODULE): set(),
         (UNQLITE_MODULE,): set(),
         (VEDIS_MODULE,): set(),
         (GNU_MODULE,): set(),

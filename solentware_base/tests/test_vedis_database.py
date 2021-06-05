@@ -6,8 +6,6 @@
 
 import unittest
 
-from .. import vedis_database
-
 try:
     from .. import vedis_database
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6

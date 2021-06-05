@@ -17,6 +17,10 @@ try:
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     vedis = None
 try:
+    import berkeleydb
+except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
+    berkeleydb = None
+try:
     import bsddb3
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     bsddb3 = None
@@ -71,7 +75,7 @@ class _Database(unittest.TestCase):
         elif dbe_module is vedis:
             self._oda = dbe_module, dbe_module.Vedis, None
             self._engine = _nosql
-        elif dbe_module is bsddb3:
+        elif dbe_module in {berkeleydb, bsddb3}:
             self._oda = (dbe_module.db,)
             self._engine = _db
         elif dbe_module is sqlite3:
@@ -100,7 +104,7 @@ class _Database(unittest.TestCase):
         self.database = None
         self._D = None
         SegmentSize.db_segment_size_bytes = self.__ssb
-        if dbe_module is bsddb3:
+        if dbe_module in {berkeleydb, bsddb3}:
             logdir = "___memlogs_memory_db"
             if os.path.exists(logdir):
                 for f in os.listdir(logdir):
@@ -108,7 +112,7 @@ class _Database(unittest.TestCase):
                         os.remove(os.path.join(logdir, f))
                 os.rmdir(logdir)
         if os.path.exists(self._folder):
-            if dbe_module is bsddb3:
+            if dbe_module in {berkeleydb, bsddb3}:
                 logdir = os.path.join(self._folder, "___logs_" + self._folder)
                 if os.path.exists(logdir):
                     for f in os.listdir(logdir):
@@ -179,7 +183,9 @@ class _Database(unittest.TestCase):
                 _data_generator.populate(
                     self.database,
                     dg,
-                    transaction=True if dbe_module == bsddb3 else False,
+                    transaction=True
+                    if dbe_module in {berkeleydb, bsddb3}
+                    else False,
                 )
             finally:
                 self.database.close_database()
@@ -243,6 +249,7 @@ if __name__ == "__main__":
     for dbe_module in (
         unqlite,
         vedis,
+        berkeleydb,
         bsddb3,
         sqlite3,
         apsw,

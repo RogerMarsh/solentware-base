@@ -27,7 +27,7 @@ from ._filespec import (
 )
 
 # Use the first database engine found in order:
-# DPT, bsddb3, apsw, sqlite3.
+# DPT, berkeleydb, bsddb3, apsw, sqlite3.
 recnumbase = 1
 try:
     from ._filespec import DPTDatabase as DatabaseEngine
@@ -35,12 +35,15 @@ try:
     recnumbase = 0
 except ImportError:
     try:
-        from ._filespec import Bsddb3Database as DatabaseEngine
+        from ._filespec import BerkeleydbDatabase as DatabaseEngine
     except ImportError:
         try:
-            from ._filespec import Sqlite3apswDatabase as DatabaseEngine
+            from ._filespec import Bsddb3Database as DatabaseEngine
         except ImportError:
-            from ._filespec import Sqlite3Database as DatabaseEngine
+            try:
+                from ._filespec import Sqlite3apswDatabase as DatabaseEngine
+            except ImportError:
+                from ._filespec import Sqlite3Database as DatabaseEngine
 
 from .. import wherevalues
 from .. import findvalues

@@ -7,6 +7,10 @@
 import unittest
 
 try:
+    import berkeleydb
+except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
+    berkeleydb = None
+try:
     import bsddb3
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     bsddb3 = None
@@ -1017,7 +1021,7 @@ class Cursor_secondary__get_record_at_position(_DB):
 if __name__ == "__main__":
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
-    for dbe_module in (bsddb3,):
+    for dbe_module in (berkeleydb, bsddb3):
         if dbe_module is None:
             continue
         runner().run(loader(Cursor_db))

@@ -30,19 +30,22 @@ from ._filespec import (
 )
 
 # Use the first database engine found in order:
-# bsddb3, apsw, sqlite3.
+# berkeleydb, bsddb3, apsw, sqlite3.
 try:
-    from ._filespec import Bsddb3Database as DatabaseEngine
+    from ._filespec import BerkeleydbDatabase as DatabaseEngine
 except ImportError:
     try:
-        from ._filespec import Sqlite3apswDatabase as DatabaseEngine
+        from ._filespec import Bsddb3Database as DatabaseEngine
     except ImportError:
-        from ._filespec import Sqlite3Database as DatabaseEngine
+        try:
+            from ._filespec import Sqlite3apswDatabase as DatabaseEngine
+        except ImportError:
+            from ._filespec import Sqlite3Database as DatabaseEngine
 
 from .. import where
 from .. import find
 
-# bsddb3, apsw, and sqlite3, record numbers are based at 1.
+# berkeleydb, bsddb3, apsw, and sqlite3, record numbers are based at 1.
 RECNUMBASE = 1
 
 

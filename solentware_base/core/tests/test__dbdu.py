@@ -8,6 +8,10 @@ import unittest
 import os
 
 try:
+    import berkeleydb
+except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
+    berkeleydb = None
+try:
     import bsddb3
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     bsddb3 = None
@@ -58,11 +62,13 @@ class Database___init__(_DBdu):
         )
 
     def test_02(self):
+        t = r"(?:type object|solentware_base\.core\.filespec\.FileSpec\(\))"
         self.assertRaisesRegex(
             TypeError,
             "".join(
                 (
-                    "type object argument after \*\* must be a mapping, ",
+                    t,
+                    " argument after \*\* must be a mapping, ",
                     "not NoneType",
                 )
             ),
@@ -335,7 +341,7 @@ class Database_methods(_DBOpen):
         self.assertEqual(self.database.first_chunk["file1"], None)
 
     def test_07_set_defer_update_02(self):
-        self.database.table["file1"][0].append("any value")
+        self.database.table["file1"][0].append(encode("any value"))
         self.database.set_defer_update()
         self.assertEqual(self.database.initial_high_segment["file1"], 0)
         self.assertEqual(self.database.high_segment["file1"], 0)
@@ -1037,9 +1043,19 @@ class Database_merge(_DBOpen):
 if __name__ == "__main__":
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
-    for dbe_module in (bsddb3,):
+    for dbe_module in (berkeleydb, bsddb3):
         if dbe_module is None:
             continue
+        if dbe_module is berkeleydb:
+
+            def encode(value):
+                return value.encode()
+
+        else:
+
+            def encode(value):
+                return value
+
         runner().run(loader(Database___init__))
         runner().run(loader(Database_transaction_methods))
         runner().run(loader(Database_open_database))

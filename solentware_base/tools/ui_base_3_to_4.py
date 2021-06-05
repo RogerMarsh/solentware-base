@@ -20,10 +20,14 @@ except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     except ImportError:
         sqlite_dbe = None
 
+# Use berkeleydb if it is available.
 try:
-    from bsddb3 import db as bsddb_dbe
+    from berkeleydb import db as bsddb_dbe
 except ImportError:
-    bsddb_dbe = None
+    try:
+        from bsddb3 import db as bsddb_dbe
+    except ImportError:
+        bsddb_dbe = None
 
 from ..core.filespec import FileSpec
 from ..core.segmentsize import SegmentSize

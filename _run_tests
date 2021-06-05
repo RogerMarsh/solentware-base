@@ -9,6 +9,8 @@ python$1 -m solentware_base.tests.test___do_database_tasks
 python$1 -m solentware_base.tests.test___update
 python$1 -m solentware_base.tests.test_apsw_database
 python$1 -m solentware_base.tests.test_apswdu_database
+python$1 -m solentware_base.tests.test_berkeleydb_database
+python$1 -m solentware_base.tests.test_berkeleydbdu_database
 python$1 -m solentware_base.tests.test_bsddb3_database
 python$1 -m solentware_base.tests.test_bsddb3du_database
 python$1 -m solentware_base.tests.test_do_deferred_updates

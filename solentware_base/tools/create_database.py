@@ -42,6 +42,10 @@ try:
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     apsw = None
 try:
+    import berkeleydb
+except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
+    berkeleydb = None
+try:
     import bsddb3
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     bsddb3 = None
@@ -118,6 +122,7 @@ class CreateDatabase:
             eng
             for eng in (
                 dptapi,
+                berkeleydb,
                 bsddb3,
                 vedis,
                 unqlite,
@@ -421,6 +426,13 @@ if __name__ == "__main__":
             apsw_database = None
     else:
         apsw_database = None
+    if berkeleydb:
+        try:
+            from .. import berkeleydb_database
+        except ImportError:
+            berkeleydb_database = None
+    else:
+        berkeleydb_database = None
     if bsddb3:
         try:
             from .. import bsddb3_database
@@ -458,6 +470,8 @@ if __name__ == "__main__":
             engines = {}
             if dptapi:
                 engines[dptapi] = dpt_database.Database
+            if berkeleydb:
+                engines[berkeleydb] = berkeleydb_database.Database
             if bsddb3:
                 engines[bsddb3] = bsddb3_database.Database
             if vedis:

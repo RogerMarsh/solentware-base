@@ -8,20 +8,12 @@ import shutil
 import os
 
 try:
-    from bsddb3.db import (
-        DB_BTREE,
-        DB_HASH,
-        DB_RECNO,
-        DB_DUPSORT,
-        DB_DUP,
-        DB_CREATE,
-        DB_INIT_MPOOL,
-        DB_PRIVATE,
-        DB_RECOVER,
-        DB_INIT_LOCK,
-        DB_INIT_LOG,
-        DB_INIT_TXN,
-    )
+    import berkeleydb.db
+except ImportError:
+    pass
+
+try:
+    import bsddb3.db
 except ImportError:
     pass
 
@@ -357,25 +349,82 @@ except NameError:
 
 try:
 
-    class Bsddb3Database(bsddb3_database.Database):
+    class BerkeleydbDatabase(berkeleydb_database.Database):
         """Berkeley DB database for tests."""
 
         def __init__(self, DBfile):
             """Define Berkeley DB database for tests and extend."""
             names = samplefilespec()
+            bdb = berkeleydb.db
             try:
                 super().__init__(
                     names,
                     DBfile,
                     DBenvironment={
                         "flags": (
-                            DB_CREATE
-                            | DB_RECOVER
-                            | DB_INIT_MPOOL
-                            | DB_INIT_LOCK
-                            | DB_INIT_LOG
-                            | DB_INIT_TXN
-                            | DB_PRIVATE
+                            bdb.DB_CREATE
+                            | bdb.DB_RECOVER
+                            | bdb.DB_INIT_MPOOL
+                            | bdb.DB_INIT_LOCK
+                            | bdb.DB_INIT_LOG
+                            | bdb.DB_INIT_TXN
+                            | bdb.DB_PRIVATE
+                        )
+                    },
+                )
+            except DBapiError:
+                if __name__ == "__main__":
+                    raise
+                else:
+                    raise DBapiError("sqlite3 description invalid")
+
+        def delete_database(self):
+            """Delete Berkeley DB database created for tests."""
+            names = {self.database_file}
+            basenames = set()
+            listnames = []
+            self.close_database()
+            for n in names:
+                if os.path.isdir(n):
+                    shutil.rmtree(n, ignore_errors=True)
+                else:
+                    os.remove(n)
+            try:
+                d, f = os.path.split(self.database_file)
+                if f == os.path.basename(d):
+                    os.rmdir(d)
+            except:
+                pass
+            return True
+
+
+except NameError:
+    # Assume berkeleydb is not installed
+    pass
+
+
+try:
+
+    class Bsddb3Database(bsddb3_database.Database):
+        """Berkeley DB database for tests."""
+
+        def __init__(self, DBfile):
+            """Define Berkeley DB database for tests and extend."""
+            names = samplefilespec()
+            bdb = bsddb3.db
+            try:
+                super().__init__(
+                    names,
+                    DBfile,
+                    DBenvironment={
+                        "flags": (
+                            bdb.DB_CREATE
+                            | bdb.DB_RECOVER
+                            | bdb.DB_INIT_MPOOL
+                            | bdb.DB_INIT_LOCK
+                            | bdb.DB_INIT_LOG
+                            | bdb.DB_INIT_TXN
+                            | bdb.DB_PRIVATE
                         )
                     },
                 )

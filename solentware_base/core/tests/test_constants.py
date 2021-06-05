@@ -20,7 +20,7 @@ class ConstantsFunctions(unittest.TestCase):
         """ """
         msg = "Failure of this test invalidates all other tests"
         ae = self.assertEqual
-        ae(constants.BSDDB_MODULE, "bsddb")
+        ae(constants.BERKELEYDB_MODULE, "berkeleydb")
         ae(constants.BSDDB3_MODULE, "bsddb3")
         ae(constants.DPT_MODULE, "dptdb.dptapi")
         ae(constants.SQLITE3_MODULE, "sqlite3")
@@ -179,7 +179,7 @@ class ConstantsFunctions(unittest.TestCase):
             sorted(cc),
             sorted(
                 [
-                    "BSDDB_MODULE",
+                    "BERKELEYDB_MODULE",
                     "BSDDB3_MODULE",
                     "DPT_MODULE",
                     "SQLITE3_MODULE",
