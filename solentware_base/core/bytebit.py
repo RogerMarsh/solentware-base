@@ -5,9 +5,9 @@
 """Provide a bit array class (called Bitarray) for solentware_base package.
 
 Use the bitarray package if it has been installed, otherwise use the _bytebit
-module in solentware_base.api.
+module in solentware_base.core.
 
-The api._bytebit module implements the subset of the bitarray interface used
+The core._bytebit module implements the subset of the bitarray interface used
 in solentware_base.
 
 Bitarray mostly takes about 4 times longer to do something than bitarray, but

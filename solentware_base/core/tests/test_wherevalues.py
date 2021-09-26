@@ -747,7 +747,7 @@ class ValuesClause_apply_pattern_and_set_filters_to_valueTC(unittest.TestCase):
         )
 
 
-# Emulate necessary parts of solentware_base.api.Database
+# Emulate necessary parts of solentware_base.core.Database
 class Database:
 
     # Emulate ordered index values in index 'name' in file 'set' in _db.

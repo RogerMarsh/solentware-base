@@ -605,7 +605,7 @@ class Database:
         )
 
     # Only active references in appsuites are in dptdatasourceset module; the
-    # version in api.database raises an exception if called.
+    # version in core.database raises an exception if called.
     def create_recordsetlist_cursor(self, dbset, dbname, keyrange, recordset):
         """Create and return a cursor for this recordset."""
         return RecordsetListCursorDPT(
@@ -1133,7 +1133,6 @@ class _DPTFile:
         which allows it to be created and then freed and allocated
         again in a mode for normal use.
         """
-
         # Create the file if it does not exist.
         foldername, filename = os.path.split(self.file)
         if os.path.exists(foldername):
@@ -1314,7 +1313,6 @@ class _DPTFile:
         unused - current spare pages in Table B or None
         increase - number of extra records or None
         """
-
         if unused is not None:
             unused = unused * self.filedesc[BRECPPG]
         if unused is None:
@@ -1345,7 +1343,6 @@ class _DPTFile:
         table_b_increase - increase index to match extra data pages if not
                            None.
         """
-
         if unused is not None:
             unused = (unused * self.filedesc[BRECPPG]) // self.btod_factor
         if table_b_increase is None:
@@ -1463,7 +1460,6 @@ class _DPTFile:
 
     def delete_instance(self, instance):
         """Delete an existing instance from database."""
-
         # Copy ._dpt.Database.encode_record_number() implementation to mimic
         # ._database.Database.delete_instance() method.
         instance.srkey = repr(instance.key.pack())
@@ -2556,7 +2552,6 @@ class _CursorDPT:
         key is the value of the field which fits the search.
         value is the record number of the record which fits the search.
         """
-
         # Need to take account of the direction cursor moves to get from
         # current position to (key, value).  dvcursor component is fine but
         # always stepping forward through rscursor component is wrong.

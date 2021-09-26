@@ -435,6 +435,7 @@ class Tree:
 
     # Anticipate maintaining a cache of _Node.node objects.
     def read_root(self):
+        """Return root node, or b"None" if root node does not exist."""
         try:
             return self.database.dbenv[self.key_root]
         except KeyError:
@@ -446,6 +447,7 @@ class Tree:
 
     # Anticipate maintaining a cache of _Node.node objects.
     def read_node(self, node_number):
+        """Return node referenced by node_number."""
         return self.database.dbenv[
             SUBFILE_DELIMITER.join((self.key_node, str(node_number)))
         ]

@@ -175,7 +175,7 @@ class Bitarray:
 
         The call should be search(SINGLEBIT).
 
-        SINGLEBIT is defined in solentware_base.api.bytebit where
+        SINGLEBIT is defined in solentware_base.core.bytebit where
         bitarray.bitarray has been imported rather than
         solentware_base.tools.bytebit.Bitarray (this module) if possible.
 

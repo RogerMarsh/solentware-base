@@ -1,6 +1,7 @@
 # setup.py
 # Copyright 2018 Roger Marsh
 # Licence: See LICENCE (BSD licence)
+"""solentware-base setup file."""
 
 from setuptools import setup
 
