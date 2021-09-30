@@ -21,7 +21,7 @@ from .core import _db
 class Database(_db.Database):
     """Define Database class using bsddb3 module.
 
-    Behaviour comes from the _sqlite.Database class.
+    Behaviour comes from the _db.Database class.
 
     The Berkeley DB engine comes from the bsddb3 module.
     """
