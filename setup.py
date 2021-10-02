@@ -11,7 +11,7 @@ if __name__ == "__main__":
 
     setup(
         name="solentware-base",
-        version="4.1.5",
+        version="4.1.6",
         description=" ".join(
             (
                 "Bitmapped record number databases using Python interfaces to",
