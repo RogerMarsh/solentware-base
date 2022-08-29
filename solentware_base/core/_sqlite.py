@@ -372,10 +372,11 @@ class Database(_database.Database):
         """Insert key, or replace key, in table for file using value."""
         # _database.Database.put_instance() decides if a deleted record number
         # is reused before calling the put() method of a subclass.
-        # So _sqlite.Database.put() does what it is told to do.  Deleted records
-        # have to exist as stubs to be indexed as available for reuse: hence
-        # 'insert or replace' rather than 'insert'.  The replace option allows
-        # possibility of overwriting existing records by ignoring put_instance.
+        # So _sqlite.Database.put() does what it is told to do.  Deleted
+        # records have to exist as stubs to be indexed as available for
+        # reuse: hence 'insert or replace' rather than 'insert'.  The replace
+        # option allows possibility of overwriting existing records by
+        # ignoring put_instance.
         assert file in self.specification
         cursor = self.dbenv.cursor()
         try:
@@ -494,10 +495,11 @@ class Database(_database.Database):
                 "where",
                 file,
                 "== ?",
-                # Assume there is a maximum of one record (unlike original query).
-                #'order by',
-                # file,
-                #'limit 1',
+                # Assume there is a maximum of one record
+                # (unlike original query).
+                # 'order by',
+                #  file,
+                # 'limit 1',
             )
         )
         cursor = self.dbenv.cursor()
@@ -604,7 +606,8 @@ class Database(_database.Database):
             )
         return None
 
-    # high_record will become high_record_number to fit changed get_high_record.
+    # high_record will become high_record_number to fit changed
+    # get_high_record.
     def note_freed_record_number_segment(
         self, dbset, segment, record_number_in_segment, high_record
     ):

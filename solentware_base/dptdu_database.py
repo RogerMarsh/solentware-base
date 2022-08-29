@@ -172,7 +172,8 @@ if __name__ == "__main__":
     # super(Database, d).open_database()
     # d.close_database()
 
-    # Repeat .core._dpt 'insert' sequence to verify the different 'opencontext'.
+    # Repeat .core._dpt 'insert' sequence to verify the different
+    # 'opencontext'.
     a = record.Record()
     r = _R()
     rd = _R()

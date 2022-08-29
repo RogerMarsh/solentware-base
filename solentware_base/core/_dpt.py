@@ -1635,7 +1635,7 @@ class _DPTFile:
         )
 
     def foundset_record_number(self, recnum):
-        """Return APIFoundset containing record whose record number is recnum."""
+        """Return APIFoundset of record whose record number is recnum."""
         return _DPTFoundSet(
             self.opencontext,
             self.opencontext.FindRecords(
@@ -1644,7 +1644,7 @@ class _DPTFile:
         )
 
     def foundset_records_before_record_number(self, recnum):
-        """Return APIFoundset containing records before recnum in file."""
+        """Return APIFoundset of records before recnum in file."""
         return _DPTFoundSet(
             self.opencontext,
             self.opencontext.FindRecords(
@@ -1653,7 +1653,7 @@ class _DPTFile:
         )
 
     def foundset_records_not_before_record_number(self, recnum):
-        """Return APIFoundset containing records at and after recnum in file."""
+        """Return APIFoundset of records at and after recnum in file."""
         return _DPTFoundSet(
             self.opencontext,
             self.opencontext.FindRecords(
@@ -1662,7 +1662,7 @@ class _DPTFile:
         )
 
     def foundset_recordset_before_record_number(self, recnum, recordset):
-        """Return APIFoundset containing records before recnum in recordset."""
+        """Return APIFoundset of records before recnum in recordset."""
         return _DPTFoundSet(
             self.opencontext,
             self.opencontext.FindRecords(

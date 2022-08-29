@@ -80,7 +80,7 @@ class Value(record.ValueData):
         super().__init__()
 
     def pack(self):
-        """Extend, populate indicies, and return tuple of value and indicies."""
+        """Extend to return tuple of value and populated indicies."""
         v = super().pack()
         i = v[1]
         i[self.movetextkey] = self.movetext

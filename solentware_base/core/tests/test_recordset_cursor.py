@@ -61,7 +61,7 @@ class RecordsetCursor(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "close\(\) takes 1 positional argument ",
+                    r"close\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -72,7 +72,7 @@ class RecordsetCursor(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "count_records\(\) takes 1 positional argument ",
+                    r"count_records\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -83,8 +83,8 @@ class RecordsetCursor(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "database_cursor_exists\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    r"database_cursor_exists\(\) takes 1 positional ",
+                    "argument but 2 were given",
                 )
             ),
             self.rsc.database_cursor_exists,
@@ -94,7 +94,7 @@ class RecordsetCursor(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "first\(\) takes 1 positional argument ",
+                    r"first\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -105,7 +105,7 @@ class RecordsetCursor(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "get_position_of_record\(\) takes from 1 to 2 ",
+                    r"get_position_of_record\(\) takes from 1 to 2 ",
                     "positional arguments but 3 were given",
                 )
             ),
@@ -116,7 +116,7 @@ class RecordsetCursor(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "get_record_at_position\(\) takes from 1 to 2 ",
+                    r"get_record_at_position\(\) takes from 1 to 2 ",
                     "positional arguments but 3 were given",
                 )
             ),
@@ -127,7 +127,7 @@ class RecordsetCursor(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "last\(\) takes 1 positional argument ",
+                    r"last\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -138,7 +138,7 @@ class RecordsetCursor(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "nearest\(\) takes 2 positional arguments ",
+                    r"nearest\(\) takes 2 positional arguments ",
                     "but 3 were given",
                 )
             ),
@@ -149,7 +149,7 @@ class RecordsetCursor(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "next\(\) takes 1 positional argument ",
+                    r"next\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -160,7 +160,7 @@ class RecordsetCursor(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "prev\(\) takes 1 positional argument ",
+                    r"prev\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -171,7 +171,7 @@ class RecordsetCursor(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "setat\(\) takes 2 positional arguments ",
+                    r"setat\(\) takes 2 positional arguments ",
                     "but 3 were given",
                 )
             ),
@@ -182,8 +182,8 @@ class RecordsetCursor(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "_get_record\(\) missing 1 required positional argument: ",
-                    "'record_number'",
+                    r"_get_record\(\) missing 1 required positional ",
+                    "argument: 'record_number'",
                 )
             ),
             self.rsc._get_record,
@@ -192,8 +192,8 @@ class RecordsetCursor(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "_get_record\(\) takes from 2 to 3 positional arguments ",
-                    "but 4 were given",
+                    r"_get_record\(\) takes from 2 to 3 positional ",
+                    "arguments but 4 were given",
                 )
             ),
             self.rsc._get_record,
@@ -203,8 +203,8 @@ class RecordsetCursor(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "refresh_recordset\(\) takes from 1 to 2 positional arguments ",
-                    "but 3 were given",
+                    r"refresh_recordset\(\) takes from 1 to 2 ",
+                    "positional arguments but 3 were given",
                 )
             ),
             self.rsc.refresh_recordset,
@@ -320,13 +320,13 @@ class RecordsetCursor(unittest.TestCase):
             )
 
     def test_refresh_recordset(self):
-        # K and I provide enough of ..record.Record class to allow test of
+        # K and M provide enough of ..record.Record class to allow test of
         # refresh_recordset method.
         class K:
             def __init__(self, k):
                 self.recno = k
 
-        class I:
+        class M:
             def __init__(self, k, nr):
                 self.key = K(k)
                 self.newrecord = nr
@@ -334,10 +334,10 @@ class RecordsetCursor(unittest.TestCase):
         self.assertEqual(self.rsc.refresh_recordset(), None)
         self.rs[self.rsl.segment_number] = self.rsl
         self.assertEqual(self.rs.count_records(), 3)
-        self.assertEqual(self.rsc.refresh_recordset(I(65602, None)), None)
+        self.assertEqual(self.rsc.refresh_recordset(M(65602, None)), None)
         self.assertEqual(self.rs.count_records(), 2)
         try:
-            self.rsc.refresh_recordset(I(65603, True))
+            self.rsc.refresh_recordset(M(65603, True))
         except recordset.RecordsetError as exc:
             self.assertEqual(str(exc), "refresh_recordset not implemented")
 

@@ -198,10 +198,10 @@ class RecordsetSegmentBitarray:
     def __init__(self, segment_number, key, records=None):
         """Create bitarray segment for key for records in segment number.
 
-        records is rnbitarray.tobytes() where rnbitarray is a bitarray of length
-        SegmentSize.db_segment_size bits and a set bit
-        rnbitarray[segment_record_number] means segment_record_number is in the
-        segment given
+        records is rnbitarray.tobytes() where rnbitarray is a bitarray of
+        length SegmentSize.db_segment_size bits, and a set bit
+        rnbitarray[segment_record_number] means segment_record_number is in
+        the segment given
         segment_number, segment_record_number = divmod(
             record_number_in_file, SegmentSize.db_segment_size)
 
@@ -750,7 +750,8 @@ class _Recordset:
             self._dbhome = dbhome
             self._dbset = dbset
             self._database = dbhome.get_table_connection(dbset)
-            # dbhome.get_database_instance(dbset, dbset)._recordsets[self] = True
+            # dbhome.get_database_instance(dbset, dbset
+            #                              )._recordsets[self] = True
         else:
             self._dbhome = None
             self._dbset = None
@@ -969,7 +970,7 @@ class _Recordset:
         return j
 
     def __or__(self, other):
-        """Return new record set of self records with other records included."""
+        """Return new record set with both self and other records."""
         if self._database is not other._database:
             raise RecordsetError(
                 "Attempt to 'or' record sets for different databases"
@@ -1111,7 +1112,7 @@ class _Recordset:
             )
 
     def is_record_number_in_record_set(self, record_number):
-        """Return True if record number is in self, a record set, else False."""
+        """Return True if record number is in self, otherwise False."""
         segment, record_number = divmod(
             record_number, SegmentSize.db_segment_size
         )
@@ -1448,7 +1449,7 @@ class _RecordSetBase:
         return self.recordset.setat(record)
 
     def __or__(self, other):
-        """Return new record set of self records with other records included."""
+        """Return new record set with both self and other records."""
         recordset = self.recordset | other.recordset
         recordlist = _empty_recordlist()
         recordlist.recordset = recordset

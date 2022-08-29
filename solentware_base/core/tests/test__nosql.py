@@ -143,7 +143,7 @@ class Database___init__(_NoSQL):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) takes from 2 to 5 positional arguments ",
+                    r"__init__\(\) takes from 2 to 5 positional arguments ",
                     "but 6 were given",
                 )
             ),
@@ -159,7 +159,7 @@ class Database___init__(_NoSQL):
             "".join(
                 (
                     t,
-                    " argument after \*\* must be a mapping, ",
+                    r" argument after \*\* must be a mapping, ",
                     "not NoneType",
                 )
             ),
@@ -260,7 +260,7 @@ class Database_transaction_methods(_NoSQL):
             TypeError,
             "".join(
                 (
-                    "start_transaction\(\) takes 1 positional argument ",
+                    r"start_transaction\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -271,7 +271,7 @@ class Database_transaction_methods(_NoSQL):
             TypeError,
             "".join(
                 (
-                    "backout\(\) takes 1 positional argument ",
+                    r"backout\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -282,7 +282,7 @@ class Database_transaction_methods(_NoSQL):
             TypeError,
             "".join(
                 (
-                    "commit\(\) takes 1 positional argument ",
+                    r"commit\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -302,7 +302,7 @@ class DatabaseInstance(_NoSQL):
             TypeError,
             "".join(
                 (
-                    "_validate_segment_size_bytes\(\) missing 1 required ",
+                    r"_validate_segment_size_bytes\(\) missing 1 required ",
                     "positional argument: 'segment_size_bytes'",
                 )
             ),
@@ -330,7 +330,7 @@ class DatabaseInstance(_NoSQL):
             TypeError,
             "".join(
                 (
-                    "encode_record_number\(\) missing 1 required ",
+                    r"encode_record_number\(\) missing 1 required ",
                     "positional argument: 'key'",
                 )
             ),
@@ -343,7 +343,7 @@ class DatabaseInstance(_NoSQL):
             TypeError,
             "".join(
                 (
-                    "decode_record_number\(\) missing 1 required ",
+                    r"decode_record_number\(\) missing 1 required ",
                     "positional argument: 'skey'",
                 )
             ),
@@ -356,7 +356,7 @@ class DatabaseInstance(_NoSQL):
             TypeError,
             "".join(
                 (
-                    "encode_record_selector\(\) missing 1 required ",
+                    r"encode_record_selector\(\) missing 1 required ",
                     "positional argument: 'key'",
                 )
             ),
@@ -369,8 +369,8 @@ class DatabaseInstance(_NoSQL):
             TypeError,
             "".join(
                 (
-                    "recordlist_nil\(\) takes from 2 to 3 positional arguments ",
-                    "but 4 were given",
+                    r"recordlist_nil\(\) takes from 2 to 3 ",
+                    "positional arguments but 4 were given",
                 )
             ),
             self.database.recordlist_nil,
@@ -389,8 +389,8 @@ class Database_open_database(_NoSQL):
             TypeError,
             "".join(
                 (
-                    "open_database\(\) takes from 4 to 5 positional arguments ",
-                    "but 6 were given",
+                    r"open_database\(\) takes from 4 to 5 ",
+                    "positional arguments but 6 were given",
                 )
             ),
             self.database.open_database,
@@ -400,7 +400,7 @@ class Database_open_database(_NoSQL):
             TypeError,
             "".join(
                 (
-                    "close_database\(\) takes 1 positional argument ",
+                    r"close_database\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -411,8 +411,8 @@ class Database_open_database(_NoSQL):
             TypeError,
             "".join(
                 (
-                    "close_database_contexts\(\) takes from 1 to 2 positional ",
-                    "arguments but 3 were given",
+                    r"close_database_contexts\(\) takes from 1 to 2 ",
+                    "positional arguments but 3 were given",
                 )
             ),
             self.database.close_database_contexts,
@@ -685,7 +685,7 @@ class Database_put_replace_delete(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "put\(\) missing 3 required positional arguments: ",
+                    r"put\(\) missing 3 required positional arguments: ",
                     "'file', 'key', and 'value'",
                 )
             ),
@@ -695,7 +695,7 @@ class Database_put_replace_delete(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "replace\(\) missing 4 required positional arguments: ",
+                    r"replace\(\) missing 4 required positional arguments: ",
                     "'file', 'key', 'oldvalue', and 'newvalue'",
                 )
             ),
@@ -705,7 +705,7 @@ class Database_put_replace_delete(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "delete\(\) missing 3 required positional arguments: ",
+                    r"delete\(\) missing 3 required positional arguments: ",
                     "'file', 'key', and 'value'",
                 )
             ),
@@ -812,7 +812,7 @@ class Database_methods(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "get_primary_record\(\) missing 2 required positional ",
+                    r"get_primary_record\(\) missing 2 required positional ",
                     "arguments: 'file' and 'key'",
                 )
             ),
@@ -822,7 +822,7 @@ class Database_methods(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "remove_record_from_ebm\(\) missing 2 required ",
+                    r"remove_record_from_ebm\(\) missing 2 required ",
                     "positional arguments: 'file' and 'deletekey'",
                 )
             ),
@@ -832,7 +832,7 @@ class Database_methods(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "add_record_to_ebm\(\) missing 2 required ",
+                    r"add_record_to_ebm\(\) missing 2 required ",
                     "positional arguments: 'file' and 'putkey'",
                 )
             ),
@@ -842,7 +842,7 @@ class Database_methods(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "get_high_record\(\) missing 1 required ",
+                    r"get_high_record\(\) missing 1 required ",
                     "positional argument: 'file'",
                 )
             ),
@@ -852,7 +852,7 @@ class Database_methods(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "recordlist_record_number\(\) takes from 2 to 4 ",
+                    r"recordlist_record_number\(\) takes from 2 to 4 ",
                     "positional arguments but 5 were given",
                 )
             ),
@@ -863,7 +863,7 @@ class Database_methods(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "recordlist_record_number_range\(\) takes from 2 to 5 ",
+                    r"recordlist_record_number_range\(\) takes from 2 to 5 ",
                     "positional arguments but 6 were given",
                 )
             ),
@@ -874,7 +874,7 @@ class Database_methods(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "recordlist_ebm\(\) takes from 2 to 3 ",
+                    r"recordlist_ebm\(\) takes from 2 to 3 ",
                     "positional arguments but 4 were given",
                 )
             ),
@@ -885,8 +885,8 @@ class Database_methods(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "get_table_connection\(\) missing 1 required positional ",
-                    "argument: 'file'",
+                    r"get_table_connection\(\) missing 1 required ",
+                    "positional argument: 'file'",
                 )
             ),
             self.database.get_table_connection,
@@ -965,7 +965,12 @@ class Database_methods(_NoSQLOpen):
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(
             rs[0].tobytes(),
-            b"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff",
+            b"".join(
+                (
+                    b"\xff\xff\xff\xff\xff\xff\xff\xff",
+                    b"\xff\xff\xff\xff\xff\xff\xff\xff",
+                )
+            ),
         )
 
     def test_19_recordset_record_number_range(self):
@@ -974,7 +979,12 @@ class Database_methods(_NoSQLOpen):
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(
             rs[0].tobytes(),
-            b"\x00\x3f\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff",
+            b"".join(
+                (
+                    b"\x00\x3f\xff\xff\xff\xff\xff\xff",
+                    b"\xff\xff\xff\xff\xff\xff\xff\xff",
+                )
+            ),
         )
 
     def test_20_recordset_record_number_range(self):
@@ -983,7 +993,12 @@ class Database_methods(_NoSQLOpen):
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(
             rs[0].tobytes(),
-            b"\xff\xff\xff\xff\xe0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\xff\xff\xff\xff\xe0\x00\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
         )
 
     def test_21_recordset_record_number_range(self):
@@ -994,7 +1009,12 @@ class Database_methods(_NoSQLOpen):
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(
             rs[0].tobytes(),
-            b"\x00\x3f\xff\xff\xe0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\x00\x3f\xff\xff\xe0\x00\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
         )
 
     def test_22_recordset_record_number_range(self):
@@ -1009,11 +1029,21 @@ class Database_methods(_NoSQLOpen):
         self.assertEqual(len(rs), 2)
         self.assertEqual(
             rs[1].tobytes(),
-            b"\x00\x00\x00\x00\x00\x3f\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff",
+            b"".join(
+                (
+                    b"\x00\x00\x00\x00\x00\x3f\xff\xff",
+                    b"\xff\xff\xff\xff\xff\xff\xff\xff",
+                )
+            ),
         )
         self.assertEqual(
             rs[2].tobytes(),
-            b"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xfc\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\xff\xff\xff\xff\xff\xff\xff\xff",
+                    b"\xff\xff\xff\xfc\x00\x00\x00\x00",
+                )
+            ),
         )
 
     def test_23_recordset_record_number_range(self):
@@ -1069,8 +1099,8 @@ class Database_find_values__empty(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "find_values\(\) missing 2 required positional arguments: ",
-                    "'valuespec' and 'file'",
+                    r"find_values\(\) missing 2 required ",
+                    "positional arguments: 'valuespec' and 'file'",
                 )
             ),
             self.database.find_values,
@@ -1218,9 +1248,9 @@ class Database_add_record_to_field_value(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "add_record_to_field_value\(\) missing 5 required ",
-                    "positional arguments: 'file', 'field', 'key', 'segment', ",
-                    "and 'record_number'",
+                    r"add_record_to_field_value\(\) missing 5 required ",
+                    "positional arguments: 'file', 'field', 'key', ",
+                    "'segment', and 'record_number'",
                 )
             ),
             self.database.add_record_to_field_value,
@@ -1320,7 +1350,12 @@ class Database_add_record_to_field_value(_NoSQLOpen):
         )
         self.assertEqual(
             literal_eval(db["1_1_1_3_indexvalue"].decode()),
-            b"\x26\x20\x08\x02\x00\x80\x20\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\x26\x20\x08\x02\x00\x80\x20\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
         )
         self.database.add_record_to_field_value(
             "file1", "field1", "indexvalue", 3, 50
@@ -1331,7 +1366,12 @@ class Database_add_record_to_field_value(_NoSQLOpen):
         )
         self.assertEqual(
             literal_eval(db["1_1_1_3_indexvalue"].decode()),
-            b"\x26\x20\x08\x02\x00\x80\x20\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\x26\x20\x08\x02\x00\x80\x20\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
         )
         self.database.add_record_to_field_value(
             "file1", "field1", "indexvalue", 3, 51
@@ -1342,7 +1382,12 @@ class Database_add_record_to_field_value(_NoSQLOpen):
         )
         self.assertEqual(
             literal_eval(db["1_1_1_3_indexvalue"].decode()),
-            b"\x26\x20\x08\x02\x00\x80\x30\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\x26\x20\x08\x02\x00\x80\x30\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
         )
 
     def test_04_add_record_to_hash_field_value(self):
@@ -1363,9 +1408,9 @@ class Database_remove_record_from_field_value(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "remove_record_from_field_value\(\) missing 5 required ",
-                    "positional arguments: 'file', 'field', 'key', 'segment', ",
-                    "and 'record_number'",
+                    r"remove_record_from_field_value\(\) missing 5 required ",
+                    "positional arguments: 'file', 'field', 'key', ",
+                    "'segment', and 'record_number'",
                 )
             ),
             self.database.remove_record_from_field_value,
@@ -1386,7 +1431,12 @@ class Database_remove_record_from_field_value(_NoSQLOpen):
         )
         self.assertEqual(
             literal_eval(db["1_1_1_3_indexvalue"].decode()),
-            b"\x26\x20\x08\x02\x00\x80\x30\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\x26\x20\x08\x02\x00\x80\x30\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
         )
         self.database.remove_record_from_field_value(
             "file1", "field1", "indexvalue", 4, 40
@@ -1397,7 +1447,12 @@ class Database_remove_record_from_field_value(_NoSQLOpen):
         )
         self.assertEqual(
             literal_eval(db["1_1_1_3_indexvalue"].decode()),
-            b"\x26\x20\x08\x02\x00\x80\x30\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\x26\x20\x08\x02\x00\x80\x30\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
         )
         self.database.remove_record_from_field_value(
             "file1", "field1", "indexvalue", 3, 40
@@ -1408,7 +1463,12 @@ class Database_remove_record_from_field_value(_NoSQLOpen):
         )
         self.assertEqual(
             literal_eval(db["1_1_1_3_indexvalue"].decode()),
-            b"\x26\x20\x08\x02\x00\x00\x30\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\x26\x20\x08\x02\x00\x00\x30\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
         )
         for i in 50, 51, 20:
             self.database.remove_record_from_field_value(
@@ -1420,7 +1480,12 @@ class Database_remove_record_from_field_value(_NoSQLOpen):
         )
         self.assertEqual(
             literal_eval(db["1_1_1_3_indexvalue"].decode()),
-            b"\x26\x20\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\x26\x20\x00\x02\x00\x00\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
         )
         self.database.remove_record_from_field_value(
             "file1", "field1", "indexvalue", 3, 10
@@ -1493,7 +1558,7 @@ class Database_populate_segment(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "populate_segment\(\) missing 3 required ",
+                    r"populate_segment\(\) missing 3 required ",
                     "positional arguments: ",
                     "'segment_number', 'segment_reference', and 'file'",
                 )
@@ -1513,7 +1578,12 @@ class Database_populate_segment(_NoSQLOpen):
     def test_06_populate_segment(self):
         s = self.database.populate_segment(
             0,
-            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                    b"\x00\xff\xff\xff\x00\x00\x00\x00",
+                )
+            ),
             "file1",
         )
         self.assertIsInstance(s, recordset.RecordsetSegmentBitarray)
@@ -1524,13 +1594,48 @@ class _NoSQLOpenPopulated(_NoSQLOpen):
     def setUp(self):
         super().setUp()
         segments = (
-            b"\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
-            b"\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
-            b"\x00\x00\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00",
-            b"\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00\x00\x00",
-            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00",
-            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\x00\x00",
-            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff",
+            b"".join(
+                (
+                    b"\xff\xff\xff\xff\x00\x00\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
+            b"".join(
+                (
+                    b"\x00\x00\x00\xff\xff\xff\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
+            b"".join(
+                (
+                    b"\x00\x00\x00\x00\x00\xff\xff\xff",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
+            b"".join(
+                (
+                    b"\x00\x00\x00\x00\x00\x00\x00\xff",
+                    b"\xff\xff\x00\x00\x00\x00\x00\x00",
+                )
+            ),
+            b"".join(
+                (
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                    b"\x00\xff\xff\xff\x00\x00\x00\x00",
+                )
+            ),
+            b"".join(
+                (
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                    b"\x00\x00\x00\xff\xff\xff\x00\x00",
+                )
+            ),
+            b"".join(
+                (
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                    b"\x00\x00\x00\x00\x00\xff\xff\xff",
+                )
+            ),
             b"\x00\x40\x00\x41",
             b"\x00\x42\x00\x43\x00\x44",
         )
@@ -1570,7 +1675,7 @@ class Database_make_recordset(_NoSQLOpenPopulated):
             TypeError,
             "".join(
                 (
-                    "recordlist_key_like\(\) takes from 3 to 5 ",
+                    r"recordlist_key_like\(\) takes from 3 to 5 ",
                     "positional arguments but 6 were given",
                 )
             ),
@@ -1581,7 +1686,7 @@ class Database_make_recordset(_NoSQLOpenPopulated):
             TypeError,
             "".join(
                 (
-                    "recordlist_key\(\) takes from 3 to 5 ",
+                    r"recordlist_key\(\) takes from 3 to 5 ",
                     "positional arguments but 6 were given",
                 )
             ),
@@ -1592,7 +1697,7 @@ class Database_make_recordset(_NoSQLOpenPopulated):
             TypeError,
             "".join(
                 (
-                    "recordlist_key_startswith\(\) takes from 3 to 5 ",
+                    r"recordlist_key_startswith\(\) takes from 3 to 5 ",
                     "positional arguments but 6 were given",
                 )
             ),
@@ -1603,7 +1708,7 @@ class Database_make_recordset(_NoSQLOpenPopulated):
             TypeError,
             "".join(
                 (
-                    "recordlist_key_range\(\) takes from 3 to 8 ",
+                    r"recordlist_key_range\(\) takes from 3 to 8 ",
                     "positional arguments but 9 were given",
                 )
             ),
@@ -1614,7 +1719,7 @@ class Database_make_recordset(_NoSQLOpenPopulated):
             TypeError,
             "".join(
                 (
-                    "recordlist_all\(\) takes from 3 to 4 ",
+                    r"recordlist_all\(\) takes from 3 to 4 ",
                     "positional arguments but 5 were given",
                 )
             ),
@@ -1625,7 +1730,7 @@ class Database_make_recordset(_NoSQLOpenPopulated):
             TypeError,
             "".join(
                 (
-                    "recordlist_nil\(\) takes from 2 to 3 ",
+                    r"recordlist_nil\(\) takes from 2 to 3 ",
                     "positional arguments but 4 were given",
                 )
             ),
@@ -1892,7 +1997,7 @@ class Database_file_unfile_records(_NoSQLOpenPopulated):
             TypeError,
             "".join(
                 (
-                    "unfile_records_under\(\) missing 3 required ",
+                    r"unfile_records_under\(\) missing 3 required ",
                     "positional arguments: 'file', 'field', and 'key'",
                 )
             ),
@@ -1902,7 +2007,7 @@ class Database_file_unfile_records(_NoSQLOpenPopulated):
             TypeError,
             "".join(
                 (
-                    "file_records_under\(\) missing 4 required positional ",
+                    r"file_records_under\(\) missing 4 required positional ",
                     "arguments: 'file', 'field', 'recordset', and 'key'",
                 )
             ),
@@ -1951,7 +2056,12 @@ class Database_file_unfile_records(_NoSQLOpenPopulated):
         )
         self.assertEqual(
             literal_eval(db["1_1_1_0_aa_o"].decode()),
-            b"\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\x00\x00\x00\xff\xff\xff\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
         )
         self.database.file_records_under("file1", "field1", rs, "aa_o")
         self.assertEqual(
@@ -1960,7 +2070,12 @@ class Database_file_unfile_records(_NoSQLOpenPopulated):
         )
         self.assertEqual(
             literal_eval(db["1_1_1_0_aa_o"].decode()),
-            b"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff",
+            b"".join(
+                (
+                    b"\xff\xff\xff\xff\xff\xff\xff\xff",
+                    b"\xff\xff\xff\xff\xff\xff\xff\xff",
+                )
+            ),
         )
         self.assertEqual(
             literal_eval(db["1_1_1_1_aa_o"].decode()), b"\x00B\x00C\x00D"
@@ -1977,7 +2092,12 @@ class Database_file_unfile_records(_NoSQLOpenPopulated):
         )
         self.assertEqual(
             literal_eval(db["1_1_1_0_rrr"].decode()),
-            b"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff",
+            b"".join(
+                (
+                    b"\xff\xff\xff\xff\xff\xff\xff\xff",
+                    b"\xff\xff\xff\xff\xff\xff\xff\xff",
+                )
+            ),
         )
         self.assertEqual(
             literal_eval(db["1_1_1_1_rrr"].decode()), b"\x00B\x00C\x00D"
@@ -1994,7 +2114,12 @@ class Database_file_unfile_records(_NoSQLOpenPopulated):
         )
         self.assertEqual(
             literal_eval(db["1_1_1_0_aa_o"].decode()),
-            b"\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\x00\x00\x00\xff\xff\xff\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
         )
         rs = self.database.recordlist_key("file1", "field1", key="twy")
         self.database.file_records_under("file1", "field1", rs, "aa_o")
@@ -2035,7 +2160,12 @@ class Database_file_unfile_records(_NoSQLOpenPopulated):
         )
         self.assertEqual(
             literal_eval(db["1_1_1_0_aa_o"].decode()),
-            b"\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\x00\x00\x00\xff\xff\xff\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
         )
         rs = self.database.recordlist_key("file1", "field1", key="one")
         self.database.file_records_under("file1", "field1", rs, "aa_o")
@@ -2059,7 +2189,12 @@ class Database_file_unfile_records(_NoSQLOpenPopulated):
         )
         self.assertEqual(
             literal_eval(db["1_1_1_0_ba_o"].decode()),
-            b"\x00\x00\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\x00\x00\x00\x00\x00\xff\xff\xff",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
         )
         self.assertEqual(
             literal_eval(db["1_1_0_www"].decode()), {0: ("L", 3), 1: ("L", 3)}
@@ -2077,14 +2212,24 @@ class Database_file_unfile_records(_NoSQLOpenPopulated):
         )
         self.assertEqual(
             literal_eval(db["1_1_1_0_ba_o"].decode()),
-            b"\x00\x00\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\x00\x00\x00\x00\x00\xff\xff\xff",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
         )
         self.assertEqual(
             literal_eval(db["1_1_0_www"].decode()), {0: ("B", 24)}
         )
         self.assertEqual(
             literal_eval(db["1_1_1_0_www"].decode()),
-            b"\x00\x00\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\x00\x00\x00\x00\x00\xff\xff\xff",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
         )
         self.assertEqual(db.exists("1_1_1_1_www"), False)
 
@@ -2095,7 +2240,7 @@ class Database_database_create_cursors(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "database_cursor\(\) takes from 3 to 4 ",
+                    r"database_cursor\(\) takes from 3 to 4 ",
                     "positional arguments but 5 were given",
                 )
             ),
@@ -2106,8 +2251,8 @@ class Database_database_create_cursors(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "create_recordset_cursor\(\) missing 1 required positional ",
-                    "argument: 'recordset'",
+                    r"create_recordset_cursor\(\) missing 1 ",
+                    "required positional argument: 'recordset'",
                 )
             ),
             self.database.create_recordset_cursor,
@@ -2159,7 +2304,7 @@ class Database_freed_record_number(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "get_lowest_freed_record_number\(\) missing 1 required ",
+                    r"get_lowest_freed_record_number\(\) missing 1 required ",
                     "positional argument: 'dbset'",
                 )
             ),
@@ -2169,8 +2314,8 @@ class Database_freed_record_number(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "note_freed_record_number_segment\(\) missing 4 required ",
-                    "positional arguments: 'dbset', 'segment', ",
+                    r"note_freed_record_number_segment\(\) missing 4 ",
+                    "required positional arguments: 'dbset', 'segment', ",
                     "'record_number_in_segment', and 'high_record'",
                 )
             ),
@@ -2325,9 +2470,24 @@ class RecordsetCursor(_NoSQLOpen):
     def setUp(self):
         super().setUp()
         segments = (
-            b"\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
-            b"\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
-            b"\x00\x00\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\xff\xff\xff\xff\x00\x00\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
+            b"".join(
+                (
+                    b"\x00\x00\x00\xff\xff\xff\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
+            b"".join(
+                (
+                    b"\x00\x00\x00\x00\x00\xff\xff\xff",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
         )
         key = "a_o"
         for i in range(380):
@@ -2352,7 +2512,7 @@ class RecordsetCursor(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) missing 2 required ",
+                    r"__init__\(\) missing 2 required ",
                     "positional arguments: 'recordset' and 'engine'",
                 )
             ),
@@ -2362,7 +2522,7 @@ class RecordsetCursor(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "_get_record\(\) missing 1 required ",
+                    r"_get_record\(\) missing 1 required ",
                     "positional argument: 'record_number'",
                 )
             ),
@@ -2399,7 +2559,7 @@ class ExistenceBitmapControl(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "read_exists_segment\(\) missing 2 required ",
+                    r"read_exists_segment\(\) missing 2 required ",
                     "positional arguments: 'segment_number' and 'dbenv'",
                 )
             ),
@@ -2409,7 +2569,7 @@ class ExistenceBitmapControl(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "get_ebm_segment\(\) missing 2 required ",
+                    r"get_ebm_segment\(\) missing 2 required ",
                     "positional arguments: 'key' and 'dbenv'",
                 )
             ),
@@ -2419,7 +2579,7 @@ class ExistenceBitmapControl(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "delete_ebm_segment\(\) missing 2 required ",
+                    r"delete_ebm_segment\(\) missing 2 required ",
                     "positional arguments: 'key' and 'dbenv'",
                 )
             ),
@@ -2429,7 +2589,7 @@ class ExistenceBitmapControl(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "put_ebm_segment\(\) missing 3 required ",
+                    r"put_ebm_segment\(\) missing 3 required ",
                     "positional arguments: 'key', 'value', and 'dbenv'",
                 )
             ),
@@ -2439,7 +2599,7 @@ class ExistenceBitmapControl(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "append_ebm_segment\(\) missing 2 required ",
+                    r"append_ebm_segment\(\) missing 2 required ",
                     "positional arguments: 'value' and 'dbenv'",
                 )
             ),

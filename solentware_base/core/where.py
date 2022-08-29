@@ -234,7 +234,7 @@ class Where:
     # to put '(' or ')' directly in values because it is picked as a reserved
     # word.
     def fill_placeholders(self, replacements=None):
-        """Substitute replacement values or prompt for value if none supplied."""
+        """Substitute replacement values or prompt for value if None."""
         if self.node is None:
             return
         if replacements is None:
@@ -438,7 +438,8 @@ class Where:
         if token_lower == IS:
 
             # Rather than a separate state in _set_not_num_alpha_condition
-            # for the token_lower == NOT case because 'is' is never preceded by 'not'.
+            # for the token_lower == NOT case because 'is' is never
+            # preceded by 'not'.
             if self._not:
                 return self.error(token)
             self.node.condition = token_lower
@@ -656,7 +657,8 @@ class Where:
         if token_lower == IS:
 
             # Rather than a separate state in _set_not_num_alpha_condition
-            # for the token_lower == NOT case because 'is' is never preceded by 'not'.
+            # for the token_lower == NOT case because 'is' is never
+            # preceded by 'not'.
             if self._not:
                 return self.error(token)
             self._field_condition(token_lower)
@@ -698,7 +700,8 @@ class Where:
         if token_lower == IS:
 
             # Rather than a separate state in _set_not_num_alpha_condition
-            # for the token_lower == NOT case because 'is' is never preceded by 'not'.
+            # for the token_lower == NOT case because 'is' is never
+            # preceded by 'not'.
             if self._not:
                 return self.error(token)
             self.node.condition = token_lower
@@ -1111,7 +1114,11 @@ class WhereConstraint:
 
 
 def _trim(string):
-    """Remove one leading and trailing ' or " used in values with whitespace."""
+    """Return string with one leading and trailing ' or " removed.
+
+    The two quote characters allow values containing spaces.
+
+    """
     if string[0] in "'\"":
         return string[1:-1]
     return string
@@ -1224,10 +1231,11 @@ class WhereStatementError:
                 -2,
                 "".join(
                     (
-                        "Probably keywords are missing or have spelling mistakes:\n\n",
+                        "Probably keywords are missing or have ",
+                        "spelling mistakes:\n\n",
                         "\n".join(probt),
-                        "\n\nalthough these could be field names if the list of ",
-                        "allowed field names has names with spaces.",
+                        "\n\nalthough these could be field names if the ",
+                        "list of allowed field names has names with spaces.",
                     )
                 ),
             )

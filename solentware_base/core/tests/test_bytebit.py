@@ -8,7 +8,7 @@ import unittest
 
 try:
     from bitarray import bitarray
-except:
+except ImportError:
     bitarray = False
 
 from .. import bytebit, _bytebit

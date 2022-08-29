@@ -177,7 +177,7 @@ class Find:
         )
 
     def _is_not(self, obj, record_number, record):
-        """Add record_number to obj answer if record has 'field is not value'."""
+        """Add record_number to obj if record fits 'field is not value'."""
         # 'field is value' and 'field is not value' are allowed
         if obj.not_value:
             field_values = record.get_field_values(obj.field)
@@ -297,7 +297,7 @@ class Find:
         )
 
     def _from_to(self, obj):
-        """Return RecordList for 'field from value1 to value2' condition."""
+        """Return RecordList for 'field from value1 to value2' range."""
         return self._db.recordlist_key_range(
             self._dbset,
             obj.field,
@@ -306,7 +306,7 @@ class Find:
         )
 
     def _from_below(self, obj):
-        """Return RecordList for 'field from value1 below value2' condition."""
+        """Return RecordList for 'field from value1 below value2' range."""
         return self._db.recordlist_key_range(
             self._dbset,
             obj.field,
@@ -315,7 +315,7 @@ class Find:
         )
 
     def _above_to(self, obj):
-        """Return RecordList for 'field above value1 to value2' condition."""
+        """Return RecordList for 'field above value1 to value2' range."""
         return self._db.recordlist_key_range(
             self._dbset,
             obj.field,
@@ -324,7 +324,7 @@ class Find:
         )
 
     def _above_below(self, obj):
-        """Return RecordList for 'field above value1 below value2' condition."""
+        """Return RecordList for 'field above value1 below value2' range."""
         return self._db.recordlist_key_range(
             self._dbset,
             obj.field,

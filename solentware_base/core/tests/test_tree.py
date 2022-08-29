@@ -54,7 +54,7 @@ class Tree___init__(Tree):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) takes 4 positional arguments ",
+                    r"__init__\(\) takes 4 positional arguments ",
                     "but 5 were given",
                 )
             ),
@@ -183,14 +183,14 @@ class Tree_file1_field1(Tree):
                 )  # no entries so test against <keys + 1>.
                 self.assertEqual(v[5], None)  # entries.
                 self.assertNotEqual(v[2], v[3])  # left and right nodes.
-                if v[2] == None:  # no leaf to left.
+                if v[2] is None:  # no leaf to left.
                     self.assertEqual(leftmost_node, None)
                     leftmost_node = v
                     leftmost_key = v[4][0]
                 else:
                     self.assertNotEqual(v[2], v[0])  # points to another node.
                     self.assertEqual(v[0], nodes[v[2]][3])  # pointers fit.
-                if v[3] == None:  # no leaf to right.
+                if v[3] is None:  # no leaf to right.
                     self.assertEqual(rightmost_node, None)
                     rightmost_node = v
                 else:
@@ -270,7 +270,7 @@ class Tree_insert_branching_5(Tree_file1_field1):
             TypeError,
             "".join(
                 (
-                    "insert\(\) takes 2 positional arguments ",
+                    r"insert\(\) takes 2 positional arguments ",
                     "but 3 were given",
                 )
             ),
@@ -283,7 +283,7 @@ class Tree_insert_branching_5(Tree_file1_field1):
             TypeError,
             "".join(
                 (
-                    "insert\(\) missing 1 required positional argument: ",
+                    r"insert\(\) missing 1 required positional argument: ",
                     "'key'",
                 )
             ),
@@ -777,7 +777,7 @@ class Tree_delete_branching_5(Tree_file1_field1):
             TypeError,
             "".join(
                 (
-                    "delete\(\) takes 2 positional arguments ",
+                    r"delete\(\) takes 2 positional arguments ",
                     "but 3 were given",
                 )
             ),
@@ -790,7 +790,7 @@ class Tree_delete_branching_5(Tree_file1_field1):
             TypeError,
             "".join(
                 (
-                    "delete\(\) missing 1 required positional argument: ",
+                    r"delete\(\) missing 1 required positional argument: ",
                     "'key'",
                 )
             ),
@@ -1288,9 +1288,9 @@ class Tree_delete_branching_4(Tree_file1_field1):
         # self.print_nodes()
         self.tree.insert("k28")
         self.tree.insert("k30")
-        ##self.print_nodes()
+        # #self.print_nodes()
         self.tree.insert("k32")
-        ##self.print_nodes()
+        # #self.print_nodes()
         self.tree.insert("k34")
         # self.print_nodes()
         self.check_nodes()
@@ -1308,7 +1308,7 @@ class Tree_delete_branching_4(Tree_file1_field1):
         # self.print_nodes()
         self.check_nodes()
         self.tree.delete("k84")
-        ##self.print_nodes()
+        # #self.print_nodes()
         self.check_nodes()
         self.tree.delete("k85")
         # self.print_nodes()
@@ -1424,7 +1424,7 @@ class Tree_locate(Tree_file1_field1):
             TypeError,
             "".join(
                 (
-                    "locate\(\) takes 2 positional arguments ",
+                    r"locate\(\) takes 2 positional arguments ",
                     "but 3 were given",
                 )
             ),
@@ -1437,7 +1437,7 @@ class Tree_locate(Tree_file1_field1):
             TypeError,
             "".join(
                 (
-                    "locate\(\) missing 1 required positional argument: ",
+                    r"locate\(\) missing 1 required positional argument: ",
                     "'key'",
                 )
             ),
@@ -1453,10 +1453,10 @@ class Tree_locate(Tree_file1_field1):
         # Does key exist on database? It does, accept whatever search() says.
         self.database.dbenv["1_1_2_key"] = True
         self.assertEqual("1_1_2_key" in self.database.dbenv, True)
-        l = self.tree.locate("key")
-        self.assertEqual(len(l), 2)
-        self.assertEqual(l[0], "key")
-        self.assertEqual(l[-1], None)
+        location = self.tree.locate("key")
+        self.assertEqual(len(location), 2)
+        self.assertEqual(location[0], "key")
+        self.assertEqual(location[-1], None)
 
 
 class Tree_search(Tree_file1_field1):
@@ -1465,7 +1465,7 @@ class Tree_search(Tree_file1_field1):
             TypeError,
             "".join(
                 (
-                    "search\(\) takes 2 positional arguments ",
+                    r"search\(\) takes 2 positional arguments ",
                     "but 3 were given",
                 )
             ),
@@ -1478,7 +1478,7 @@ class Tree_search(Tree_file1_field1):
             TypeError,
             "".join(
                 (
-                    "search\(\) missing 1 required positional argument: ",
+                    r"search\(\) missing 1 required positional argument: ",
                     "'key'",
                 )
             ),
@@ -1503,7 +1503,7 @@ class Tree__split_solo_root(Tree__splitters):
             TypeError,
             "".join(
                 (
-                    "_split_solo_root\(\) takes 4 positional arguments ",
+                    r"_split_solo_root\(\) takes 4 positional arguments ",
                     "but 5 were given",
                 )
             ),
@@ -1516,8 +1516,8 @@ class Tree__split_solo_root(Tree__splitters):
             TypeError,
             "".join(
                 (
-                    "_split_solo_root\(\) missing 3 required positional arguments: ",
-                    "'key', 'nodepath', and 'insertion_point'",
+                    r"_split_solo_root\(\) missing 3 required positional ",
+                    "arguments: 'key', 'nodepath', and 'insertion_point'",
                 )
             ),
             self.tree._split_solo_root,
@@ -1556,7 +1556,7 @@ class Tree__split_leaf(Tree__splitters):
             TypeError,
             "".join(
                 (
-                    "_split_leaf\(\) takes 4 positional arguments ",
+                    r"_split_leaf\(\) takes 4 positional arguments ",
                     "but 5 were given",
                 )
             ),
@@ -1569,8 +1569,8 @@ class Tree__split_leaf(Tree__splitters):
             TypeError,
             "".join(
                 (
-                    "_split_leaf\(\) missing 3 required positional arguments: ",
-                    "'key', 'nodepath', and 'insertion_point'",
+                    r"_split_leaf\(\) missing 3 required positional ",
+                    "arguments: 'key', 'nodepath', and 'insertion_point'",
                 )
             ),
             self.tree._split_leaf,
@@ -1603,7 +1603,7 @@ class Tree__split_root(Tree__splitters):
             TypeError,
             "".join(
                 (
-                    "_split_root\(\) takes 3 positional arguments ",
+                    r"_split_root\(\) takes 3 positional arguments ",
                     "but 4 were given",
                 )
             ),
@@ -1616,8 +1616,8 @@ class Tree__split_root(Tree__splitters):
             TypeError,
             "".join(
                 (
-                    "_split_root\(\) missing 2 required positional arguments: ",
-                    "'nodepath' and 'splitter'",
+                    r"_split_root\(\) missing 2 required positional ",
+                    "arguments: 'nodepath' and 'splitter'",
                 )
             ),
             self.tree._split_root,
@@ -1660,7 +1660,7 @@ class Tree__split_branch(Tree__splitters):
             TypeError,
             "".join(
                 (
-                    "_split_branch\(\) takes 3 positional arguments ",
+                    r"_split_branch\(\) takes 3 positional arguments ",
                     "but 4 were given",
                 )
             ),
@@ -1673,8 +1673,8 @@ class Tree__split_branch(Tree__splitters):
             TypeError,
             "".join(
                 (
-                    "_split_branch\(\) missing 2 required positional arguments: ",
-                    "'nodepath' and 'splitter'",
+                    r"_split_branch\(\) missing 2 required positional ",
+                    "arguments: 'nodepath' and 'splitter'",
                 )
             ),
             self.tree._split_branch,
@@ -1711,7 +1711,7 @@ class Tree__read_root(Tree__splitters):
             TypeError,
             "".join(
                 (
-                    "read_root\(\) takes 1 positional argument ",
+                    r"read_root\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -1732,7 +1732,7 @@ class Tree__write_root(Tree__splitters):
             TypeError,
             "".join(
                 (
-                    "_write_root\(\) takes 2 positional arguments ",
+                    r"_write_root\(\) takes 2 positional arguments ",
                     "but 3 were given",
                 )
             ),
@@ -1745,7 +1745,7 @@ class Tree__write_root(Tree__splitters):
             TypeError,
             "".join(
                 (
-                    "_write_root\(\) missing 1 required positional ",
+                    r"_write_root\(\) missing 1 required positional ",
                     "argument: 'nodedata'",
                 )
             ),
@@ -1764,7 +1764,7 @@ class Tree__read_node(Tree__splitters):
             TypeError,
             "".join(
                 (
-                    "read_node\(\) takes 2 positional arguments ",
+                    r"read_node\(\) takes 2 positional arguments ",
                     "but 3 were given",
                 )
             ),
@@ -1777,7 +1777,7 @@ class Tree__read_node(Tree__splitters):
             TypeError,
             "".join(
                 (
-                    "read_node\(\) missing 1 required positional ",
+                    r"read_node\(\) missing 1 required positional ",
                     "argument: 'node_number'",
                 )
             ),
@@ -1801,7 +1801,7 @@ class Tree__write_node(Tree__splitters):
             TypeError,
             "".join(
                 (
-                    "_write_node\(\) takes 2 positional arguments ",
+                    r"_write_node\(\) takes 2 positional arguments ",
                     "but 3 were given",
                 )
             ),
@@ -1814,7 +1814,7 @@ class Tree__write_node(Tree__splitters):
             TypeError,
             "".join(
                 (
-                    "_write_node\(\) missing 1 required positional ",
+                    r"_write_node\(\) missing 1 required positional ",
                     "argument: 'nodedata'",
                 )
             ),
@@ -1833,7 +1833,7 @@ class Tree__delete_root(Tree__splitters):
             TypeError,
             "".join(
                 (
-                    "_delete_root\(\) takes 1 positional argument ",
+                    r"_delete_root\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -1857,7 +1857,7 @@ class Tree__delete_node(Tree__splitters):
             TypeError,
             "".join(
                 (
-                    "_delete_node\(\) takes 2 positional arguments ",
+                    r"_delete_node\(\) takes 2 positional arguments ",
                     "but 3 were given",
                 )
             ),
@@ -1870,7 +1870,7 @@ class Tree__delete_node(Tree__splitters):
             TypeError,
             "".join(
                 (
-                    "_delete_node\(\) missing 1 required positional ",
+                    r"_delete_node\(\) missing 1 required positional ",
                     "argument: 'node_number'",
                 )
             ),
@@ -1900,8 +1900,8 @@ class Tree__write_modified_nodes(Tree__splitters):
             TypeError,
             "".join(
                 (
-                    "_write_modified_nodes\(\) takes 2 positional arguments ",
-                    "but 3 were given",
+                    r"_write_modified_nodes\(\) takes 2 positional ",
+                    "arguments but 3 were given",
                 )
             ),
             self.tree._write_modified_nodes,
@@ -1913,8 +1913,8 @@ class Tree__write_modified_nodes(Tree__splitters):
             TypeError,
             "".join(
                 (
-                    "_write_modified_nodes\(\) missing 1 required positional ",
-                    "argument: 'nodes'",
+                    r"_write_modified_nodes\(\) missing 1 required ",
+                    "positional argument: 'nodes'",
                 )
             ),
             self.tree._write_modified_nodes,
@@ -2048,8 +2048,8 @@ class Tree__splitter_node_for_key(Tree__splitters):
             TypeError,
             "".join(
                 (
-                    "_splitter_node_for_key\(\) takes 3 positional arguments ",
-                    "but 4 were given",
+                    r"_splitter_node_for_key\(\) takes 3 positional ",
+                    "arguments but 4 were given",
                 )
             ),
             self.tree._splitter_node_for_key,
@@ -2061,8 +2061,8 @@ class Tree__splitter_node_for_key(Tree__splitters):
             TypeError,
             "".join(
                 (
-                    "_splitter_node_for_key\(\) missing 2 required positional ",
-                    "arguments: 'nodepath' and 'key'",
+                    r"_splitter_node_for_key\(\) missing 2 required ",
+                    "positional arguments: 'nodepath' and 'key'",
                 )
             ),
             self.tree._splitter_node_for_key,
@@ -2120,8 +2120,8 @@ class Tree__replace_splitter_in_branch_or_root(Tree__splitters):
             TypeError,
             "".join(
                 (
-                    "_replace_splitter_in_branch_or_root\(\) takes 2 positional ",
-                    "arguments but 3 were given",
+                    r"_replace_splitter_in_branch_or_root\(\) takes 2 ",
+                    "positional arguments but 3 were given",
                 )
             ),
             self.tree._replace_splitter_in_branch_or_root,
@@ -2133,8 +2133,8 @@ class Tree__replace_splitter_in_branch_or_root(Tree__splitters):
             TypeError,
             "".join(
                 (
-                    "_replace_splitter_in_branch_or_root\(\) missing 1 required ",
-                    "positional argument: 'nodepath'",
+                    r"_replace_splitter_in_branch_or_root\(\) missing 1 ",
+                    "required positional argument: 'nodepath'",
                 )
             ),
             self.tree._replace_splitter_in_branch_or_root,
@@ -2163,7 +2163,7 @@ class Tree__merge_leaf(Tree__splitters):
             TypeError,
             "".join(
                 (
-                    "_merge_leaf\(\) takes 4 positional ",
+                    r"_merge_leaf\(\) takes 4 positional ",
                     "arguments but 5 were given",
                 )
             ),
@@ -2176,24 +2176,24 @@ class Tree__merge_leaf(Tree__splitters):
             TypeError,
             "".join(
                 (
-                    "_merge_leaf\(\) missing 3 required positional arguments: ",
-                    "'key', 'nodepath', and 'deletion_point'",
+                    r"_merge_leaf\(\) missing 3 required positional ",
+                    "arguments: 'key', 'nodepath', and 'deletion_point'",
                 )
             ),
             self.tree._merge_leaf,
         )
 
 
-# _merge_branch is called in one place, in delete(), and exists to park the code
-# in a more convenient place.  For now rely on delete's unittests apart from
-# arguments tests.
+# _merge_branch is called in one place, in delete(), and exists to park the
+# code in a more convenient place.  For now rely on delete's unittests apart
+# from arguments tests.
 class Tree__merge_branch(Tree__splitters):
     def test_01__merge_branch__arguments(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
                 (
-                    "_merge_branch\(\) takes 2 positional ",
+                    r"_merge_branch\(\) takes 2 positional ",
                     "arguments but 3 were given",
                 )
             ),
@@ -2206,8 +2206,8 @@ class Tree__merge_branch(Tree__splitters):
             TypeError,
             "".join(
                 (
-                    "_merge_branch\(\) missing 1 required positional argument: ",
-                    "'nodepath'",
+                    r"_merge_branch\(\) missing 1 required ",
+                    "positional argument: 'nodepath'",
                 )
             ),
             self.tree._merge_branch,
@@ -2220,7 +2220,7 @@ class Cursor___init__(Tree_file1_field1):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) takes 2 positional ",
+                    r"__init__\(\) takes 2 positional ",
                     "arguments but 3 were given",
                 )
             ),
@@ -2233,7 +2233,7 @@ class Cursor___init__(Tree_file1_field1):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) missing 1 required positional argument: ",
+                    r"__init__\(\) missing 1 required positional argument: ",
                     "'tree'",
                 )
             ),
@@ -2267,7 +2267,7 @@ class Cursor_methods_empty_database(Tree_file1_field1):
             TypeError,
             "".join(
                 (
-                    "first\(\) takes 1 positional ",
+                    r"first\(\) takes 1 positional ",
                     "argument but 2 were given",
                 )
             ),
@@ -2280,7 +2280,7 @@ class Cursor_methods_empty_database(Tree_file1_field1):
             TypeError,
             "".join(
                 (
-                    "get_position_of_key\(\) takes from 1 to 2 positional ",
+                    r"get_position_of_key\(\) takes from 1 to 2 positional ",
                     "arguments but 3 were given",
                 )
             ),
@@ -2293,7 +2293,7 @@ class Cursor_methods_empty_database(Tree_file1_field1):
             TypeError,
             "".join(
                 (
-                    "get_key_at_position\(\) takes from 1 to 2 positional ",
+                    r"get_key_at_position\(\) takes from 1 to 2 positional ",
                     "arguments but 3 were given",
                 )
             ),
@@ -2306,7 +2306,7 @@ class Cursor_methods_empty_database(Tree_file1_field1):
             TypeError,
             "".join(
                 (
-                    "last\(\) takes 1 positional ",
+                    r"last\(\) takes 1 positional ",
                     "argument but 2 were given",
                 )
             ),
@@ -2319,7 +2319,7 @@ class Cursor_methods_empty_database(Tree_file1_field1):
             TypeError,
             "".join(
                 (
-                    "nearest\(\) takes 2 positional ",
+                    r"nearest\(\) takes 2 positional ",
                     "arguments but 3 were given",
                 )
             ),
@@ -2332,7 +2332,7 @@ class Cursor_methods_empty_database(Tree_file1_field1):
             TypeError,
             "".join(
                 (
-                    "next\(\) takes 1 positional ",
+                    r"next\(\) takes 1 positional ",
                     "argument but 2 were given",
                 )
             ),
@@ -2345,7 +2345,7 @@ class Cursor_methods_empty_database(Tree_file1_field1):
             TypeError,
             "".join(
                 (
-                    "prev\(\) takes 1 positional ",
+                    r"prev\(\) takes 1 positional ",
                     "argument but 2 were given",
                 )
             ),
@@ -2358,7 +2358,7 @@ class Cursor_methods_empty_database(Tree_file1_field1):
             TypeError,
             "".join(
                 (
-                    "setat\(\) takes 2 positional ",
+                    r"setat\(\) takes 2 positional ",
                     "arguments but 3 were given",
                 )
             ),
@@ -2679,7 +2679,7 @@ class _Node___init__(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) takes from 3 to 7 positional arguments ",
+                    r"__init__\(\) takes from 3 to 7 positional arguments ",
                     "but 8 were given",
                 )
             ),
@@ -2692,7 +2692,7 @@ class _Node___init__(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) missing 2 required positional arguments: ",
+                    r"__init__\(\) missing 2 required positional arguments: ",
                     "'number' and 'type_'",
                 )
             ),
@@ -2728,7 +2728,7 @@ class _Node_insert_into_branch_or_root(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "insert_into_branch_or_root\(\) missing 2 required ",
+                    r"insert_into_branch_or_root\(\) missing 2 required ",
                     "positional arguments: 'key' and 'node_number'",
                 )
             ),

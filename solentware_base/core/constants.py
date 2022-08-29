@@ -176,7 +176,7 @@ LENGTH_SEGMENT_LIST_REFERENCE = 10
 LENGTH_SEGMENT_RECORD_REFERENCE = 6
 SEGMENT_HEADER_LENGTH = 6
 
-# Delimiter for file and table names generated from PRIMARY and SECONDARY names.
+# Delimiter for file and table names created from PRIMARY and SECONDARY names.
 SUBFILE_DELIMITER = "_"
 
 # Constants defined for bitbases (without descriptions so far).

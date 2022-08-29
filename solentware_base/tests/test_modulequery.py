@@ -18,7 +18,7 @@ class Modulequery(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "installed_database_modules\(\) takes 0 ",
+                    r"installed_database_modules\(\) takes 0 ",
                     "positional arguments but 1 was given",
                 )
             ),
@@ -29,7 +29,7 @@ class Modulequery(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "installed_database_modules\(\) got an unexpected ",
+                    r"installed_database_modules\(\) got an unexpected ",
                     "keyword argument 'xxxxx'",
                 )
             ),
@@ -40,7 +40,7 @@ class Modulequery(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "modules_for_existing_databases\(\) missing 2 required ",
+                    r"modules_for_existing_databases\(\) missing 2 required ",
                     "positional arguments: 'folder' and 'filespec'",
                 )
             ),

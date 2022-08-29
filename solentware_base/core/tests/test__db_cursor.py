@@ -43,7 +43,7 @@ class Cursor_db(_DB):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) takes from 2 to 4 positional arguments ",
+                    r"__init__\(\) takes from 2 to 4 positional arguments ",
                     "but 5 were given",
                 )
             ),
@@ -57,7 +57,7 @@ class Cursor_db(_DB):
         self.assertRaisesRegex(
             TypeError,
             "".join(
-                ("close\(\) takes 1 positional argument but 2 were given",)
+                (r"close\(\) takes 1 positional argument but 2 were given",)
             ),
             cursor.close,
             *(None,),
@@ -67,7 +67,7 @@ class Cursor_db(_DB):
             TypeError,
             "".join(
                 (
-                    "get_converted_partial\(\) takes 1 positional argument ",
+                    r"get_converted_partial\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -78,8 +78,8 @@ class Cursor_db(_DB):
             TypeError,
             "".join(
                 (
-                    "get_partial_with_wildcard\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    r"get_partial_with_wildcard\(\) takes 1 ",
+                    "positional argument but 2 were given",
                 )
             ),
             cursor.get_partial_with_wildcard,
@@ -89,8 +89,8 @@ class Cursor_db(_DB):
             TypeError,
             "".join(
                 (
-                    "get_converted_partial_with_wildcard\(\) takes 1 positional ",
-                    "argument but 2 were given",
+                    r"get_converted_partial_with_wildcard\(\) takes 1 ",
+                    "positional argument but 2 were given",
                 )
             ),
             cursor.get_converted_partial_with_wildcard,
@@ -100,8 +100,8 @@ class Cursor_db(_DB):
             TypeError,
             "".join(
                 (
-                    "refresh_recordset\(\) takes from 1 to 2 positional arguments ",
-                    "but 3 were given",
+                    r"refresh_recordset\(\) takes from 1 to 2 ",
+                    "positional arguments but 3 were given",
                 )
             ),
             cursor.refresh_recordset,
@@ -172,7 +172,7 @@ class Cursor_primary(_DB):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) takes from 2 to 4 positional arguments ",
+                    r"__init__\(\) takes from 2 to 4 positional arguments ",
                     "but 5 were given",
                 )
             ),
@@ -183,7 +183,7 @@ class Cursor_primary(_DB):
             TypeError,
             "".join(
                 (
-                    "count_records\(\) takes 1 positional argument ",
+                    r"count_records\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -194,7 +194,7 @@ class Cursor_primary(_DB):
             TypeError,
             "".join(
                 (
-                    "first\(\) takes 1 positional argument ",
+                    r"first\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -205,8 +205,8 @@ class Cursor_primary(_DB):
             TypeError,
             "".join(
                 (
-                    "get_position_of_record\(\) takes from 1 to 2 positional ",
-                    "arguments but 3 were given",
+                    r"get_position_of_record\(\) takes from 1 to 2 ",
+                    "positional arguments but 3 were given",
                 )
             ),
             self.cursor.get_position_of_record,
@@ -216,8 +216,8 @@ class Cursor_primary(_DB):
             TypeError,
             "".join(
                 (
-                    "get_record_at_position\(\) takes from 1 to 2 positional ",
-                    "arguments but 3 were given",
+                    r"get_record_at_position\(\) takes from 1 to 2 ",
+                    "positional arguments but 3 were given",
                 )
             ),
             self.cursor.get_record_at_position,
@@ -227,7 +227,7 @@ class Cursor_primary(_DB):
             TypeError,
             "".join(
                 (
-                    "last\(\) takes 1 positional argument ",
+                    r"last\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -238,7 +238,7 @@ class Cursor_primary(_DB):
             TypeError,
             "".join(
                 (
-                    "nearest\(\) missing 1 required ",
+                    r"nearest\(\) missing 1 required ",
                     "positional argument: 'key'",
                 )
             ),
@@ -248,7 +248,7 @@ class Cursor_primary(_DB):
             TypeError,
             "".join(
                 (
-                    "next\(\) takes 1 positional argument ",
+                    r"next\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -259,7 +259,7 @@ class Cursor_primary(_DB):
             TypeError,
             "".join(
                 (
-                    "prev\(\) takes 1 positional argument ",
+                    r"prev\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -270,7 +270,7 @@ class Cursor_primary(_DB):
             TypeError,
             "".join(
                 (
-                    "setat\(\) missing 1 required ",
+                    r"setat\(\) missing 1 required ",
                     "positional argument: 'record'",
                 )
             ),
@@ -280,8 +280,8 @@ class Cursor_primary(_DB):
             TypeError,
             "".join(
                 (
-                    "refresh_recordset\(\) takes from 1 to 2 positional arguments ",
-                    "but 3 were given",
+                    r"refresh_recordset\(\) takes from 1 to 2 ",
+                    "positional arguments but 3 were given",
                 )
             ),
             self.cursor.refresh_recordset,
@@ -339,13 +339,48 @@ class Cursor_secondary(_DB):
     def setUp(self):
         super().setUp()
         segments = (
-            b"\x7f\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
-            b"\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
-            b"\x00\x00\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00",
-            b"\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00\x00\x00",
-            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00",
-            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\x00\x00",
-            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff",
+            b"".join(
+                (
+                    b"\x7f\xff\xff\xff\x00\x00\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
+            b"".join(
+                (
+                    b"\x00\x00\x00\xff\xff\xff\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
+            b"".join(
+                (
+                    b"\x00\x00\x00\x00\x00\xff\xff\xff",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
+            b"".join(
+                (
+                    b"\x00\x00\x00\x00\x00\x00\x00\xff",
+                    b"\xff\xff\x00\x00\x00\x00\x00\x00",
+                )
+            ),
+            b"".join(
+                (
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                    b"\x00\xff\xff\xff\x00\x00\x00\x00",
+                )
+            ),
+            b"".join(
+                (
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                    b"\x00\x00\x00\xff\xff\xff\x00\x00",
+                )
+            ),
+            b"".join(
+                (
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                    b"\x00\x00\x00\x00\x00\xff\xff\xff",
+                )
+            ),
             b"\x00\x40\x00\x41",
             b"\x00\x42\x00\x43\x00\x44",
         )
@@ -393,7 +428,7 @@ class Cursor_secondary(_DB):
             )
             self.keyvalues["twy"] = 9
             cursor.put(
-                "twy".encode(),  #'cep'
+                "twy".encode(),  # 'cep'
                 b"".join(
                     (
                         b"\x00\x00\x00\x01",
@@ -441,7 +476,7 @@ class Cursor_secondary(_DB):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) takes from 2 to 3 positional arguments ",
+                    r"__init__\(\) takes from 2 to 3 positional arguments ",
                     "but 4 were given",
                 )
             ),
@@ -452,7 +487,7 @@ class Cursor_secondary(_DB):
             TypeError,
             "".join(
                 (
-                    "count_records\(\) takes 1 positional argument ",
+                    r"count_records\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -463,7 +498,7 @@ class Cursor_secondary(_DB):
             TypeError,
             "".join(
                 (
-                    "first\(\) takes 1 positional argument ",
+                    r"first\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -474,8 +509,8 @@ class Cursor_secondary(_DB):
             TypeError,
             "".join(
                 (
-                    "get_position_of_record\(\) takes from 1 to 2 positional ",
-                    "arguments but 3 were given",
+                    r"get_position_of_record\(\) takes from 1 to 2 ",
+                    "positional arguments but 3 were given",
                 )
             ),
             self.cursor.get_position_of_record,
@@ -485,8 +520,8 @@ class Cursor_secondary(_DB):
             TypeError,
             "".join(
                 (
-                    "get_record_at_position\(\) takes from 1 to 2 positional ",
-                    "arguments but 3 were given",
+                    r"get_record_at_position\(\) takes from 1 to 2 ",
+                    "positional arguments but 3 were given",
                 )
             ),
             self.cursor.get_record_at_position,
@@ -496,7 +531,7 @@ class Cursor_secondary(_DB):
             TypeError,
             "".join(
                 (
-                    "last\(\) takes 1 positional argument ",
+                    r"last\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -507,7 +542,7 @@ class Cursor_secondary(_DB):
             TypeError,
             "".join(
                 (
-                    "nearest\(\) missing 1 required ",
+                    r"nearest\(\) missing 1 required ",
                     "positional argument: 'key'",
                 )
             ),
@@ -517,7 +552,7 @@ class Cursor_secondary(_DB):
             TypeError,
             "".join(
                 (
-                    "next\(\) takes 1 positional argument ",
+                    r"next\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -528,7 +563,7 @@ class Cursor_secondary(_DB):
             TypeError,
             "".join(
                 (
-                    "prev\(\) takes 1 positional argument ",
+                    r"prev\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -539,7 +574,7 @@ class Cursor_secondary(_DB):
             TypeError,
             "".join(
                 (
-                    "setat\(\) missing 1 required ",
+                    r"setat\(\) missing 1 required ",
                     "positional argument: 'record'",
                 )
             ),
@@ -549,7 +584,7 @@ class Cursor_secondary(_DB):
             TypeError,
             "".join(
                 (
-                    "set_partial_key\(\) missing 1 required ",
+                    r"set_partial_key\(\) missing 1 required ",
                     "positional argument: 'partial'",
                 )
             ),
@@ -559,7 +594,7 @@ class Cursor_secondary(_DB):
             TypeError,
             "".join(
                 (
-                    "_get_segment\(\) missing 3 required ",
+                    r"_get_segment\(\) missing 3 required ",
                     "positional arguments: 'key', 'segment_number', ",
                     "and 'reference'",
                 )
@@ -570,7 +605,7 @@ class Cursor_secondary(_DB):
             TypeError,
             "".join(
                 (
-                    "set_current_segment\(\) missing 2 required ",
+                    r"set_current_segment\(\) missing 2 required ",
                     "positional arguments: 'key' and 'reference'",
                 )
             ),
@@ -580,8 +615,8 @@ class Cursor_secondary(_DB):
             TypeError,
             "".join(
                 (
-                    "refresh_recordset\(\) takes from 1 to 2 positional arguments ",
-                    "but 3 were given",
+                    r"refresh_recordset\(\) takes from 1 to 2 ",
+                    "positional arguments but 3 were given",
                 )
             ),
             self.cursor.refresh_recordset,
@@ -928,9 +963,19 @@ class Cursor_secondary__get_record_at_position(_DB):
     def setUp(self):
         super().setUp()
         segments = (
-            b"\x7f\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\x7f\xff\xff\xff\x00\x00\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
             b"\x00\x42\x00\x43\x00\x44",
-            b"\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\x00\x00\x00\xff\xff\xff\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
         )
         self.segments = {}
         key = "a_o"

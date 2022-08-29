@@ -136,8 +136,8 @@ class UIBase_3_to_4:
                 "".join(
                     (
                         "This Python has none of apsw, bsddb3, and sqlite3, ",
-                        "installed.  Perhaps another Python has some or all of ",
-                        "these installed.",
+                        "installed.  Perhaps another Python has some or all ",
+                        "of these installed.",
                     )
                 )
             )
@@ -160,8 +160,8 @@ class UIBase_3_to_4:
             self.insert_text(
                 "".join(
                     (
-                        "This Python does not have bsddb3 installed.  Perhaps ",
-                        "another Python has this installed.",
+                        "This Python does not have bsddb3 installed.  ",
+                        "Perhaps another Python has this installed.",
                     )
                 )
             )
@@ -181,8 +181,9 @@ class UIBase_3_to_4:
             self.insert_text(
                 "".join(
                     (
-                        "This Python has none of apsw, and sqlite3, installed.  ",
-                        "Perhaps another Python has some or all of these installed.",
+                        "This Python has none of apsw, and sqlite3, ",
+                        "installed.  Perhaps another Python has some ",
+                        "or all of these installed.",
                     )
                 )
             )
@@ -204,8 +205,8 @@ class UIBase_3_to_4:
             self.insert_text(
                 "".join(
                     (
-                        "SQLite upgrades are very quick because table and column ",
-                        "name changes is all that happens.",
+                        "SQLite upgrades are very quick because table ",
+                        "and column name changes is all that happens.",
                     )
                 )
             )
@@ -214,9 +215,9 @@ class UIBase_3_to_4:
             self.insert_text(
                 "".join(
                     (
-                        "Berkeley DB upgrades will take a long time, depending on ",
-                        "the size of the database, because all data is moved to a ",
-                        "new location.",
+                        "Berkeley DB upgrades will take a long time, ",
+                        "depending on the size of the database, because ",
+                        "all data is moved to a new location.",
                     )
                 )
             )
@@ -250,8 +251,9 @@ class UIBase_3_to_4:
                     self.insert_text(
                         "".join(
                             (
-                                "Use apsw, or Python 3.6 or later where sqlite3 ",
-                                "definition of 'transaction' is compatible.",
+                                "Use apsw, or Python 3.6 or later where ",
+                                "sqlite3 definition of 'transaction' is ",
+                                "compatible.",
                             )
                         )
                     )
@@ -344,8 +346,8 @@ class UIBase_3_to_4:
                 self.insert_text(
                     "".join(
                         (
-                            "Either the pre-upgrade or the post-upgrade files ",
-                            "must be moved out of the directory.",
+                            "Either the pre-upgrade or the post-upgrade ",
+                            "files must be moved out of the directory.",
                         )
                     )
                 )
@@ -430,8 +432,8 @@ class UIBase_3_to_4:
             if b34db.segment_size is None:
                 msg = "".join(
                     (
-                        "Database not upgraded because segment size cannot be ",
-                        "determined.",
+                        "Database not upgraded because segment size ",
+                        "cannot be determined.",
                     )
                 )
                 tkinter.messagebox.showinfo(
@@ -448,8 +450,8 @@ class UIBase_3_to_4:
             if b34db.segment_size > SegmentSize.db_segment_size_bytes_maximum:
                 msg = "".join(
                     (
-                        "Database not upgraded because segment size is bigger ",
-                        "than maximum allowed on upgraded database.",
+                        "Database not upgraded because segment size is ",
+                        "bigger than maximum allowed on upgraded database.",
                     )
                 )
                 tkinter.messagebox.showinfo(
@@ -473,8 +475,8 @@ class UIBase_3_to_4:
             if b34db.segment_size < SegmentSize.db_segment_size_bytes_minimum:
                 msg = "".join(
                     (
-                        "Database not upgraded because segment size is smaller ",
-                        "than minimum allowed on upgraded database.",
+                        "Database not upgraded because segment size is ",
+                        "smaller than minimum allowed on upgraded database.",
                     )
                 )
                 tkinter.messagebox.showinfo(
@@ -605,8 +607,8 @@ class UIBase_3_to_4:
             if missing_tables:
                 msg = "".join(
                     (
-                        "Some pre-upgrade tables are missing from the database ",
-                        "file.",
+                        "Some pre-upgrade tables are missing from the ",
+                        "database file.",
                     )
                 )
                 tkinter.messagebox.showerror(
@@ -626,9 +628,9 @@ class UIBase_3_to_4:
             if existing_tables:
                 msg = "".join(
                     (
-                        "Some post-upgrade tables already exist in the database ",
-                        "file, plus all the pre-upgrade tables which should ",
-                        "exist.",
+                        "Some post-upgrade tables already exist in the ",
+                        "database file, plus all the pre-upgrade tables ",
+                        "which should exist.",
                     )
                 )
                 tkinter.messagebox.showerror(
@@ -647,8 +649,8 @@ class UIBase_3_to_4:
             if b34sqlite.segment_size is None:
                 msg = "".join(
                     (
-                        "Database not upgraded because segment size cannot be ",
-                        "determined.",
+                        "Database not upgraded because segment size ",
+                        "cannot be determined.",
                     )
                 )
                 tkinter.messagebox.showinfo(
@@ -668,8 +670,8 @@ class UIBase_3_to_4:
             ):
                 msg = "".join(
                     (
-                        "Database not upgraded because segment size is bigger ",
-                        "than maximum allowed on upgraded database.",
+                        "Database not upgraded because segment size is ",
+                        "bigger than maximum allowed on upgraded database.",
                     )
                 )
                 tkinter.messagebox.showinfo(
@@ -696,8 +698,8 @@ class UIBase_3_to_4:
             ):
                 msg = "".join(
                     (
-                        "Database not upgraded because segment size is smaller ",
-                        "than minimum allowed on upgraded database.",
+                        "Database not upgraded because segment size is ",
+                        "smaller than minimum allowed on upgraded database.",
                     )
                 )
                 tkinter.messagebox.showinfo(

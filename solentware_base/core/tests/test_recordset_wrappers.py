@@ -59,7 +59,7 @@ class _RecordSetBase(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) missing 2 required positional arguments: ",
+                    r"__init__\(\) missing 2 required positional arguments: ",
                     "'dbhome' and 'dbset'",
                 )
             ),
@@ -68,14 +68,14 @@ class _RecordSetBase(unittest.TestCase):
         self.assertRaisesRegex(
             TypeError,
             "".join(
-                ("__init__\(\) got an unexpected keyword argument 'xxxxx'",)
+                (r"__init__\(\) got an unexpected keyword argument 'xxxxx'",)
             ),
             recordset._RecordSetBase,
             *(None, None),
             **dict(xxxxx=None),
         )
         if sys.version_info[:2] < (3, 6):
-            excmsg = "(unorderable types: str\(\) [<>] int\(\))"
+            excmsg = r"(unorderable types: str\(\) [<>] int\(\))"
         else:
             excmsg = "".join(
                 (
@@ -95,7 +95,7 @@ class _RecordSetBase(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__setitem__\(\) missing 2 required ",
+                    r"__setitem__\(\) missing 2 required ",
                     "positional arguments: ",
                     "'key' and 'value'",
                 )
@@ -106,7 +106,7 @@ class _RecordSetBase(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__getitem__\(\) missing 1 required ",
+                    r"__getitem__\(\) missing 1 required ",
                     "positional argument: ",
                     "'key'",
                 )
@@ -117,7 +117,7 @@ class _RecordSetBase(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__delitem__\(\) missing 1 required ",
+                    r"__delitem__\(\) missing 1 required ",
                     "positional argument: ",
                     "'segment'",
                 )
@@ -128,7 +128,7 @@ class _RecordSetBase(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__contains__\(\) missing 1 required ",
+                    r"__contains__\(\) missing 1 required ",
                     "positional argument: ",
                     "'segment'",
                 )
@@ -139,7 +139,7 @@ class _RecordSetBase(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__len__\(\) takes 1 positional argument ",
+                    r"__len__\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -150,7 +150,7 @@ class _RecordSetBase(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "close\(\) takes 1 positional argument ",
+                    r"close\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -161,7 +161,7 @@ class _RecordSetBase(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "get_position_of_record_number\(\) missing 1 required ",
+                    r"get_position_of_record_number\(\) missing 1 required ",
                     "positional argument: 'recnum'",
                 )
             ),
@@ -171,7 +171,7 @@ class _RecordSetBase(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "get_record_number_at_position\(\) missing 1 required ",
+                    r"get_record_number_at_position\(\) missing 1 required ",
                     "positional argument: 'position'",
                 )
             ),
@@ -181,8 +181,8 @@ class _RecordSetBase(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "insort_left_nodup\(\) missing 1 required positional argument: ",
-                    "'segment'",
+                    r"insort_left_nodup\(\) missing 1 required ",
+                    "positional argument: 'segment'",
                 )
             ),
             self.rsb1.insort_left_nodup,
@@ -191,7 +191,7 @@ class _RecordSetBase(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "first\(\) takes 1 positional argument ",
+                    r"first\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -202,7 +202,7 @@ class _RecordSetBase(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "last\(\) takes 1 positional argument ",
+                    r"last\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -213,7 +213,7 @@ class _RecordSetBase(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "next\(\) takes 1 positional argument ",
+                    r"next\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -224,7 +224,7 @@ class _RecordSetBase(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "prev\(\) takes 1 positional argument ",
+                    r"prev\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -235,7 +235,7 @@ class _RecordSetBase(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "current\(\) takes 1 positional argument ",
+                    r"current\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -245,7 +245,10 @@ class _RecordSetBase(unittest.TestCase):
         self.assertRaisesRegex(
             TypeError,
             "".join(
-                ("setat\(\) missing 1 required positional argument: 'record'",)
+                (
+                    r"setat\(\) missing 1 required positional ",
+                    "argument: 'record'",
+                )
             ),
             self.rsb1.setat,
         )
@@ -253,7 +256,7 @@ class _RecordSetBase(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__or__\(\) missing 1 required positional argument: ",
+                    r"__or__\(\) missing 1 required positional argument: ",
                     "'other'",
                 )
             ),
@@ -263,7 +266,7 @@ class _RecordSetBase(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__and__\(\) missing 1 required positional argument: ",
+                    r"__and__\(\) missing 1 required positional argument: ",
                     "'other'",
                 )
             ),
@@ -273,7 +276,7 @@ class _RecordSetBase(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__xor__\(\) missing 1 required positional argument: ",
+                    r"__xor__\(\) missing 1 required positional argument: ",
                     "'other'",
                 )
             ),
@@ -283,7 +286,7 @@ class _RecordSetBase(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "normalize\(\) takes from 1 to 2 ",
+                    r"normalize\(\) takes from 1 to 2 ",
                     "positional arguments but 3 were given",
                 )
             ),
@@ -294,7 +297,7 @@ class _RecordSetBase(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "is_record_number_in_record_set\(\) missing 1 required ",
+                    r"is_record_number_in_record_set\(\) missing 1 required ",
                     "positional argument: 'record_number'",
                 )
             ),
@@ -304,8 +307,8 @@ class _RecordSetBase(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "create_recordset_cursor\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    r"create_recordset_cursor\(\) takes 1 positional ",
+                    "argument but 2 were given",
                 )
             ),
             self.rsb1.create_recordset_cursor,
@@ -352,7 +355,8 @@ class _RecordSetBase(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "unsupported operand type\(s\) for divmod\(\): 'str' and 'int'",
+                    r"unsupported operand type\(s\) for divmod\(\): ",
+                    "'str' and 'int'",
                 )
             ),
             self.rsb1.get_position_of_record_number,
@@ -362,7 +366,7 @@ class _RecordSetBase(unittest.TestCase):
 
     def test_get_record_number_at_position(self):
         if sys.version_info[:2] < (3, 6):
-            excmsg = "(unorderable types: str\(\) [<>] int\(\))"
+            excmsg = r"(unorderable types: str\(\) [<>] int\(\))"
         else:
             excmsg = "".join(
                 (
@@ -401,7 +405,7 @@ class _RecordSetBase(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "unsupported operand type\(s\) for divmod\(\): 'str' ",
+                    r"unsupported operand type\(s\) for divmod\(\): 'str' ",
                     "and 'int'",
                 )
             ),
@@ -488,7 +492,7 @@ class RecordList(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) missing 2 required positional arguments: ",
+                    r"__init__\(\) missing 2 required positional arguments: ",
                     "'dbhome' and 'dbset'",
                 )
             ),
@@ -550,7 +554,7 @@ class FoundSet(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) missing 2 required positional arguments: ",
+                    r"__init__\(\) missing 2 required positional arguments: ",
                     "'dbhome' and 'dbset'",
                 )
             ),

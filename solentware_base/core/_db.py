@@ -641,7 +641,8 @@ class Database(_database.Database):
             )
         return None
 
-    # high_record will become high_record_number to fit changed get_high_record.
+    # high_record will become high_record_number to fit changed
+    # get_high_record.
     def note_freed_record_number_segment(
         self, dbset, segment, record_number_in_segment, high_record
     ):
@@ -1706,10 +1707,10 @@ class Cursor(_cursor.Cursor):
     instance.
 
     The transaction argument in the Cursor() call should be a function
-    which returns current tranasction active on the Berkeley DB environment, or
-    None if there isn't one.  If supplied it's return value is used in all calls
-    to methods of the wrapped cursor which have the 'txn' parameter.  By default
-    the calls are not within a transaction.
+    which returns current tranasction active on the Berkeley DB environment,
+    or None if there isn't one.  If supplied it's return value is used in all
+    calls to methods of the wrapped cursor which have the 'txn' parameter.
+    By default the calls are not within a transaction.
 
     The CursorPrimary and CursorSecondary subclasses define the bsddb3
     style cursor methods peculiar to primary and secondary databases.

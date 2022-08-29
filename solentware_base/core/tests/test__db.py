@@ -52,7 +52,7 @@ class Database___init__(_DB):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) takes from 2 to 7 positional arguments ",
+                    r"__init__\(\) takes from 2 to 7 positional arguments ",
                     "but 8 were given",
                 )
             ),
@@ -67,7 +67,7 @@ class Database___init__(_DB):
             "".join(
                 (
                     t,
-                    " argument after \*\* must be a mapping, ",
+                    r" argument after \*\* must be a mapping, ",
                     "not NoneType",
                 )
             ),
@@ -163,7 +163,7 @@ class Database_transaction_methods(_DB):
             TypeError,
             "".join(
                 (
-                    "start_transaction\(\) takes 1 positional argument ",
+                    r"start_transaction\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -174,7 +174,7 @@ class Database_transaction_methods(_DB):
             TypeError,
             "".join(
                 (
-                    "backout\(\) takes 1 positional argument ",
+                    r"backout\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -185,7 +185,7 @@ class Database_transaction_methods(_DB):
             TypeError,
             "".join(
                 (
-                    "commit\(\) takes 1 positional argument ",
+                    r"commit\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -205,7 +205,7 @@ class DatabaseInstance(_DB):
             TypeError,
             "".join(
                 (
-                    "_validate_segment_size_bytes\(\) missing 1 required ",
+                    r"_validate_segment_size_bytes\(\) missing 1 required ",
                     "positional argument: 'segment_size_bytes'",
                 )
             ),
@@ -233,7 +233,7 @@ class DatabaseInstance(_DB):
             TypeError,
             "".join(
                 (
-                    "environment_flags\(\) missing 1 required ",
+                    r"environment_flags\(\) missing 1 required ",
                     "positional argument: 'dbe'",
                 )
             ),
@@ -258,7 +258,7 @@ class DatabaseInstance(_DB):
             TypeError,
             "".join(
                 (
-                    "encode_record_number\(\) missing 1 required ",
+                    r"encode_record_number\(\) missing 1 required ",
                     "positional argument: 'key'",
                 )
             ),
@@ -271,7 +271,7 @@ class DatabaseInstance(_DB):
             TypeError,
             "".join(
                 (
-                    "decode_record_number\(\) missing 1 required ",
+                    r"decode_record_number\(\) missing 1 required ",
                     "positional argument: 'skey'",
                 )
             ),
@@ -284,7 +284,7 @@ class DatabaseInstance(_DB):
             TypeError,
             "".join(
                 (
-                    "encode_record_selector\(\) missing 1 required ",
+                    r"encode_record_selector\(\) missing 1 required ",
                     "positional argument: 'key'",
                 )
             ),
@@ -297,8 +297,8 @@ class DatabaseInstance(_DB):
             TypeError,
             "".join(
                 (
-                    "recordlist_nil\(\) takes from 2 to 3 positional arguments ",
-                    "but 4 were given",
+                    r"recordlist_nil\(\) takes from 2 to 3 ",
+                    "positional arguments but 4 were given",
                 )
             ),
             self.database.recordlist_nil,
@@ -317,8 +317,8 @@ class Database_open_database(_DB):
             TypeError,
             "".join(
                 (
-                    "open_database\(\) takes from 2 to 3 positional arguments ",
-                    "but 4 were given",
+                    r"open_database\(\) takes from 2 to 3 ",
+                    "positional arguments but 4 were given",
                 )
             ),
             self.database.open_database,
@@ -328,7 +328,7 @@ class Database_open_database(_DB):
             TypeError,
             "".join(
                 (
-                    "close_database\(\) takes 1 positional argument ",
+                    r"close_database\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -339,8 +339,8 @@ class Database_open_database(_DB):
             TypeError,
             "".join(
                 (
-                    "close_database_contexts\(\) takes from 1 to 2 positional ",
-                    "arguments but 3 were given",
+                    r"close_database_contexts\(\) takes from 1 to 2 ",
+                    "positional arguments but 3 were given",
                 )
             ),
             self.database.close_database_contexts,
@@ -593,7 +593,7 @@ class Database_put_replace_delete(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "put\(\) missing 3 required positional arguments: ",
+                    r"put\(\) missing 3 required positional arguments: ",
                     "'file', 'key', and 'value'",
                 )
             ),
@@ -603,7 +603,7 @@ class Database_put_replace_delete(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "replace\(\) missing 4 required positional arguments: ",
+                    r"replace\(\) missing 4 required positional arguments: ",
                     "'file', 'key', 'oldvalue', and 'newvalue'",
                 )
             ),
@@ -613,7 +613,7 @@ class Database_put_replace_delete(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "delete\(\) missing 3 required positional arguments: ",
+                    r"delete\(\) missing 3 required positional arguments: ",
                     "'file', 'key', and 'value'",
                 )
             ),
@@ -651,7 +651,7 @@ class Database_methods(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "get_primary_record\(\) missing 2 required positional ",
+                    r"get_primary_record\(\) missing 2 required positional ",
                     "arguments: 'file' and 'key'",
                 )
             ),
@@ -661,7 +661,7 @@ class Database_methods(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "remove_record_from_ebm\(\) missing 2 required ",
+                    r"remove_record_from_ebm\(\) missing 2 required ",
                     "positional arguments: 'file' and 'deletekey'",
                 )
             ),
@@ -671,7 +671,7 @@ class Database_methods(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "add_record_to_ebm\(\) missing 2 required ",
+                    r"add_record_to_ebm\(\) missing 2 required ",
                     "positional arguments: 'file' and 'putkey'",
                 )
             ),
@@ -681,7 +681,7 @@ class Database_methods(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "get_high_record\(\) missing 1 required ",
+                    r"get_high_record\(\) missing 1 required ",
                     "positional argument: 'file'",
                 )
             ),
@@ -691,7 +691,7 @@ class Database_methods(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "recordlist_record_number\(\) takes from 2 to 4 ",
+                    r"recordlist_record_number\(\) takes from 2 to 4 ",
                     "positional arguments but 5 were given",
                 )
             ),
@@ -702,7 +702,7 @@ class Database_methods(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "recordlist_record_number_range\(\) takes from 2 to 5 ",
+                    r"recordlist_record_number_range\(\) takes from 2 to 5 ",
                     "positional arguments but 6 were given",
                 )
             ),
@@ -713,7 +713,7 @@ class Database_methods(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "recordlist_ebm\(\) takes from 2 to 3 ",
+                    r"recordlist_ebm\(\) takes from 2 to 3 ",
                     "positional arguments but 4 were given",
                 )
             ),
@@ -724,7 +724,7 @@ class Database_methods(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "get_table_connection\(\) missing 1 required positional ",
+                    r"get_table_connection\(\) missing 1 required positional ",
                     "argument: 'file'",
                 )
             ),
@@ -798,7 +798,12 @@ class Database_methods(_DBOpen):
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(
             rs[0].tobytes(),
-            b"\x7f\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff",
+            b"".join(
+                (
+                    b"\x7f\xff\xff\xff\xff\xff\xff\xff",
+                    b"\xff\xff\xff\xff\xff\xff\xff\xff",
+                )
+            ),
         )
 
     def test_19_recordset_record_number_range(self):
@@ -807,7 +812,12 @@ class Database_methods(_DBOpen):
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(
             rs[0].tobytes(),
-            b"\x00\x3f\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff",
+            b"".join(
+                (
+                    b"\x00\x3f\xff\xff\xff\xff\xff\xff",
+                    b"\xff\xff\xff\xff\xff\xff\xff\xff",
+                )
+            ),
         )
 
     def test_20_recordset_record_number_range(self):
@@ -816,7 +826,12 @@ class Database_methods(_DBOpen):
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(
             rs[0].tobytes(),
-            b"\x7f\xff\xff\xff\xe0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\x7f\xff\xff\xff\xe0\x00\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
         )
 
     def test_21_recordset_record_number_range(self):
@@ -827,7 +842,12 @@ class Database_methods(_DBOpen):
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(
             rs[0].tobytes(),
-            b"\x00\x3f\xff\xff\xe0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\x00\x3f\xff\xff\xe0\x00\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
         )
 
     def test_22_recordset_record_number_range(self):
@@ -842,11 +862,21 @@ class Database_methods(_DBOpen):
         self.assertEqual(len(rs), 2)
         self.assertEqual(
             rs[1].tobytes(),
-            b"\x00\x00\x00\x00\x00\x3f\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff",
+            b"".join(
+                (
+                    b"\x00\x00\x00\x00\x00\x3f\xff\xff",
+                    b"\xff\xff\xff\xff\xff\xff\xff\xff",
+                )
+            ),
         )
         self.assertEqual(
             rs[2].tobytes(),
-            b"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xfc\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\xff\xff\xff\xff\xff\xff\xff\xff",
+                    b"\xff\xff\xff\xfc\x00\x00\x00\x00",
+                )
+            ),
         )
 
     def test_23_recordset_record_number_range(self):
@@ -897,8 +927,8 @@ class Database_find_values(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "find_values\(\) missing 2 required positional arguments: ",
-                    "'valuespec' and 'file'",
+                    r"find_values\(\) missing 2 required ",
+                    "positional arguments: 'valuespec' and 'file'",
                 )
             ),
             self.database.find_values,
@@ -974,13 +1004,48 @@ class Database_make_recordset(_DBOpen):
         super().setUp()
         self.database.start_transaction()
         segments = (
-            b"\x7f\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
-            b"\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
-            b"\x00\x00\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00",
-            b"\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00\x00\x00",
-            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00",
-            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\x00\x00",
-            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff",
+            b"".join(
+                (
+                    b"\x7f\xff\xff\xff\x00\x00\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
+            b"".join(
+                (
+                    b"\x00\x00\x00\xff\xff\xff\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
+            b"".join(
+                (
+                    b"\x00\x00\x00\x00\x00\xff\xff\xff",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
+            b"".join(
+                (
+                    b"\x00\x00\x00\x00\x00\x00\x00\xff",
+                    b"\xff\xff\x00\x00\x00\x00\x00\x00",
+                )
+            ),
+            b"".join(
+                (
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                    b"\x00\xff\xff\xff\x00\x00\x00\x00",
+                )
+            ),
+            b"".join(
+                (
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                    b"\x00\x00\x00\xff\xff\xff\x00\x00",
+                )
+            ),
+            b"".join(
+                (
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                    b"\x00\x00\x00\x00\x00\xff\xff\xff",
+                )
+            ),
             b"\x00\x40\x00\x41",
             b"\x00\x42\x00\x43\x00\x44",
         )
@@ -1107,9 +1172,9 @@ class Database_make_recordset(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "add_record_to_field_value\(\) missing 5 required ",
-                    "positional arguments: 'file', 'field', 'key', 'segment', ",
-                    "and 'record_number'",
+                    r"add_record_to_field_value\(\) missing 5 required ",
+                    "positional arguments: 'file', 'field', 'key', ",
+                    "'segment', and 'record_number'",
                 )
             ),
             self.database.add_record_to_field_value,
@@ -1118,9 +1183,9 @@ class Database_make_recordset(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "remove_record_from_field_value\(\) missing 5 required ",
-                    "positional arguments: 'file', 'field', 'key', 'segment', ",
-                    "and 'record_number'",
+                    r"remove_record_from_field_value\(\) missing 5 required ",
+                    "positional arguments: 'file', 'field', 'key', ",
+                    "'segment', and 'record_number'",
                 )
             ),
             self.database.remove_record_from_field_value,
@@ -1129,7 +1194,7 @@ class Database_make_recordset(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "populate_segment\(\) missing 2 required ",
+                    r"populate_segment\(\) missing 2 required ",
                     "positional arguments: 'segment_reference' and 'file'",
                 )
             ),
@@ -1139,7 +1204,7 @@ class Database_make_recordset(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "recordlist_key_like\(\) takes from 3 to 5 ",
+                    r"recordlist_key_like\(\) takes from 3 to 5 ",
                     "positional arguments but 6 were given",
                 )
             ),
@@ -1150,7 +1215,7 @@ class Database_make_recordset(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "recordlist_key\(\) takes from 3 to 5 ",
+                    r"recordlist_key\(\) takes from 3 to 5 ",
                     "positional arguments but 6 were given",
                 )
             ),
@@ -1161,7 +1226,7 @@ class Database_make_recordset(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "recordlist_key_startswith\(\) takes from 3 to 5 ",
+                    r"recordlist_key_startswith\(\) takes from 3 to 5 ",
                     "positional arguments but 6 were given",
                 )
             ),
@@ -1172,7 +1237,7 @@ class Database_make_recordset(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "recordlist_key_range\(\) takes from 3 to 8 ",
+                    r"recordlist_key_range\(\) takes from 3 to 8 ",
                     "positional arguments but 9 were given",
                 )
             ),
@@ -1183,7 +1248,7 @@ class Database_make_recordset(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "recordlist_all\(\) takes from 3 to 4 ",
+                    r"recordlist_all\(\) takes from 3 to 4 ",
                     "positional arguments but 5 were given",
                 )
             ),
@@ -1194,7 +1259,7 @@ class Database_make_recordset(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "unfile_records_under\(\) missing 3 required ",
+                    r"unfile_records_under\(\) missing 3 required ",
                     "positional arguments: 'file', 'field', and 'key'",
                 )
             ),
@@ -1204,7 +1269,7 @@ class Database_make_recordset(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "file_records_under\(\) missing 4 required positional ",
+                    r"file_records_under\(\) missing 4 required positional ",
                     "arguments: 'file', 'field', 'recordset', and 'key'",
                 )
             ),
@@ -1629,14 +1694,15 @@ class Database_make_recordset(_DBOpen):
                     r"illegal record number of 0'\)",
                 )
             ),
-            # "\(22, 'Invalid argument -- BDB1002 illegal record number of 0'\)",
+            # "\(22, 'Invalid argument -- \
+            # BDB1002 illegal record number of 0'\)",
             # "\(22, 'Invalid argument -- illegal record number of 0'\)",
             self.database._get_segment_record_numbers,
             *("file1", 0),
         )
         self.assertRaisesRegex(
             TypeError,
-            "object of type 'NoneType' has no len\(\)",
+            r"object of type 'NoneType' has no len\(\)",
             self.database._get_segment_record_numbers,
             *("file1", 10),
         )
@@ -1712,7 +1778,7 @@ class Database_freed_record_number(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "get_lowest_freed_record_number\(\) missing 1 required ",
+                    r"get_lowest_freed_record_number\(\) missing 1 required ",
                     "positional argument: 'dbset'",
                 )
             ),
@@ -1722,8 +1788,8 @@ class Database_freed_record_number(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "note_freed_record_number_segment\(\) missing 4 required ",
-                    "positional arguments: 'dbset', 'segment', ",
+                    r"note_freed_record_number_segment\(\) missing 4 ",
+                    "required positional arguments: 'dbset', 'segment', ",
                     "'record_number_in_segment', and 'high_record'",
                 )
             ),
@@ -1885,9 +1951,24 @@ class RecordsetCursor(_DBOpen):
     def setUp(self):
         super().setUp()
         segments = (
-            b"\x7f\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
-            b"\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
-            b"\x00\x00\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\x7f\xff\xff\xff\x00\x00\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
+            b"".join(
+                (
+                    b"\x00\x00\x00\xff\xff\xff\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
+            b"".join(
+                (
+                    b"\x00\x00\x00\x00\x00\xff\xff\xff",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
         )
         keys = ("a_o",)
         for i in range(380):
@@ -1923,7 +2004,7 @@ class RecordsetCursor(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) missing 1 required ",
+                    r"__init__\(\) missing 1 required ",
                     "positional argument: 'recordset'",
                 )
             ),
@@ -1933,7 +2014,7 @@ class RecordsetCursor(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "_get_record\(\) missing 1 required ",
+                    r"_get_record\(\) missing 1 required ",
                     "positional argument: 'record_number'",
                 )
             ),

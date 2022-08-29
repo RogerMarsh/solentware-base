@@ -128,7 +128,8 @@ class FileSpec(dict):
                 raise FileSpecError(
                     "".join(
                         (
-                            "number of records must be a positive integer for item ",
+                            "number of records must be a positive ",
+                            "integer for item ",
                             k,
                             " in filespec.",
                         )
@@ -138,7 +139,8 @@ class FileSpec(dict):
                 raise FileSpecError(
                     "".join(
                         (
-                            "number of records must be a positive integer for item ",
+                            "number of records must be a positive ",
+                            "integer for item ",
                             k,
                             " in filespec.",
                         )
@@ -319,8 +321,8 @@ class FileSpec(dict):
             ):
                 msg = " ".join(
                     [
-                        "Safe unicode length for utf-8 encoding is greater than",
-                        "255 for primary field in DPT file",
+                        "Safe unicode length for utf-8 encoding is greater",
+                        "than 255 for primary field in DPT file",
                         name,
                     ]
                 )
@@ -587,15 +589,15 @@ class FileSpec(dict):
             raise FileSpecError(
                 "".join(
                     (
-                        "Specification does not have same files as defined in ",
-                        "this FileSpec",
+                        "Specification does not have same files as ",
+                        "defined in this FileSpec",
                     )
                 )
             )
         msgdh = "".join(
             (
-                "Specification does not have same detail headings for each file ",
-                "as defined in this FileSpec",
+                "Specification does not have same detail headings for each ",
+                "file as defined in this FileSpec",
             )
         )
         msgd = "".join(
@@ -612,8 +614,8 @@ class FileSpec(dict):
         )
         msgam = "".join(
             (
-                "Specification does not have same descriptions for each field ",
-                "in each file as defined in this FileSpec",
+                "Specification does not have same descriptions for each ",
+                "field in each file as defined in this FileSpec",
             )
         )
         for dbs, fss in zip(sdbspec, sfsspec):

@@ -28,9 +28,9 @@ class WhereValues___init__TC(unittest.TestCase):
             (wherevalues.FROM, "from"),
             (wherevalues.ABOVE, "above"),
             (wherevalues.BELOW, "below"),
-            (wherevalues.LEADING_SPACE, "(?<=\s)"),
-            (wherevalues.TRAILING_SPACE, "(?=\s)"),
-            (wherevalues.STRING, "[^\s]+"),
+            (wherevalues.LEADING_SPACE, r"(?<=\s)"),
+            (wherevalues.TRAILING_SPACE, r"(?=\s)"),
+            (wherevalues.STRING, r"[^\s]+"),
         )
         for a, v in constants:
             self.assertEqual(a, v)
@@ -47,14 +47,14 @@ class WhereValues___init__TC(unittest.TestCase):
                 (
                     '".*?"',
                     "'.*?'",
-                    "not".join(("(?<=\s)", "(?=\s)")),
-                    "like".join(("(?<=\s)", "(?=\s)")),
-                    "from".join(("(?<=\s)", "(?=\s)")),
-                    "above".join(("(?<=\s)", "(?=\s)")),
-                    "below".join(("(?<=\s)", "(?=\s)")),
-                    "to".join(("(?<=\s)", "(?=\s)")),
-                    "in".join(("(?<=\s)", "(?=\s)")),
-                    "[^\s]+",
+                    "not".join((r"(?<=\s)", r"(?=\s)")),
+                    "like".join((r"(?<=\s)", r"(?=\s)")),
+                    "from".join((r"(?<=\s)", r"(?=\s)")),
+                    "above".join((r"(?<=\s)", r"(?=\s)")),
+                    "below".join((r"(?<=\s)", r"(?=\s)")),
+                    "to".join((r"(?<=\s)", r"(?=\s)")),
+                    "in".join((r"(?<=\s)", r"(?=\s)")),
+                    r"[^\s]+",
                 )
             ).join(("(", ")")),
         )
@@ -718,7 +718,7 @@ class ValuesClause_apply_pattern_and_set_filters_to_valueTC(unittest.TestCase):
 
     def test_value_like_pattern_filter_02(self):
         vc = self.vc
-        vc.like_pattern = re.compile("\Acat")
+        vc.like_pattern = re.compile(r"\Acat")
         self.assertEqual(
             vc.apply_pattern_and_set_filters_to_value(self.like_value), False
         )
@@ -733,7 +733,7 @@ class ValuesClause_apply_pattern_and_set_filters_to_valueTC(unittest.TestCase):
 
     def test_value_like_pattern_filter_04(self):
         vc = self.vc
-        vc.like_pattern = re.compile("\Acat")
+        vc.like_pattern = re.compile(r"\Acat")
         vc.like = False
         self.assertEqual(
             vc.apply_pattern_and_set_filters_to_value(self.like_value), True
@@ -741,7 +741,7 @@ class ValuesClause_apply_pattern_and_set_filters_to_valueTC(unittest.TestCase):
 
     def test_value_like_pattern_filter_05(self):
         vc = self.vc
-        vc.like_pattern = re.compile("ult\Z")
+        vc.like_pattern = re.compile(r"ult\Z")
         self.assertEqual(
             vc.apply_pattern_and_set_filters_to_value(self.like_value), True
         )

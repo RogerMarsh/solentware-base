@@ -5,9 +5,9 @@
 """A pure Python partial emulation of bitarray class for solentware_base.
 
 The point of this module is being part of the solentware_base package, not a
-product that has to be obtained built and intstalled separately.  Both bitarray,
-an extension module written in C, and BitVector, a pure Python module, must be
-installed separately: they are not in the Python distribution.
+product that has to be obtained built and intstalled separately.  Both
+bitarray, an extension module written in C, and BitVector, a pure Python
+module, must be installed separately: they are not in the Python distribution.
 
 It is assumed that bitarray is faster than BitVector.  The bitarray class looks
 simpler to emulate.

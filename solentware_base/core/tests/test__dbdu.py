@@ -53,7 +53,7 @@ class Database___init__(_DBdu):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) takes from 2 to 7 positional arguments ",
+                    r"__init__\(\) takes from 2 to 7 positional arguments ",
                     "but 8 were given",
                 )
             ),
@@ -68,7 +68,7 @@ class Database___init__(_DBdu):
             "".join(
                 (
                     t,
-                    " argument after \*\* must be a mapping, ",
+                    r" argument after \*\* must be a mapping, ",
                     "not NoneType",
                 )
             ),
@@ -164,7 +164,7 @@ class Database_transaction_methods(_DBdu):
             TypeError,
             "".join(
                 (
-                    "start_transaction\(\) takes 1 positional argument ",
+                    r"start_transaction\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -175,7 +175,7 @@ class Database_transaction_methods(_DBdu):
             TypeError,
             "".join(
                 (
-                    "environment_flags\(\) missing 1 required ",
+                    r"environment_flags\(\) missing 1 required ",
                     "positional argument: 'dbe'",
                 )
             ),
@@ -185,7 +185,7 @@ class Database_transaction_methods(_DBdu):
             TypeError,
             "".join(
                 (
-                    "checkpoint_before_close_dbenv\(\) takes 1 positional ",
+                    r"checkpoint_before_close_dbenv\(\) takes 1 positional ",
                     "argument but 2 were given",
                 )
             ),
@@ -237,7 +237,7 @@ class Database_methods(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "database_cursor\(\) takes from 3 to 4 ",
+                    r"database_cursor\(\) takes from 3 to 4 ",
                     "positional arguments but 5 were given",
                 )
             ),
@@ -248,7 +248,7 @@ class Database_methods(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "unset_defer_update\(\) takes 1 ",
+                    r"unset_defer_update\(\) takes 1 ",
                     "positional argument but 2 were given",
                 )
             ),
@@ -259,7 +259,7 @@ class Database_methods(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "write_existence_bit_map\(\) missing 2 required ",
+                    r"write_existence_bit_map\(\) missing 2 required ",
                     "positional arguments: 'file' and 'segment'",
                 )
             ),
@@ -269,7 +269,7 @@ class Database_methods(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "new_deferred_root\(\) missing 2 required ",
+                    r"new_deferred_root\(\) missing 2 required ",
                     "positional arguments: 'file' and 'field'",
                 )
             ),
@@ -279,7 +279,7 @@ class Database_methods(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "set_defer_update\(\) takes 1 ",
+                    r"set_defer_update\(\) takes 1 ",
                     "positional argument but 2 were given",
                 )
             ),
@@ -290,7 +290,7 @@ class Database_methods(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "get_ebm_segment\(\) takes 3 ",
+                    r"get_ebm_segment\(\) takes 3 ",
                     "positional arguments but 4 were given",
                 )
             ),
@@ -363,7 +363,7 @@ class Database_do_final_segment_deferred_updates(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "do_final_segment_deferred_updates\(\) takes 1 ",
+                    r"do_final_segment_deferred_updates\(\) takes 1 ",
                     "positional argument but 2 were given",
                 )
             ),
@@ -456,7 +456,7 @@ class Database_sort_and_write(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "sort_and_write\(\) missing 3 required ",
+                    r"sort_and_write\(\) missing 3 required ",
                     "positional arguments: 'file', 'field', and 'segment'",
                 )
             ),
@@ -865,7 +865,7 @@ class Database_merge(_DBOpen):
             TypeError,
             "".join(
                 (
-                    "merge\(\) missing 2 required ",
+                    r"merge\(\) missing 2 required ",
                     "positional arguments: 'file' and 'field'",
                 )
             ),

@@ -28,7 +28,7 @@ class BerkeleydbDatabase(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) missing 1 required positional argument: ",
+                    r"__init__\(\) missing 1 required positional argument: ",
                     "'specification'",
                 )
             ),

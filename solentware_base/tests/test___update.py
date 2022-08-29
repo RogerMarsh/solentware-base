@@ -163,8 +163,8 @@ class _Database(unittest.TestCase):
     # Reducing the segment size seems to fix the problem.  Is it a memory limit
     # on OpenBSD? Could just increase the memory limit but adjusting segment
     # size highlights the problem.  Happens on FreeBSD too.
-    # On Windows 10 get KeyError at _nosql.py line 582 add_record_to_field_value
-    # called from _database.py line 208 put_instance.
+    # On Windows 10 get KeyError at _nosql.py line 582
+    # add_record_to_field_value called from _database.py line 208 put_instance.
     def test_02_open_database__in_directory_txn_generated_filespec(self):
         # No cachesize problem for bsddb3 when database is not in memory.
         # Transaction for all records.

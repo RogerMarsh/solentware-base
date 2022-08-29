@@ -125,9 +125,19 @@ class SegmentsetCursor(_NoSQL):
     def setUp(self):
         super().setUp()
         segments = (
-            b"\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\xff\xff\xff\xff\x00\x00\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
             b"\x00\x42\x00\x43\x00\x44",
-            b"\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\x00\x00\x00\xff\xff\xff\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
         )
         key = "a_o"
         db = self.database.dbenv
@@ -151,7 +161,7 @@ class SegmentsetCursor(_NoSQL):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) takes 5 positional arguments ",
+                    r"__init__\(\) takes 5 positional arguments ",
                     "but 6 were given",
                 )
             ),
@@ -162,7 +172,7 @@ class SegmentsetCursor(_NoSQL):
             TypeError,
             "".join(
                 (
-                    "close\(\) takes 1 positional argument ",
+                    r"close\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -173,7 +183,7 @@ class SegmentsetCursor(_NoSQL):
             TypeError,
             "".join(
                 (
-                    "first\(\) takes 1 positional argument ",
+                    r"first\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -184,7 +194,7 @@ class SegmentsetCursor(_NoSQL):
             TypeError,
             "".join(
                 (
-                    "last\(\) takes 1 positional argument ",
+                    r"last\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -195,7 +205,7 @@ class SegmentsetCursor(_NoSQL):
             TypeError,
             "".join(
                 (
-                    "next\(\) takes 1 positional argument ",
+                    r"next\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -206,7 +216,7 @@ class SegmentsetCursor(_NoSQL):
             TypeError,
             "".join(
                 (
-                    "prev\(\) takes 1 positional argument ",
+                    r"prev\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -217,7 +227,7 @@ class SegmentsetCursor(_NoSQL):
             TypeError,
             "".join(
                 (
-                    "get_current_segment\(\) takes 1 positional argument ",
+                    r"get_current_segment\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -228,7 +238,7 @@ class SegmentsetCursor(_NoSQL):
             TypeError,
             "".join(
                 (
-                    "setat\(\) missing 1 required ",
+                    r"setat\(\) missing 1 required ",
                     "positional argument: 'segment_number'",
                 )
             ),
@@ -317,7 +327,12 @@ class SegmentsetCursor(_NoSQL):
         ae(s.segment_number, 1)
         ae(
             s.tobytes(),
-            b"\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\xff\xff\xff\xff\x00\x00\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
         )
         ss.next()
         s = ss.get_current_segment()
@@ -333,7 +348,12 @@ class SegmentsetCursor(_NoSQL):
         ae(s.segment_number, 5)
         ae(
             s.tobytes(),
-            b"\x00\x00\x00\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\x00\x00\x00\xff\xff\xff\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
         )
         ss.next()
         s = ss.get_current_segment()

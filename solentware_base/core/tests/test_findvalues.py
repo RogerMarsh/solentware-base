@@ -400,7 +400,7 @@ class FindValuesTC(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) missing 2 required positional arguments: ",
+                    r"__init__\(\) missing 2 required positional arguments: ",
                     "'db' and 'dbset'",
                 )
             ),

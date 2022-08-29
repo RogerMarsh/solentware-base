@@ -68,8 +68,8 @@ class WhereTC(unittest.TestCase):
             (where.STARTS, "starts"),
             (where.PRESENT, "present"),
             (where.STRING, ".+?"),
-            (where.LEADING_SPACE, "(?<=\s)"),
-            (where.TRAILING_SPACE, "(?=\s)"),
+            (where.LEADING_SPACE, r"(?<=\s)"),
+            (where.TRAILING_SPACE, r"(?=\s)"),
         )
         for a, v in constants:
             self.assertEqual(a, v)
@@ -135,7 +135,7 @@ class WhereTC(unittest.TestCase):
                     where.SINGLE_QUOTE_STRING,
                     "".join(("\\", where.LEFT_PARENTHESIS)),
                     "".join(("\\", where.RIGHT_PARENTHESIS)),
-                    where.OR.join(("(?<=\s|\))", "(?=\s|\()")),
+                    where.OR.join((r"(?<=\s|\))", r"(?=\s|\()")),
                     where.TO.join((where.LEADING_SPACE, where.TRAILING_SPACE)),
                     where.IS.join((where.LEADING_SPACE, where.TRAILING_SPACE)),
                     where.EQ.join((where.LEADING_SPACE, where.TRAILING_SPACE)),
@@ -144,10 +144,10 @@ class WhereTC(unittest.TestCase):
                     where.LE.join((where.LEADING_SPACE, where.TRAILING_SPACE)),
                     where.GT.join((where.LEADING_SPACE, where.TRAILING_SPACE)),
                     where.GE.join((where.LEADING_SPACE, where.TRAILING_SPACE)),
-                    where.NOT.join(("\A", "(?=\s|\()")),
-                    where.NOT.join(("(?<=\s|\()", "(?=\s|\()")),
-                    where.NOR.join(("(?<=\s|\()", "(?=\s|\()")),
-                    where.AND.join(("(?<=\s|\))", "(?=\s|\()")),
+                    where.NOT.join((r"\A", r"(?=\s|\()")),
+                    where.NOT.join((r"(?<=\s|\()", r"(?=\s|\()")),
+                    where.NOR.join((r"(?<=\s|\()", r"(?=\s|\()")),
+                    where.AND.join((r"(?<=\s|\))", r"(?=\s|\()")),
                     where.NUM.join(
                         (where.LEADING_SPACE, where.TRAILING_SPACE)
                     ),
@@ -175,7 +175,7 @@ class WhereTC(unittest.TestCase):
                     where.STARTS.join(
                         (where.LEADING_SPACE, where.TRAILING_SPACE)
                     ),
-                    where.PRESENT.join((where.LEADING_SPACE, "(?=\s|\)|\Z)")),
+                    where.PRESENT.join((where.LEADING_SPACE, r"(?=\s|\)|\Z)")),
                     where.STRING,
                 )
             ).join(("(", ")")),
@@ -8496,7 +8496,8 @@ class WhereClause_evaluate_node_resultTC(unittest.TestCase):
         # for n in wcw:
         #    if n.constraint:
         #        if n.constraint.result is not None:
-        #            print(wci[n], n.constraint.result.answer, n.constraint.result)
+        #            print(wci[n], n.constraint.result.answer,
+        #                  n.constraint.result)
 
         rn.constraint.result = where.WhereResult()
         rn.constraint.result.answer = self.processors.get_existence()
@@ -8520,7 +8521,8 @@ class WhereClause_evaluate_node_resultTC(unittest.TestCase):
         # for n in wcw:
         #    if n.constraint:
         #        if n.constraint.result is not None:
-        #            print(wci[n], n.constraint.result.answer, n.constraint.result)
+        #            print(wci[n], n.constraint.result.answer,
+        #                  n.constraint.result)
 
         w._evaluate_non_index_conditions(non_index_nodes)
         rn.evaluate_node_result(w._result_rules_engine)
@@ -8821,135 +8823,135 @@ class Where_evaluateTC(unittest.TestCase):
         self._ev("f1 like b", {0})
         self._ev("f2 like p", {2, 3})
         self._ev("f3 like a", {0, 1, 3})
-        self._ev("f3 like a\Z", {0, 3})
+        self._ev(r"f3 like a\Z", {0, 3})
         self._ev("f4 like a", {0, 1, 2, 3, 4, 8})
-        self._ev("f4 like a\Z", {0, 1, 3})
-        self._ev("f4 like \Aa", {0, 3, 4})
-        self._ev("f4 like \Aa\Z", {0})
+        self._ev(r"f4 like a\Z", {0, 1, 3})
+        self._ev(r"f4 like \Aa", {0, 3, 4})
+        self._ev(r"f4 like \Aa\Z", {0})
         self._ev("f4 like b", {5, 6, 7, 8})
-        self._ev("f4 like b\Z", {5, 6})
-        self._ev("f4 like \Ab", {5})
-        self._ev("f4 like \Ab\Z", {5})
+        self._ev(r"f4 like b\Z", {5, 6})
+        self._ev(r"f4 like \Ab", {5})
+        self._ev(r"f4 like \Ab\Z", {5})
 
     def test_01_like_02_not(self):
         self._ev("not f1 like a", {0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
         self._ev("not f1 like b", {1, 2, 3, 4, 5, 6, 7, 8, 9})
         self._ev("not f2 like p", {0, 1, 4, 5, 6, 7, 8, 9})
         self._ev("not f3 like a", {2, 4, 5, 6, 7, 8, 9})
-        self._ev("not f3 like a\Z", {1, 2, 4, 5, 6, 7, 8, 9})
+        self._ev(r"not f3 like a\Z", {1, 2, 4, 5, 6, 7, 8, 9})
         self._ev("not f4 like a", {5, 6, 7, 9})
-        self._ev("not f4 like a\Z", {2, 4, 5, 6, 7, 8, 9})
-        self._ev("not f4 like \Aa", {1, 2, 5, 6, 7, 8, 9})
-        self._ev("not f4 like \Aa\Z", {1, 2, 3, 4, 5, 6, 7, 8, 9})
+        self._ev(r"not f4 like a\Z", {2, 4, 5, 6, 7, 8, 9})
+        self._ev(r"not f4 like \Aa", {1, 2, 5, 6, 7, 8, 9})
+        self._ev(r"not f4 like \Aa\Z", {1, 2, 3, 4, 5, 6, 7, 8, 9})
         self._ev("not f4 like b", {0, 1, 2, 3, 4, 9})
-        self._ev("not f4 like b\Z", {0, 1, 2, 3, 4, 7, 8, 9})
-        self._ev("not f4 like \Ab", {0, 1, 2, 3, 4, 6, 7, 8, 9})
-        self._ev("not f4 like \Ab\Z", {0, 1, 2, 3, 4, 6, 7, 8, 9})
+        self._ev(r"not f4 like b\Z", {0, 1, 2, 3, 4, 7, 8, 9})
+        self._ev(r"not f4 like \Ab", {0, 1, 2, 3, 4, 6, 7, 8, 9})
+        self._ev(r"not f4 like \Ab\Z", {0, 1, 2, 3, 4, 6, 7, 8, 9})
 
     def test_01_like_03_not(self):
         self._ev("f1 not like a", {0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
         self._ev("f1 not like b", {1, 2, 3, 4, 5, 6, 7, 8, 9})
         self._ev("f2 not like p", {0, 1, 4, 5, 6, 7, 8, 9})
         self._ev("f3 not like a", {2, 4, 5, 6, 7, 8, 9})
-        self._ev("f3 not like a\Z", {1, 2, 4, 5, 6, 7, 8, 9})
+        self._ev(r"f3 not like a\Z", {1, 2, 4, 5, 6, 7, 8, 9})
         self._ev("f4 not like a", {5, 6, 7, 9})
-        self._ev("f4 not like a\Z", {2, 4, 5, 6, 7, 8, 9})
-        self._ev("f4 not like \Aa", {1, 2, 5, 6, 7, 8, 9})
-        self._ev("f4 not like \Aa\Z", {1, 2, 3, 4, 5, 6, 7, 8, 9})
+        self._ev(r"f4 not like a\Z", {2, 4, 5, 6, 7, 8, 9})
+        self._ev(r"f4 not like \Aa", {1, 2, 5, 6, 7, 8, 9})
+        self._ev(r"f4 not like \Aa\Z", {1, 2, 3, 4, 5, 6, 7, 8, 9})
         self._ev("f4 not like b", {0, 1, 2, 3, 4, 9})
-        self._ev("f4 not like b\Z", {0, 1, 2, 3, 4, 7, 8, 9})
-        self._ev("f4 not like \Ab", {0, 1, 2, 3, 4, 6, 7, 8, 9})
-        self._ev("f4 not like \Ab\Z", {0, 1, 2, 3, 4, 6, 7, 8, 9})
+        self._ev(r"f4 not like b\Z", {0, 1, 2, 3, 4, 7, 8, 9})
+        self._ev(r"f4 not like \Ab", {0, 1, 2, 3, 4, 6, 7, 8, 9})
+        self._ev(r"f4 not like \Ab\Z", {0, 1, 2, 3, 4, 6, 7, 8, 9})
 
     def test_01_like_04_not_not(self):
         self._ev("not f1 not like a", set())
         self._ev("not f1 not like b", {0})
         self._ev("not f2 not like p", {2, 3})
         self._ev("not f3 not like a", {0, 1, 3})
-        self._ev("not f3 not like a\Z", {0, 3})
+        self._ev(r"not f3 not like a\Z", {0, 3})
         self._ev("not f4 not like a", {0, 1, 2, 3, 4, 8})
-        self._ev("not f4 not like a\Z", {0, 1, 3})
-        self._ev("not f4 not like \Aa", {0, 3, 4})
-        self._ev("not f4 not like \Aa\Z", {0})
+        self._ev(r"not f4 not like a\Z", {0, 1, 3})
+        self._ev(r"not f4 not like \Aa", {0, 3, 4})
+        self._ev(r"not f4 not like \Aa\Z", {0})
         self._ev("not f4 not like b", {5, 6, 7, 8})
-        self._ev("not f4 not like b\Z", {5, 6})
-        self._ev("not f4 not like \Ab", {5})
-        self._ev("not f4 not like \Ab\Z", {5})
+        self._ev(r"not f4 not like b\Z", {5, 6})
+        self._ev(r"not f4 not like \Ab", {5})
+        self._ev(r"not f4 not like \Ab\Z", {5})
 
     def test_01_like_05_parentheses(self):
         self._ev("( f1 like a )", set())
         self._ev("( f1 like b )", {0})
         self._ev("( f2 like p )", {2, 3})
         self._ev("( f3 like a )", {0, 1, 3})
-        self._ev("( f3 like a\Z )", {0, 3})
+        self._ev(r"( f3 like a\Z )", {0, 3})
         self._ev("( f4 like a )", {0, 1, 2, 3, 4, 8})
-        self._ev("( f4 like a\Z )", {0, 1, 3})
-        self._ev("( f4 like \Aa )", {0, 3, 4})
-        self._ev("( f4 like \Aa\Z )", {0})
+        self._ev(r"( f4 like a\Z )", {0, 1, 3})
+        self._ev(r"( f4 like \Aa )", {0, 3, 4})
+        self._ev(r"( f4 like \Aa\Z )", {0})
         self._ev("( f4 like b )", {5, 6, 7, 8})
-        self._ev("( f4 like b\Z )", {5, 6})
-        self._ev("( f4 like \Ab )", {5})
-        self._ev("( f4 like \Ab\Z )", {5})
+        self._ev(r"( f4 like b\Z )", {5, 6})
+        self._ev(r"( f4 like \Ab )", {5})
+        self._ev(r"( f4 like \Ab\Z )", {5})
 
     def test_01_like_06_not_parentheses_01(self):
         self._ev("not ( f1 like a )", {0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
         self._ev("not ( f1 like b )", {1, 2, 3, 4, 5, 6, 7, 8, 9})
         self._ev("not ( f2 like p )", {0, 1, 4, 5, 6, 7, 8, 9})
         self._ev("not ( f3 like a )", {2, 4, 5, 6, 7, 8, 9})
-        self._ev("not ( f3 like a\Z )", {1, 2, 4, 5, 6, 7, 8, 9})
+        self._ev(r"not ( f3 like a\Z )", {1, 2, 4, 5, 6, 7, 8, 9})
         self._ev("not ( f4 like a )", {5, 6, 7, 9})
-        self._ev("not ( f4 like a\Z )", {2, 4, 5, 6, 7, 8, 9})
-        self._ev("not ( f4 like \Aa )", {1, 2, 5, 6, 7, 8, 9})
-        self._ev("not ( f4 like \Aa\Z )", {1, 2, 3, 4, 5, 6, 7, 8, 9})
+        self._ev(r"not ( f4 like a\Z )", {2, 4, 5, 6, 7, 8, 9})
+        self._ev(r"not ( f4 like \Aa )", {1, 2, 5, 6, 7, 8, 9})
+        self._ev(r"not ( f4 like \Aa\Z )", {1, 2, 3, 4, 5, 6, 7, 8, 9})
         self._ev("not ( f4 like b )", {0, 1, 2, 3, 4, 9})
-        self._ev("not ( f4 like b\Z )", {0, 1, 2, 3, 4, 7, 8, 9})
-        self._ev("not ( f4 like \Ab )", {0, 1, 2, 3, 4, 6, 7, 8, 9})
-        self._ev("not ( f4 like \Ab\Z )", {0, 1, 2, 3, 4, 6, 7, 8, 9})
+        self._ev(r"not ( f4 like b\Z )", {0, 1, 2, 3, 4, 7, 8, 9})
+        self._ev(r"not ( f4 like \Ab )", {0, 1, 2, 3, 4, 6, 7, 8, 9})
+        self._ev(r"not ( f4 like \Ab\Z )", {0, 1, 2, 3, 4, 6, 7, 8, 9})
 
     def test_01_like_06_not_parentheses_02(self):
         self._ev("( not f1 like a )", {0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
         self._ev("( not f1 like b )", {1, 2, 3, 4, 5, 6, 7, 8, 9})
         self._ev("( not f2 like p )", {0, 1, 4, 5, 6, 7, 8, 9})
         self._ev("( not f3 like a )", {2, 4, 5, 6, 7, 8, 9})
-        self._ev("( not f3 like a\Z )", {1, 2, 4, 5, 6, 7, 8, 9})
+        self._ev(r"( not f3 like a\Z )", {1, 2, 4, 5, 6, 7, 8, 9})
         self._ev("( not f4 like a )", {5, 6, 7, 9})
-        self._ev("( not f4 like a\Z )", {2, 4, 5, 6, 7, 8, 9})
-        self._ev("( not f4 like \Aa )", {1, 2, 5, 6, 7, 8, 9})
-        self._ev("( not f4 like \Aa\Z )", {1, 2, 3, 4, 5, 6, 7, 8, 9})
+        self._ev(r"( not f4 like a\Z )", {2, 4, 5, 6, 7, 8, 9})
+        self._ev(r"( not f4 like \Aa )", {1, 2, 5, 6, 7, 8, 9})
+        self._ev(r"( not f4 like \Aa\Z )", {1, 2, 3, 4, 5, 6, 7, 8, 9})
         self._ev("( not f4 like b )", {0, 1, 2, 3, 4, 9})
-        self._ev("( not f4 like b\Z )", {0, 1, 2, 3, 4, 7, 8, 9})
-        self._ev("( not f4 like \Ab )", {0, 1, 2, 3, 4, 6, 7, 8, 9})
-        self._ev("( not f4 like \Ab\Z )", {0, 1, 2, 3, 4, 6, 7, 8, 9})
+        self._ev(r"( not f4 like b\Z )", {0, 1, 2, 3, 4, 7, 8, 9})
+        self._ev(r"( not f4 like \Ab )", {0, 1, 2, 3, 4, 6, 7, 8, 9})
+        self._ev(r"( not f4 like \Ab\Z )", {0, 1, 2, 3, 4, 6, 7, 8, 9})
 
     def test_01_like_07_parentheses_not(self):
         self._ev("( f1 not like a )", {0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
         self._ev("( f1 not like b )", {1, 2, 3, 4, 5, 6, 7, 8, 9})
         self._ev("( f2 not like p )", {0, 1, 4, 5, 6, 7, 8, 9})
         self._ev("( f3 not like a )", {2, 4, 5, 6, 7, 8, 9})
-        self._ev("( f3 not like a\Z )", {1, 2, 4, 5, 6, 7, 8, 9})
+        self._ev(r"( f3 not like a\Z )", {1, 2, 4, 5, 6, 7, 8, 9})
         self._ev("( f4 not like a )", {5, 6, 7, 9})
-        self._ev("( f4 not like a\Z )", {2, 4, 5, 6, 7, 8, 9})
-        self._ev("( f4 not like \Aa )", {1, 2, 5, 6, 7, 8, 9})
-        self._ev("( f4 not like \Aa\Z )", {1, 2, 3, 4, 5, 6, 7, 8, 9})
+        self._ev(r"( f4 not like a\Z )", {2, 4, 5, 6, 7, 8, 9})
+        self._ev(r"( f4 not like \Aa )", {1, 2, 5, 6, 7, 8, 9})
+        self._ev(r"( f4 not like \Aa\Z )", {1, 2, 3, 4, 5, 6, 7, 8, 9})
         self._ev("( f4 not like b )", {0, 1, 2, 3, 4, 9})
-        self._ev("( f4 not like b\Z )", {0, 1, 2, 3, 4, 7, 8, 9})
-        self._ev("( f4 not like \Ab )", {0, 1, 2, 3, 4, 6, 7, 8, 9})
-        self._ev("( f4 not like \Ab\Z )", {0, 1, 2, 3, 4, 6, 7, 8, 9})
+        self._ev(r"( f4 not like b\Z )", {0, 1, 2, 3, 4, 7, 8, 9})
+        self._ev(r"( f4 not like \Ab )", {0, 1, 2, 3, 4, 6, 7, 8, 9})
+        self._ev(r"( f4 not like \Ab\Z )", {0, 1, 2, 3, 4, 6, 7, 8, 9})
 
     def test_01_like_08_not_parentheses_not(self):
         self._ev("not ( f1 not like a )", set())
         self._ev("not ( f1 not like b )", {0})
         self._ev("not ( f2 not like p )", {2, 3})
         self._ev("not ( f3 not like a )", {0, 1, 3})
-        self._ev("not ( f3 not like a\Z )", {0, 3})
+        self._ev(r"not ( f3 not like a\Z )", {0, 3})
         self._ev("not ( f4 not like a )", {0, 1, 2, 3, 4, 8})
-        self._ev("not ( f4 not like a\Z )", {0, 1, 3})
-        self._ev("not ( f4 not like \Aa )", {0, 3, 4})
-        self._ev("not ( f4 not like \Aa\Z )", {0})
+        self._ev(r"not ( f4 not like a\Z )", {0, 1, 3})
+        self._ev(r"not ( f4 not like \Aa )", {0, 3, 4})
+        self._ev(r"not ( f4 not like \Aa\Z )", {0})
         self._ev("not ( f4 not like b )", {5, 6, 7, 8})
-        self._ev("not ( f4 not like b\Z )", {5, 6})
-        self._ev("not ( f4 not like \Ab )", {5})
-        self._ev("not ( f4 not like \Ab\Z )", {5})
+        self._ev(r"not ( f4 not like b\Z )", {5, 6})
+        self._ev(r"not ( f4 not like \Ab )", {5})
+        self._ev(r"not ( f4 not like \Ab\Z )", {5})
 
     def test_02_eq_01(self):
         self._ev("f1 eq a", set())
@@ -10006,8 +10008,8 @@ class Database:
         # Set a dictionary of field names in file named dbset.
         self.dbset = dbset
 
-    # Where.validate() calls object.exists() to see if field <dbname> is in file
-    # <dbset>.
+    # Where.validate() calls object.exists() to see if field <dbname> is
+    # in file <dbset>.
     def exists(self, dbset, dbname):
         return dbname in self.dbset[dbset]
 
@@ -10026,8 +10028,9 @@ class ProcessorsTC(unittest.TestCase):
         # Are the same methods available with the same signatures?
         msg = "Failure of this test invalidates all other tests"
 
-        # The attributes missing from Processors are methods used within Find
-        # as helpers, within other methods, which are meaningless in Processors.
+        # The attributes missing from Processors are methods used within
+        # Find as helpers, within other methods, which are meaningless
+        # in Processors.
         # Those other methods in Processors do not need the help.
         self.assertEqual(
             set(Find.__dict__) - set(Processors.__dict__),
@@ -10132,9 +10135,9 @@ if __name__ == "__main__":
     # These tests replicate Where.evaluate() processing up to point where the
     # named method has been called to allow tests on Where instance state.
     runner().run(loader(WhereClause_evaluate_index_condition_nodeTC))
-    ##runner().run(loader(WhereClause_set_non_index_node_constraintTC))
-    ##runner().run(loader(Where_evaluate_non_index_conditionsTC))
-    ##runner().run(loader(WhereClause_evaluate_node_resultTC))
+    # #runner().run(loader(WhereClause_set_non_index_node_constraintTC))
+    # #runner().run(loader(Where_evaluate_non_index_conditionsTC))
+    # #runner().run(loader(WhereClause_evaluate_node_resultTC))
 
     runner().run(loader(Where_evaluateTC))
     runner().run(loader(ProcessorsTC))

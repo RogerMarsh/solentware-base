@@ -27,7 +27,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) missing 2 required positional arguments: ",
+                    r"__init__\(\) missing 2 required positional arguments: ",
                     "'segment_number' and 'key'",
                 )
             ),
@@ -36,7 +36,7 @@ class RecordsetSegmentInt(unittest.TestCase):
         self.assertRaisesRegex(
             TypeError,
             "".join(
-                ("__init__\(\) got an unexpected keyword argument 'xxxxx'",)
+                (r"__init__\(\) got an unexpected keyword argument 'xxxxx'",)
             ),
             recordset.RecordsetSegmentInt,
             *(None, None),
@@ -70,7 +70,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "count_records\(\) takes 1 positional argument ",
+                    r"count_records\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -81,7 +81,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "current\(\) takes 1 positional argument ",
+                    r"current\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -92,7 +92,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "first\(\) takes 1 positional argument ",
+                    r"first\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -103,7 +103,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "get_position_of_record_number\(\) missing 1 required ",
+                    r"get_position_of_record_number\(\) missing 1 required ",
                     "positional argument: ",
                     "'recnum'",
                 )
@@ -114,7 +114,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "get_record_number_at_position\(\) takes 2 ",
+                    r"get_record_number_at_position\(\) takes 2 ",
                     "positional arguments but 3 were given",
                 )
             ),
@@ -125,7 +125,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "last\(\) takes 1 positional argument ",
+                    r"last\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -136,7 +136,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "next\(\) takes 1 positional argument ",
+                    r"next\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -147,7 +147,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "prev\(\) takes 1 positional argument ",
+                    r"prev\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -157,7 +157,10 @@ class RecordsetSegmentInt(unittest.TestCase):
         self.assertRaisesRegex(
             TypeError,
             "".join(
-                ("setat\(\) missing 1 required positional argument: 'record'",)
+                (
+                    r"setat\(\) missing 1 required positional ",
+                    "argument: 'record'",
+                )
             ),
             self.rsi.setat,
         )
@@ -165,7 +168,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "_empty_segment\(\) takes 1 positional argument ",
+                    r"_empty_segment\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -176,8 +179,8 @@ class RecordsetSegmentInt(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__deepcopy__\(\) missing 1 required positional argument: ",
-                    "'memo'",
+                    r"__deepcopy__\(\) missing 1 required ",
+                    "positional argument: 'memo'",
                 )
             ),
             self.rsi.__deepcopy__,
@@ -186,8 +189,8 @@ class RecordsetSegmentInt(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__contains__\(\) missing 1 required positional argument: ",
-                    "'relative_record_number'",
+                    r"__contains__\(\) missing 1 required positional ",
+                    "argument: 'relative_record_number'",
                 )
             ),
             self.rsi.__contains__,
@@ -196,7 +199,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "normalize\(\) takes from 1 to 2 ",
+                    r"normalize\(\) takes from 1 to 2 ",
                     "positional arguments but 3 were given",
                 )
             ),
@@ -207,7 +210,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "promote\(\) takes 1 positional argument ",
+                    r"promote\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -218,7 +221,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__or__\(\) missing 1 required positional argument: ",
+                    r"__or__\(\) missing 1 required positional argument: ",
                     "'other'",
                 )
             ),
@@ -228,7 +231,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__and__\(\) missing 1 required positional argument: ",
+                    r"__and__\(\) missing 1 required positional argument: ",
                     "'other'",
                 )
             ),
@@ -238,7 +241,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__xor__\(\) missing 1 required positional argument: ",
+                    r"__xor__\(\) missing 1 required positional argument: ",
                     "'other'",
                 )
             ),
@@ -248,7 +251,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "tobytes\(\) takes 1 positional argument ",
+                    r"tobytes\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),

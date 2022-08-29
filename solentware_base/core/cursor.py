@@ -117,9 +117,9 @@ class Cursor:
         Subclasses of Cursor for secondary databases, named CursorSecondary
         usually, should override this method to bind self._partial to partial.
 
-        Subclasses of Cursor for primary databases, named CursorPrimary usually,
-        should use this method because partial keys make no sense for arbitrary
-        numeric keys.
+        Subclasses of Cursor for primary databases, named CursorPrimary
+        usually, should use this method because partial keys make no sense
+        for arbitrary numeric keys.
 
         Subclasses of Cursor for recordsets built from primary or secondary
         databases should use this method because the selection criteria for

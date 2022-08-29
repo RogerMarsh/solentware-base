@@ -124,7 +124,7 @@ class Database___init__(_NoSQLdu):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) takes from 2 to 5 positional arguments ",
+                    r"__init__\(\) takes from 2 to 5 positional arguments ",
                     "but 6 were given",
                 )
             ),
@@ -140,7 +140,7 @@ class Database___init__(_NoSQLdu):
             "".join(
                 (
                     t,
-                    " argument after \*\* must be a mapping, ",
+                    r" argument after \*\* must be a mapping, ",
                     "not NoneType",
                 )
             ),
@@ -252,7 +252,7 @@ class Database_methods(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "database_cursor\(\) takes from 3 to 4 ",
+                    r"database_cursor\(\) takes from 3 to 4 ",
                     "positional arguments but 5 were given",
                 )
             ),
@@ -263,7 +263,7 @@ class Database_methods(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "start_transaction\(\) takes 1 ",
+                    r"start_transaction\(\) takes 1 ",
                     "positional argument but 2 were given",
                 )
             ),
@@ -274,7 +274,7 @@ class Database_methods(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "backout\(\) takes 1 ",
+                    r"backout\(\) takes 1 ",
                     "positional argument but 2 were given",
                 )
             ),
@@ -285,7 +285,7 @@ class Database_methods(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "commit\(\) takes 1 ",
+                    r"commit\(\) takes 1 ",
                     "positional argument but 2 were given",
                 )
             ),
@@ -296,7 +296,7 @@ class Database_methods(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "set_defer_update\(\) takes 1 ",
+                    r"set_defer_update\(\) takes 1 ",
                     "positional argument but 2 were given",
                 )
             ),
@@ -307,7 +307,7 @@ class Database_methods(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "unset_defer_update\(\) takes 1 ",
+                    r"unset_defer_update\(\) takes 1 ",
                     "positional argument but 2 were given",
                 )
             ),
@@ -318,7 +318,7 @@ class Database_methods(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "write_existence_bit_map\(\) missing 2 required ",
+                    r"write_existence_bit_map\(\) missing 2 required ",
                     "positional arguments: 'file' and 'segment'",
                 )
             ),
@@ -328,7 +328,7 @@ class Database_methods(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "new_deferred_root\(\) missing 2 required ",
+                    r"new_deferred_root\(\) missing 2 required ",
                     "positional arguments: 'file' and 'field'",
                 )
             ),
@@ -338,7 +338,7 @@ class Database_methods(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "get_ebm_segment\(\) missing 2 required ",
+                    r"get_ebm_segment\(\) missing 2 required ",
                     "positional arguments: 'ebm_control' and 'key'",
                 )
             ),
@@ -433,7 +433,7 @@ class Database_do_final_segment_deferred_updates(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "do_final_segment_deferred_updates\(\) takes 1 ",
+                    r"do_final_segment_deferred_updates\(\) takes 1 ",
                     "positional argument but 2 were given",
                 )
             ),
@@ -516,7 +516,7 @@ class Database_sort_and_write(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "sort_and_write\(\) missing 3 required ",
+                    r"sort_and_write\(\) missing 3 required ",
                     "positional arguments: 'file', 'field', and 'segment'",
                 )
             ),
@@ -643,7 +643,12 @@ class Database_sort_and_write(_NoSQLOpen):
         ae("1_1_1_5_bits" in db, True)
         ae(
             literal_eval(db["1_1_1_5_bits"].decode()),
-            b"\x0a\x0a\x0a\x0a\x0a\x0a\x0a\x0a\x0a\x0a\x0a\x0a\x0a\x0a\x0a\x0a",
+            b"".join(
+                (
+                    b"\x0a\x0a\x0a\x0a\x0a\x0a\x0a\x0a",
+                    b"\x0a\x0a\x0a\x0a\x0a\x0a\x0a\x0a",
+                )
+            ),
         )
 
 
@@ -659,7 +664,7 @@ class Database_merge(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    "merge\(\) missing 2 required ",
+                    r"merge\(\) missing 2 required ",
                     "positional arguments: 'file' and 'field'",
                 )
             ),

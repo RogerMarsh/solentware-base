@@ -24,7 +24,7 @@ class _Comparison(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__eq__\(\) missing 1 required positional argument: ",
+                    r"__eq__\(\) missing 1 required positional argument: ",
                     "'other'",
                 )
             ),
@@ -34,7 +34,7 @@ class _Comparison(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__ge__\(\) missing 1 required positional argument: ",
+                    r"__ge__\(\) missing 1 required positional argument: ",
                     "'other'",
                 )
             ),
@@ -44,7 +44,7 @@ class _Comparison(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__gt__\(\) missing 1 required positional argument: ",
+                    r"__gt__\(\) missing 1 required positional argument: ",
                     "'other'",
                 )
             ),
@@ -54,7 +54,7 @@ class _Comparison(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__le__\(\) missing 1 required positional argument: ",
+                    r"__le__\(\) missing 1 required positional argument: ",
                     "'other'",
                 )
             ),
@@ -64,7 +64,7 @@ class _Comparison(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__lt__\(\) missing 1 required positional argument: ",
+                    r"__lt__\(\) missing 1 required positional argument: ",
                     "'other'",
                 )
             ),
@@ -74,7 +74,7 @@ class _Comparison(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__ne__\(\) missing 1 required positional argument: ",
+                    r"__ne__\(\) missing 1 required positional argument: ",
                     "'other'",
                 )
             ),
@@ -395,10 +395,10 @@ class Key(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) takes 1 positional argument ",
+                    r"__init__\(\) takes 1 positional argument ",
                     "but 2 were given",
                     "|",
-                    "Key\(\) takes no arguments",
+                    r"Key\(\) takes no arguments",
                 )
             ),
             record.Key,
@@ -408,7 +408,7 @@ class Key(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "load\(\) missing 1 required positional argument: ",
+                    r"load\(\) missing 1 required positional argument: ",
                     "'key'",
                 )
             ),
@@ -418,7 +418,7 @@ class Key(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "pack\(\) takes 1 positional argument ",
+                    r"pack\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -454,10 +454,10 @@ class KeyData(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) takes 1 positional argument ",
+                    r"__init__\(\) takes 1 positional argument ",
                     "but 2 were given",
                     "|",
-                    "Key\(\) takes no arguments",
+                    r"Key\(\) takes no arguments",
                 )
             ),
             record.Key,
@@ -467,7 +467,7 @@ class KeyData(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "load\(\) missing 1 required positional argument: ",
+                    r"load\(\) missing 1 required positional argument: ",
                     "'key'",
                 )
             ),
@@ -477,7 +477,7 @@ class KeyData(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "pack\(\) takes 1 positional argument ",
+                    r"pack\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -537,10 +537,10 @@ class Value(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) takes 1 positional argument ",
+                    r"__init__\(\) takes 1 positional argument ",
                     "but 2 were given",
                     "|",
-                    "Value\(\) takes no arguments",
+                    r"Value\(\) takes no arguments",
                 )
             ),
             record.Value,
@@ -550,7 +550,7 @@ class Value(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "empty\(\) takes 1 positional argument ",
+                    r"empty\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -561,7 +561,7 @@ class Value(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "load\(\) missing 1 required positional argument: ",
+                    r"load\(\) missing 1 required positional argument: ",
                     "'value'",
                 )
             ),
@@ -571,7 +571,7 @@ class Value(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "pack\(\) takes 1 positional argument ",
+                    r"pack\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -582,7 +582,7 @@ class Value(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "pack_value\(\) takes 1 positional argument ",
+                    r"pack_value\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -593,8 +593,8 @@ class Value(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "get_field_value\(\) takes from 2 to 3 positional arguments ",
-                    "but 4 were given",
+                    r"get_field_value\(\) takes from 2 to 3 ",
+                    "positional arguments but 4 were given",
                 )
             ),
             self.value.get_field_value,
@@ -604,7 +604,7 @@ class Value(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "get_field_values\(\) takes 2 positional arguments ",
+                    r"get_field_values\(\) takes 2 positional arguments ",
                     "but 3 were given",
                 )
             ),
@@ -660,7 +660,7 @@ class ValueData(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) takes 1 positional argument ",
+                    r"__init__\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -671,7 +671,7 @@ class ValueData(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "empty\(\) takes 1 positional argument ",
+                    r"empty\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -682,7 +682,7 @@ class ValueData(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "load\(\) missing 1 required positional argument: ",
+                    r"load\(\) missing 1 required positional argument: ",
                     "'value'",
                 )
             ),
@@ -692,7 +692,7 @@ class ValueData(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "pack_value\(\) takes 1 positional argument ",
+                    r"pack_value\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -743,7 +743,7 @@ class ValueList(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) takes 1 positional argument ",
+                    r"__init__\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -754,7 +754,7 @@ class ValueList(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "load\(\) missing 1 required positional argument: ",
+                    r"load\(\) missing 1 required positional argument: ",
                     "'value'",
                 )
             ),
@@ -764,7 +764,7 @@ class ValueList(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "pack_value\(\) takes 1 positional argument ",
+                    r"pack_value\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -775,7 +775,7 @@ class ValueList(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "_empty\(\) takes 1 positional argument ",
+                    r"_empty\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -786,8 +786,8 @@ class ValueList(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "get_field_value\(\) takes from 2 to 3 positional arguments ",
-                    "but 4 were given",
+                    r"get_field_value\(\) takes from 2 to 3 ",
+                    "positional arguments but 4 were given",
                 )
             ),
             self.value.get_field_value,
@@ -797,7 +797,7 @@ class ValueList(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "get_field_values\(\) takes 2 positional arguments ",
+                    r"get_field_values\(\) takes 2 positional arguments ",
                     "but 3 were given",
                 )
             ),
@@ -856,7 +856,7 @@ class ValueText(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "load\(\) missing 1 required positional argument: ",
+                    r"load\(\) missing 1 required positional argument: ",
                     "'value'",
                 )
             ),
@@ -866,7 +866,7 @@ class ValueText(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "pack_value\(\) takes 1 positional argument ",
+                    r"pack_value\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -937,7 +937,7 @@ class Record(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) takes from 1 to 3 positional arguments ",
+                    r"__init__\(\) takes from 1 to 3 positional arguments ",
                     "but 4 were given",
                 )
             ),
@@ -948,7 +948,7 @@ class Record(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__eq__\(\) missing 1 required positional argument: ",
+                    r"__eq__\(\) missing 1 required positional argument: ",
                     "'other'",
                 )
             ),
@@ -958,7 +958,7 @@ class Record(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__ge__\(\) missing 1 required positional argument: ",
+                    r"__ge__\(\) missing 1 required positional argument: ",
                     "'other'",
                 )
             ),
@@ -968,7 +968,7 @@ class Record(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__gt__\(\) missing 1 required positional argument: ",
+                    r"__gt__\(\) missing 1 required positional argument: ",
                     "'other'",
                 )
             ),
@@ -978,7 +978,7 @@ class Record(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__le__\(\) missing 1 required positional argument: ",
+                    r"__le__\(\) missing 1 required positional argument: ",
                     "'other'",
                 )
             ),
@@ -988,7 +988,7 @@ class Record(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__lt__\(\) missing 1 required positional argument: ",
+                    r"__lt__\(\) missing 1 required positional argument: ",
                     "'other'",
                 )
             ),
@@ -998,7 +998,7 @@ class Record(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__ne__\(\) missing 1 required positional argument: ",
+                    r"__ne__\(\) missing 1 required positional argument: ",
                     "'other'",
                 )
             ),
@@ -1008,7 +1008,7 @@ class Record(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "clone\(\) takes 1 positional argument ",
+                    r"clone\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -1019,8 +1019,8 @@ class Record(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "delete_record\(\) missing 2 required positional arguments: ",
-                    "'database' and 'dbset'",
+                    r"delete_record\(\) missing 2 required ",
+                    "positional arguments: 'database' and 'dbset'",
                 )
             ),
             self.record.delete_record,
@@ -1029,7 +1029,8 @@ class Record(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "edit_record\(\) missing 4 required positional arguments: ",
+                    r"edit_record\(\) missing 4 required positional ",
+                    "arguments: ",
                     "'database', 'dbset', 'dbname', and 'newrecord'",
                 )
             ),
@@ -1039,7 +1040,7 @@ class Record(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "empty\(\) takes 1 positional argument ",
+                    r"empty\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -1050,8 +1051,8 @@ class Record(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "get_primary_key_from_index_record\(\) takes 1 positional ",
-                    "argument but 2 were given",
+                    r"get_primary_key_from_index_record\(\) ",
+                    "takes 1 positional argument but 2 were given",
                 )
             ),
             self.record.get_primary_key_from_index_record,
@@ -1061,7 +1062,7 @@ class Record(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "get_keys\(\) takes from 1 to 3 positional arguments ",
+                    r"get_keys\(\) takes from 1 to 3 positional arguments ",
                     "but 4 were given",
                 )
             ),
@@ -1072,7 +1073,8 @@ class Record(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "load_instance\(\) missing 4 required positional arguments: ",
+                    r"load_instance\(\) missing 4 required positional ",
+                    "arguments: ",
                     "'database', 'dbset', 'dbname', and 'record'",
                 )
             ),
@@ -1082,7 +1084,7 @@ class Record(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "load_key\(\) missing 1 required positional argument: ",
+                    r"load_key\(\) missing 1 required positional argument: ",
                     "'key'",
                 )
             ),
@@ -1092,8 +1094,8 @@ class Record(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "load_record\(\) missing 1 required positional argument: ",
-                    "'record'",
+                    r"load_record\(\) missing 1 required ",
+                    "positional argument: 'record'",
                 )
             ),
             self.record.load_record,
@@ -1102,8 +1104,8 @@ class Record(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "load_value\(\) missing 1 required positional argument: ",
-                    "'value'",
+                    r"load_value\(\) missing 1 required ",
+                    "positional argument: 'value'",
                 )
             ),
             self.record.load_value,
@@ -1112,7 +1114,7 @@ class Record(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "set_packed_value_and_indexes\(\) takes 1 positional ",
+                    r"set_packed_value_and_indexes\(\) takes 1 positional ",
                     "argument but 2 were given",
                 )
             ),
@@ -1123,8 +1125,8 @@ class Record(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "put_record\(\) missing 2 required positional arguments: ",
-                    "'database' and 'dbset'",
+                    r"put_record\(\) missing 2 required ",
+                    "positional arguments: 'database' and 'dbset'",
                 )
             ),
             self.record.put_record,
@@ -1133,8 +1135,8 @@ class Record(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "set_database\(\) missing 1 required positional argument: ",
-                    "'database'",
+                    r"set_database\(\) missing 1 required ",
+                    "positional argument: 'database'",
                 )
             ),
             self.record.set_database,
@@ -1143,7 +1145,7 @@ class Record(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "packed_key\(\) takes 1 positional ",
+                    r"packed_key\(\) takes 1 positional ",
                     "argument but 2 were given",
                 )
             ),
@@ -1154,7 +1156,7 @@ class Record(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "packed_value\(\) takes 1 positional ",
+                    r"packed_value\(\) takes 1 positional ",
                     "argument but 2 were given",
                 )
             ),
@@ -1165,7 +1167,7 @@ class Record(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "get_srvalue\(\) takes 1 positional ",
+                    r"get_srvalue\(\) takes 1 positional ",
                     "argument but 2 were given",
                 )
             ),
@@ -1176,8 +1178,8 @@ class Record(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "get_field_value\(\) missing 1 required positional argument: ",
-                    "'fieldname'",
+                    r"get_field_value\(\) missing 1 required ",
+                    "positional argument: 'fieldname'",
                 )
             ),
             self.record.get_field_value,
@@ -1186,7 +1188,7 @@ class Record(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "get_field_value\(\) takes from 2 to 3 positional ",
+                    r"get_field_value\(\) takes from 2 to 3 positional ",
                     "arguments but 4 were given",
                 )
             ),
@@ -1197,8 +1199,8 @@ class Record(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "get_field_values\(\) missing 1 required positional argument: ",
-                    "'fieldname'",
+                    r"get_field_values\(\) missing 1 required ",
+                    "positional argument: 'fieldname'",
                 )
             ),
             self.record.get_field_values,
@@ -1480,7 +1482,7 @@ class RecorddBaseIII(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) takes from 1 to 3 positional arguments ",
+                    r"__init__\(\) takes from 1 to 3 positional arguments ",
                     "but 4 were given",
                 )
             ),
@@ -1491,7 +1493,7 @@ class RecorddBaseIII(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "packed_value\(\) takes 1 positional ",
+                    r"packed_value\(\) takes 1 positional ",
                     "argument but 2 were given",
                 )
             ),
@@ -1502,7 +1504,7 @@ class RecorddBaseIII(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "get_srvalue\(\) takes 1 positional ",
+                    r"get_srvalue\(\) takes 1 positional ",
                     "argument but 2 were given",
                 )
             ),
@@ -1544,7 +1546,7 @@ class RecordText(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) takes from 1 to 3 positional arguments ",
+                    r"__init__\(\) takes from 1 to 3 positional arguments ",
                     "but 4 were given",
                 )
             ),
@@ -1555,7 +1557,7 @@ class RecordText(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "packed_value\(\) takes 1 positional ",
+                    r"packed_value\(\) takes 1 positional ",
                     "argument but 2 were given",
                 )
             ),
@@ -1566,7 +1568,7 @@ class RecordText(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "get_srvalue\(\) takes 1 positional ",
+                    r"get_srvalue\(\) takes 1 positional ",
                     "argument but 2 were given",
                 )
             ),

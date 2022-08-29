@@ -93,7 +93,7 @@ class FileSpec_02(unittest.TestCase):
             {
                 "a": {
                     "primary": "a",
-                    #'ddname': 'DDNAME1',
+                    # 'ddname': 'DDNAME1',
                     "file": "a.dpt",
                     "secondary": {"b": None},
                     "fields": {"a": None, "B": {}},
@@ -109,7 +109,7 @@ class FileSpec_02(unittest.TestCase):
                 },
                 "atwo": {
                     "primary": "atwo",
-                    #'ddname': 'DDNAME2',
+                    # 'ddname': 'DDNAME2',
                     "file": "atwo.dpt",
                     "secondary": {"btwo": None},
                     "fields": {"atwo": None, "Btwo": {}},
@@ -182,7 +182,7 @@ class FileSpec_04(unittest.TestCase):
             {
                 "a": {
                     "primary": "a",
-                    #'ddname': 'DDNAME1',
+                    # 'ddname': 'DDNAME1',
                     "file": "a.dpt",
                     "secondary": {"b": None},
                     "fields": {"a": None, "B": {}},
@@ -198,7 +198,7 @@ class FileSpec_04(unittest.TestCase):
                 },
                 "atwo": {
                     "primary": "atwo",
-                    #'ddname': 'DDNAME2',
+                    # 'ddname': 'DDNAME2',
                     "file": "atwo.dpt",
                     "secondary": {"btwo": None},
                     "fields": {"atwo": None, "Btwo": {}},

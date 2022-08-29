@@ -50,7 +50,7 @@ class Database___init__(_SQLitedu):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) takes from 2 to 5 positional arguments ",
+                    r"__init__\(\) takes from 2 to 5 positional arguments ",
                     "but 6 were given",
                 )
             ),
@@ -66,7 +66,7 @@ class Database___init__(_SQLitedu):
             "".join(
                 (
                     t,
-                    " argument after \*\* must be a mapping, ",
+                    r" argument after \*\* must be a mapping, ",
                     "not NoneType",
                 )
             ),
@@ -173,7 +173,7 @@ class Database_methods(_SQLiteOpen):
             TypeError,
             "".join(
                 (
-                    "database_cursor\(\) takes from 3 to 4 ",
+                    r"database_cursor\(\) takes from 3 to 4 ",
                     "positional arguments but 5 were given",
                 )
             ),
@@ -184,7 +184,7 @@ class Database_methods(_SQLiteOpen):
             TypeError,
             "".join(
                 (
-                    "unset_defer_update\(\) takes 1 ",
+                    r"unset_defer_update\(\) takes 1 ",
                     "positional argument but 2 were given",
                 )
             ),
@@ -195,7 +195,7 @@ class Database_methods(_SQLiteOpen):
             TypeError,
             "".join(
                 (
-                    "write_existence_bit_map\(\) missing 2 required ",
+                    r"write_existence_bit_map\(\) missing 2 required ",
                     "positional arguments: 'file' and 'segment'",
                 )
             ),
@@ -205,7 +205,7 @@ class Database_methods(_SQLiteOpen):
             TypeError,
             "".join(
                 (
-                    "new_deferred_root\(\) missing 2 required ",
+                    r"new_deferred_root\(\) missing 2 required ",
                     "positional arguments: 'file' and 'field'",
                 )
             ),
@@ -215,7 +215,7 @@ class Database_methods(_SQLiteOpen):
             TypeError,
             "".join(
                 (
-                    "set_defer_update\(\) takes 1 ",
+                    r"set_defer_update\(\) takes 1 ",
                     "positional argument but 2 were given",
                 )
             ),
@@ -324,7 +324,7 @@ class Database__rows(_SQLitedu):
             TypeError,
             "".join(
                 (
-                    "_rows\(\) missing 2 required ",
+                    r"_rows\(\) missing 2 required ",
                     "positional arguments: 'segvalues' and 'segment'",
                 )
             ),
@@ -351,7 +351,7 @@ class Database_do_final_segment_deferred_updates(_SQLiteOpen):
             TypeError,
             "".join(
                 (
-                    "do_final_segment_deferred_updates\(\) takes 1 ",
+                    r"do_final_segment_deferred_updates\(\) takes 1 ",
                     "positional argument but 2 were given",
                 )
             ),
@@ -450,7 +450,7 @@ class Database_sort_and_write(_SQLiteOpen):
             TypeError,
             "".join(
                 (
-                    "sort_and_write\(\) missing 3 required ",
+                    r"sort_and_write\(\) missing 3 required ",
                     "positional arguments: 'file', 'field', and 'segment'",
                 )
             ),
@@ -614,7 +614,8 @@ class Database_sort_and_write(_SQLiteOpen):
         cursor.execute(
             " ".join(
                 (
-                    "insert into file1_field1 ( field1 , Segment , RecordCount",
+                    "insert into file1_field1",
+                    "( field1 , Segment , RecordCount",
                     ", file1 )",
                     "values ( ? , ? , ? , ? )",
                 )
@@ -624,7 +625,8 @@ class Database_sort_and_write(_SQLiteOpen):
         cursor.execute(
             " ".join(
                 (
-                    "insert into file1_field1 ( field1 , Segment , RecordCount",
+                    "insert into file1_field1",
+                    "( field1 , Segment , RecordCount",
                     ", file1 )",
                     "values ( ? , ? , ? , ? )",
                 )
@@ -688,7 +690,7 @@ class Database_merge(_SQLiteOpen):
             TypeError,
             "".join(
                 (
-                    "merge\(\) missing 2 required ",
+                    r"merge\(\) missing 2 required ",
                     "positional arguments: 'file' and 'field'",
                 )
             ),

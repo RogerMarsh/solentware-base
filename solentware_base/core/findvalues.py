@@ -26,7 +26,7 @@ class FindValues:
         self._dbset = dbset
 
     def find_values(self, valuesclause):
-        """Put values meeting valuesclause specification in valuesclause.result."""
+        """Put values meeting valuesclause condition in valuesclause.result."""
         valuesclause.result = list(
             self._db.find_values(valuesclause, self._dbset)
         )

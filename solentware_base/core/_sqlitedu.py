@@ -276,8 +276,8 @@ class Database(_databasedu.Database):
             )
 
             # Update (record count, key reference) statement
-            # for (index value, segment number) used when record count increased
-            # from 1.
+            # for (index value, segment number) used when record count
+            # increased from 1.
             update_count_and_reference = " ".join(
                 (
                     "update",
@@ -376,8 +376,9 @@ class Database(_databasedu.Database):
 
     def new_deferred_root(self, file, field):
         """Make new temporary table for deferred updates and close current."""
-        # The temporary tables go in /tmp, at least in OpenBSD where the default
-        # mount points allocate far too little space to /tmp for this program.
+        # The temporary tables go in /tmp, at least in OpenBSD where the
+        # default mount points allocate far too little space to /tmp for this
+        # program.
         # The FreeBSD default layout is now a single '/' area, so the space is
         # available but it is not clear which '/<any>' gets used.
         tablename = SUBFILE_DELIMITER.join((file, field))

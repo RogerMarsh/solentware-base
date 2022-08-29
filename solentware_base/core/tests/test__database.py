@@ -35,8 +35,8 @@ class Database_01(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "delete_instance\(\) missing 2 required positional arguments: ",
-                    "'dbset' and 'instance'",
+                    r"delete_instance\(\) missing 2 required ",
+                    "positional arguments: 'dbset' and 'instance'",
                 )
             ),
             self.database.delete_instance,
@@ -45,8 +45,8 @@ class Database_01(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "edit_instance\(\) missing 2 required positional arguments: ",
-                    "'dbset' and 'instance'",
+                    r"edit_instance\(\) missing 2 required ",
+                    "positional arguments: 'dbset' and 'instance'",
                 )
             ),
             self.database.edit_instance,
@@ -55,8 +55,8 @@ class Database_01(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "put_instance\(\) missing 2 required positional arguments: ",
-                    "'dbset' and 'instance'",
+                    r"put_instance\(\) missing 2 required ",
+                    "positional arguments: 'dbset' and 'instance'",
                 )
             ),
             self.database.put_instance,
@@ -65,8 +65,8 @@ class Database_01(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "record_finder\(\) takes from 2 to 3 positional arguments ",
-                    "but 4 were given",
+                    r"record_finder\(\) takes from 2 to 3 ",
+                    "positional arguments but 4 were given",
                 )
             ),
             self.database.record_finder,
@@ -76,8 +76,8 @@ class Database_01(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "record_selector\(\) missing 1 required positional argument: ",
-                    "'statement'",
+                    r"record_selector\(\) missing 1 required ",
+                    "positional argument: 'statement'",
                 )
             ),
             self.database.record_selector,
@@ -86,8 +86,8 @@ class Database_01(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "values_finder\(\) missing 1 required positional argument: ",
-                    "'dbset'",
+                    r"values_finder\(\) missing 1 required ",
+                    "positional argument: 'dbset'",
                 )
             ),
             self.database.values_finder,
@@ -96,8 +96,8 @@ class Database_01(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "values_selector\(\) missing 1 required positional argument: ",
-                    "'statement'",
+                    r"values_selector\(\) missing 1 required ",
+                    "positional argument: 'statement'",
                 )
             ),
             self.database.values_selector,
@@ -106,8 +106,9 @@ class Database_01(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "make_segment\(\) missing 4 required positional arguments: ",
-                    "'key', 'segment_number', 'record_count', and 'records'",
+                    r"make_segment\(\) missing 4 required ",
+                    "positional arguments: 'key', 'segment_number', ",
+                    "'record_count', and 'records'",
                 )
             ),
             self.database.make_segment,
@@ -116,7 +117,7 @@ class Database_01(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "set_segment_size\(\) takes 1 positional argument ",
+                    r"set_segment_size\(\) takes 1 positional argument ",
                     "but 2 were given",
                 )
             ),
@@ -127,7 +128,7 @@ class Database_01(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "exists\(\) missing 2 required positional arguments: ",
+                    r"exists\(\) missing 2 required positional arguments: ",
                     "'file' and 'field'",
                 )
             ),
@@ -137,8 +138,8 @@ class Database_01(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "is_primary\(\) missing 2 required positional arguments: ",
-                    "'file' and 'field'",
+                    r"is_primary\(\) missing 2 required ",
+                    "positional arguments: 'file' and 'field'",
                 )
             ),
             self.database.is_primary,
@@ -147,7 +148,7 @@ class Database_01(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "is_recno\(\) missing 2 required positional arguments: ",
+                    r"is_recno\(\) missing 2 required positional arguments: ",
                     "'file' and 'field'",
                 )
             ),
@@ -157,8 +158,8 @@ class Database_01(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "repair_cursor\(\) missing 1 required positional argument: ",
-                    "'oldcursor'",
+                    r"repair_cursor\(\) missing 1 required ",
+                    "positional argument: 'oldcursor'",
                 )
             ),
             self.database.repair_cursor,
@@ -167,8 +168,8 @@ class Database_01(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "allocate_and_open_contexts\(\) takes from 1 to 2 positional ",
-                    "arguments but 3 were given",
+                    r"allocate_and_open_contexts\(\) takes from 1 to 2 ",
+                    "positional arguments but 3 were given",
                 )
             ),
             self.database.allocate_and_open_contexts,
@@ -178,8 +179,8 @@ class Database_01(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "allocate_and_open_contexts\(\) got an unexpected keyword ",
-                    "argument 'xxx'",
+                    r"allocate_and_open_contexts\(\) got an unexpected ",
+                    "keyword argument 'xxx'",
                 )
             ),
             self.database.allocate_and_open_contexts,
@@ -189,8 +190,8 @@ class Database_01(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "open_database_contexts\(\) takes from 1 to 2 positional ",
-                    "arguments but 3 were given",
+                    r"open_database_contexts\(\) takes from 1 to 2 ",
+                    "positional arguments but 3 were given",
                 )
             ),
             self.database.open_database_contexts,
@@ -200,7 +201,7 @@ class Database_01(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "open_database_contexts\(\) got an unexpected keyword ",
+                    r"open_database_contexts\(\) got an unexpected keyword ",
                     "argument 'xxx'",
                 )
             ),
@@ -641,8 +642,9 @@ class Database_05_put_instance_03(_Database_05_put_instance):
 class Database_06_subclass_methods(unittest.TestCase):
     def setUp(self):
         class D(_database.Database):
-            # Define stub methods expected in _db.Database and _sqlite.Database,
-            # but only test is existence by comparison of dir()s.
+            # Define stub methods expected in _db.Database and
+            # _sqlite.Database, but only test is existence by comparison
+            # of dir()s.
             def get_high_record(self, dbset):
                 return 50000
 
@@ -846,7 +848,7 @@ class ExistenceBitmapControl(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "__init__\(\) missing 2 required positional arguments: ",
+                    r"__init__\(\) missing 2 required positional arguments: ",
                     "'file' and 'database'",
                 )
             ),

@@ -557,7 +557,8 @@ class Database(_database.Database):
             return 0
         return high_record[0] + 1
 
-    # high_record will become high_record_number to fit changed get_high_record.
+    # high_record will become high_record_number to fit changed
+    # get_high_record method.
     def note_freed_record_number_segment(
         self, dbset, segment, record_number_in_segment, high_record
     ):
@@ -795,7 +796,9 @@ class Database(_database.Database):
                 db[segment_table_key] = repr(segment_table)
                 return
             # Cheat a little rather than say:
-            # segment_records = segment_records.normalize(use_upper_limit=False)
+            # segment_records = segment_records.normalize(
+            #    use_upper_limit=False
+            # )
             rsl = RecordsetSegmentList(segment, key)
             rsl.list.extend(segment_records.bitarray.search(SINGLEBIT))
             db[segment_records_key] = repr(rsl.tobytes())
@@ -837,7 +840,8 @@ class Database(_database.Database):
             if len(segment_table):
                 db[segment_table_key] = repr(segment_table)
             else:
-                # Delete segment_table_key record before deleting key from tree.
+                # Delete segment_table_key record before deleting key
+                # from tree.
                 del db[segment_table_key]
                 if SUBFILE_DELIMITER.join((file, field)) in self.trees:
                     self.trees[SUBFILE_DELIMITER.join((file, field))].delete(
@@ -2424,12 +2428,12 @@ class ExistenceBitmapControl(_database.ExistenceBitmapControl):
 
         # Cannot do database.get(...) because it does not return None if key
         # does not exist, and unqlite calls this method fetch(...).
-        # ebm_table is supposed to be a set, but literal_eval(repr(set())) gives
-        # a ValueError exception. However literal_eval(repr(set((1,)))), a non
-        # empty set in other words, is fine. repr(set((1, {2,3}))) gives a
-        # TypeError, unhashable type so I thought I may have to move to json to
-        # do this data storage, but json.dumps(set((1, {2,3}))) gives the same
-        # TypeError exception.
+        # ebm_table is supposed to be a set, but literal_eval(repr(set()))
+        # gives a ValueError exception. However literal_eval(repr(set((1,)))),
+        # a non empty set in other words, is fine. repr(set((1, {2,3}))) gives
+        # a TypeError, unhashable type so I thought I may have to move to json
+        # to do this data storage, but json.dumps(set((1, {2,3}))) gives the
+        # same TypeError exception.
         # The code below assumes the idea:
         # t = ()
         # try:
@@ -2566,21 +2570,21 @@ class SegmentsetCursor:
         return segment_number in self.segments
 
     def first(self):
-        """Return segment number of first segment in segment number order."""
+        """Return segment number of first segment in number order."""
         if not self.sorted_segment_numbers:
             return None
         self.current_segment_number = self.sorted_segment_numbers[0]
         return self.current_segment_number
 
     def last(self):
-        """Return segment number of last segment in segment number order."""
+        """Return segment number of last segment in number order."""
         if not self.sorted_segment_numbers:
             return None
         self.current_segment_number = self.sorted_segment_numbers[-1]
         return self.current_segment_number
 
     def next(self):
-        """Return segment number of next segment in segment number order."""
+        """Return segment number of next segment in number order."""
         if self.current_segment_number is None:
             return self.first()
         point = bisect_right(
@@ -2592,7 +2596,7 @@ class SegmentsetCursor:
         return self.current_segment_number
 
     def prev(self):
-        """Return segment number of previous segment in segment number order."""
+        """Return segment number of previous segment in number order."""
         if self.current_segment_number is None:
             return self.last()
         point = bisect_left(
@@ -2611,7 +2615,7 @@ class SegmentsetCursor:
         return self.get_current_segment()
 
     def get_current_segment(self):
-        """Return segment for current segment number in segment number order."""
+        """Return segment for current segment number."""
         segment_number = self.current_segment_number
         segment_type = self.segments[segment_number][0]
         key = self._values_index[-1][len(SUBFILE_DELIMITER) :]

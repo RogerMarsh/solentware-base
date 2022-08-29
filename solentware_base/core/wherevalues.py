@@ -434,7 +434,11 @@ class ValuesClause:
 
 
 def _trim(string):
-    """Remove one leading and trailing ' or " used in values with whitespace."""
+    """Return string with one leading and trailing ' or " removed.
+
+    The two quote characters allow values containing spaces.
+
+    """
     if string[0] in "'\"":
         return string[1:-1]
     return string

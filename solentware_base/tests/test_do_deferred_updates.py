@@ -18,7 +18,7 @@ class DoDeferredUpdates(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "do_deferred_updates\(\) missing 3 required positional ",
+                    r"do_deferred_updates\(\) missing 3 required positional ",
                     "arguments: 'pyscript', 'databasepath', and 'filepath'",
                 )
             ),
