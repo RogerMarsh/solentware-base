@@ -79,6 +79,7 @@ class CreateDatabase:
 
     def __init__(self, title=None, engines=None):
         """Build the user interface."""
+        self._bindings = {}
         root = tkinter.Tk()
         root.wm_title(title if title else "Create Database")
         root.wm_resizable(width=tkinter.FALSE, height=tkinter.FALSE)
@@ -166,8 +167,12 @@ class CreateDatabase:
         self.segmentsizebytes = segmentsizebytes
         self.database = database
         self.set_menu_and_entry_events_for_create_database(True)
-        entry.bind("<ButtonPress-3>", self.show_menu)
-        text.bind("<ButtonPress-3>", self.show_menu)
+        self._bindings[entry, "<ButtonPress-3>"] = entry.bind(
+            "<ButtonPress-3>", self.show_menu
+        )
+        self._bindings[text, "<ButtonPress-3>"] = text.bind(
+            "<ButtonPress-3>", self.show_menu
+        )
         if dptapi is not None:
             self.insert_text(
                 "".join(
@@ -367,31 +372,37 @@ class CreateDatabase:
             menu.delete(0, tkinter.END)
         for entry in (self.text,):
             self._bind_for_scrolling_only(entry)
+        sequence_map = (
+            ("<Alt-KeyPress-F5>", self.select_database_file),
+            ("<Alt-KeyPress-F4>", self.create_folder_and_database),
+            ("<KeyPress-Return>", self.create_folder_and_database),
+        )
+        bindings = self._bindings
         for entry in self.entry, self.text:
-            entry.bind(
-                "<Alt-KeyPress-F5>",
-                "" if not active else self.select_database_file,
-            )
-            entry.bind(
-                "<Alt-KeyPress-F4>",
-                "" if not active else self.create_folder_and_database,
-            )
-            entry.bind(
-                "<KeyPress-Return>",
-                "" if not active else self.create_folder_and_database,
-            )
+            for sequence, function in sequence_map:
+                key = (entry, sequence)
+                if key in bindings:
+                    entry.unbind(sequence, funcid=bindings[key])
+                callback = "" if not active else function
+                bindings[key] = entry.bind(sequence, callback)
 
-    @staticmethod
-    def _bind_for_scrolling_only(widget):
-        widget.bind("<KeyPress>", "break")
-        widget.bind("<Home>", "return")
-        widget.bind("<Left>", "return")
-        widget.bind("<Up>", "return")
-        widget.bind("<Right>", "return")
-        widget.bind("<Down>", "return")
-        widget.bind("<Prior>", "return")
-        widget.bind("<Next>", "return")
-        widget.bind("<End>", "return")
+    def _bind_for_scrolling_only(self, widget):
+        bindings = self._bindings
+        for sequence, return_ in (
+            ("<KeyPress>", "break"),
+            ("<Home>", None),
+            ("<Left>", None),
+            ("<Up>", None),
+            ("<Right>", None),
+            ("<Down>", None),
+            ("<Prior>", None),
+            ("<Next>", None),
+            ("<End>", None),
+        ):
+            key = (widget, sequence)
+            if key in bindings:
+                widget.unbind(sequence, funcid=bindings[key])
+            bindings[key] = widget.bind(sequence, lambda e: return_)
 
 
 if __name__ == "__main__":
