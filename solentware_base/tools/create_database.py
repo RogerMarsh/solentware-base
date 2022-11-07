@@ -63,6 +63,12 @@ except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     gnu = None
 
 
+# A small segment size can be convenient for tests.  The smallest it can be
+# is 16 to allow for full flexibility on conversion to and from lists, and
+# for convenient eyeballing of segment bitmaps.
+SEGMENT_SIZE_BYTES_FOR_TESTS = 16
+
+
 class CreateDatabaseError(Exception):
     """Exception class for CreateDatabase."""
 
@@ -92,7 +98,9 @@ class CreateDatabase:
         )
         tkinter.ttk.Label(
             master=root,
-            text="Between 500 and 8192, or 16 (intended for tests)",
+            text=str(SEGMENT_SIZE_BYTES_FOR_TESTS).join(
+                ("Between 500 and 8192, or ", " (intended for tests)")
+            )
         ).grid(row=1, column=2, columnspan=2)
         tkinter.ttk.Label(master=root, text="Database engines").grid(
             row=2, column=0, rowspan=3
@@ -229,6 +237,8 @@ class CreateDatabase:
         engine = self.engine_list[int(self.database.get())]
         engine_database_class = self.engines[engine]
         ssb = int(self.segmentsizebytes.get())
+        if ssb == SEGMENT_SIZE_BYTES_FOR_TESTS:
+            ssb = None
         path = self.directory.get()
         if dptapi is engine:
             database = engine_database_class(path, allowcreate=True)
@@ -263,11 +273,11 @@ class CreateDatabase:
                 )
                 return
             ssb = int(self.segmentsizebytes.get())
-            if ssb > 8192 or ssb < 500 and ssb != 16:
-                msg = " ".join(
+            if ssb > 8192 or ssb < 500 and ssb != SEGMENT_SIZE_BYTES_FOR_TESTS:
+                msg = str(SEGMENT_SIZE_BYTES_FOR_TESTS).join(
                     (
-                        "Segment size must be between 500 and 8192,",
-                        "or 16 (intended for testing).",
+                        "Segment size must be between 500 and 8192, or ",
+                        " (intended for testing).",
                     )
                 )
                 self.report_action_or_error((msg,))
