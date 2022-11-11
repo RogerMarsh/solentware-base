@@ -100,7 +100,7 @@ class CreateDatabase:
             master=root,
             text=str(SEGMENT_SIZE_BYTES_FOR_TESTS).join(
                 ("Between 500 and 8192, or ", " (intended for tests)")
-            )
+            ),
         ).grid(row=1, column=2, columnspan=2)
         tkinter.ttk.Label(master=root, text="Database engines").grid(
             row=2, column=0, rowspan=3
