@@ -51,6 +51,10 @@ try:
 except ImportError:
     pass
 try:
+    from ... import berkeleydb_database
+except ImportError:
+    pass
+try:
     from ... import dpt_database
 except ImportError:
     pass
