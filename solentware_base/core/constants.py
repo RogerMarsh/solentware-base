@@ -20,6 +20,7 @@ UNQLITE_MODULE = "unqlite"
 VEDIS_MODULE = "vedis"
 GNU_MODULE = "dbm.gnu"
 NDBM_MODULE = "dbm.ndbm"
+DB_TCL_MODULE = "db_tcl"
 
 SQLITE_VALUE_COLUMN = "Value"
 # Notes on SQLITE_VALUE_COLUMN from a Berkeley DB perspective.

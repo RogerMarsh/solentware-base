@@ -50,6 +50,13 @@ try:
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     bsddb3 = None
 try:
+    from .. import db_tcl
+
+    if db_tcl.tcl_tk_call is None:
+        db_tcl = None
+except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
+    db_tcl = None
+try:
     from dptdb import dptapi
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     dptapi = None
@@ -133,6 +140,7 @@ class CreateDatabase:
                 dptapi,
                 berkeleydb,
                 bsddb3,
+                db_tcl,
                 vedis,
                 unqlite,
                 apsw,
@@ -461,6 +469,13 @@ if __name__ == "__main__":
             bsddb3_database = None
     else:
         bsddb3_database = None
+    if db_tcl:
+        try:
+            from .. import db_tkinter_database
+        except ImportError:
+            db_tkinter_database = None
+    else:
+        db_tkinter_database = None
     if dptapi:
         try:
             from .. import dpt_database
@@ -495,6 +510,8 @@ if __name__ == "__main__":
                 engines[berkeleydb] = berkeleydb_database.Database
             if bsddb3:
                 engines[bsddb3] = bsddb3_database.Database
+            if db_tcl:
+                engines[db_tcl] = db_tkinter_database.Database
             if vedis:
                 engines[vedis] = vedis_database.Database
             if unqlite:

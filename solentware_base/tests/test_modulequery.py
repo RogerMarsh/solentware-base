@@ -59,6 +59,7 @@ class Modulequery(unittest.TestCase):
                         "dptdb.dptapi",
                         "berkeleydb",
                         "bsddb3",
+                        "db_tcl",
                         "vedis",
                         "unqlite",
                         "apsw",
@@ -70,6 +71,7 @@ class Modulequery(unittest.TestCase):
                     (
                         "berkeleydb",
                         "bsddb3",
+                        "db_tcl",
                         "vedis",
                         "unqlite",
                         "apsw",
@@ -85,6 +87,7 @@ class Modulequery(unittest.TestCase):
                         "dptdb.dptapi",
                         "berkeleydb",
                         "bsddb3",
+                        "db_tcl",
                         "vedis",
                         "unqlite",
                         "apsw",
@@ -97,6 +100,7 @@ class Modulequery(unittest.TestCase):
                     (
                         "berkeleydb",
                         "bsddb3",
+                        "db_tcl",
                         "vedis",
                         "unqlite",
                         "apsw",

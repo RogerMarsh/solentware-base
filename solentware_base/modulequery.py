@@ -36,6 +36,10 @@ unqlite is made available if installed.
 'allow_vedis', '-v'
 vedis is made available if installed.
 
+'allow_tcl', 'allow_tkinter', '-t'
+Berkeley DB (db) is made available via tkinter if the tcl interface to db
+is configured in the installed db.
+
 """
 import sys
 import os
@@ -106,6 +110,13 @@ if _allow("allow_gnu") or _allow("-g"):
         gnu = None
 else:
     gnu = None
+if _allow("allow_tcl") or _allow("allow_tkinter") or _allow("-t"):
+    try:
+        from . import db_tcl
+    except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
+        db_tcl = None
+else:
+    db_tcl = None
 
 # Linters may say this import is in the wrong place.
 # This appears to follow from the option to not allow some imports.
@@ -120,6 +131,7 @@ from .core.constants import (
     VEDIS_MODULE,
     GNU_MODULE,
     NDBM_MODULE,
+    DB_TCL_MODULE,
 )
 
 if _deny_sqlite3:
@@ -128,6 +140,7 @@ if _deny_sqlite3:
             DPT_MODULE,
             BERKELEYDB_MODULE,
             BSDDB3_MODULE,
+            DB_TCL_MODULE,
             VEDIS_MODULE,
             UNQLITE_MODULE,
             APSW_MODULE,
@@ -136,6 +149,7 @@ if _deny_sqlite3:
         DATABASE_MODULES_IN_DEFAULT_PREFERENCE_ORDER = (
             BERKELEYDB_MODULE,
             BSDDB3_MODULE,
+            DB_TCL_MODULE,
             VEDIS_MODULE,
             UNQLITE_MODULE,
             APSW_MODULE,
@@ -148,6 +162,7 @@ else:
             DPT_MODULE,
             BERKELEYDB_MODULE,
             BSDDB3_MODULE,
+            DB_TCL_MODULE,
             VEDIS_MODULE,
             UNQLITE_MODULE,
             APSW_MODULE,
@@ -157,6 +172,7 @@ else:
         DATABASE_MODULES_IN_DEFAULT_PREFERENCE_ORDER = (
             BERKELEYDB_MODULE,
             BSDDB3_MODULE,
+            DB_TCL_MODULE,
             VEDIS_MODULE,
             UNQLITE_MODULE,
             APSW_MODULE,
@@ -186,6 +202,7 @@ def installed_database_modules():
         apsw,
         berkeleydb,
         bsddb3,
+        db_tcl,
         dptapi,
         ndbm,
         gnu,
@@ -194,6 +211,8 @@ def installed_database_modules():
             dbm[module.__name__] = module
     if dbm[BERKELEYDB_MODULE] and dbm[BSDDB3_MODULE]:
         dbm[BSDDB3_MODULE] = False
+    if dbm[BERKELEYDB_MODULE] or dbm[BSDDB3_MODULE]:
+        dbm[DB_TCL_MODULE] = False
     if dbm[APSW_MODULE] and dbm[SQLITE3_MODULE]:
         dbm[SQLITE3_MODULE] = False
     return {d: m for d, m in dbm.items() if m}
@@ -287,7 +306,57 @@ def modules_for_existing_databases(folder, filespec):
                     except module.db.DBInvalidArgError:
                         dbm[name] = False
                         break
+        elif name == DB_TCL_MODULE:
+            filepath = os.path.join(folder, os.path.split(folder)[1])
+            command = ["berkdb", "open", "-rdonly", "--"]
+            if os.path.isfile(filepath):
+                for filename in filespec:
+                    try:
+                        dbo = None
+                        try:
+                            dbo = module.tcl_tk_call(
+                                tuple(command + [filepath, filename])
+                            )
 
+                        # Catch cases where 'filename' is not a database
+                        # in 'filepath'.  (module.db.DBNoSuchFileError)
+                        except module.tkinter.TclError:
+                            continue
+
+                        finally:
+                            if dbo:
+                                module.tcl_tk_call((dbo, "close"))
+                        dbm[name] = module
+
+                    # Catch cases where 'filepath' is not a Berkeley DB
+                    # database.  (module.db.DBInvalidArgError)
+                    except module.TclError:
+                        dbm[name] = False
+                        break
+
+            else:
+                for filename in filespec:
+                    filepath = os.path.join(folder, filename)
+                    try:
+                        dbo = None
+                        try:
+                            dbo = module.tcl_tk_call(
+                                tuple(command + [filepath])
+                            )
+
+                        # Catch cases where 'filepath' does not exist.
+                        except module.tkinter.TclError:
+                            continue
+
+                        finally:
+                            if dbo:
+                                module.tcl_tk_call((dbo, "close"))
+                        dbm[name] = module
+
+                    # Catch cases where filepath is not a Berkeley DB database.
+                    except module.TclError:
+                        dbm[name] = False
+                        break
         elif name == VEDIS_MODULE:
             filepath = os.path.join(folder, os.path.split(folder)[1])
             if os.path.isfile(filepath):
@@ -384,7 +453,8 @@ def modules_for_existing_databases(folder, filespec):
     module_sets = {
         (SQLITE3_MODULE, APSW_MODULE): set(),
         (DPT_MODULE,): set(),
-        (BERKELEYDB_MODULE, BSDDB3_MODULE): set(),
+        (BERKELEYDB_MODULE, BSDDB3_MODULE, DB_TCL_MODULE): set(),
+        # (DB_TCL_MODULE,): set(),  # Should this be a set of it's own?
         (UNQLITE_MODULE,): set(),
         (VEDIS_MODULE,): set(),
         (GNU_MODULE,): set(),

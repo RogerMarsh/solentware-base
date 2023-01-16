@@ -171,10 +171,11 @@ class ConstantsFunctions(unittest.TestCase):
         ae(constants.BITMAP_BYTES, "B")
         ae(constants.GNU_MODULE, "dbm.gnu")
         ae(constants.NDBM_MODULE, "dbm.ndbm")
+        ae(constants.DB_TCL_MODULE, "db_tcl")
         ae(constants.TABLE_REGISTER_KEY, b"_table_register")
         ae(constants.FIELD_REGISTER_KEY, b"_field_register")
         cc = [d for d in dir(constants) if not d.endswith("__")]
-        ae(len(cc), 97)
+        ae(len(cc), 98)
         ae(
             sorted(cc),
             sorted(
@@ -186,6 +187,7 @@ class ConstantsFunctions(unittest.TestCase):
                     "APSW_MODULE",
                     "GNU_MODULE",
                     "NDBM_MODULE",
+                    "DB_TCL_MODULE",
                     "SQLITE_VALUE_COLUMN",
                     "SQLITE_SEGMENT_COLUMN",
                     "SQLITE_COUNT_COLUMN",
