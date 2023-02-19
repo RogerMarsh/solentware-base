@@ -2210,7 +2210,7 @@ class CursorSecondary(Cursor):
         )
         if len(segment_table) == 1:
             segment_number = segment_table.sorted_segment_numbers[0]
-            record_number = segment_table.segments[segment_number]
+            record_number = segment_table.segments[segment_number][0]
             if isinstance(record_number, int):
                 return (
                     record_number
