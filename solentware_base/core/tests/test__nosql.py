@@ -2444,6 +2444,16 @@ class Database_freed_record_number(_NoSQLOpen):
             0,
         )
 
+    def test_08_get_lowest_freed_record_number(self):
+        for i in (0, 1):
+            self.database.delete("file1", i, repr("_".join((str(i), "value"))))
+            sn, rn = self.database.remove_record_from_ebm("file1", i)
+            self.database.note_freed_record_number_segment(
+                "file1", sn, rn, self.high_record
+            )
+        rn = self.database.get_lowest_freed_record_number("file1")
+        self.assertEqual(rn, 0)
+
 
 # Does this test add anything beyond Database_freed_record_number?
 class Database_empty_freed_record_number(_NoSQLOpen):

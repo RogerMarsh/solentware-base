@@ -1922,6 +1922,17 @@ class Database_freed_record_number(_DBOpen):
             0,
         )
 
+    # Deletion of record number 0 is silently ignored.
+    def test_08_get_lowest_freed_record_number(self):
+        for i in (0, 1):
+            self.database.delete("file1", i, "_".join((str(i), "value")))
+            sn, rn = self.database.remove_record_from_ebm("file1", i)
+            self.database.note_freed_record_number_segment(
+                "file1", sn, rn, self.high_record
+            )
+        rn = self.database.get_lowest_freed_record_number("file1")
+        self.assertEqual(rn, 1)
+
 
 # Does this test add anything beyond Database_freed_record_number?
 class Database_empty_freed_record_number(_DBOpen):

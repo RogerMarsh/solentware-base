@@ -535,7 +535,7 @@ class Database(_database.Database):
                 continue
 
             try:
-                first_zero_bit = lfrns.index(False, 0 if segment_number else 1)
+                first_zero_bit = lfrns.index(False, 0)
             except ValueError:
 
                 # No longer any record numbers available for re-use in segment.
