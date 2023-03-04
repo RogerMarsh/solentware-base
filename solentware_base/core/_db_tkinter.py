@@ -105,7 +105,6 @@ class Database(_database.Database):
         self._dbe = None
         self.segment_table = {}
         self.ebm_control = {}
-        self.ebm_segment_count = {}
 
         # Set to value read from database on attempting to open database if
         # different from segment_size_bytes.
@@ -135,6 +134,12 @@ class Database(_database.Database):
     def start_transaction(self):
         """Start transaction if none and bind txn object to self._dbtxn."""
         if self.dbtxn is None:
+            # Raise an exception because the emulated _db module method does
+            # this (AttributeError).  The _sqlite and _nosql module methods
+            # just keep going without starting a transaction.  Perhaps _db
+            # should too.
+            if self.dbenv is None:
+                raise DatabaseError("No environment for start transaction")
             self.dbtxn = tcl_tk_call((self.dbenv, "txn"))
 
     def backout(self):
@@ -649,7 +654,6 @@ class Database(_database.Database):
             self.table = {}
             self.segment_table = {}
             self.ebm_control = {}
-            self.ebm_segment_count = {}
         self.segment_size_bytes = self._initial_segment_size_bytes
 
     def close_database(self):
@@ -2222,6 +2226,7 @@ class CursorPrimary(Cursor):
 
     def get_position_of_record(self, record=None):
         """Return position of record in file or 0 (zero)."""
+        # record keys are 1-based but segment_numbers are 0-based.
         if record is None:
             return 0
         segment_number, record_number = divmod(
@@ -2603,9 +2608,7 @@ class CursorSecondary(Cursor):
         if self.get_partial() is False:
             return None
         try:
-            record = self._next()
-            key, value = record
-            # key, value = self._next()
+            key, value = self._next()
         except TypeError:
             return None
         return key.decode(), value
@@ -2905,14 +2908,7 @@ class ExistenceBitmapControl(_database.ExistenceBitmapControl):
         self._dbe = dbe
 
     def read_exists_segment(self, segment_number, dbtxn):
-        """Return existence bitmap for segment_number in database dbenv.
-
-        get_ebm_segment returns the record containing the existence bitmap,
-        read_exists_segment calls get_ebm_segment to get the bitmap record,
-        converts it to a bitmap, and then returns the bitmap.
-
-        """
-        # Return existence bit map for segment_number.
+        """Return existence bitmap for segment_number in database dbenv."""
         # record keys are 1-based but segment_numbers are 0-based.
         command = [self.ebm_table, "get"]
         if dbtxn:

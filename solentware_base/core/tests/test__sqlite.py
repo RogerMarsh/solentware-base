@@ -98,7 +98,6 @@ class Database___init__(_SQLite):
         self.assertEqual(database.index, {})
         self.assertEqual(database.segment_table, {})
         self.assertEqual(database.ebm_control, {})
-        self.assertEqual(database.ebm_segment_count, {})
         self.assertEqual(SegmentSize.db_segment_size_bytes, 4096)
         database.set_segment_size()
         self.assertEqual(SegmentSize.db_segment_size_bytes, 4000)
@@ -382,7 +381,6 @@ class Database_open_database(_SQLite):
         self.assertEqual(
             self.database.ebm_control["file2"].ebm_table, "file2__ebm"
         )
-        self.assertEqual(self.database.ebm_segment_count, {})
         for v in self.database.ebm_control.values():
             self.assertIsInstance(v, _sqlite.ExistenceBitmapControl)
 
@@ -415,7 +413,6 @@ class Database_open_database(_SQLite):
         self.assertEqual(
             self.database.ebm_control["file1"].ebm_table, "file1__ebm"
         )
-        self.assertEqual(self.database.ebm_segment_count, {})
         for v in self.database.ebm_control.values():
             self.assertIsInstance(v, _sqlite.ExistenceBitmapControl)
 
@@ -2091,7 +2088,7 @@ class ExistenceBitmapControl(_SQLiteOpen):
         bits = b"\x7f" + b"\xff" * (SegmentSize.db_segment_size_bytes - 1)
         cursor.execute(statement, (1, bits))
         sr = self.database.ebm_control["file1"].get_ebm_segment(
-            1, self.database.dbenv
+            0, self.database.dbenv
         )
         self.assertEqual(sr, bits)
 

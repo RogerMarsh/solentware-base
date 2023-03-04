@@ -136,7 +136,6 @@ class Database_open_database(_NoSQL):
         self.assertEqual(
             self.database.ebm_control["file2"].ebm_table, "2_0__ebm"
         )
-        self.assertEqual(self.database.ebm_segment_count, {})
         for v in self.database.ebm_control.values():
             self.assertIsInstance(v, _nosql.ExistenceBitmapControl)
         self.database.close_database()

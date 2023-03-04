@@ -95,7 +95,6 @@ class Database(_database.Database):
         self.index = {}
         self.segment_table = {}
         self.ebm_control = {}
-        self.ebm_segment_count = {}
 
         # Set to value read from database on attempting to open database if
         # different from segment_size_bytes.
@@ -352,7 +351,6 @@ class Database(_database.Database):
         self.table = {}
         self.segment_table = {}
         self.ebm_control = {}
-        self.ebm_segment_count = {}
         if self.dbenv is not None:
             self.dbenv.close()
             self.dbenv = None
@@ -684,7 +682,7 @@ class Database(_database.Database):
         segment to form the returned value.
         """
         segment, record_number = divmod(deletekey, SegmentSize.db_segment_size)
-        ebmb = self.ebm_control[file].get_ebm_segment(segment + 1, self.dbenv)
+        ebmb = self.ebm_control[file].get_ebm_segment(segment, self.dbenv)
         if ebmb is None:
             raise DatabaseError("Existence bit map for segment does not exist")
         ebm = Bitarray()
@@ -702,7 +700,7 @@ class Database(_database.Database):
         segment to form the returned value.
         """
         segment, record_number = divmod(putkey, SegmentSize.db_segment_size)
-        ebmb = self.ebm_control[file].get_ebm_segment(segment + 1, self.dbenv)
+        ebmb = self.ebm_control[file].get_ebm_segment(segment, self.dbenv)
         if ebmb is None:
             ebm = SegmentSize.empty_bitarray.copy()
             ebm[record_number] = True
@@ -2161,6 +2159,7 @@ class CursorPrimary(Cursor):
 
     def get_position_of_record(self, record=None):
         """Return position of record in file or 0 (zero)."""
+        # record keys are 1-based but segment_numbers are 0-based.
         if record is None:
             return 0
 
@@ -3403,29 +3402,17 @@ class ExistenceBitmapControl(_database.ExistenceBitmapControl):
             cursor.close()
 
     def read_exists_segment(self, segment_number, dbenv):
-        """Return existence bitmap for segment_number in database dbenv.
-
-        get_ebm_segment returns the record containing the existence bitmap,
-        read_exists_segment calls get_ebm_segment to get the bitmap record,
-        converts it to a bitmap, and then returns the bitmap.
-
-        """
-        # Return existence bit map for segment_number.
-        # record keys are 1-based but segment_numbers are 0-based.
+        """Return existence bitmap for segment_number in database dbenv."""
         ebm = Bitarray()
         try:
-            ebm.frombytes(self.get_ebm_segment(segment_number + 1, dbenv))
+            ebm.frombytes(self.get_ebm_segment(segment_number, dbenv))
         except TypeError:
             return None
         return ebm
 
     def get_ebm_segment(self, key, dbenv):
-        """Return existence bitmap for segment number key in database dbenv.
-
-        get_ebm_segment returns the record containing the existence bitmap,
-        use read_exists_segment to return the bitmap itself.
-
-        """
+        """Return existence bitmap for segment number key in database dbenv."""
+        # record keys are 1-based but segment_numbers are 0-based.
         statement = " ".join(
             (
                 "select",
@@ -3438,7 +3425,7 @@ class ExistenceBitmapControl(_database.ExistenceBitmapControl):
                 "limit 1",
             )
         )
-        values = (key,)
+        values = (key + 1,)
         cursor = dbenv.cursor()
         try:
             return cursor.execute(statement, values).fetchone()[0]

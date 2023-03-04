@@ -223,9 +223,13 @@ class Database(_databasedu.Database):
                     # self._path_marker.add('p5a')
                     if isinstance(current_segment, RecordsetSegmentList):
                         # self._path_marker.add('p5a-a')
-                        self.segment_table[file].put(
-                            int.from_bytes(segref[-4:], "big"), seg.tobytes()
+                        command = [self.segment_table[file], "put"]
+                        if self.dbtxn:
+                            command.extend(["-txn", self.dbtxn])
+                        command.extend(
+                            [int.from_bytes(segref[-4:], "big"), seg.tobytes()]
                         )
+                        tcl_tk_call(tuple(command))
                         tcl_tk_call((cursor_high, "del"))
                         tcl_tk_call(
                             (
@@ -266,9 +270,13 @@ class Database(_databasedu.Database):
                         )
                     else:
                         # self._path_marker.add('p5a-c')
-                        self.segment_table[file].put(
-                            int.from_bytes(segref[-4:], "big"), seg.tobytes()
+                        command = [self.segment_table[file], "put"]
+                        if self.dbtxn:
+                            command.extend(["-txn", self.dbtxn])
+                        command.extend(
+                            [int.from_bytes(segref[-4:], "big"), seg.tobytes()]
                         )
+                        tcl_tk_call(tuple(command))
                         tcl_tk_call((cursor_high, "del"))
                         tcl_tk_call(
                             (
@@ -727,8 +735,9 @@ class Database(_databasedu.Database):
 
     def get_ebm_segment(self, ebm_control, key):
         """Return existence bitmap for segment number 'key'."""
+        # record keys are 1-based but segment_numbers are 0-based.
         command = [ebm_control.ebm_table, "get"]
         if self.dbtxn:
             command.extend(["-txn", self.dbtxn])
-        command.append(key)
+        command.append(key + 1)
         return tcl_tk_call(tuple(command)) or None

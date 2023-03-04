@@ -111,7 +111,6 @@ class Database___init__(_DB):
         self.assertEqual(database._dbe, None)
         self.assertEqual(database.segment_table, {})
         self.assertEqual(database.ebm_control, {})
-        self.assertEqual(database.ebm_segment_count, {})
         self.assertEqual(database._real_segment_size_bytes, False)
         self.assertEqual(database._initial_segment_size_bytes, 4000)
         self.assertEqual(database._file_per_database, False)
@@ -407,7 +406,6 @@ class Database_open_database(_DB):
         )
         self.assertEqual(set(d.segment_table), {"file1", "file2"})
         self.assertEqual(set(d.ebm_control), {"file1", "file2"})
-        self.assertEqual(set(d.ebm_segment_count), set())
         for v in d.ebm_control.values():
             self.assertIsInstance(v, _db.ExistenceBitmapControl)
         c = 0
@@ -415,7 +413,6 @@ class Database_open_database(_DB):
         for t in (
             d.table,
             d.segment_table,
-            d.ebm_segment_count,
         ):
             for v in t.values():
                 if isinstance(v, list):
@@ -480,7 +477,6 @@ class Database_open_database(_DB):
         self.assertEqual(set(d.table), {"file1", "___control", "file1_field1"})
         self.assertEqual(set(d.segment_table), {"file1"})
         self.assertEqual(set(d.ebm_control), {"file1"})
-        self.assertEqual(set(d.ebm_segment_count), set())
         for v in d.ebm_control.values():
             self.assertIsInstance(v, _db.ExistenceBitmapControl)
         c = 0
@@ -488,7 +484,6 @@ class Database_open_database(_DB):
         for t in (
             d.table,
             d.segment_table,
-            d.ebm_segment_count,
         ):
             for v in t.values():
                 if isinstance(v, list):

@@ -172,7 +172,6 @@ class Database___init__(_NoSQLdu):
                 "dbenv",
                 "deferred_update_points",
                 "ebm_control",
-                "ebm_segment_count",
                 "existence_bit_maps",
                 "first_chunk",
                 "high_segment",
@@ -201,7 +200,6 @@ class Database___init__(_NoSQLdu):
         self.assertEqual(database.segment_table, {})
         self.assertEqual(database.segment_records, {})
         self.assertEqual(database.ebm_control, {})
-        self.assertEqual(database.ebm_segment_count, {})
         self.assertEqual(database.trees, {})
         self.assertEqual(SegmentSize.db_segment_size_bytes, 4096)
 

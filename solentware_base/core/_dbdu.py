@@ -589,4 +589,5 @@ class Database(_databasedu.Database):
 
     def get_ebm_segment(self, ebm_control, key):
         """Return existence bitmap for segment number 'key'."""
-        return ebm_control.ebm_table.get(key, txn=self.dbtxn)
+        # record keys are 1-based but segment_numbers are 0-based.
+        return ebm_control.ebm_table.get(key + 1, txn=self.dbtxn)

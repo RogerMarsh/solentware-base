@@ -76,7 +76,7 @@ class Database:
             self.existence_bit_maps[file][segment][record_number] = True
         except KeyError:
             # Get the segment existence bit map from database
-            ebmb = self.get_ebm_segment(self.ebm_control[file], segment + 1)
+            ebmb = self.get_ebm_segment(self.ebm_control[file], segment)
             if ebmb is None:
                 # It does not exist so create a new empty one
                 ebm = SegmentSize.empty_bitarray.copy()

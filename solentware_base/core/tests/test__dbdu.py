@@ -103,7 +103,6 @@ class Database___init__(_DBdu):
         self.assertEqual(database._dbe, None)
         self.assertEqual(database.segment_table, {})
         self.assertEqual(database.ebm_control, {})
-        self.assertEqual(database.ebm_segment_count, {})
         self.assertEqual(SegmentSize.db_segment_size_bytes, 4096)
 
         # These tests are only difference to test__sqlite.Database___init__

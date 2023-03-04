@@ -189,7 +189,6 @@ class Database___init__(_NoSQL):
                 "database_file",
                 "dbenv",
                 "ebm_control",
-                "ebm_segment_count",
                 "home_directory",
                 "segment_records",
                 "segment_size_bytes",
@@ -213,7 +212,6 @@ class Database___init__(_NoSQL):
         self.assertEqual(database.segment_table, {})
         self.assertEqual(database.segment_records, {})
         self.assertEqual(database.ebm_control, {})
-        self.assertEqual(database.ebm_segment_count, {})
         self.assertEqual(database.trees, {})
         self.assertEqual(database._real_segment_size_bytes, False)
         self.assertEqual(database._initial_segment_size_bytes, 4000)
@@ -510,7 +508,6 @@ class Database_open_database(_NoSQL):
         self.assertEqual(
             self.database.ebm_control["file2"].ebm_table, "2_0__ebm"
         )
-        self.assertEqual(self.database.ebm_segment_count, {})
         for v in self.database.ebm_control.values():
             self.assertIsInstance(v, _nosql.ExistenceBitmapControl)
 
@@ -547,7 +544,6 @@ class Database_open_database(_NoSQL):
         self.assertEqual(
             self.database.ebm_control["file1"].ebm_table, "1_0__ebm"
         )
-        self.assertEqual(self.database.ebm_segment_count, {})
         for v in self.database.ebm_control.values():
             self.assertIsInstance(v, _nosql.ExistenceBitmapControl)
 
