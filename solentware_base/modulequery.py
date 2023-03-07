@@ -4,7 +4,15 @@
 
 """Module queries to support run-time choice of database module.
 
-The apsw, bsddb3, dptapi, and sqlite3, modules are available if installed.
+The apsw, berkeleydb, bsddb3, dptapi, lmdb, and sqlite3, modules are
+available if installed.
+
+berkeleydb is available at Python 3.6 and later, while bsddb3 is available
+at Python 3.9 and earlier.  berkeleydb requires Berkeley DB version 5 or
+later.
+
+lmdb provides a 'Berkeley DB like' interface to Symas LMMD, without the
+potential licence problems.
 
 apsw and sqlite3 are different interfaces to SQLite3.  apsw is preferred if
 both are available because it provides the SQLite3 API rather than Python's
@@ -93,6 +101,10 @@ try:
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     bsddb3 = None
 try:
+    import lmdb
+except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
+    lmdb = None
+try:
     from dptdb import dptapi
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     dptapi = None
@@ -132,12 +144,14 @@ from .core.constants import (
     GNU_MODULE,
     NDBM_MODULE,
     DB_TCL_MODULE,
+    LMDB_MODULE,
 )
 
 if _deny_sqlite3:
     if sys.platform == "win32":
         DATABASE_MODULES_IN_DEFAULT_PREFERENCE_ORDER = (
             DPT_MODULE,
+            LMDB_MODULE,
             BERKELEYDB_MODULE,
             BSDDB3_MODULE,
             DB_TCL_MODULE,
@@ -147,6 +161,7 @@ if _deny_sqlite3:
         )
     else:
         DATABASE_MODULES_IN_DEFAULT_PREFERENCE_ORDER = (
+            LMDB_MODULE,
             BERKELEYDB_MODULE,
             BSDDB3_MODULE,
             DB_TCL_MODULE,
@@ -160,6 +175,7 @@ else:
     if sys.platform == "win32":
         DATABASE_MODULES_IN_DEFAULT_PREFERENCE_ORDER = (
             DPT_MODULE,
+            LMDB_MODULE,
             BERKELEYDB_MODULE,
             BSDDB3_MODULE,
             DB_TCL_MODULE,
@@ -170,6 +186,7 @@ else:
         )
     else:
         DATABASE_MODULES_IN_DEFAULT_PREFERENCE_ORDER = (
+            LMDB_MODULE,
             BERKELEYDB_MODULE,
             BSDDB3_MODULE,
             DB_TCL_MODULE,
@@ -200,6 +217,7 @@ def installed_database_modules():
         vedis,
         sqlite3,
         apsw,
+        lmdb,
         berkeleydb,
         bsddb3,
         db_tcl,
@@ -256,6 +274,33 @@ def modules_for_existing_databases(folder, filespec):
                 ):
                     dbm[name] = module
                     break
+            else:
+                dbm[name] = False
+        elif name == LMDB_MODULE:
+            filepath = os.path.join(folder, os.path.split(folder)[1])
+            if os.path.isfile(filepath):
+                try:
+                    env = module.open(
+                        filepath,
+                        create=False,
+                        subdir=False,
+                        readonly=True,
+                        max_dbs=len(filespec),
+                    )
+                    try:
+                        for filename in filespec:
+                            try:
+                                dbo = env.open_db(
+                                    filename.encode(), create=False
+                                )
+                                del dbo
+                            except module.NotFoundError:
+                                continue
+                    finally:
+                        env.close()
+                    dbm[name] = module
+                except module.InvalidError:
+                    dbm[name] = False
             else:
                 dbm[name] = False
         elif name in (BERKELEYDB_MODULE, BSDDB3_MODULE):
@@ -455,6 +500,7 @@ def modules_for_existing_databases(folder, filespec):
         (DPT_MODULE,): set(),
         (BERKELEYDB_MODULE, BSDDB3_MODULE, DB_TCL_MODULE): set(),
         # (DB_TCL_MODULE,): set(),  # Should this be a set of it's own?
+        (LMDB_MODULE,): set(),
         (UNQLITE_MODULE,): set(),
         (VEDIS_MODULE,): set(),
         (GNU_MODULE,): set(),

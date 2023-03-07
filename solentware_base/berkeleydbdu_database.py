@@ -11,9 +11,10 @@ Prefer to use the berkeleydb_database module normally.
 """
 from . import berkeleydb_database
 from .core import _dbdu
+from .core import _db
 
 
-class Database(_dbdu.Database, berkeleydb_database.Database):
+class Database(berkeleydb_database.Database, _dbdu.Database, _db.Database):
     """Define deferred update Database class using berkeleydb module.
 
     Deferred update behaviour comes from the _dbdu.Database class.

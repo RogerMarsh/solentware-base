@@ -11,9 +11,10 @@ Prefer to use the bsddb3_database module normally.
 """
 from . import bsddb3_database
 from .core import _dbdu
+from .core import _db
 
 
-class Database(_dbdu.Database, bsddb3_database.Database):
+class Database(bsddb3_database.Database, _dbdu.Database, _db.Database):
     """Define deferred update Database class using bsddb3 module.
 
     Deferred update behaviour comes from the _dbdu.Database class.

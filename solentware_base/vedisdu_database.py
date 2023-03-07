@@ -11,9 +11,10 @@ Prefer to use the vedis_database module normally.
 """
 from . import vedis_database
 from .core import _nosqldu
+from .core import _nosql
 
 
-class Database(_nosqldu.Database, vedis_database.Database):
+class Database(vedis_database.Database, _nosqldu.Database, _nosql.Database):
     """Define deferred update Database class using vedis_database module.
 
     Deferred update behaviour comes from the _nosqldu.Database class.

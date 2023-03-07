@@ -443,198 +443,7 @@ class Database_do_final_segment_deferred_updates(_DBOpen):
         )
 
 
-# Tests currently done in Database_sort_and_write test_13, test_14 and test_15.
 class Database__sort_and_write_high_or_chunk(_DBOpen):
-    pass
-
-
-class Database_sort_and_write(_DBOpen):
-    def test_01(self):
-        database = self._D({}, segment_size_bytes=None)
-        self.assertRaisesRegex(
-            TypeError,
-            "".join(
-                (
-                    r"sort_and_write\(\) missing 3 required ",
-                    "positional arguments: 'file', 'field', and 'segment'",
-                )
-            ),
-            database.sort_and_write,
-        )
-
-    def test_02(self):
-        self.assertRaisesRegex(
-            KeyError,
-            "'file1'",
-            self.database.sort_and_write,
-            *("file1", "nofield", None),
-        )
-
-    def test_03(self):
-        self.database.value_segments["file1"] = {}
-        self.database.sort_and_write("file1", "nofield", None)
-        self.database.sort_and_write("file1", "field1", None)
-
-    def test_04(self):
-        self.database.value_segments["file1"] = {"field1": None}
-        self.assertRaisesRegex(
-            TypeError,
-            "'NoneType' object is not iterable",
-            self.database.sort_and_write,
-            *("file1", "field1", None),
-        )
-
-    def test_05(self):
-        self.database.value_segments["file1"] = {"field1": {}}
-        self.assertRaisesRegex(
-            KeyError,
-            "'file1'",
-            self.database.sort_and_write,
-            *("file1", "field1", None),
-        )
-
-    def test_06(self):
-        self.database.value_segments["file1"] = {"field1": {}}
-        self.database.first_chunk["file1"] = True
-        self.database.initial_high_segment["file1"] = 4
-        self.assertRaisesRegex(
-            KeyError,
-            "'file1'",
-            self.database.sort_and_write,
-            *("file1", "field1", 4),
-        )
-
-    def test_07(self):
-        self.database.value_segments["file1"] = {"field1": {}}
-        self.database.first_chunk["file1"] = True
-        self.database.initial_high_segment["file1"] = 4
-        self.database.high_segment["file1"] = 3
-        self.database.sort_and_write("file1", "field1", 4)
-        dt = self.database.table["file1_field1"]
-        self.assertEqual(len(dt), 1)
-        for t in dt:
-            self.assertEqual(t.__class__.__name__, "DB")
-        self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
-
-    def test_08(self):
-        self.database.value_segments["file1"] = {"field1": {}}
-        self.database.first_chunk["file1"] = True
-        self.database.initial_high_segment["file1"] = 4
-        self.database.high_segment["file1"] = 3
-        self.database.sort_and_write("file1", "field1", 5)
-        dt = self.database.table["file1_field1"]
-        self.assertEqual(len(dt), 2)
-        for t in dt:
-            self.assertEqual(t.__class__.__name__, "DB")
-        self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
-        self.assertEqual(dt[1].get_dbname(), (None, "1_file1_field1"))
-
-    def test_09(self):
-        self.database.value_segments["file1"] = {"field1": {}}
-        self.database.first_chunk["file1"] = False
-        self.database.initial_high_segment["file1"] = 4
-        self.database.high_segment["file1"] = 3
-        self.database.sort_and_write("file1", "field1", 5)
-        dt = self.database.table["file1_field1"]
-        self.assertEqual(len(dt), 1)
-        for t in dt:
-            self.assertEqual(t.__class__.__name__, "DB")
-        self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
-
-    def test_10(self):
-        self.database.value_segments["file1"] = {"field1": {"int": 1}}
-        self.database.first_chunk["file1"] = False
-        self.database.initial_high_segment["file1"] = 4
-        self.database.high_segment["file1"] = 3
-        self.database.sort_and_write("file1", "field1", 5)
-        dt = self.database.table["file1_field1"]
-        self.assertEqual(len(dt), 1)
-        for t in dt:
-            self.assertEqual(t.__class__.__name__, "DB")
-        self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
-        cursor = dt[0].cursor()
-        ra = []
-        while True:
-            r = cursor.next()
-            if r is None:
-                break
-            ra.append(r)
-        self.assertEqual(ra, [(b"int", b"\x00\x00\x00\x05\x00\x01")])
-        cursor = self.database.segment_table["file1"].cursor()
-        ra = []
-        while True:
-            r = cursor.next()
-            if r is None:
-                break
-            ra.append(r)
-        self.assertEqual(ra, [])
-
-    def test_11(self):
-        self.database.value_segments["file1"] = {"field1": {"list": [1, 4]}}
-        self.database.first_chunk["file1"] = False
-        self.database.initial_high_segment["file1"] = 4
-        self.database.high_segment["file1"] = 3
-        self.database._int_to_bytes = [
-            n.to_bytes(2, byteorder="big")
-            for n in range(SegmentSize.db_segment_size)
-        ]
-        self.database.sort_and_write("file1", "field1", 5)
-        dt = self.database.table["file1_field1"]
-        self.assertEqual(len(dt), 1)
-        for t in dt:
-            self.assertEqual(t.__class__.__name__, "DB")
-        self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
-        cursor = dt[0].cursor()
-        ra = []
-        while True:
-            r = cursor.next()
-            if r is None:
-                break
-            ra.append(r)
-        self.assertEqual(
-            ra, [(b"list", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x01")]
-        )
-        cursor = self.database.segment_table["file1"].cursor()
-        ra = []
-        while True:
-            r = cursor.next()
-            if r is None:
-                break
-            ra.append(r)
-        self.assertEqual(ra, [(1, b"\x00\x01\x00\x04")])
-
-    def test_12(self):
-        ba = Bitarray()
-        ba.frombytes(b"\x0a" * 16)
-        self.database.value_segments["file1"] = {"field1": {"bits": ba}}
-        self.database.first_chunk["file1"] = False
-        self.database.initial_high_segment["file1"] = 4
-        self.database.high_segment["file1"] = 3
-        self.database.sort_and_write("file1", "field1", 5)
-        dt = self.database.table["file1_field1"]
-        self.assertEqual(len(dt), 1)
-        for t in dt:
-            self.assertEqual(t.__class__.__name__, "DB")
-        self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
-        cursor = dt[0].cursor()
-        ra = []
-        while True:
-            r = cursor.next()
-            if r is None:
-                break
-            ra.append(r)
-        self.assertEqual(
-            ra, [(b"bits", b"\x00\x00\x00\x05\x00\x20\x00\x00\x00\x01")]
-        )
-        cursor = self.database.segment_table["file1"].cursor()
-        ra = []
-        while True:
-            r = cursor.next()
-            if r is None:
-                break
-            ra.append(r)
-        self.assertEqual(ra, [(1, b"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")])
-
     def test_13(self):
         ba = Bitarray()
         ba.frombytes(b"\x0a" * 16)
@@ -850,6 +659,350 @@ class Database_sort_and_write(_DBOpen):
                     "p5a",
                 },
             )
+
+    def test_16(self):
+        dt = self.database.table["file1_field1"]
+        dt[0].put(b"list", b"\x00\x00\x00\x02\x00\x02\x00\x00\x00\x01")
+        dt[0].put(b"bits", b"\x00\x00\x00\x02\x00\x08\x00\x00\x00\x02")
+        self.database.segment_table["file1"].put(1, b"\x00\x01\x00\x04")
+        self.database.segment_table["file1"].put(
+            2,
+            b"".join(
+                (
+                    b"\x00\x00\xff\x00\x00\x00\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
+        )
+        ba = Bitarray()
+        ba.frombytes(b"\x0a" * 16)
+        self.database.value_segments["file1"] = {"field1": {"bits": ba}}
+        self.database.first_chunk["file1"] = False
+        self.database.initial_high_segment["file1"] = 5
+        self.database.high_segment["file1"] = 5
+        self.database._int_to_bytes = [
+            n.to_bytes(2, byteorder="big")
+            for n in range(SegmentSize.db_segment_size)
+        ]
+        self.database.sort_and_write("file1", "field1", 2)
+        self.assertEqual(len(dt), 1)
+        for t in dt:
+            self.assertEqual(t.__class__.__name__, "DB")
+        self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
+        cursor = dt[0].cursor()
+        ra = []
+        while True:
+            r = cursor.next()
+            if r is None:
+                break
+            ra.append(r)
+        self.assertEqual(
+            ra,
+            [
+                (b"bits", b"\x00\x00\x00\x02\x00(\x00\x00\x00\x02"),
+                (b"list", b"\x00\x00\x00\x02\x00\x02\x00\x00\x00\x01"),
+            ],
+        )
+        cursor = self.database.segment_table["file1"].cursor()
+        ra = []
+        while True:
+            r = cursor.next()
+            if r is None:
+                break
+            ra.append(r)
+        self.assertEqual(
+            ra,
+            [
+                (1, b"\x00\x01\x00\x04"),
+                (2, b"\n\n\xff\n\n\n\n\n\n\n\n\n\n\n\n\n"),
+            ],
+        )
+        if hasattr(self.database, "_path_marker"):
+            self.assertEqual(
+                self.database._path_marker,
+                {
+                    "p5b-b",
+                    "p5a",
+                    "p4b",
+                    "p2b",
+                    "p5b-a",
+                    "p5b",
+                    "p2a",
+                    "p5a-b",
+                    "p6",
+                    "p4a",
+                },
+            )
+
+    def test_17(self):
+        dt = self.database.table["file1_field1"]
+        dt[0].put(b"list", b"\x00\x00\x00\x01\x00\x02\x00\x00\x00\x01")
+        dt[0].put(b"bits", b"\x00\x00\x00\x02\x00\x08\x00\x00\x00\x02")
+        self.database.segment_table["file1"].put(1, b"\x00\x01\x00\x04")
+        self.database.segment_table["file1"].put(
+            2,
+            b"".join(
+                (
+                    b"\x00\x00\xff\x00\x00\x00\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
+        )
+        ba = Bitarray()
+        ba.frombytes(b"\x0a" * 16)
+        self.database.value_segments["file1"] = {"field1": {"list": ba}}
+        self.database.first_chunk["file1"] = False
+        self.database.initial_high_segment["file1"] = 5
+        self.database.high_segment["file1"] = 5
+        self.database._int_to_bytes = [
+            n.to_bytes(2, byteorder="big")
+            for n in range(SegmentSize.db_segment_size)
+        ]
+        self.database.sort_and_write("file1", "field1", 1)
+        self.assertEqual(len(dt), 1)
+        for t in dt:
+            self.assertEqual(t.__class__.__name__, "DB")
+        self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
+        cursor = dt[0].cursor()
+        ra = []
+        while True:
+            r = cursor.next()
+            if r is None:
+                break
+            ra.append(r)
+        self.assertEqual(
+            ra,
+            [
+                (b"bits", b"\x00\x00\x00\x02\x00\x08\x00\x00\x00\x02"),
+                (b"list", b'\x00\x00\x00\x01\x00"\x00\x00\x00\x01'),
+            ],
+        )
+        cursor = self.database.segment_table["file1"].cursor()
+        ra = []
+        while True:
+            r = cursor.next()
+            if r is None:
+                break
+            ra.append(r)
+        self.assertEqual(
+            ra,
+            [
+                (1, b"J\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"),
+                (
+                    2,
+                    b"".join(
+                        (
+                            b"\x00\x00\xff\x00\x00\x00\x00\x00",
+                            b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                        )
+                    ),
+                ),
+            ],
+        )
+        if hasattr(self.database, "_path_marker"):
+            self.assertEqual(
+                self.database._path_marker,
+                {
+                    "p5b-b",
+                    "p5a",
+                    "p4b",
+                    "p2b",
+                    "p5b-a",
+                    "p5b",
+                    "p2a",
+                    "p5a-b",
+                    "p6",
+                    "p4a",
+                },
+            )
+
+
+class Database_sort_and_write(_DBOpen):
+    def test_01(self):
+        database = self._D({}, segment_size_bytes=None)
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"sort_and_write\(\) missing 3 required ",
+                    "positional arguments: 'file', 'field', and 'segment'",
+                )
+            ),
+            database.sort_and_write,
+        )
+
+    def test_02(self):
+        self.assertRaisesRegex(
+            KeyError,
+            "'file1'",
+            self.database.sort_and_write,
+            *("file1", "nofield", None),
+        )
+
+    def test_03(self):
+        self.database.value_segments["file1"] = {}
+        self.database.sort_and_write("file1", "nofield", None)
+        self.database.sort_and_write("file1", "field1", None)
+
+    def test_04(self):
+        self.database.value_segments["file1"] = {"field1": None}
+        self.assertRaisesRegex(
+            TypeError,
+            "'NoneType' object is not iterable",
+            self.database.sort_and_write,
+            *("file1", "field1", None),
+        )
+
+    def test_05(self):
+        self.database.value_segments["file1"] = {"field1": {}}
+        self.assertRaisesRegex(
+            KeyError,
+            "'file1'",
+            self.database.sort_and_write,
+            *("file1", "field1", None),
+        )
+
+    def test_06(self):
+        self.database.value_segments["file1"] = {"field1": {}}
+        self.database.first_chunk["file1"] = True
+        self.database.initial_high_segment["file1"] = 4
+        self.assertRaisesRegex(
+            KeyError,
+            "'file1'",
+            self.database.sort_and_write,
+            *("file1", "field1", 4),
+        )
+
+    def test_07(self):
+        self.database.value_segments["file1"] = {"field1": {}}
+        self.database.first_chunk["file1"] = True
+        self.database.initial_high_segment["file1"] = 4
+        self.database.high_segment["file1"] = 3
+        self.database.sort_and_write("file1", "field1", 4)
+        dt = self.database.table["file1_field1"]
+        self.assertEqual(len(dt), 1)
+        for t in dt:
+            self.assertEqual(t.__class__.__name__, "DB")
+        self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
+
+    def test_08(self):
+        self.database.value_segments["file1"] = {"field1": {}}
+        self.database.first_chunk["file1"] = True
+        self.database.initial_high_segment["file1"] = 4
+        self.database.high_segment["file1"] = 3
+        self.database.sort_and_write("file1", "field1", 5)
+        dt = self.database.table["file1_field1"]
+        self.assertEqual(len(dt), 2)
+        for t in dt:
+            self.assertEqual(t.__class__.__name__, "DB")
+        self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
+        self.assertEqual(dt[1].get_dbname(), (None, "1_file1_field1"))
+
+    def test_09(self):
+        self.database.value_segments["file1"] = {"field1": {}}
+        self.database.first_chunk["file1"] = False
+        self.database.initial_high_segment["file1"] = 4
+        self.database.high_segment["file1"] = 3
+        self.database.sort_and_write("file1", "field1", 5)
+        dt = self.database.table["file1_field1"]
+        self.assertEqual(len(dt), 1)
+        for t in dt:
+            self.assertEqual(t.__class__.__name__, "DB")
+        self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
+
+    def test_10(self):
+        self.database.value_segments["file1"] = {"field1": {"int": 1}}
+        self.database.first_chunk["file1"] = False
+        self.database.initial_high_segment["file1"] = 4
+        self.database.high_segment["file1"] = 3
+        self.database.sort_and_write("file1", "field1", 5)
+        dt = self.database.table["file1_field1"]
+        self.assertEqual(len(dt), 1)
+        for t in dt:
+            self.assertEqual(t.__class__.__name__, "DB")
+        self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
+        cursor = dt[0].cursor()
+        ra = []
+        while True:
+            r = cursor.next()
+            if r is None:
+                break
+            ra.append(r)
+        self.assertEqual(ra, [(b"int", b"\x00\x00\x00\x05\x00\x01")])
+        cursor = self.database.segment_table["file1"].cursor()
+        ra = []
+        while True:
+            r = cursor.next()
+            if r is None:
+                break
+            ra.append(r)
+        self.assertEqual(ra, [])
+
+    def test_11(self):
+        self.database.value_segments["file1"] = {"field1": {"list": [1, 4]}}
+        self.database.first_chunk["file1"] = False
+        self.database.initial_high_segment["file1"] = 4
+        self.database.high_segment["file1"] = 3
+        self.database._int_to_bytes = [
+            n.to_bytes(2, byteorder="big")
+            for n in range(SegmentSize.db_segment_size)
+        ]
+        self.database.sort_and_write("file1", "field1", 5)
+        dt = self.database.table["file1_field1"]
+        self.assertEqual(len(dt), 1)
+        for t in dt:
+            self.assertEqual(t.__class__.__name__, "DB")
+        self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
+        cursor = dt[0].cursor()
+        ra = []
+        while True:
+            r = cursor.next()
+            if r is None:
+                break
+            ra.append(r)
+        self.assertEqual(
+            ra, [(b"list", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x01")]
+        )
+        cursor = self.database.segment_table["file1"].cursor()
+        ra = []
+        while True:
+            r = cursor.next()
+            if r is None:
+                break
+            ra.append(r)
+        self.assertEqual(ra, [(1, b"\x00\x01\x00\x04")])
+
+    def test_12(self):
+        ba = Bitarray()
+        ba.frombytes(b"\x0a" * 16)
+        self.database.value_segments["file1"] = {"field1": {"bits": ba}}
+        self.database.first_chunk["file1"] = False
+        self.database.initial_high_segment["file1"] = 4
+        self.database.high_segment["file1"] = 3
+        self.database.sort_and_write("file1", "field1", 5)
+        dt = self.database.table["file1_field1"]
+        self.assertEqual(len(dt), 1)
+        for t in dt:
+            self.assertEqual(t.__class__.__name__, "DB")
+        self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
+        cursor = dt[0].cursor()
+        ra = []
+        while True:
+            r = cursor.next()
+            if r is None:
+                break
+            ra.append(r)
+        self.assertEqual(
+            ra, [(b"bits", b"\x00\x00\x00\x05\x00\x20\x00\x00\x00\x01")]
+        )
+        cursor = self.database.segment_table["file1"].cursor()
+        ra = []
+        while True:
+            r = cursor.next()
+            if r is None:
+                break
+            ra.append(r)
+        self.assertEqual(ra, [(1, b"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")])
 
 
 class Database_merge(_DBOpen):

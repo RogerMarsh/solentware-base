@@ -175,6 +175,12 @@ class Database:
 
         """
 
+    def start_read_only_transaction(self):
+        """Do nothing, present for compatibility with Symas LMMD."""
+
+    def end_read_only_transaction(self):
+        """Do nothing, present for compatibility with Symas LMMD."""
+
     def backout(self):
         """Backout tranaction."""
         if self.dbenv:

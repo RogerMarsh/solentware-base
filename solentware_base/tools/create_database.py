@@ -46,12 +46,15 @@ try:
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     berkeleydb = None
 try:
+    import lmdb
+except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
+    lmdb = None
+try:
     import bsddb3
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     bsddb3 = None
 try:
     from .. import db_tcl
-
     if db_tcl.tcl_tk_call is None:
         db_tcl = None
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
@@ -138,6 +141,7 @@ class CreateDatabase:
             eng
             for eng in (
                 dptapi,
+                lmdb,
                 berkeleydb,
                 bsddb3,
                 db_tcl,
@@ -455,6 +459,13 @@ if __name__ == "__main__":
             apsw_database = None
     else:
         apsw_database = None
+    if lmdb:
+        try:
+            from .. import lmdb_database
+        except ImportError:
+            lmdb_database = None
+    else:
+        lmdb_database = None
     if berkeleydb:
         try:
             from .. import berkeleydb_database
@@ -506,6 +517,8 @@ if __name__ == "__main__":
             engines = {}
             if dptapi:
                 engines[dptapi] = dpt_database.Database
+            if lmdb:
+                engines[lmdb] = lmdb_database.Database
             if berkeleydb:
                 engines[berkeleydb] = berkeleydb_database.Database
             if bsddb3:

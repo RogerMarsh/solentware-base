@@ -323,6 +323,12 @@ class Database:
         """
         self.open_database(files=files)
 
+    def start_read_only_transaction(self):
+        """Do nothing, present for compatibility with Symas LMMD."""
+
+    def end_read_only_transaction(self):
+        """Do nothing, present for compatibility with Symas LMMD."""
+
 
 class ExistenceBitmapControl:
     """Base class for managing existence bitmap of file in database.

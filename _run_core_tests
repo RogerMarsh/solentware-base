@@ -16,6 +16,9 @@ python$1 -m solentware_base.core.tests.test__databasedu
 python$1 -m solentware_base.core.tests.test__db
 python$1 -m solentware_base.core.tests.test__db_cursor
 python$1 -m solentware_base.core.tests.test__dbdu
+python$1 -m solentware_base.core.tests.test__lmdb
+python$1 -m solentware_base.core.tests.test__lmdb_cursor
+python$1 -m solentware_base.core.tests.test__lmdbdu
 python$1 -m solentware_base.core.tests.test__nosql
 python$1 -m solentware_base.core.tests.test__nosql_cursor
 python$1 -m solentware_base.core.tests.test__nosql_database

@@ -171,11 +171,14 @@ class ConstantsFunctions(unittest.TestCase):
         ae(constants.BITMAP_BYTES, "B")
         ae(constants.GNU_MODULE, "dbm.gnu")
         ae(constants.NDBM_MODULE, "dbm.ndbm")
-        ae(constants.DB_TCL_MODULE, "db_tcl")
+        ae(constants.DB_TCL_MODULE, "solentware_base.db_tcl")
         ae(constants.TABLE_REGISTER_KEY, b"_table_register")
         ae(constants.FIELD_REGISTER_KEY, b"_field_register")
+        ae(constants.DESIGN_FILE, "___design")
+        ae(constants.DEFAULT_MAP_SIZE, 10485760)
+        ae(constants.DEFAULT_MAP_BLOCKS, 10)
         cc = [d for d in dir(constants) if not d.endswith("__")]
-        ae(len(cc), 98)
+        ae(len(cc), 101)
         ae(
             sorted(cc),
             sorted(
@@ -278,6 +281,9 @@ class ConstantsFunctions(unittest.TestCase):
                     "BITMAP_BYTES",
                     "TABLE_REGISTER_KEY",
                     "FIELD_REGISTER_KEY",
+                    "DESIGN_FILE",
+                    "DEFAULT_MAP_SIZE",
+                    "DEFAULT_MAP_BLOCKS",
                 ]
             ),
         )

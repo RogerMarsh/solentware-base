@@ -17,6 +17,7 @@ from .. import recordset
 from ..segmentsize import SegmentSize
 from ..wherevalues import ValuesClause
 from ..bytebit import Bitarray
+from ..constants import CONTROL_FILE
 
 
 class _DB(unittest.TestCase):
@@ -1818,7 +1819,55 @@ class Database_freed_record_number(_DBOpen):
             self.database.note_freed_record_number_segment,
         )
 
-    def test_02_note_freed_record_number_segment(self):
+    def test_02_note_freed_record_number_segment_01(self):
+        self.assertEqual(
+            self.database.ebm_control["file1"].freed_record_number_pages, None
+        )
+        for i in (
+            100,
+            101,
+            200,
+            300,
+        ):
+            self.database.delete("file1", i, "_".join((str(i), "value")))
+            sn, rn = self.database.remove_record_from_ebm("file1", i)
+            self.database.note_freed_record_number_segment(
+                "file1", sn, rn, self.high_record
+            )
+        self.assertEqual(
+            self.database.ebm_control["file1"].freed_record_number_pages,
+            [0, 1, 2],
+        )
+        records = []
+        command = [self.database.table[CONTROL_FILE], "cursor"]
+        if self.database.dbtxn:
+            command.extend(["-txn", self.database.dbtxn])
+        cursor = db_tcl.tcl_tk_call(tuple(command))
+        try:
+            record = db_tcl.tcl_tk_call(
+                (
+                    cursor,
+                    "get",
+                    "-set",
+                    self.database.ebm_control["file1"].ebmkey,
+                )
+            )
+            while record:
+                records.append(record)
+                record = db_tcl.tcl_tk_call((cursor, "get", "-nextdup"))
+        finally:
+            db_tcl.tcl_tk_call((cursor, "close"))
+        self.assertEqual(len(records), 3)
+        self.assertEqual(
+            records,
+            [
+                ((b"Efile1", b"\x00"),),
+                ((b"Efile1", b"\x01"),),
+                ((b"Efile1", b"\x02"),),
+            ],
+        )
+
+    def test_02_note_freed_record_number_segment_02(self):
         self.assertEqual(
             self.database.ebm_control["file1"].freed_record_number_pages, None
         )

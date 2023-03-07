@@ -9,6 +9,7 @@ deferred updates is so different there is no equivalent separate module for
 DPT.
 
 """
+from . import _database
 from .segmentsize import SegmentSize
 from .constants import SECONDARY
 from .bytebit import Bitarray
@@ -18,7 +19,7 @@ class DatabaseduError(Exception):
     """Exception for Database class."""
 
 
-class Database:
+class Database(_database.Database):
     """Provide deferred update versions of the record update methods."""
 
     def put_instance(self, dbset, instance):

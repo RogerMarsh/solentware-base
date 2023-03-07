@@ -11,9 +11,10 @@ Prefer to use the ndbm_database module normally.
 """
 from . import ndbm_database
 from .core import _nosqldu
+from .core import _nosql
 
 
-class Database(_nosqldu.Database, ndbm_database.Database):
+class Database(ndbm_database.Database, _nosqldu.Database, _nosql.Database):
     """Define deferred update Database class using ndbm_database module.
 
     Deferred update behaviour comes from the _nosqldu.Database class.

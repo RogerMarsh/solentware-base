@@ -1,64 +1,402 @@
-# test__db.py
-# Copyright 2019 Roger Marsh
+# test__lmdb.py
+# Copyright 2023 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""_db _database tests"""
+"""_lmdb _database tests."""
 
 import unittest
 import os
+import shutil
 
 try:
-    import berkeleydb
+    import lmdb
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
-    berkeleydb = None
-try:
-    import bsddb3
-except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
-    bsddb3 = None
+    lmdb = None
 
-from .. import _db
+from .. import _lmdb
 from .. import filespec
 from .. import recordset
+from ..constants import SECONDARY, CONTROL_FILE
 from ..segmentsize import SegmentSize
 from ..wherevalues import ValuesClause
 from ..bytebit import Bitarray
-from ..constants import CONTROL_FILE
+
+from .test__lmdb_setUp_tearDown import (
+    LMDB_TEST_ROOT,
+    HOME,
+    DATA,
+    LOCK,
+    HOME_DATA,
+    HOME_LOCK,
+    HomeNull,
+    HomeExists,
+    EnvironmentExists,
+    EnvironmentExistsReadOnly,
+    EnvironmentExistsOneDb,
+    DB,
+    DBDir,
+    DBExist,
+)
+from ._test_case_constants import (
+    DATABASE_MAKE_RECORDSET_KEYS,
+    DATABASE_MAKE_RECORDSET_SEGMENTS,
+    database_make_recordset,
+)
 
 
-class _DB(unittest.TestCase):
-    # SegmentSize.db_segment_size_bytes is not reset in this class because only
-    # one pass through the test loop is done: for bsddb3.  Compare with modules
-    # test__sqlite and test__nosql where two passes are done.
+class _Module:
+    def _dbe_module(self):
+        return dbe_module
 
+
+class _Specification:
+    def set_specification(self, specification=None):
+        if specification is None:
+            specification = {}
+        self.database = self._D(specification)
+        self.specification = specification
+
+    def check_specification(self, files=None):
+        # files must be same as files argument in "open_database" call.
+        # Default is all files in specification.
+        if files is None:
+            files = set(self.specification.keys())
+        d = self.database
+        specset = set()
+        tableset = set(("___control", "___design"))
+        filespecinst = isinstance(self.specification, filespec.FileSpec)
+        for key, values in self.specification.items():
+            if key not in files:
+                continue
+            specset.add(key)
+            tableset.add(key)
+            if not filespecinst:
+                for value in values:
+                    tableset.add("_".join((key, value)))
+            else:
+                for value in values[SECONDARY]:
+                    tableset.add("_".join((key, value)))
+        self.assertEqual(set(d.table), tableset)
+        self.assertEqual(set(d.segment_table), specset)
+        self.assertEqual(set(d.ebm_control), specset)
+        for v in d.ebm_control.values():
+            self.assertIsInstance(v, _lmdb.ExistenceBitmapControl)
+        c = 0
+        o = set()
+        for t in (
+            d.table,
+            d.segment_table,
+        ):
+            for v in t.values():
+                if isinstance(v, list):
+                    for i in v:
+                        self.assertEqual(i.__class__.__name__, "_Datastore")
+                        c += 1
+                        o.add(i)
+                else:
+                    self.assertEqual(v.__class__.__name__, "_Datastore")
+                    c += 1
+                    o.add(v)
+        for t in (d.ebm_control,):
+            for v in t.values():
+                self.assertEqual(v.ebm_table.__class__.__name__, "_Datastore")
+                c += 1
+                o.add(v)
+        self.assertEqual(c, len(o))
+
+
+class _DBtxn(unittest.TestCase):
+    def test_01___init___01(self):
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"__init__\(\) takes 1 positional argument ",
+                    "but 2 were given",
+                )
+            ),
+            _lmdb._DBtxn,
+            *(None,),
+        )
+
+    def test_01___init___02(self):
+        txn = _lmdb._DBtxn()
+        keys = txn.__dict__.keys()
+        self.assertEqual(len(keys), 2)
+        self.assertEqual(
+            sorted(keys), sorted(("_write_requested", "_transaction"))
+        )
+        self.assertEqual(txn._write_requested, False)
+        self.assertEqual(txn._transaction, None)
+
+    def test_02_transaction_01(self):
+        txn = _lmdb._DBtxn()
+        self.assertIs(txn.transaction, txn._transaction)
+
+    def test_03_start_transaction_01(self):
+        txn = _lmdb._DBtxn()
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"start_transaction\(\) missing 2 required positional ",
+                    "arguments: 'dbenv' and 'write'",
+                )
+            ),
+            txn.start_transaction,
+        )
+
+    def test_04_end_transaction_01(self):
+        txn = _lmdb._DBtxn()
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"end_transaction\(\) takes 1 positional argument ",
+                    "but 2 were given",
+                )
+            ),
+            txn.end_transaction,
+            *(None,),
+        )
+
+    def test_05_end_transaction_01(self):
+        txn = _lmdb._DBtxn()
+        txn._transaction = True
+        txn.end_transaction()
+        self.assertEqual(txn._write_requested, False)
+        self.assertEqual(txn._transaction, None)
+        self.assertEqual(
+            sorted(txn.__dict__.keys()),
+            sorted(("_write_requested", "_transaction")),
+        )
+
+    def test_05_end_transaction_02(self):
+        txn = _lmdb._DBtxn()
+        txn._write_requested = True
+        txn.end_transaction()
+        self.assertEqual(txn._write_requested, True)
+        self.assertEqual(txn._transaction, None)
+        self.assertEqual(
+            sorted(txn.__dict__.keys()),
+            sorted(("_write_requested", "_transaction")),
+        )
+
+
+class _DBtxn_start_transaction(_Module, EnvironmentExists):
+    def test_01_start_transaction_01(self):
+        txn = _lmdb._DBtxn()
+        txn.start_transaction(self.env, False)
+        self.assertEqual(txn._write_requested, False)
+        self.assertIsInstance(txn._transaction, self.dbe_module.Transaction)
+        self.assertEqual(
+            sorted(txn.__dict__.keys()),
+            sorted(("_write_requested", "_transaction")),
+        )
+
+    def test_01_start_transaction_02(self):
+        txn = _lmdb._DBtxn()
+        txn.start_transaction(self.env, True)
+        self.assertEqual(txn._write_requested, True)
+        self.assertIsInstance(txn._transaction, self.dbe_module.Transaction)
+        self.assertEqual(
+            sorted(txn.__dict__.keys()),
+            sorted(("_write_requested", "_transaction")),
+        )
+
+    def test_01_start_transaction_03(self):
+        # bool(txn._write_requested) is what matters.
+        txn = _lmdb._DBtxn()
+        txn.start_transaction(self.env, 5)
+        self.assertEqual(txn._write_requested, 5)
+        self.assertIsInstance(txn._transaction, self.dbe_module.Transaction)
+        self.assertEqual(
+            sorted(txn.__dict__.keys()),
+            sorted(("_write_requested", "_transaction")),
+        )
+
+
+class _Datastore___init__(unittest.TestCase):
+    def test_01___init___01(self):
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"__init__\(\) takes 2 positional arguments ",
+                    "but 3 were given",
+                )
+            ),
+            _lmdb._Datastore,
+            *(None, None),
+        )
+
+    def test_01___init___02(self):
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"__init__\(\) missing 1 required positional argument: ",
+                    "'datastorename'",
+                )
+            ),
+            _lmdb._Datastore,
+        )
+
+    def test_01___init___03(self):
+        store = _lmdb._Datastore(None, a=None, b=None)
+        self.assertEqual(store._name, None)
+        self.assertEqual(store._flags, dict(a=None, b=None))
+        self.assertEqual(store._datastore, None)
+        self.assertEqual(
+            sorted(store.__dict__.keys()),
+            sorted(("_name", "_flags", "_datastore")),
+        )
+        self.assertIs(store.datastore, store._datastore)
+
+
+class _Datastore(unittest.TestCase):
     def setUp(self):
-        class _D(_db.Database):
-            pass
+        self.store = _lmdb._Datastore(b"store")
 
-        self._D = _D
+    def test_01_open_datastore_01(self):
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"open_datastore\(\) takes from 2 to 3 positional ",
+                    "arguments but 4 were given",
+                )
+            ),
+            self.store.open_datastore,
+            *(None, None, None),
+        )
+
+
+class _Datastore_open_datastore(_Module, EnvironmentExistsOneDb):
+    def setUp(self):
+        super().setUp()
+        store = _lmdb._Datastore(b"store")
+        store.open_datastore(self.env)
+        self.env.close()
 
     def tearDown(self):
-        self.database = None
-        self._D = None
-        logdir = "___memlogs_memory_db"
-        if os.path.exists(logdir):
-            for f in os.listdir(logdir):
-                if f.startswith("log."):
-                    os.remove(os.path.join(logdir, f))
-            os.rmdir(logdir)
+        super().tearDown()
+
+    def test_01_open_datastore_01(self):
+        # LMDB_TEST_ROOT exists so a read-only transaction can be started
+        # straight away in the new environment.
+        self.env = self.dbe_module.open(HOME_DATA, subdir=False, max_dbs=1)
+        store = _lmdb._Datastore(b"store")
+        store.open_datastore(self.env)
+        self.assertEqual(store._name, b"store")
+        self.assertEqual(store._flags, {})
+        self.assertIsInstance(store._datastore, self.dbe_module._Database)
+        self.assertEqual(
+            sorted(store.__dict__.keys()),
+            sorted(("_name", "_flags", "_datastore")),
+        )
+
+    def test_01_open_datastore_02(self):
+        self.env = self.dbe_module.open(HOME_DATA, subdir=False, max_dbs=1)
+        store = _lmdb._Datastore(b"store")
+        store.open_datastore(self.env)
+        spare = _lmdb._Datastore(b"spare")
+        self.assertRaisesRegex(
+            self.dbe_module.DbsFullError,
+            "mdb_dbi_open: MDB_DBS_FULL: Environment maxdbs limit reached",
+            spare.open_datastore,
+            *(self.env,),
+        )
 
 
-class Database___init__(_DB):
+class _Datastore_open_datastore_write(_Module, EnvironmentExistsOneDb):
+    def setUp(self):
+        super().setUp()
+
+    def tearDown(self):
+        super().tearDown()
+
+    def test_01_open_datastore_write_01(self):
+        store = _lmdb._Datastore(b"store")
+        store.open_datastore(self.env)
+
+    def test_01_open_datastore_write_02(self):
+        store = _lmdb._Datastore(b"store")
+        store.open_datastore(self.env)
+        txn = self.env.begin()
+        self.assertRaisesRegex(
+            AssertionError,
+            "",
+            store.open_datastore,
+            *(self.env,),
+        )
+
+    def test_01_open_datastore_write_03(self):
+        store = _lmdb._Datastore(b"store")
+        store.open_datastore(self.env)
+        store._datastore = None
+        txn = self.env.begin()
+        store.open_datastore(self.env)
+
+
+class _Datastore_close_datastore(_Module, EnvironmentExistsOneDb):
+    def setUp(self):
+        super().setUp()
+        store = _lmdb._Datastore(b"store")
+        store.open_datastore(self.env)
+        self.env.close()
+
+    def tearDown(self):
+        super().tearDown()
+
+    def test_01_release_datastore_handle_01(self):
+        self.env = self.dbe_module.open(HOME_DATA, subdir=False, max_dbs=1)
+        store = _lmdb._Datastore(b"store")
+        store.open_datastore(self.env)
+        store.close_datastore()
+        self.assertEqual(store._name, b"store")
+        self.assertEqual(store._flags, {})
+        self.assertEqual(store._datastore, None)
+        self.assertEqual(
+            sorted(store.__dict__.keys()),
+            sorted(("_name", "_flags", "_datastore")),
+        )
+
+    def test_01_release_datastore_handle_02(self):
+        self.env = self.dbe_module.open(HOME_DATA, subdir=False, max_dbs=1)
+        store = _lmdb._Datastore(b"store")
+        store.open_datastore(self.env)
+        store.close_datastore()
+        store.open_datastore(self.env)
+        self.assertIsInstance(store._datastore, self.dbe_module._Database)
+
+    def test_01_release_datastore_handle_03(self):
+        self.env = self.dbe_module.open(HOME_DATA, subdir=False, max_dbs=1)
+        store = _lmdb._Datastore(b"store")
+        store.open_datastore(self.env)
+        store.close_datastore()
+        store.open_datastore(self.env)
+        spare = _lmdb._Datastore(b"spare")
+        self.assertRaisesRegex(
+            self.dbe_module.DbsFullError,
+            "mdb_dbi_open: MDB_DBS_FULL: Environment maxdbs limit reached",
+            spare.open_datastore,
+            *(self.env,),
+        )
+
+
+class Database___init__(DB):
     def test_01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
                 (
-                    r"__init__\(\) takes from 2 to 7 positional arguments ",
-                    "but 8 were given",
+                    r"__init__\(\) takes from 2 to 3 positional arguments ",
+                    "but 4 were given",
                 )
             ),
             self._D,
-            *(None, None, None, None, None, None, None),
+            *(None, None, None),
         )
 
     def test_02(self):
@@ -80,7 +418,7 @@ class Database___init__(_DB):
 
     def test_03(self):
         self.assertRaisesRegex(
-            _db.DatabaseError,
+            _lmdb.DatabaseError,
             "".join(("Database folder name {} is not valid",)),
             self._D,
             *({},),
@@ -89,7 +427,7 @@ class Database___init__(_DB):
 
     def test_04(self):
         self.assertRaisesRegex(
-            _db.DatabaseError,
+            _lmdb.DatabaseError,
             "".join(("Database environment must be a dictionary",)),
             self._D,
             *({},),
@@ -101,29 +439,42 @@ class Database___init__(_DB):
         self.assertIsInstance(database, self._D)
         self.assertEqual(os.path.basename(database.home_directory), "a")
         self.assertEqual(os.path.basename(database.database_file), "a")
-        self.assertEqual(
-            os.path.basename(os.path.dirname(database.database_file)), "a"
-        )
+        # This code for "subdir==False"
+        # self.assertEqual(
+        #    os.path.basename(os.path.dirname(database.database_file)), "a"
+        # )
+        # No code for "subdir==True" because database_file and home_directory
+        # are same in this case (see test_06).
         self.assertEqual(database.specification, {})
         self.assertEqual(database.segment_size_bytes, 4000)
         self.assertEqual(database.dbenv, None)
         self.assertEqual(database.table, {})
-        self.assertEqual(database.dbtxn, None)
+        self.assertIsInstance(database.dbtxn, _lmdb._DBtxn)
         self.assertEqual(database._dbe, None)
         self.assertEqual(database.segment_table, {})
         self.assertEqual(database.ebm_control, {})
         self.assertEqual(database._real_segment_size_bytes, False)
         self.assertEqual(database._initial_segment_size_bytes, 4000)
-        self.assertEqual(database._file_per_database, False)
-        self.assertEqual(database._initial_file_per_database, False)
         self.assertEqual(SegmentSize.db_segment_size_bytes, 4096)
         database.set_segment_size()
         self.assertEqual(SegmentSize.db_segment_size_bytes, 4000)
 
     def test_06(self):
         database = self._D({})
-        self.assertEqual(database.home_directory, None)
-        self.assertEqual(database.database_file, None)
+        self.assertEqual(
+            os.path.basename(database.home_directory), "___test_lmdb"
+        )
+        # This code for "subdir==False"
+        self.assertEqual(
+            os.path.dirname(database.database_file), database.home_directory
+        )
+        # This code for "subdir==True"
+        # self.assertEqual(
+        #    database.database_file, database.home_directory
+        # )
+        self.assertEqual(
+            os.path.basename(database.database_file), "___test_lmdb"
+        )
 
     # This combination of folder and segment_size_bytes arguments is used for
     # unittests, except for one to see a non-memory database with a realistic
@@ -137,41 +488,25 @@ class Database___init__(_DB):
 
 # Transaction methods, except start_transaction, do not raise exceptions if
 # called when no database open but do nothing.
-class Database_transaction_methods(_DB):
+class Database_transaction_bad_calls(DB):
     def setUp(self):
         super().setUp()
         self.database = self._D({})
 
-    def test_01_start_transaction(self):
-        self.assertEqual(self.database.dbenv, None)
-        # The _sqlite and _nosql modules just keep going without starting a
-        # transaction.  Perhaps _db should too.
-        self.assertRaisesRegex(
-            AttributeError,
-            "".join(("'NoneType' object has no attribute 'txn_begin'",)),
-            self.database.start_transaction,
-        )
-
-    def test_02_backout(self):
-        self.assertEqual(self.database.dbenv, None)
-        self.database.backout()
-
-    def test_03_commit(self):
-        self.assertEqual(self.database.dbenv, None)
-        self.database.commit()
-
-    def test_04(self):
+    def test_02_transaction_bad_calls_01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
                 (
-                    r"start_transaction\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    r"start_transaction\(\) takes 1 positional ",
+                    "argument but 2 were given",
                 )
             ),
             self.database.start_transaction,
             *(None,),
         )
+
+    def test_02_transaction_bad_calls_02(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -183,6 +518,8 @@ class Database_transaction_methods(_DB):
             self.database.backout,
             *(None,),
         )
+
+    def test_02_transaction_bad_calls_03(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -195,9 +532,147 @@ class Database_transaction_methods(_DB):
             *(None,),
         )
 
+    def test_02_transaction_bad_calls_04(self):
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"start_read_only_transaction\(\) takes 1 positional ",
+                    "argument but 2 were given",
+                )
+            ),
+            self.database.start_read_only_transaction,
+            *(None,),
+        )
+
+    def test_02_transaction_bad_calls_04(self):
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"end_read_only_transaction\(\) takes 1 positional ",
+                    "argument but 2 were given",
+                )
+            ),
+            self.database.end_read_only_transaction,
+            *(None,),
+        )
+
+
+class Database_start_transaction(DB):
+    def setUp(self):
+        super().setUp()
+        self.database = self._D({})
+        self.database.dbenv = self.dbe_module.open(HOME)
+
+    def test_01_start_transaction_01(self):
+        sdb = self.database
+        ae = self.assertEqual
+        ae(len(sdb.table), 0)
+        ae(len(sdb.segment_table), 0)
+        ae(len(sdb.ebm_control), 0)
+        sdb.start_transaction()
+        ae(len(sdb.table), 0)
+        ae(len(sdb.segment_table), 0)
+        ae(len(sdb.ebm_control), 0)
+        self.assertIsInstance(
+            sdb.dbtxn._transaction, self.dbe_module.Transaction
+        )
+        self.assertEqual(sdb.dbtxn._write_requested, True)
+
+    def test_01_start_transaction_02(self):
+        sdb = self.database
+        ae = self.assertEqual
+        ae(len(sdb.table), 0)
+        ae(len(sdb.segment_table), 0)
+        ae(len(sdb.ebm_control), 0)
+        sdb.start_transaction()
+        ae(len(sdb.table), 0)
+        ae(len(sdb.segment_table), 0)
+        ae(len(sdb.ebm_control), 0)
+        self.assertIsInstance(
+            sdb.dbtxn._transaction, self.dbe_module.Transaction
+        )
+        self.assertEqual(sdb.dbtxn._write_requested, True)
+
+    def test_01_start_transaction_03(self):
+        sdb = self.database
+        ae = self.assertEqual
+        ae(len(sdb.table), 0)
+        ae(len(sdb.segment_table), 0)
+        ae(len(sdb.ebm_control), 0)
+        sdb.start_read_only_transaction()
+        ae(len(sdb.table), 0)
+        ae(len(sdb.segment_table), 0)
+        ae(len(sdb.ebm_control), 0)
+        self.assertIsInstance(
+            sdb.dbtxn._transaction, self.dbe_module.Transaction
+        )
+        self.assertEqual(sdb.dbtxn._write_requested, False)
+
+
+class Database_backout_and_commit(DB):
+    def setUp(self):
+        super().setUp()
+        self.database = self._D({})
+        self.database.dbenv = self.dbe_module.open(HOME)
+        self.database.dbtxn._transaction = self.database.dbenv.begin()
+
+    def test_01_backout_01(self):
+        sdb = self.database
+        ae = self.assertEqual
+        sdb.backout()
+        ae(len(sdb.table), 0)
+        ae(len(sdb.segment_table), 0)
+        ae(len(sdb.ebm_control), 0)
+        self.assertEqual(sdb.dbtxn._transaction, None)
+        self.assertEqual(sdb.dbtxn._write_requested, False)
+
+    def test_02_commit_01(self):
+        sdb = self.database
+        ae = self.assertEqual
+        sdb.commit()
+        ae(len(sdb.table), 0)
+        ae(len(sdb.segment_table), 0)
+        ae(len(sdb.ebm_control), 0)
+        self.assertEqual(sdb.dbtxn._transaction, None)
+        self.assertEqual(sdb.dbtxn._write_requested, False)
+
+
+class Database_database_contexts_bad_calls(DB):
+    def setUp(self):
+        super().setUp()
+        self.database = self._D({})
+
+    def test_01_open_database_contexts_bad_call_01(self):
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"open_database_contexts\(\) takes from 1 to 2 ",
+                    "positional arguments but 3 were given",
+                )
+            ),
+            self.database.open_database_contexts,
+            *(None, None),
+        )
+
+    def test_02_close_database_contexts_bad_call_01(self):
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"close_database_contexts\(\) takes from 1 to 2 ",
+                    "positional arguments but 3 were given",
+                )
+            ),
+            self.database.close_database_contexts,
+            *(None, None),
+        )
+
 
 # Methods which do not require database to be open.
-class DatabaseInstance(_DB):
+class DatabaseInstance(DB):
     def setUp(self):
         super().setUp()
         self.database = self._D({})
@@ -214,13 +689,13 @@ class DatabaseInstance(_DB):
             self.database._validate_segment_size_bytes,
         )
         self.assertRaisesRegex(
-            _db.DatabaseError,
+            _lmdb.DatabaseError,
             "".join(("Database segment size must be an int",)),
             self.database._validate_segment_size_bytes,
             *("a",),
         )
         self.assertRaisesRegex(
-            _db.DatabaseError,
+            _lmdb.DatabaseError,
             "".join(("Database segment size must be more than 0",)),
             self.database._validate_segment_size_bytes,
             *(0,),
@@ -241,18 +716,9 @@ class DatabaseInstance(_DB):
             ),
             self.database.environment_flags,
         )
-        dbe = dbe_module.db
         self.assertEqual(
-            self.database.environment_flags(dbe),
-            (
-                dbe.DB_CREATE
-                | dbe.DB_RECOVER
-                | dbe.DB_INIT_MPOOL
-                | dbe.DB_INIT_LOCK
-                | dbe.DB_INIT_LOG
-                | dbe.DB_INIT_TXN
-                | dbe.DB_PRIVATE
-            ),
+            self.database.environment_flags(bdb),
+            dict(subdir=False, readahead=False),
         )
 
     def test_03_encode_record_number(self):
@@ -311,9 +777,8 @@ class DatabaseInstance(_DB):
         )
 
 
-# Memory databases are used for these tests.
-class Database_open_database(_DB):
-    def test_01(self):
+class Database_open_database(DB, _Specification):
+    def test_01_open_database(self):
         self.database = self._D({})
         self.assertRaisesRegex(
             TypeError,
@@ -326,137 +791,84 @@ class Database_open_database(_DB):
             self.database.open_database,
             *(None, None, None),
         )
-        self.assertRaisesRegex(
-            TypeError,
-            "".join(
-                (
-                    r"close_database\(\) takes 1 positional argument ",
-                    "but 2 were given",
-                )
-            ),
-            self.database.close_database,
-            *(None,),
-        )
-        self.assertRaisesRegex(
-            TypeError,
-            "".join(
-                (
-                    r"close_database_contexts\(\) takes from 1 to 2 ",
-                    "positional arguments but 3 were given",
-                )
-            ),
-            self.database.close_database_contexts,
-            *(None, None),
-        )
 
-    def test_02(self):
+    def test_02_open_database(self):
         self.database = self._D({})
-        self.database.open_database(dbe_module.db)
+        self.database.open_database(self.dbe_module)
         self.assertEqual(SegmentSize.db_segment_size_bytes, 4000)
-        self.assertEqual(self.database.home_directory, None)
-        self.assertEqual(self.database.database_file, None)
-        self.assertEqual(self.database.dbenv.__class__.__name__, "DBEnv")
+        self.assertEqual(
+            self.database.home_directory,
+            HOME,
+        )
+        self.assertEqual(
+            self.database.database_file,
+            HOME_DATA,
+        )
+        self.assertEqual(os.path.isfile(HOME_DATA), True)
+        self.assertEqual(os.path.isfile(HOME_LOCK), True)
+        self.assertEqual(self.database.dbenv.__class__.__name__, "Environment")
 
-    def test_03(self):
+    def test_03_open_database(self):
         self.database = self._D({}, segment_size_bytes=None)
-        self.database.open_database(dbe_module.db)
+        self.database.open_database(self.dbe_module)
         self.assertEqual(SegmentSize.db_segment_size_bytes, 16)
-        self.assertEqual(self.database.home_directory, None)
-        self.assertEqual(self.database.database_file, None)
-        self.assertEqual(self.database.dbenv.__class__.__name__, "DBEnv")
-
-    def test_04_close_database(self):
-        self.database = self._D({}, segment_size_bytes=None)
-        self.database.open_database(dbe_module.db)
-        self.database.close_database()
-        self.assertEqual(self.database.dbenv, None)
-        self.database.close_database()
-        self.assertEqual(self.database.dbenv, None)
-
-    def test_05_close_database_contexts(self):
-        self.database = self._D({}, segment_size_bytes=None)
-        self.database.open_database(dbe_module.db)
-        self.database.close_database_contexts()
-        self.assertEqual(self.database.dbenv, None)
-        self.database.close_database_contexts()
-        self.assertEqual(self.database.dbenv, None)
-
-    def test_06(self):
-        self.database = self._D({"file1": {"field1"}})
-        self.database.open_database(dbe_module.db)
-        self.check_specification()
-
-    def test_07(self):
-        self.database = self._D(filespec.FileSpec(**{"file1": {"field1"}}))
-        self.database.open_database(dbe_module.db)
-        self.check_specification()
-
-    def test_08(self):
-        self.database = self._D(
-            filespec.FileSpec(**{"file1": {"field1"}, "file2": {"field2"}})
-        )
-        self.database.open_database(dbe_module.db, files={"file1"})
-        self.check_specification()
-
-    def test_09(self):
-        self.database = self._D(
-            filespec.FileSpec(**{"file1": {"field1"}, "file2": ()})
-        )
-        d = self.database
-        d.open_database(dbe_module.db)
         self.assertEqual(
-            set(d.table), {"file1", "___control", "file1_field1", "file2"}
+            self.database.home_directory,
+            HOME,
         )
-        self.assertEqual(set(d.segment_table), {"file1", "file2"})
-        self.assertEqual(set(d.ebm_control), {"file1", "file2"})
-        for v in d.ebm_control.values():
-            self.assertIsInstance(v, _db.ExistenceBitmapControl)
-        c = 0
-        o = set()
-        for t in (
-            d.table,
-            d.segment_table,
-        ):
-            for v in t.values():
-                if isinstance(v, list):
-                    for i in v:
-                        self.assertEqual(i.__class__.__name__, "DB")
-                        c += 1
-                        o.add(i)
-                else:
-                    self.assertEqual(v.__class__.__name__, "DB")
-                    c += 1
-                    o.add(v)
-        for t in (d.ebm_control,):
-            for v in t.values():
-                self.assertEqual(v.ebm_table.__class__.__name__, "DB")
-                c += 1
-                o.add(v)
-        self.assertEqual(c, len(o))
-
-    def test_10_file_name_for_database(self):
-        self.database = self._D(
-            filespec.FileSpec(**{"file1": {"field1"}, "file2": ()})
-        )
-        d = self.database
-        self.assertEqual(d._file_per_database, False)
-        self.assertEqual(d.database_file, None)
-        self.assertEqual(d.file_name_for_database("file1"), None)
-        d._file_per_database = True
-        self.assertEqual(d.home_directory, None)
-        self.assertEqual(d.file_name_for_database("file1"), "file1")
-        d.home_directory = "home"
         self.assertEqual(
-            d.file_name_for_database("file1"), os.path.join("home", "file1")
+            self.database.database_file,
+            HOME_DATA,
+        )
+        self.assertEqual(os.path.isfile(HOME_DATA), True)
+        self.assertEqual(os.path.isfile(HOME_LOCK), True)
+        self.assertEqual(self.database.dbenv.__class__.__name__, "Environment")
+
+    def test_06_open_database(self):
+        self.set_specification(specification={"file1": {"field1"}})
+        self.database.open_database(self.dbe_module)
+        self.check_specification()
+
+    def test_07_open_database(self):
+        self.set_specification(
+            specification=filespec.FileSpec(**{"file1": {"field1"}})
+        )
+        self.database.open_database(self.dbe_module)
+        self.check_specification()
+
+    def test_08_open_database(self):
+        self.set_specification(
+            specification=filespec.FileSpec(
+                **{"file1": {"field1"}, "file2": {"field2"}}
+            )
+        )
+        openfiles = {"file1"}
+        self.database.open_database(self.dbe_module, files=openfiles)
+        self.check_specification(files=openfiles)
+
+    def test_09_open_database(self):
+        self.set_specification(
+            specification=filespec.FileSpec(
+                **{"file1": {"field1"}, "file2": ()}
+            )
+        )
+        self.database.open_database(self.dbe_module)
+        self.check_specification()
+
+    # .test__db has test_10_file_name_for_database(self).
+    def test_10_encoded_database_name(self):
+        self.database = self._D({})
+        self.assertEqual(
+            self.database._encoded_database_name("file1"), b"file1"
         )
 
     def test_11_checkpoint_before_close_dbenv(self):
         self.database = self._D(filespec.FileSpec())
         d = self.database
-        d.open_database(dbe_module.db)
+        d.open_database(self.dbe_module)
         self.assertEqual(d.checkpoint_before_close_dbenv(), None)
 
-    # Comment in _db.py suggests this method is not needed.
+    # Comment in _lmdb.py suggests this method is not needed.
     def test_12_is_database_file_active(self):
         self.database = self._D(
             filespec.FileSpec(**{"file1": {"field1"}, "file2": ()})
@@ -468,57 +880,173 @@ class Database_open_database(_DB):
             d.is_database_file_active,
             *("file1",),
         )
-        d.open_database(dbe_module.db)
+        d.open_database(self.dbe_module)
         self.assertEqual(d.is_database_file_active("file1"), True)
         x = d.table["file1"][0]
         d.table["file1"][0] = None
         self.assertEqual(d.is_database_file_active("file1"), False)
         d.table["file1"][0] = x
 
-    def check_specification(self):
-        d = self.database
-        self.assertEqual(set(d.table), {"file1", "___control", "file1_field1"})
-        self.assertEqual(set(d.segment_table), {"file1"})
-        self.assertEqual(set(d.ebm_control), {"file1"})
-        for v in d.ebm_control.values():
-            self.assertIsInstance(v, _db.ExistenceBitmapControl)
-        c = 0
-        o = set()
-        for t in (
-            d.table,
-            d.segment_table,
-        ):
-            for v in t.values():
-                if isinstance(v, list):
-                    for i in v:
-                        self.assertEqual(i.__class__.__name__, "DB")
-                        c += 1
-                        o.add(i)
-                else:
-                    self.assertEqual(v.__class__.__name__, "DB")
-                    c += 1
-                    o.add(v)
-        for t in (d.ebm_control,):
-            for v in t.values():
-                self.assertEqual(v.ebm_table.__class__.__name__, "DB")
-                c += 1
-                o.add(v)
-        self.assertEqual(c, len(o))
+
+class DatabaseDir_open_database(DBDir, _Specification):
+    def test_06_open_database_dir(self):
+        self.set_specification(specification={"file1": {"field1"}})
+        self.database.open_database(self.dbe_module)
+        self.check_specification()
 
 
-# Memory databases are used for these tests.
+class DatabaseExist_open_database(DBExist, _Specification):
+    def test_06_open_database_exist(self):
+        self.set_specification(specification={"file1": {"field1"}})
+        self.database.open_database(self.dbe_module)
+        self.check_specification()
+
+
+class Database_close_database(DB):
+    def test_01(self):
+        self.database = self._D({})
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"close_database\(\) takes 1 positional ",
+                    "argument but 2 were given",
+                )
+            ),
+            self.database.close_database,
+            *(None,),
+        )
+
+    def test_04_close_database(self):
+        self.database = self._D({}, segment_size_bytes=None)
+        self.database.open_database(self.dbe_module)
+        self.database.close_database()
+        self.assertEqual(self.database.dbenv, None)
+        self.database.close_database()
+        self.assertEqual(self.database.dbenv, None)
+
+    def test_05_close_database_contexts(self):
+        self.database = self._D({}, segment_size_bytes=None)
+        self.database.open_database(self.dbe_module)
+        self.database.close_database_contexts()
+        self.assertEqual(
+            isinstance(self.database.dbenv, self.dbe_module.Environment),
+            False,
+        )
+        self.database.close_database_contexts()
+        self.assertEqual(
+            isinstance(self.database.dbenv, self.dbe_module.Environment),
+            False,
+        )
+
+
+class Database_open_database_contexts(DB):
+    def setUp(self):
+        super().setUp()
+        self.database = self._D({**{"file1": {"field1"}, "file2": {"field2"}}})
+        self.database.dbenv = self.dbe_module.open(HOME, max_dbs=7)
+        self.database.open_database(self.dbe_module)
+        self.database.close_database_context_files()
+
+    def test_01_open_database_contexts_all_files_01(self):
+        sdb = self.database
+        ae = self.assertEqual
+        sdt = self.database.table
+        sst = self.database.segment_table
+        sec = self.database.ebm_control
+        dbem = self.dbe_module
+        ae(isinstance(sdt["___design"].datastore, dbem._Database), False)
+        ae(isinstance(sdt["___control"].datastore, dbem._Database), False)
+        ae(sdt["file1"][0].datastore is None, True)
+        ae(sdt["file1_field1"][0].datastore is None, True)
+        ae(sdt["file2"][0].datastore is None, True)
+        ae(sdt["file2_field2"][0].datastore is None, True)
+        ae(len(sdt), 6)
+        ae(sst["file1"].datastore is None, True)
+        ae(sst["file2"].datastore is None, True)
+        ae(len(sec), 2)
+        ae(sec["file1"].ebm_table.datastore is None, True)
+        ae(sec["file2"].ebm_table.datastore is None, True)
+        ae(len(sst), 2)
+        sdb.open_database_contexts()
+        ae(isinstance(sdt["___design"].datastore, dbem._Database), False)
+        ae(isinstance(sdt["___control"].datastore, dbem._Database), True)
+        ae(isinstance(sdt["file1"][0].datastore, dbem._Database), True)
+        ae(isinstance(sdt["file1_field1"][0].datastore, dbem._Database), True)
+        ae(isinstance(sdt["file2"][0].datastore, dbem._Database), True)
+        ae(isinstance(sdt["file2_field2"][0].datastore, dbem._Database), True)
+        ae(len(sdt), 6)
+        ae(isinstance(sst["file1"].datastore, dbem._Database), True)
+        ae(isinstance(sst["file2"].datastore, dbem._Database), True)
+        ae(len(sec), 2)
+        ae(isinstance(sec["file1"].ebm_table.datastore, dbem._Database), True)
+        ae(isinstance(sec["file2"].ebm_table.datastore, dbem._Database), True)
+        ae(len(sst), 2)
+
+    def test_02_open_database_contexts_no_files_01(self):
+        sdb = self.database
+        ae = self.assertEqual
+        sdt = self.database.table
+        sst = self.database.segment_table
+        sec = self.database.ebm_control
+        dbem = self.dbe_module
+        sdb.open_database_contexts(files=False)
+        ae(isinstance(sdt["___design"].datastore, dbem._Database), False)
+        ae(isinstance(sdt["___control"].datastore, dbem._Database), True)
+        ae(sdt["file1"][0].datastore is None, True)
+        ae(sdt["file1_field1"][0].datastore is None, True)
+        ae(sdt["file2"][0].datastore is None, True)
+        ae(sdt["file2_field2"][0].datastore is None, True)
+        ae(len(sdt), 6)
+        ae(sst["file1"].datastore is None, True)
+        ae(sst["file2"].datastore is None, True)
+        ae(len(sec), 2)
+        ae(sec["file1"].ebm_table.datastore is None, True)
+        ae(sec["file2"].ebm_table.datastore is None, True)
+        ae(len(sst), 2)
+
+    def test_03_open_database_contexts_one_file_01(self):
+        sdb = self.database
+        ae = self.assertEqual
+        sdt = self.database.table
+        sst = self.database.segment_table
+        sec = self.database.ebm_control
+        dbem = self.dbe_module
+        sdb.open_database_contexts(files={"file2"})
+        ae(isinstance(sdt["___design"].datastore, dbem._Database), False)
+        ae(isinstance(sdt["___control"].datastore, dbem._Database), True)
+        ae(sdt["file1"][0].datastore is None, True)
+        ae(sdt["file1_field1"][0].datastore is None, True)
+        ae(isinstance(sdt["file2"][0].datastore, dbem._Database), True)
+        ae(isinstance(sdt["file2_field2"][0].datastore, dbem._Database), True)
+        ae(len(sdt), 6)
+        ae(sst["file1"].datastore is None, True)
+        ae(isinstance(sst["file2"].datastore, dbem._Database), True)
+        ae(len(sec), 2)
+        ae(sec["file1"].ebm_table.datastore is None, True)
+        ae(isinstance(sec["file2"].ebm_table.datastore, dbem._Database), True)
+        ae(len(sst), 2)
+
+
 # This one has to look like a real application (almost).
 # Do not need to catch the self.__class__.SegmentSizeError exception in
 # _ED.open_database() method.
 class Database_do_database_task(unittest.TestCase):
     # SegmentSize.db_segment_size_bytes is not reset in this class because only
-    # one pass through the test loop is done: for bsddb3.  Compare with modules
+    # one pass through the test loop is done: for lmdb.  Compare with modules
     # test__sqlite and test__nosql where two passes are done.
 
     def setUp(self):
-        class _ED(_db.Database):
+        class _ED(_lmdb.Database):
+            def __init__(self, specification, folder=None, **kwargs):
+                super().__init__(
+                    specification,
+                    folder=folder if folder is not None else HOME,
+                    **kwargs,
+                )
+
             def open_database(self, **k):
-                super().open_database(dbe_module.db, **k)
+                super().open_database(dbe_module, **k)
 
         class _AD(_ED):
             def __init__(self, folder, **k):
@@ -527,14 +1055,16 @@ class Database_do_database_task(unittest.TestCase):
         self._AD = _AD
 
     def tearDown(self):
+        if hasattr(self, "database"):
+            if hasattr(self.database, "home_directory"):
+                if os.path.isdir(self.database.home_directory):
+                    if (
+                        os.path.basename(self.database.home_directory)
+                        == LMDB_TEST_ROOT
+                    ):
+                        shutil.rmtree(self.database.home_directory)
         self.database = None
         self._AD = None
-        logdir = "___memlogs_memory_db"
-        if os.path.exists(logdir):
-            for f in os.listdir(logdir):
-                if f.startswith("log."):
-                    os.remove(os.path.join(logdir, f))
-            os.rmdir(logdir)
 
     def test_01_do_database_task(self):
         def m(*a, **k):
@@ -542,19 +1072,26 @@ class Database_do_database_task(unittest.TestCase):
 
         self.database = self._AD(None)
         d = self.database
+        # At this point LMDB_TEST_ROOT does not exist as a directory.
+        # d.open_database() gives 'No such file or directory' exception.
         d.open_database()
+        # At this point LMDB_TEST_ROOT exists as a directory.
+        # db.open_database() in do_database_task(m)
+        # gives 'Not a directory' exception.
+        # Not sure what this means yet!
+        # Is the open_database() in call below expecting the LMDB_TEST_ROOT
+        # file in the LMDB_TEST_ROOT directory to be a directory itself?
         self.assertEqual(d.do_database_task(m), None)
 
 
-# Memory databases are used for these tests.
 # Use the 'testing only' segment size for convenience of setup and eyeballing.
-class _DBOpen(_DB):
+class _DBOpen(DB):
     def setUp(self):
         super().setUp()
         self.database = self._D(
             filespec.FileSpec(**{"file1": {"field1"}}), segment_size_bytes=None
         )
-        self.database.open_database(dbe_module.db)
+        self.database.open_database(self.dbe_module)
 
     def tearDown(self):
         self.database.close_database()
@@ -562,6 +1099,10 @@ class _DBOpen(_DB):
 
 
 class DatabaseTransactions(_DBOpen):
+    # Because both reads and writes must be in transactions there is a case
+    # for not allowing bare backout and commit; and perhaps not allowing
+    # repeated begin transaction.  This is different from _db, _sqlite, and
+    # _nosql, siblings.
 
     # Second start_transaction does nothing.
     def test_01(self):
@@ -585,7 +1126,16 @@ class DatabaseTransactions(_DBOpen):
         self.database.commit()
 
 
+# All actions must be within a transaction.
 class Database_put_replace_delete(_DBOpen):
+    def setUp(self):
+        super().setUp()
+        self.database.start_transaction()
+
+    def tearDown(self):
+        self.database.commit()
+        super().tearDown()
+
     def test_01(self):
         self.assertRaisesRegex(
             TypeError,
@@ -620,7 +1170,7 @@ class Database_put_replace_delete(_DBOpen):
 
     def test_02_put(self):
         recno = self.database.put("file1", None, "new value")
-        self.assertEqual(recno, 1)
+        self.assertEqual(recno, 0)
 
     def test_03_put(self):
         self.assertEqual(self.database.put("file1", 2, "new value"), None)
@@ -629,7 +1179,7 @@ class Database_put_replace_delete(_DBOpen):
 
     def test_04_put(self):
         recno = self.database.put("file1", None, "new value")
-        self.assertEqual(recno, 1)
+        self.assertEqual(recno, 0)
         self.assertEqual(self.database.put("file1", 1, "renew value"), None)
         recno = self.database.put("file1", None, "other value")
         self.assertEqual(recno, 2)
@@ -643,7 +1193,16 @@ class Database_put_replace_delete(_DBOpen):
         self.assertEqual(self.database.delete("file1", 1, "new value"), None)
 
 
+# These methods must be in transaction in py-lmdb.
 class Database_methods(_DBOpen):
+    def setUp(self):
+        super().setUp()
+        self.database.start_transaction()
+
+    def tearDown(self):
+        self.database.commit()
+        super().tearDown()
+
     def test_01(self):
         self.assertRaisesRegex(
             TypeError,
@@ -738,12 +1297,12 @@ class Database_methods(_DBOpen):
     def test_04_get_primary_record(self):
         self.database.put("file1", None, "new value")
         self.assertEqual(
-            self.database.get_primary_record("file1", 1), (1, "new value")
+            self.database.get_primary_record("file1", 0), (0, "new value")
         )
 
     def test_05_remove_record_from_ebm(self):
         self.assertRaisesRegex(
-            _db.DatabaseError,
+            _lmdb.DatabaseError,
             "Existence bit map for segment does not exist",
             self.database.remove_record_from_ebm,
             *("file1", 2),
@@ -775,9 +1334,17 @@ class Database_methods(_DBOpen):
         )
 
     def test_16_recordset_record_number(self):
-        self.database.table["file1"][0].put(1, encode("Some value"))
+        self.database.dbtxn.transaction.put(
+            int(1).to_bytes(4, byteorder="big"),
+            encode("Some value"),
+            db=self.database.table["file1"][0].datastore,
+        )
         values = b"\x40" + b"\x00" * (SegmentSize.db_segment_size_bytes - 1)
-        self.database.ebm_control["file1"].ebm_table.put(1, values)
+        self.database.dbtxn.transaction.put(
+            int(0).to_bytes(4, byteorder="big"),
+            values,
+            db=self.database.ebm_control["file1"].ebm_table.datastore,
+        )
         rl = self.database.recordlist_record_number("file1", key=1)
         self.assertIsInstance(rl, recordset.RecordList)
         self.assertEqual(rl.count_records(), 1)
@@ -902,21 +1469,16 @@ class Database_methods(_DBOpen):
     def test_26_get_table_connection(self):
         self.assertEqual(
             self.database.get_table_connection("file1").__class__.__name__,
-            "DB",
+            "_Database",
         )
 
-    def create_ebm(self):
-        values = b"\x7f" + b"\xff" * (SegmentSize.db_segment_size_bytes - 1)
-        self.database.ebm_control["file1"].ebm_table.put(1, values)
 
-    def create_ebm_extra(self):
-        values = b"\xff" + b"\xff" * (SegmentSize.db_segment_size_bytes - 1)
-        self.database.ebm_control["file1"].ebm_table.append(values)
-
-
-class Database_find_values(_DBOpen):
+class Database_find_values_empty(_DBOpen):
     def setUp(self):
         super().setUp()
+        # Need a cursor in a transaction to do 'find_values'.
+        # Most tests can be done with read-only.
+        self.database.start_read_only_transaction()
         self.valuespec = ValuesClause()
         self.valuespec.field = "field1"
 
@@ -989,183 +1551,197 @@ class Database_find_values(_DBOpen):
             [i for i in self.database.find_values(self.valuespec, "file1")], []
         )
 
+
+class Database_find_values(_DBOpen):
+    def setUp(self):
+        super().setUp()
+        sdb = self.database
+        sdb.start_transaction()
+        txn = sdb.dbtxn.transaction
+        txn.put(
+            b"d", encode("values"), db=sdb.table["file1_field1"][0].datastore
+        )
+        sdb.commit()
+        self.valuespec = ValuesClause()
+        self.valuespec.field = "field1"
+        # Need a cursor in a transaction to do 'find_values'.
+        # Most tests can be done with read-only.
+        sdb.start_read_only_transaction()
+
     def test_11_find_values(self):
-        self.database.table["file1_field1"][0].put(b"d", encode("values"))
         self.assertEqual(
             [i for i in self.database.find_values(self.valuespec, "file1")],
             ["d"],
         )
 
 
-class Database_make_recordset(_DBOpen):
+class _Database_recordset(_DBOpen):
     def setUp(self):
         super().setUp()
         self.database.start_transaction()
-        segments = (
-            b"".join(
-                (
-                    b"\x7f\xff\xff\xff\x00\x00\x00\x00",
-                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
-                )
-            ),
-            b"".join(
-                (
-                    b"\x00\x00\x00\xff\xff\xff\x00\x00",
-                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
-                )
-            ),
-            b"".join(
-                (
-                    b"\x00\x00\x00\x00\x00\xff\xff\xff",
-                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
-                )
-            ),
-            b"".join(
-                (
-                    b"\x00\x00\x00\x00\x00\x00\x00\xff",
-                    b"\xff\xff\x00\x00\x00\x00\x00\x00",
-                )
-            ),
-            b"".join(
-                (
-                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
-                    b"\x00\xff\xff\xff\x00\x00\x00\x00",
-                )
-            ),
-            b"".join(
-                (
-                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
-                    b"\x00\x00\x00\xff\xff\xff\x00\x00",
-                )
-            ),
-            b"".join(
-                (
-                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
-                    b"\x00\x00\x00\x00\x00\xff\xff\xff",
-                )
-            ),
-            b"\x00\x40\x00\x41",
-            b"\x00\x42\x00\x43\x00\x44",
-        )
         self.segments = {}
-        keys = (
-            "a_o",
-            "aa_o",
-            "ba_o",
-            "bb_o",
-            "c_o",
-            "cep",
-            "deq",
-        )
         self.keyvalues = {}
-        self.references = {}
-        for s in segments:
-            self.segments[self.database.segment_table["file1"].append(s)] = s
-        cursor = self.database.table["file1_field1"][0].cursor(
-            txn=self.database.dbtxn
-        )
-        try:
-            for e, k in enumerate(keys):
-                self.keyvalues[k] = e + 1
-                self.references[k] = b"".join(
+        self.references = set()
+        self.keyrefmap = {}
+        self.newrefs = set()
+        for s in DATABASE_MAKE_RECORDSET_SEGMENTS:
+            with self.database.dbtxn.transaction.cursor(
+                self.database.segment_table["file1"].datastore
+            ) as cursor:
+                if cursor.last():
+                    key = int.from_bytes(cursor.key(), byteorder="big") + 1
+                else:
+                    key = 0
+                keyb = key.to_bytes(4, byteorder="big")
+                record = (keyb, s)
+                cursor.put(*record, overwrite=False)
+                self.references.add((record))
+                self.segments[key] = s
+        with self.database.dbtxn.transaction.cursor(
+            self.database.table["file1_field1"][0].datastore
+        ) as cursor:
+            for e, k in enumerate(DATABASE_MAKE_RECORDSET_KEYS):
+                self.keyvalues[k] = e
+                reference = b"".join(
                     (
                         b"\x00\x00\x00\x00",
                         int(32 if e else 31).to_bytes(2, byteorder="big"),
                         self.keyvalues[k].to_bytes(4, byteorder="big"),
                     )
                 )
-                cursor.put(
-                    k.encode(), self.references[k], dbe_module.db.DB_KEYLAST
-                )
-            self.keyvalues["tww"] = 8
-            self.references["tww"] = b"".join(
+                record = (k.encode(), reference)
+                cursor.put(*record)
+                self.references.add((record))
+                self.keyrefmap[k] = {0: reference}
+            k = "tww"
+            self.keyvalues[k] = 7
+            reference = b"".join(
                 (
                     b"\x00\x00\x00\x00",
                     int(2).to_bytes(2, byteorder="big"),
-                    self.keyvalues["tww"].to_bytes(4, byteorder="big"),
+                    self.keyvalues[k].to_bytes(4, byteorder="big"),
                 )
             )
-            cursor.put(
-                "tww".encode(),
-                b"".join(
-                    (
-                        b"\x00\x00\x00\x00",
-                        int(2).to_bytes(2, byteorder="big"),
-                        self.keyvalues["tww"].to_bytes(4, byteorder="big"),
-                    )
-                ),
-                dbe_module.db.DB_KEYLAST,
+            record = (k.encode(), reference)
+            cursor.put(*record)
+            self.references.add((record))
+            self.keyrefmap[k] = {0: reference}
+            k = "twy"
+            self.keyvalues[k] = 8
+            reference = b"".join(
+                (
+                    b"\x00\x00\x00\x00",
+                    int(3).to_bytes(2, byteorder="big"),
+                    self.keyvalues[k].to_bytes(4, byteorder="big"),
+                )
             )
-            self.keyvalues["twy"] = 9
-            cursor.put(
-                "twy".encode(),
-                b"".join(
-                    (
-                        b"\x00\x00\x00\x00",
-                        int(2).to_bytes(2, byteorder="big"),
-                        self.keyvalues["twy"].to_bytes(4, byteorder="big"),
-                    )
-                ),
-                dbe_module.db.DB_KEYLAST,
+            record = (k.encode(), reference)
+            cursor.put(*record)
+            self.references.add((record))
+            self.keyrefmap[k] = {0: reference}
+            k = "one"
+            reference = b"".join(
+                (
+                    b"\x00\x00\x00\x00",
+                    int(50).to_bytes(2, byteorder="big"),
+                )
             )
-            cursor.put(
-                "one".encode(),
-                b"".join(
-                    (
-                        b"\x00\x00\x00\x00",
-                        int(50).to_bytes(2, byteorder="big"),
-                    )
-                ),
-                dbe_module.db.DB_KEYLAST,
+            record = (k.encode(), reference)
+            cursor.put(*record)
+            self.references.add((record))
+            self.keyrefmap[k] = {0: reference}
+            k = "nin"
+            reference = b"".join(
+                (
+                    b"\x00\x00\x00\x00",
+                    int(100).to_bytes(2, byteorder="big"),
+                )
             )
-            cursor.put(
-                "nin".encode(),
-                b"".join(
-                    (
-                        b"\x00\x00\x00\x00",
-                        int(100).to_bytes(2, byteorder="big"),
-                    )
-                ),
-                dbe_module.db.DB_KEYLAST,
-            )
+            record = (k.encode(), reference)
+            cursor.put(*record)
+            self.references.add((record))
+            self.keyrefmap[k] = reference
 
             # This pair of puts wrote their records to different files before
             # solentware-base-4.0, one for lists and one for bitmaps.
             # At solentware-base-4.0 the original test_55_file_records_under
-            # raises a bsddb3.db.DBKeyEmptyError exception when attempting to
+            # raises a lmdb.db.DBKeyEmptyError exception when attempting to
             # delete the second record referred to by self.keyvalues['twy'].
             # The test is changed to expect the exception.
-            cursor.put(
-                "www".encode(),
-                b"".join(
-                    (
-                        b"\x00\x00\x00\x00",
-                        int(2).to_bytes(2, byteorder="big"),
-                        self.keyvalues["twy"].to_bytes(4, byteorder="big"),
-                    )
-                ),
-                dbe_module.db.DB_KEYLAST,
+            k = "www"
+            reference = b"".join(
+                (
+                    b"\x00\x00\x00\x00",
+                    int(3).to_bytes(2, byteorder="big"),
+                    self.keyvalues["twy"].to_bytes(4, byteorder="big"),
+                )
             )
-            cursor.put(
-                "www".encode(),
-                b"".join(
-                    (
-                        b"\x00\x00\x00\x01",
-                        int(2).to_bytes(2, byteorder="big"),
-                        self.keyvalues["twy"].to_bytes(4, byteorder="big"),
-                    )
-                ),
-                dbe_module.db.DB_KEYLAST,
+            record = (k.encode(), reference)
+            cursor.put(*record)
+            self.references.add(record)
+            self.keyrefmap[k] = {0: reference}
+            reference = b"".join(
+                (
+                    b"\x00\x00\x00\x01",
+                    int(3).to_bytes(2, byteorder="big"),
+                    self.keyvalues["twy"].to_bytes(4, byteorder="big"),
+                )
             )
-
-        finally:
-            cursor.close()
+            record = (k.encode(), reference)
+            cursor.put(*record)
+            self.references.add(record)
+            self.keyrefmap[k][1] = reference
+        self.database.commit()
 
     def tearDown(self):
         self.database.commit()
         super().tearDown()
 
-    def test_01(self):
+
+class Database_make_recordset(_Database_recordset):
+    def setUp(self):
+        super().setUp()
+        self.database.start_transaction()
+
+    def verify_records(self, key, test):
+        key = encode(key)
+        for db in (
+            self.database.segment_table["file1"].datastore,
+            self.database.table["file1_field1"][0].datastore,
+        ):
+            with self.database.dbtxn.transaction.cursor(db) as cursor:
+                record = cursor.first()
+                while record:
+                    record = cursor.item()
+                    if key != record[0]:
+                        self.references.discard(record)
+                    else:
+                        self.newrefs.add(record)
+                    record = cursor.next()
+        self.assertEqual(
+            self.references,
+            {encode_test_record(r) for r in database_make_recordset[test][0]},
+        )
+        self.assertEqual(
+            self.newrefs,
+            {encode_test_record(r) for r in database_make_recordset[test][1]},
+        )
+        for key, value in database_make_recordset[test][2]:
+            if isinstance(key, int):
+                db = self.database.segment_table["file1"].datastore
+            elif isinstance(key, str):
+                db = self.database.table["file1_field1"][0].datastore
+            else:
+                continue
+            self.assertEqual(
+                self.database.dbtxn.transaction.get(
+                    encode_test_key(key),
+                    db=db,
+                ),
+                value,
+            )
+
+    def test_01_exceptions(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -1274,78 +1850,174 @@ class Database_make_recordset(_DBOpen):
             self.database.file_records_under,
         )
 
-    def test_02_add_record_to_field_value(self):
-        self.database.add_record_to_field_value(
-            "file1", "field1", "indexvalue", 1, 0
-        )
+    def test_01_verify_setup_records(self):
+        for db in (
+            self.database.segment_table["file1"].datastore,
+            self.database.table["file1_field1"][0].datastore,
+        ):
+            with self.database.dbtxn.transaction.cursor(db) as cursor:
+                record = cursor.first()
+                while record:
+                    self.references.remove(cursor.item())
+                    record = cursor.next()
+        self.assertEqual(self.references, set())
 
-    def test_03_add_record_to_field_value(self):
-        self.database.add_record_to_field_value(
-            "file1", "field1", "nin", 0, 99
-        )
+    def test_05_add_record_to_field_value_01(self):
+        key = "indexvalue"
+        self.database.add_record_to_field_value("file1", "field1", key, 1, 0)
+        self.verify_records(key, "05_01")
 
-    def test_04_add_record_to_field_value(self):
-        self.database.add_record_to_field_value(
-            "file1", "field1", "twy", 0, 99
-        )
+    def test_05_add_record_to_field_value_02(self):
+        key = "nin"
+        self.database.add_record_to_field_value("file1", "field1", key, 0, 99)
+        self.verify_records(key, "05_02")
 
-    def test_05_add_record_to_field_value(self):
-        self.database.add_record_to_field_value(
-            "file1", "field1", "aa_o", 0, 99
-        )
+    def test_05_add_record_to_field_value_03(self):
+        key = "twy"
+        self.database.add_record_to_field_value("file1", "field1", key, 0, 99)
+        self.verify_records(key, "05_03")
 
-    def test_06_remove_record_from_field_value(self):
+    def test_05_add_record_to_field_value_04(self):
+        key = "aa_o"
+        self.database.add_record_to_field_value("file1", "field1", key, 0, 99)
+        self.verify_records(key, "05_04")
+
+    def test_05_add_record_to_field_value_05(self):
+        key = "tww"
+        self.database.add_record_to_field_value("file1", "field1", key, 0, 47)
+        self.verify_records(key, "05_05")
+
+    def test_05_add_record_to_field_value_06(self):
+        key = "twy"
+        for record in range(99, 103):
+            self.database.add_record_to_field_value(
+                "file1", "field1", key, 0, record
+            )
+        self.verify_records(key, "05_06")
+
+    def test_05_add_record_to_field_value_07(self):
+        key = "twy"
+        for record in range(99, 103):
+            self.database.add_record_to_field_value(
+                "file1", "field1", key, 0, record
+            )
+        self.database.add_record_to_field_value("file1", "field1", key, 0, 110)
+        self.verify_records(key, "05_07")
+
+    def test_05_add_record_to_field_value_08(self):
+        key = "ten"
+        self.database.add_record_to_field_value("file1", "field1", key, 0, 50)
+        self.database.add_record_to_field_value("file1", "field1", key, 1, 51)
+        self.verify_records(key, "05_08")
+
+    def test_05_add_record_to_field_value_09(self):
+        # Force through 'len(value) == SEGMENT_HEADER_LENGTH' path even if
+        # there are no segments for the segment header to point at.
+        # The _lmdb module explicitly sets segment to 0 if the cursor.last()
+        # statement to find the highest segment number finds no segments.
+        # The equivalent code in the _db module simply appends the segment
+        # record to the database and accepts whatever key is assigned,
+        # oblivious to the (impossible) possibility that the returned key
+        # would be 1 were no segments present.
+        key = "one"
+        for db in (self.database.segment_table["file1"].datastore,):
+            with self.database.dbtxn.transaction.cursor(db) as cursor:
+                record = cursor.last()
+                while record:
+                    self.references.remove(cursor.item())
+                    cursor.delete()
+                    record = cursor.prev()
+        self.database.add_record_to_field_value("file1", "field1", key, 0, 99)
+        self.verify_records(key, "05_09")
+
+    def test_11_remove_record_from_field_value_01(self):
+        key = "indexvalue"
         self.database.remove_record_from_field_value(
-            "file1", "field1", "indexvalue", 1, 0
+            "file1", "field1", key, 1, 0
         )
+        self.verify_records(key, "11_01")
 
-    def test_07_remove_record_from_field_value(self):
+    def test_11_remove_record_from_field_value_02(self):
+        key = "nin"
         self.database.remove_record_from_field_value(
-            "file1", "field1", "nin", 0, 99
+            "file1", "field1", key, 0, 99
         )
+        self.verify_records(key, "11_02")
 
-    def test_08_remove_record_from_field_value(self):
+    def test_11_remove_record_from_field_value_03(self):
+        key = "twy"
         self.database.remove_record_from_field_value(
-            "file1", "field1", "twy", 0, 68
+            "file1", "field1", key, 0, 68
         )
+        self.verify_records(key, "11_03")
 
-    def test_09_remove_record_from_field_value(self):
+    def test_11_remove_record_from_field_value_04(self):
+        key = "bb_o"
         self.database.remove_record_from_field_value(
-            "file1", "field1", "bb_o", 0, 68
+            "file1", "field1", key, 0, 68
         )
+        self.verify_records(key, "11_04")
 
-    def test_10_remove_record_from_field_value(self):
+    def test_11_remove_record_from_field_value_05(self):
+        key = "tww"
         self.database.remove_record_from_field_value(
-            "file1", "field1", "tww", 0, 65
+            "file1", "field1", key, 0, 65
         )
+        self.verify_records(key, "11_05")
 
-    def test_11_remove_record_from_field_value(self):
+    def test_11_remove_record_from_field_value_06(self):
+        key = "one"
         self.database.remove_record_from_field_value(
-            "file1", "field1", "one", 0, 50
+            "file1", "field1", key, 0, 50
         )
+        self.verify_records(key, "11_06")
 
-    def test_12_populate_segment(self):
+    def test_11_remove_record_from_field_value_07(self):
+        key = "a_o"
+        for record in range(5, 31):
+            self.database.remove_record_from_field_value(
+                "file1", "field1", key, 0, record
+            )
+        self.verify_records(key, "11_07")
+
+    def test_11_remove_record_from_field_value_08(self):
+        key = "a_o"
+        for record in range(5, 31):
+            self.database.remove_record_from_field_value(
+                "file1", "field1", key, 0, record
+            )
+        self.database.remove_record_from_field_value(
+            "file1", "field1", key, 0, 2
+        )
+        self.verify_records(key, "11_08")
+
+
+class Database_populate_recordset(_Database_recordset):
+    def setUp(self):
+        super().setUp()
+        self.database.start_read_only_transaction()
+
+    def test_12_populate_segment_01(self):
         s = self.database.populate_segment(
             b"\x00\x00\x00\x02\x00\x03", "file1"
         )
         self.assertIsInstance(s, recordset.RecordsetSegmentInt)
 
-    def test_13_populate_segment(self):
-        cursor = self.database.table["file1_field1"][0].cursor(
-            txn=self.database.dbtxn
-        )
-        try:
+    def test_12_populate_segment_02(self):
+        with self.database.dbtxn.transaction.cursor(
+            self.database.table["file1_field1"][0].datastore
+        ) as cursor:
             while True:
-                k, v = cursor.next()
+                if not cursor.next():
+                    break
+                k, v = cursor.item()
                 if k.decode() == "one":
                     if v[:4] == b"\x00\x00\x00\x00":
                         s = self.database.populate_segment(v, "file1")
                         self.assertIsInstance(s, recordset.RecordsetSegmentInt)
                         break
-        finally:
-            cursor.close()
 
-    def test_14_populate_segment(self):
+    def test_12_populate_segment_03(self):
         s = self.database.populate_segment(
             b"".join(
                 (
@@ -1358,13 +2030,14 @@ class Database_make_recordset(_DBOpen):
         self.assertIsInstance(s, recordset.RecordsetSegmentList)
         self.assertEqual(s.count_records(), 2)
 
-    def test_15_populate_segment(self):
-        cursor = self.database.table["file1_field1"][0].cursor(
-            txn=self.database.dbtxn
-        )
-        try:
+    def test_12_populate_segment_04(self):
+        with self.database.dbtxn.transaction.cursor(
+            self.database.table["file1_field1"][0].datastore
+        ) as cursor:
             while True:
-                k, v = cursor.next()
+                if not cursor.next():
+                    break
+                k, v = cursor.item()
                 if k.decode() == "tww":
                     if v[:4] == b"\x00\x00\x00\x00":
                         s = self.database.populate_segment(v, "file1")
@@ -1373,10 +2046,8 @@ class Database_make_recordset(_DBOpen):
                         )
                         self.assertEqual(s.count_records(), 2)
                         break
-        finally:
-            cursor.close()
 
-    def test_16_populate_segment(self):
+    def test_12_populate_segment_05(self):
         s = self.database.populate_segment(
             b"".join(
                 (
@@ -1389,13 +2060,14 @@ class Database_make_recordset(_DBOpen):
         self.assertIsInstance(s, recordset.RecordsetSegmentBitarray)
         self.assertEqual(s.count_records(), 24)
 
-    def test_17_populate_segment(self):
-        cursor = self.database.table["file1_field1"][0].cursor(
-            txn=self.database.dbtxn
-        )
-        try:
+    def test_12_populate_segment_06(self):
+        with self.database.dbtxn.transaction.cursor(
+            self.database.table["file1_field1"][0].datastore
+        ) as cursor:
             while True:
-                k, v = cursor.next()
+                if not cursor.next():
+                    break
+                k, v = cursor.item()
                 if k.decode() == "c_o":
                     if v[:4] == b"\x00\x00\x00\x00":
                         s = self.database.populate_segment(v, "file1")
@@ -1404,79 +2076,91 @@ class Database_make_recordset(_DBOpen):
                         )
                         self.assertEqual(s.count_records(), 24)
                         break
-        finally:
-            cursor.close()
 
-    def test_18_make_recordset_key_like(self):
+    def test_12_populate_segment_07(self):
+        self.assertRaisesRegex(
+            _lmdb.DatabaseError,
+            "Segment record missing",
+            self.database.populate_segment,
+            *(b"invalid key", "file1"),
+        )
+
+
+class Database_make_recordset_key(_Database_recordset):
+    def setUp(self):
+        super().setUp()
+        self.database.start_read_only_transaction()
+
+    def test_18_make_recordset_key_like_01(self):
         rs = self.database.recordlist_key_like("file1", "field1")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 0)
 
-    def test_19_make_recordset_key_like(self):
+    def test_18_make_recordset_key_like_02(self):
         rs = self.database.recordlist_key_like("file1", "field1", keylike=b"z")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 0)
 
-    def test_20_make_recordset_key_like(self):
+    def test_18_make_recordset_key_like_03(self):
         rs = self.database.recordlist_key_like("file1", "field1", keylike=b"n")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 1)
         self.assertEqual(rs[0].count_records(), 2)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_21_make_recordset_key_like(self):
+    def test_18_make_recordset_key_like_04(self):
         rs = self.database.recordlist_key_like("file1", "field1", keylike=b"w")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 2)
         self.assertEqual(rs[0].count_records(), 5)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_22_make_recordset_key_like(self):
+    def test_18_make_recordset_key_like_05(self):
         rs = self.database.recordlist_key_like("file1", "field1", keylike=b"e")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 1)
         self.assertEqual(rs[0].count_records(), 41)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_23_make_recordset_key(self):
+    def test_23_make_recordset_key_01(self):
         rs = self.database.recordlist_key("file1", "field1")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 0)
 
-    def test_24_make_recordset_key(self):
+    def test_23_make_recordset_key_02(self):
         rs = self.database.recordlist_key("file1", "field1", key=b"one")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 1)
         self.assertEqual(rs[0].count_records(), 1)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentInt)
 
-    def test_25_make_recordset_key(self):
+    def test_23_make_recordset_key_03(self):
         rs = self.database.recordlist_key("file1", "field1", key=b"tww")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 1)
         self.assertEqual(rs[0].count_records(), 2)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentList)
 
-    def test_26_make_recordset_key(self):
+    def test_23_make_recordset_key_04(self):
         rs = self.database.recordlist_key("file1", "field1", key=b"a_o")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 1)
         self.assertEqual(rs[0].count_records(), 31)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_27_make_recordset_key_startswith(self):
+    def test_27_make_recordset_key_startswith_01(self):
         rs = self.database.recordlist_key_startswith("file1", "field1")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 0)
 
-    def test_28_make_recordset_key_startswith(self):
+    def test_28_make_recordset_key_startswith_02(self):
         rs = self.database.recordlist_key_startswith(
             "file1", "field1", keystart=b"ppp"
         )
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 0)
 
-    def test_29_make_recordset_key_startswith(self):
+    def test_28_make_recordset_key_startswith_03(self):
         rs = self.database.recordlist_key_startswith(
             "file1", "field1", keystart=b"o"
         )
@@ -1484,7 +2168,7 @@ class Database_make_recordset(_DBOpen):
         self.assertEqual(rs[0].count_records(), 1)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentInt)
 
-    def test_30_make_recordset_key_startswith(self):
+    def test_28_make_recordset_key_startswith_04(self):
         rs = self.database.recordlist_key_startswith(
             "file1", "field1", keystart=b"tw"
         )
@@ -1492,7 +2176,7 @@ class Database_make_recordset(_DBOpen):
         self.assertEqual(rs[0].count_records(), 5)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_31_make_recordset_key_startswith(self):
+    def test_28_make_recordset_key_startswith_05(self):
         rs = self.database.recordlist_key_startswith(
             "file1", "field1", keystart=b"d"
         )
@@ -1500,21 +2184,21 @@ class Database_make_recordset(_DBOpen):
         self.assertEqual(rs[0].count_records(), 24)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_32_make_recordset_key_range(self):
+    def test_32_make_recordset_key_range_01(self):
         rs = self.database.recordlist_key_range("file1", "field1")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 2)
         self.assertEqual(rs[0].count_records(), 127)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_33_make_recordset_key_range(self):
+    def test_32_make_recordset_key_range_02(self):
         rs = self.database.recordlist_key_range(
             "file1", "field1", ge=b"ppp", le=b"qqq"
         )
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 0)
 
-    def test_34_make_recordset_key_range(self):
+    def test_32_make_recordset_key_range_03(self):
         rs = self.database.recordlist_key_range(
             "file1", "field1", ge=b"n", le=b"q"
         )
@@ -1523,7 +2207,7 @@ class Database_make_recordset(_DBOpen):
         self.assertEqual(rs[0].count_records(), 2)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_35_make_recordset_key_range(self):
+    def test_32_make_recordset_key_range_04(self):
         rs = self.database.recordlist_key_range(
             "file1", "field1", ge=b"t", le=b"tz"
         )
@@ -1532,7 +2216,7 @@ class Database_make_recordset(_DBOpen):
         self.assertEqual(rs[0].count_records(), 5)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_36_make_recordset_key_range(self):
+    def test_32_make_recordset_key_range_05(self):
         rs = self.database.recordlist_key_range(
             "file1", "field1", ge=b"c", le=b"cz"
         )
@@ -1541,35 +2225,35 @@ class Database_make_recordset(_DBOpen):
         self.assertEqual(rs[0].count_records(), 40)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_37_make_recordset_key_range(self):
+    def test_32_make_recordset_key_range_06(self):
         rs = self.database.recordlist_key_range("file1", "field1", ge=b"c")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 2)
         self.assertEqual(rs[0].count_records(), 62)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_38_make_recordset_key_range(self):
+    def test_32_make_recordset_key_range_07(self):
         rs = self.database.recordlist_key_range("file1", "field1", le=b"cz")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 1)
         self.assertEqual(rs[0].count_records(), 111)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_39_make_recordset_key_range(self):
+    def test_32_make_recordset_key_range_08(self):
         rs = self.database.recordlist_key_range(
             "file1", "field1", ge=b"ppp", lt=b"qqq"
         )
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 0)
 
-    def test_40_make_recordset_key_range(self):
+    def test_32_make_recordset_key_range_09(self):
         rs = self.database.recordlist_key_range(
             "file1", "field1", gt=b"ppp", lt=b"qqq"
         )
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 0)
 
-    def test_41_make_recordset_key_range(self):
+    def test_32_make_recordset_key_range_10(self):
         rs = self.database.recordlist_key_range(
             "file1", "field1", gt=b"n", le=b"q"
         )
@@ -1578,7 +2262,7 @@ class Database_make_recordset(_DBOpen):
         self.assertEqual(rs[0].count_records(), 2)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_42_make_recordset_key_range(self):
+    def test_32_make_recordset_key_range_11(self):
         rs = self.database.recordlist_key_range(
             "file1", "field1", gt=b"t", le=b"tz"
         )
@@ -1587,7 +2271,7 @@ class Database_make_recordset(_DBOpen):
         self.assertEqual(rs[0].count_records(), 5)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_43_make_recordset_key_range(self):
+    def test_32_make_recordset_key_range_12(self):
         rs = self.database.recordlist_key_range(
             "file1", "field1", gt=b"c", lt=b"cz"
         )
@@ -1596,57 +2280,65 @@ class Database_make_recordset(_DBOpen):
         self.assertEqual(rs[0].count_records(), 40)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_44_make_recordset_key_range(self):
+    def test_32_make_recordset_key_range_13(self):
         rs = self.database.recordlist_key_range("file1", "field1", gt=b"c")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 2)
         self.assertEqual(rs[0].count_records(), 62)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_45_make_recordset_key_range(self):
+    def test_32_make_recordset_key_range_14(self):
         rs = self.database.recordlist_key_range("file1", "field1", lt=b"cz")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 1)
         self.assertEqual(rs[0].count_records(), 111)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_46_make_recordset_all(self):
+    def test_46_make_recordset_all_01(self):
         rs = self.database.recordlist_all("file1", "field1")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 2)
         self.assertEqual(rs[0].count_records(), 127)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_47_unfile_records_under(self):
+
+class Database_file_records(_Database_recordset):
+    def setUp(self):
+        super().setUp()
+        self.database.start_transaction()
+
+    def test_47_unfile_records_under_01(self):
         self.database.unfile_records_under("file1", "field1", b"aa_o")
 
-    def test_48_unfile_records_under(self):
+    def test_47_unfile_records_under_02(self):
         self.database.unfile_records_under("file1", "field1", b"kkkk")
 
-    def test_49_file_records_under(self):
+    def test_49_file_records_under_01(self):
         rs = self.database.recordlist_all("file1", "field1")
         self.database.file_records_under("file1", "field1", rs, b"aa_o")
 
-    def test_50_file_records_under(self):
+    def test_49_file_records_under_02(self):
         rs = self.database.recordlist_all("file1", "field1")
         self.database.file_records_under("file1", "field1", rs, b"rrr")
 
-    def test_51_file_records_under(self):
+    def test_49_file_records_under_03(self):
         rs = self.database.recordlist_key("file1", "field1", key=b"twy")
         self.database.file_records_under("file1", "field1", rs, b"aa_o")
 
-    def test_52_file_records_under(self):
+    def test_49_file_records_under_04(self):
         rs = self.database.recordlist_key("file1", "field1", key=b"twy")
         self.database.file_records_under("file1", "field1", rs, b"rrr")
 
-    def test_53_file_records_under(self):
+    def test_49_file_records_under_05(self):
         rs = self.database.recordlist_key("file1", "field1", key=b"one")
         self.database.file_records_under("file1", "field1", rs, b"aa_o")
 
-    def test_54_file_records_under(self):
+    def test_49_file_records_under_06(self):
         rs = self.database.recordlist_key("file1", "field1", key=b"one")
         self.database.file_records_under("file1", "field1", rs, b"rrr")
 
+    # This block comment retained from _db module for Berkeley DB, except to
+    # note no exception encountered for the _lmdb module.
     # Changed at solentware-base-4.0, see comments in setUp() for put records.
     # Did I really miss the change in error message? Or change something which
     # causes a different error?  Spotted while working on _nosql.py.
@@ -1654,23 +2346,22 @@ class Database_make_recordset(_DBOpen):
     # Changed back after rebuild at end of March 2020.
     # When doing some testing on OpenBSD in September 2020 see that the -30997
     # exception is raised.
-    def test_55_file_records_under(self):
+    def test_49_file_records_under_07(self):
         rs = self.database.recordlist_key("file1", "field1", key=b"ba_o")
-        # self.database.file_records_under('file1', 'field1', rs, b'www')
-        self.assertRaisesRegex(
-            bdb.DBKeyEmptyError,
-            r"".join(
-                (
-                    r"(?:\(-30995, 'BDB0066 |\(-30997, ')",
-                    r"DB_KEYEMPTY: Non-existent key/data pair'\)",
-                )
-            ),
-            # "\(-30995, 'BDB0066 DB_KEYEMPTY: Non-existent key/data pair'\)",
-            # "\(-30997, 'DB_KEYEMPTY: Non-existent key/data pair'\)",
-            self.database.file_records_under,
-            *("file1", "field1", rs, b"www"),
-        )
+        self.database.file_records_under("file1", "field1", rs, b"www")
 
+
+class Database__get_segment_record_numbers(_Database_recordset):
+    def setUp(self):
+        super().setUp()
+        self.database.start_read_only_transaction()
+
+    # No exception encountered for the _lmdb module when key is 0 because
+    # b"\x00\x00" is a valid key in Symas LMMD.  For Berkeley DB bit 0 of
+    # segment record 1 (in a RECNO database) is never set.  For Symas LMMD
+    # bit 0 of segment record 0 is set, or unset, as needed.  Similar for list
+    # and integer representations, where appropriate, of a segment.
+    # The rest of block comment is retained from _db module for Berkeley DB.
     # Did I really miss the change in error message? Or change something which
     # causes a different error?  Spotted while working on _nosql.py.
     # There has been a FreeBSD OS and ports upgrade since solentware-base-4.0.
@@ -1679,37 +2370,32 @@ class Database_make_recordset(_DBOpen):
     # is omitted from the exception text.
     def test_56__get_segment_record_numbers(self):
         self.assertIsInstance(
-            self.database._get_segment_record_numbers("file1", 7), Bitarray
+            self.database._get_segment_record_numbers("file1", 6), Bitarray
         )
         self.assertIsInstance(
-            self.database._get_segment_record_numbers("file1", 8), list
+            self.database._get_segment_record_numbers("file1", 7), list
         )
-        self.assertRaisesRegex(
-            bdb.DBInvalidArgError,
-            r"".join(
-                (
-                    r"\(22, 'Invalid argument -- (?:BDB1002 )?",
-                    r"illegal record number of 0'\)",
-                )
-            ),
-            # "\(22, 'Invalid argument -- \
-            # BDB1002 illegal record number of 0'\)",
-            # "\(22, 'Invalid argument -- illegal record number of 0'\)",
-            self.database._get_segment_record_numbers,
-            *("file1", 0),
+        self.assertIsInstance(
+            self.database._get_segment_record_numbers("file1", 0), Bitarray
         )
         self.assertRaisesRegex(
             TypeError,
             r"object of type 'NoneType' has no len\(\)",
             self.database._get_segment_record_numbers,
-            *("file1", 10),
+            *("file1", 9),
         )
+
+
+class Database_populate_recordset_segment(_Database_recordset):
+    def setUp(self):
+        super().setUp()
+        self.database.start_read_only_transaction()
 
     def test_57__populate_recordset_segment(self):
         d = self.database
-        bs = self.references["c_o"]
+        bs = self.keyrefmap["c_o"][0]
         self.assertEqual(len(bs), 10)
-        bl = self.references["tww"]
+        bl = self.keyrefmap["tww"][0]
         self.assertEqual(len(bl), 10)
         rs = recordset.RecordList(d, "file1")
         self.assertEqual(len(rs), 0)
@@ -1731,13 +2417,23 @@ class Database_make_recordset(_DBOpen):
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
         self.assertIsInstance(rs[1], recordset.RecordsetSegmentInt)
 
+
+class Database_database_cursor(_DBOpen):
+    def setUp(self):
+        super().setUp()
+        self.database.start_read_only_transaction()
+
+    def tearDown(self):
+        self.database.commit()
+        super().tearDown()
+
     def test_58_database_cursor(self):
         d = self.database
         self.assertIsInstance(
-            d.database_cursor("file1", "file1"), _db.CursorPrimary
+            d.database_cursor("file1", "file1"), _lmdb.CursorPrimary
         )
         self.assertIsInstance(
-            d.database_cursor("file1", "field1"), _db.CursorSecondary
+            d.database_cursor("file1", "field1"), _lmdb.CursorSecondary
         )
 
     def test_59_create_recordset_cursor(self):
@@ -1752,26 +2448,25 @@ class Database_freed_record_number(_DBOpen):
     def setUp(self):
         super().setUp()
         self.database.start_transaction()
-        self.database.ebm_control["file1"] = _db.ExistenceBitmapControl(
-            "file1", self.database, dbe_module.db, dbe_module.db.DB_CREATE
-        )
-        for i in range(SegmentSize.db_segment_size * 3 - 1):
-            self.database.add_record_to_ebm(
-                "file1",
-                self.database.table["file1"][0].append(
-                    encode("value"), txn=self.database.dbtxn
-                ),
+        for i in range(SegmentSize.db_segment_size * 3):
+            self.database.dbtxn.transaction.put(
+                i.to_bytes(4, byteorder="big"),
+                encode("value"),
+                db=self.database.table["file1"][0].datastore,
             )
+            self.database.add_record_to_ebm("file1", i)
+        self.database.commit()
+        self.database.start_transaction()
         self.high_record = self.database.get_high_record("file1")
         self.database.ebm_control["file1"].segment_count = divmod(
-            self.high_record[0], SegmentSize.db_segment_size
+            self.high_record, SegmentSize.db_segment_size
         )[0]
 
     def tearDown(self):
         self.database.commit()
         super().tearDown()
 
-    def test_01(self):
+    def test_01_freed_record_number_01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -1814,16 +2509,14 @@ class Database_freed_record_number(_DBOpen):
             [0, 1, 2],
         )
         records = []
-        cursor = self.database.table[CONTROL_FILE].cursor(
-            txn=self.database.dbtxn
-        )
-        try:
-            record = cursor.set(self.database.ebm_control["file1"].ebmkey)
+        with self.database.dbtxn.transaction.cursor(
+            self.database.table[CONTROL_FILE].datastore
+        ) as cursor:
+            record = cursor.first()
             while record:
+                record = cursor.item()
                 records.append(record)
-                record = cursor.next_dup()
-        finally:
-            cursor.close()
+                record = cursor.next()
         self.assertEqual(len(records), 3)
         self.assertEqual(
             records,
@@ -1831,6 +2524,9 @@ class Database_freed_record_number(_DBOpen):
         )
 
     def test_02_note_freed_record_number_segment_02(self):
+        # This test split off from 'test_02..._01' when initial careless
+        # coding of lmdb version of open_database and open_database_contexts
+        # caused a puzzling failure.
         self.assertEqual(
             self.database.ebm_control["file1"].freed_record_number_pages, None
         )
@@ -1845,10 +2541,9 @@ class Database_freed_record_number(_DBOpen):
             self.database.note_freed_record_number_segment(
                 "file1", sn, rn, self.high_record
             )
-        self.assertEqual(
-            self.database.ebm_control["file1"].freed_record_number_pages,
-            [0, 1, 2],
-        )
+        # Identical to 'test_02..._01' up to first assertEqual.
+        # Throw the freed list away and delete another record to see the full
+        # list regenerated.
         self.database.ebm_control["file1"].freed_record_number_pages = None
         self.assertEqual(
             self.database.ebm_control["file1"].freed_record_number_pages, None
@@ -1864,11 +2559,11 @@ class Database_freed_record_number(_DBOpen):
             [0, 1, 2],
         )
 
-    def test_03_get_lowest_freed_record_number(self):
+    def test_07_get_lowest_freed_record_number_01(self):
         rn = self.database.get_lowest_freed_record_number("file1")
         self.assertEqual(rn, None)
 
-    def test_04_get_lowest_freed_record_number(self):
+    def test_07_get_lowest_freed_record_number_02(self):
         for i in (
             100,
             101,
@@ -1883,7 +2578,7 @@ class Database_freed_record_number(_DBOpen):
         rn = self.database.get_lowest_freed_record_number("file1")
         self.assertEqual(rn, 100)
 
-    def test_05_get_lowest_freed_record_number(self):
+    def test_07_get_lowest_freed_record_number_03(self):
         for i in (380,):
             self.database.delete("file1", i, "_".join((str(i), "value")))
             sn, rn = self.database.remove_record_from_ebm("file1", i)
@@ -1893,7 +2588,7 @@ class Database_freed_record_number(_DBOpen):
         rn = self.database.get_lowest_freed_record_number("file1")
         self.assertEqual(rn, None)
 
-    def test_06_get_lowest_freed_record_number(self):
+    def test_07_get_lowest_freed_record_number_04(self):
         for i in (110,):
             self.database.delete("file1", i, "_".join((str(i), "value")))
             sn, rn = self.database.remove_record_from_ebm("file1", i)
@@ -1908,7 +2603,7 @@ class Database_freed_record_number(_DBOpen):
     # Segment 2 is not deleted from the 'freed record number' list until the
     # first search of the segment after all freed record numbers have been
     # re-used.
-    def test_07_get_lowest_freed_record_number(self):
+    def test_07_get_lowest_freed_record_number_05(self):
         self.assertEqual(
             self.database.ebm_control["file1"].freed_record_number_pages, None
         )
@@ -1924,21 +2619,28 @@ class Database_freed_record_number(_DBOpen):
         )
         rn = self.database.get_lowest_freed_record_number("file1")
         self.assertEqual(rn, None)
-        i = self.high_record[0]
+        i = self.high_record
         for i in range(i, i + 129):
-            self.database.add_record_to_ebm(
-                "file1",
-                self.database.table["file1"][0].append(
-                    encode("value"), txn=self.database.dbtxn
-                ),
+            with self.database.dbtxn.transaction.cursor(
+                self.database.table["file1"][0].datastore
+            ) as cursor:
+                if cursor.last():
+                    key = int.from_bytes(cursor.key(), byteorder="big") + 1
+                else:
+                    key = 0
+            self.database.dbtxn.transaction.put(
+                key.to_bytes(4, byteorder="big"),
+                encode("value"),
+                db=self.database.table["file1"][0].datastore,
             )
+            self.database.add_record_to_ebm("file1", key)
         self.assertEqual(
             len(self.database.ebm_control["file1"].freed_record_number_pages),
             1,
         )
         self.high_record = self.database.get_high_record("file1")
         self.database.ebm_control["file1"].segment_count = divmod(
-            self.high_record[0], SegmentSize.db_segment_size
+            self.high_record, SegmentSize.db_segment_size
         )[0]
         rn = self.database.get_lowest_freed_record_number("file1")
         self.assertEqual(rn, 380)
@@ -1956,8 +2658,7 @@ class Database_freed_record_number(_DBOpen):
             0,
         )
 
-    # Deletion of record number 0 is silently ignored.
-    def test_08_get_lowest_freed_record_number(self):
+    def test_07_get_lowest_freed_record_number_06(self):
         for i in (0, 1):
             self.database.delete("file1", i, "_".join((str(i), "value")))
             sn, rn = self.database.remove_record_from_ebm("file1", i)
@@ -1965,17 +2666,20 @@ class Database_freed_record_number(_DBOpen):
                 "file1", sn, rn, self.high_record
             )
         rn = self.database.get_lowest_freed_record_number("file1")
-        self.assertEqual(rn, 1)
+        self.assertEqual(rn, 0)
 
 
 # Does this test add anything beyond Database_freed_record_number?
 class Database_empty_freed_record_number(_DBOpen):
     def setUp(self):
         super().setUp()
-        self.database.ebm_control["file1"] = _db.ExistenceBitmapControl(
-            "file1", self.database, dbe_module.db, dbe_module.db.DB_CREATE
-        )
+        self.database.commit()
+        self.database.start_transaction()
         self.high_record = self.database.get_high_record("file1")
+
+    def tearDown(self):
+        self.database.commit()
+        super().tearDown()
 
     def test_01(self):
         self.assertEqual(
@@ -2016,35 +2720,62 @@ class RecordsetCursor(_DBOpen):
             ),
         )
         keys = ("a_o",)
-        for i in range(380):
-            self.database.table["file1"][0].append(
-                encode(str(i + 1) + "Any value")
-            )
-        bits = b"\x7f" + b"\xff" * (SegmentSize.db_segment_size_bytes - 1)
-        self.database.ebm_control["file1"].ebm_table.put(1, bits)
-        bits = b"\xff" * SegmentSize.db_segment_size_bytes
-        self.database.ebm_control["file1"].ebm_table.put(2, bits)
-        self.database.ebm_control["file1"].ebm_table.put(3, bits)
-        for s in segments:
-            self.database.segment_table["file1"].append(s)
         self.database.start_transaction()
-        cursor = self.database.table["file1_field1"][0].cursor(
-            txn=self.database.dbtxn
-        )
-        for e in range(len(segments)):
-            cursor.put(
-                b"a_o",
-                b"".join(
-                    (
-                        e.to_bytes(4, byteorder="big"),
-                        (128 if e else 127).to_bytes(2, byteorder="big"),
-                        (e + 1).to_bytes(4, byteorder="big"),
-                    )
-                ),
-                self.database._dbe.DB_KEYLAST,
+        for i in range(380):
+            self.database.dbtxn.transaction.put(
+                i.to_bytes(4, byteorder="big"),
+                encode(str(i) + "Any value"),
+                db=self.database.table["file1"][0].datastore,
             )
+            self.database.add_record_to_ebm("file1", i)
+        bits = b"\xff" + b"\xff" * (SegmentSize.db_segment_size_bytes - 1)
+        self.database.dbtxn.transaction.put(
+            int(0).to_bytes(4, byteorder="big"),
+            bits,
+            db=self.database.ebm_control["file1"].ebm_table.datastore,
+        )
+        bits = b"\xff" * SegmentSize.db_segment_size_bytes
+        self.database.dbtxn.transaction.put(
+            int(1).to_bytes(4, byteorder="big"),
+            bits,
+            db=self.database.ebm_control["file1"].ebm_table.datastore,
+        )
+        self.database.dbtxn.transaction.put(
+            int(2).to_bytes(4, byteorder="big"),
+            bits,
+            db=self.database.ebm_control["file1"].ebm_table.datastore,
+        )
+        for s in segments:
+            with self.database.dbtxn.transaction.cursor(
+                self.database.segment_table["file1"].datastore
+            ) as cursor:
+                if cursor.last():
+                    key = int.from_bytes(cursor.key(), byteorder="big") + 1
+                else:
+                    key = 0
+            self.database.dbtxn.transaction.put(
+                key.to_bytes(4, byteorder="big"),
+                s,
+                db=self.database.segment_table["file1"].datastore,
+            )
+        self.database.commit()
+        self.database.start_transaction()
+        with self.database.dbtxn.transaction.cursor(
+            self.database.table["file1_field1"][0].datastore
+        ) as cursor:
+            for e in range(len(segments)):
+                cursor.put(
+                    b"a_o",
+                    b"".join(
+                        (
+                            e.to_bytes(4, byteorder="big"),
+                            (128).to_bytes(2, byteorder="big"),
+                            e.to_bytes(4, byteorder="big"),
+                        )
+                    ),
+                )
 
-    def test_01(self):
+    def test_01_exceptions_01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -2053,7 +2784,7 @@ class RecordsetCursor(_DBOpen):
                     "positional argument: 'recordset'",
                 )
             ),
-            _db.RecordsetCursor,
+            _lmdb.RecordsetCursor,
         )
         self.assertRaisesRegex(
             TypeError,
@@ -2063,21 +2794,21 @@ class RecordsetCursor(_DBOpen):
                     "positional argument: 'record_number'",
                 )
             ),
-            _db.RecordsetCursor(None, None)._get_record,
+            _lmdb.RecordsetCursor(None, None)._get_record,
         )
 
-    def test_02___init__01(self):
-        rc = _db.RecordsetCursor(None)
+    def test_03___init__01(self):
+        rc = _lmdb.RecordsetCursor(None)
         self.assertEqual(rc._transaction, None)
         self.assertEqual(rc._database, None)
 
     def test_03___init__02(self):
         rs = self.database.recordlist_key("file1", "field1", key=b"a_o")
-        rc = _db.RecordsetCursor(rs)
+        rc = _lmdb.RecordsetCursor(rs)
         self.assertIs(rc._dbset, rs)
 
     def test_04__get_record(self):
-        rc = _db.RecordsetCursor(
+        rc = _lmdb.RecordsetCursor(
             self.database.recordlist_key("file1", "field1", key=b"a_o"),
             transaction=self.database.dbtxn,
             database=self.database.table["file1"][0],
@@ -2091,30 +2822,53 @@ class RecordsetCursor(_DBOpen):
 if __name__ == "__main__":
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
-    for dbe_module in (berkeleydb, bsddb3):
+    for dbe_module in (lmdb,):
         if dbe_module is None:
             continue
-        bdb = dbe_module.db
-        if dbe_module is berkeleydb:
+        bdb = dbe_module
 
-            def encode(value):
-                return value.encode()
+        def encode(value):
+            return value.encode()
 
-        else:
+        def encode_test_key(key):
+            if isinstance(key, int):
+                return key.to_bytes(4, byteorder="big")
+            return encode(key)
 
-            def encode(value):
-                return value
+        def encode_test_record(record):
+            return (encode_test_key(record[0]), record[1])
 
+        runner().run(loader(_DBtxn))
+        runner().run(loader(_DBtxn_start_transaction))
+        runner().run(loader(_Datastore___init__))
+        runner().run(loader(_Datastore))
+        runner().run(loader(_Datastore_open_datastore))
+        runner().run(loader(_Datastore_open_datastore_write))
+        runner().run(loader(_Datastore_close_datastore))
         runner().run(loader(Database___init__))
-        runner().run(loader(Database_transaction_methods))
+        runner().run(loader(Database_transaction_bad_calls))
+        runner().run(loader(Database_start_transaction))
+        runner().run(loader(Database_backout_and_commit))
+        runner().run(loader(Database_database_contexts_bad_calls))
         runner().run(loader(DatabaseInstance))
         runner().run(loader(Database_open_database))
+        runner().run(loader(DatabaseDir_open_database))
+        runner().run(loader(DatabaseExist_open_database))
+        runner().run(loader(Database_close_database))
+        runner().run(loader(Database_open_database_contexts))
         runner().run(loader(Database_do_database_task))
         runner().run(loader(DatabaseTransactions))
         runner().run(loader(Database_put_replace_delete))
         runner().run(loader(Database_methods))
+        runner().run(loader(Database_find_values_empty))
         runner().run(loader(Database_find_values))
         runner().run(loader(Database_make_recordset))
+        runner().run(loader(Database_populate_recordset))
+        runner().run(loader(Database_make_recordset_key))
+        runner().run(loader(Database_file_records))
+        runner().run(loader(Database__get_segment_record_numbers))
+        runner().run(loader(Database_populate_recordset_segment))
+        runner().run(loader(Database_database_cursor))
         runner().run(loader(Database_freed_record_number))
         runner().run(loader(Database_empty_freed_record_number))
         runner().run(loader(RecordsetCursor))

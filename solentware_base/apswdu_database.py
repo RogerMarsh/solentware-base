@@ -11,9 +11,10 @@ Prefer to use the apsw_database module normally.
 """
 from . import apsw_database
 from .core import _sqlitedu
+from .core import _sqlite
 
 
-class Database(_sqlitedu.Database, apsw_database.Database):
+class Database(apsw_database.Database, _sqlitedu.Database, _sqlite.Database):
     """Define deferred update Database class using apsw module.
 
     Deferred update behaviour comes from the _sqlitedu.Database class.

@@ -1,16 +1,16 @@
-# _db_tkinter.py
-# Copyright 2022 Roger Marsh
+# _lmdb.py
+# Copyright 2023 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""Access a Berkeley DB database with the tkinter module."""
+"""Access a Symas Lightning Memory-Mapped Database (LMMD) database."""
 import os
 from ast import literal_eval
 import bisect
 import re
+import shutil
 
 import sys
 
-from ..db_tcl import tcl_tk_call, TclError
 from . import filespec
 from .constants import (
     SECONDARY,
@@ -18,20 +18,20 @@ from .constants import (
     EXISTENCE_BITMAP_SUFFIX,
     SEGMENT_SUFFIX,
     CONTROL_FILE,
+    DESIGN_FILE,
     DEFAULT_SEGMENT_SIZE_BYTES,
     SPECIFICATION_KEY,
     SEGMENT_SIZE_BYTES_KEY,
     SEGMENT_HEADER_LENGTH,
-    FIELDS,
-    ACCESS_METHOD,
-    HASH,
+    DEFAULT_MAP_SIZE,
+    DEFAULT_MAP_BLOCKS,
 )
 from . import _database
 from .bytebit import Bitarray, SINGLEBIT
 from .segmentsize import SegmentSize
 
 # Some names are imported '* as _*' to avoid confusion with sensible
-# object names within the _db_tkinter module.
+# object names within the _db module.
 # Did not bother about this until pylint with default settings gave
 # warnings.
 from . import cursor as _cursor
@@ -63,10 +63,10 @@ class Database(_database.Database):
         specification,
         folder=None,
         environment=None,
+        map_blocks=DEFAULT_MAP_BLOCKS,
         segment_size_bytes=DEFAULT_SEGMENT_SIZE_BYTES,
         use_specification_items=None,
-        file_per_database=False,
-        **soak,
+        **soak
     ):
         """Initialize data structures."""
         if folder is not None:
@@ -90,8 +90,13 @@ class Database(_database.Database):
         if not isinstance(environment, dict):
             raise DatabaseError("Database environment must be a dictionary")
         self._validate_segment_size_bytes(segment_size_bytes)
+        # self.database_file is interpreted using the subdir argument in
+        # lmdb.open() calls.
         if folder is not None:
             self.home_directory = path
+            # Setting for subdir==True
+            # self.database_file = path
+            # Setting for subdir==False
             self.database_file = os.path.join(path, os.path.basename(path))
         else:
             self.home_directory = None
@@ -99,9 +104,10 @@ class Database(_database.Database):
         self.specification = specification
         self.environment = environment
         self.segment_size_bytes = segment_size_bytes
+        self.map_blocks = map_blocks
         self.dbenv = None
         self.table = {}
-        self.dbtxn = None
+        self.dbtxn = _DBtxn()
         self._dbe = None
         self.segment_table = {}
         self.ebm_control = {}
@@ -114,15 +120,6 @@ class Database(_database.Database):
         # database.
         self._initial_segment_size_bytes = segment_size_bytes
 
-        # All databases can be put in a single file in home_directory, or each
-        # database can be put in a separate file in home_directory.  The single
-        # file has same name as home_directory and the separate files have the
-        # same name as the database.
-        # The databases created in an empty home_directory from a FileSpec are
-        # placed in separate files if file_per_database is True.
-        self._file_per_database = file_per_database
-        self._initial_file_per_database = file_per_database
-
     def _validate_segment_size_bytes(self, segment_size_bytes):
         if segment_size_bytes is None:
             return
@@ -132,75 +129,64 @@ class Database(_database.Database):
             raise DatabaseError("Database segment size must be more than 0")
 
     def start_transaction(self):
-        """Start transaction if none and bind txn object to self._dbtxn."""
-        if self.dbtxn is None:
-            # Raise an exception because the emulated _db module method does
-            # this (AttributeError).  The _sqlite and _nosql module methods
-            # just keep going without starting a transaction.  Perhaps _db
-            # should too.
-            if self.dbenv is None:
-                raise DatabaseError("No environment for start transaction")
-            self.dbtxn = tcl_tk_call((self.dbenv, "txn"))
+        """Start transaction if none and bind txn object to self._dbtxn.
+
+        Start a transaction with both read and write allowed.  This action
+        is equivalent to starting a transaction in other database engine
+        interfaces such as berkeleydb and apsw.
+
+        The arguments to the 'mdb_txn_begin' method with their
+        Symas documentation equivalents appear to be:
+        db
+        parent
+        write             MDB_RDONLY
+        buffers
+
+        """
+        self.dbtxn.start_transaction(self.dbenv, True)
+
+    def start_read_only_transaction(self):
+        """Start transaction if none and bind txn object to self._dbtxn.
+
+        Start a transaction with just read allowed.  This action is taken as
+        equivalent to not starting a transaction in other database engine
+        interfaces such as berkeleydb and apsw.  It is defined to allow a
+        'do nothing' version to exist for those engines.
+
+        """
+        self.dbtxn.start_transaction(self.dbenv, False)
+
+    def end_read_only_transaction(self):
+        """Abort the active transaction and remove binding to txn object.
+
+        This method is defined to allow a 'do nothing' version to exist for
+        database engines which do not have explicit read-only transactions.
+
+        """
+        self.backout()
 
     def backout(self):
         """Abort the active transaction and remove binding to txn object."""
-        if self.dbtxn is not None:
-            tcl_tk_call((self.dbtxn, "abort"))
-            self.dbtxn = None
-            tcl_tk_call((self.dbenv, "txn_checkpoint", "-min", "5"))
+        txn = self.dbtxn
+        # Some optimizations seem possible for read-only transactions which
+        # do not involve destroying the self.dbtxn._transaction instance.
+        # Symas LMMD documentation suggests this is useful if another
+        # read-only transaction will be done soon.
+        if txn.transaction is not None:
+            txn.transaction.abort()
+            txn.end_transaction()
 
     def commit(self):
         """Commit the active transaction and remove binding to txn object."""
-        if self.dbtxn is not None:
-            tcl_tk_call((self.dbtxn, "commit"))
-            self.dbtxn = None
-            tcl_tk_call((self.dbenv, "txn_checkpoint", "-min", "5"))
+        txn = self.dbtxn
+        if txn.transaction is not None:
+            txn.transaction.commit()
+            txn.end_transaction()
 
-    def file_name_for_database(self, database):
-        """Return filename for database.
-
-        Berkeley DB supports one database per file or all databases in
-        one file.
-        """
-        if not self._file_per_database:
-            return self.database_file
-        if self.home_directory is not None:
-            return os.path.join(self.home_directory, database)
-        return database
-
-    def _get_log_dir_name(self):
-        """Return the log directory name.
-
-        This is needed because the Tcl API does not support the get_lg_dir()
-        method.
-
-        Use to generate the "-logdir" parameter when opening environment,
-        and when getting list of files to delete when deleting database.
-
-        """
-        if self.home_directory is not None:
-            return os.path.join(
-                self.home_directory,
-                "".join(
-                    (
-                        SUBFILE_DELIMITER * 3,
-                        "logs",
-                        SUBFILE_DELIMITER,
-                        os.path.basename(self.home_directory),
-                    )
-                ),
-            )
-
-        # To cope with log files created for in-memory databases, mainly when
-        # running tests.  Deleted in tearDown() method of 'unittest' classes.
-        return "".join(
-            (
-                SUBFILE_DELIMITER * 3,
-                "memlogs",
-                SUBFILE_DELIMITER,
-                "memory_db",
-            )
-        )
+    # ._db has file_name_for_database() returning a file, not database, name.
+    def _encoded_database_name(self, database):
+        """Return encoded database name."""
+        return database.encode()
 
     def open_database(self, dbe, files=None):
         """Open DB environment and specified primary and secondary databases.
@@ -208,448 +194,419 @@ class Database(_database.Database):
         By default all primary databases are opened, but just those named in
         files otherwise, along with their associated secondaries.
 
-        dbe must be the command created by the "package require Db_tcl"
-        command executed via the Python tkinter module.
+        dbe must be a Python module implementing the Symas LMMD API.
+
+        The arguments to the 'mdb_dbi_open' method with their
+        Symas documentation equivalents appear to be:
+        key               Database name
+        txn               Tranasaction object
+        reverse_key       MDB_REVERSEKEY
+        dupsort           MDB_DUPSORT
+        create            MDB_CREATE
+        integerkey        MDB_INTEGERKEY
+        integerdup        MDB_INTEGERDUP MDB_DUPFIXED MDB_DUPSORT
+        dupfixed          MDB_DUPFIXED MDB_DUPSORT
+
+        It is not clear where MDB_REVERSEDUP fits.
+        Nothing obvious in Issues at github.com/jnwatson/py-lmdb 2023-01-17.
+        Assumed not supported.
+
+        The main files, which are RECNO with keys encoded byteorder=="big"
+        as values in secondary files on Berkeley DB, have integerkey=False
+        with keys encoded byteorder=="big" in both main and secondary files
+        on Symas LMMD.
 
         """
-        if self.home_directory is not None:
-            try:
-                os.mkdir(self.home_directory)
-            except FileExistsError:
-                if not os.path.isdir(self.home_directory):
-                    raise
-            all_in_one = set()
-            one_per_database = set()
-            for name in self.specification:
-                dbo = None
-                try:
-                    dbo = tcl_tk_call(
-                        (
-                            "berkdb open",
-                            "-rdonly",
-                            "--",
-                            self.database_file,
-                            name,
-                        )
-                    )
-                    all_in_one.add(name)
-                except TclError:
-                    pass
-                finally:
-                    if dbo:
-                        tcl_tk_call((dbo, "close"))
-                dbo = None
-                try:
-                    dbo = tcl_tk_call(
-                        (
-                            "berkdb open",
-                            "-rdonly",
-                            "--",
-                            os.path.join(self.home_directory, name),
-                            name,
-                        )
-                    )
-                    one_per_database.add(name)
-                except TclError:
-                    pass
-                finally:
-                    if dbo:
-                        tcl_tk_call((dbo, "close"))
-            if all_in_one and one_per_database:
-                raise DatabaseError(
-                    "".join(
-                        (
-                            "Specified databases exist in both 'one per ",
-                            "file' and 'all in one file' style",
-                        )
-                    )
-                )
-            if all_in_one:
-                self._file_per_database = False
-            elif one_per_database:
-                self._file_per_database = True
-            else:
-                self._file_per_database = self._initial_file_per_database
-        else:
-            self._file_per_database = self._initial_file_per_database
-        control = None
-        command = [
-            "berkdb",
-            "open",
-            "-dupsort",
-            "-btree",
-            "-rdonly",
-        ]
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        command.append("--")
-        fnfd = self.file_name_for_database(CONTROL_FILE)
-        if fnfd is None:
-            command.append("")
-        else:
-            command.append(fnfd)
-        command.append(CONTROL_FILE)
+        # Memory databases are not supported by Symas LMMD: there must be a
+        # database to be memory mapped.
+        # Thus self.home_directory==None is allowed to generate an exception
+        # unlike in the sibling _db, _sqlite, and _nosql, modules where it
+        # actually or conventionally means memory-only database.
         try:
-            control = tcl_tk_call(tuple(command))
-            try:
-                spec_from_db = literal_eval(
-                    tcl_tk_call((control, "get", SPECIFICATION_KEY))[0][
-                        1
-                    ].decode()
-                )
-                if self._use_specification_items is not None:
-                    self.specification.is_consistent_with(
-                        {
-                            k: v
-                            for k, v in spec_from_db.items()
-                            if k in self._use_specification_items
-                        }
-                    )
-                else:
-                    self.specification.is_consistent_with(spec_from_db)
-                segment_size = literal_eval(
-                    tcl_tk_call((control, "get", SEGMENT_SIZE_BYTES_KEY))[0][
-                        1
-                    ].decode()
-                )
-                if self._real_segment_size_bytes is not False:
-                    self.segment_size_bytes = self._real_segment_size_bytes
-                    self._real_segment_size_bytes = False
-                if segment_size != self.segment_size_bytes:
-                    self._real_segment_size_bytes = segment_size
-                    raise self.SegmentSizeError(
-                        "".join(
-                            (
-                                "Segment size recorded in database is not ",
-                                "the one used attemping to open database",
-                            )
-                        )
-                    )
-            finally:
-                tcl_tk_call((control, "close"))
-            db_create = False
-            options = []
-        except TclError:
-            # Assume equivalent to not a DBNoSuchFileError exception if path
-            # exists.
-            if fnfd and os.path.exists(fnfd):
+            os.mkdir(self.home_directory)
+        except FileExistsError:
+            if not os.path.isdir(self.home_directory):
                 raise
-            db_create = True
-            options = ["-create"]
-        finally:
-            del control
-        self.set_segment_size()
-        gbytes = self.environment.get("gbytes", 0)
-        bytes_ = self.environment.get("bytes", 0)
-        if gbytes or bytes_:
-            cachesize = (
-                str(self.environment.get("gbytes", 0)),
-                str(self.environment.get("bytes", 0)),
-                "0",  # "0" or "1" is contiguous memory, "n" > "1" is n chunks.
-            )
-            options.append("-cachesize")
-            options.append(" ".join(cachesize))
-        logdir = self._get_log_dir_name()
-        if not os.path.exists(logdir):
-            os.mkdir(logdir)
-        options.append("-log_dir")
-        options.append(logdir)
-
-        # Dated 26 April 2020.
-        # Not sure what has changed, if anything, but if the maxlocks parameter
-        # is not set self.dbenv.lock_stat()['maxlocks'] returns 0 on FreeBSD
-        # and 1000 on OpenBSD.  For ChessTab databases keys can be deleted
-        # within transactions on FreeBSD, but not necessarily on OpenBSD where
-        # it is possible for a game record to be too big to be deleted.  A Game
-        # record has around 4500 index references depending on the number of
-        # moves played.
-        # A game with no moves was deleted successfully on OpenBSD, but typical
-        # games are too big.
-        # Setting maxlocks to 0 (zero) leaves FreeBSD behaviour unchanged, but
-        # stops OpenBSD opening any databases at all.
-        # Setting maxlocks to 10000 on OpenBSD allows at least one Game record
-        # to be deleted within a transaction.  However making the same setting
-        # on FreeBSD might be applying an unnecessary upper bound on locks
-        # assuming 0 (zero) means no limit.  A game with 138 moves was deleted,
-        # which is about 3 times the average number of moves in a game.  The
-        # FIDE longest possible game, at nearly 6000 moves, might be a problem.
-        # maxlocks is added to the things taken from self.environment but is
-        # only applied if non-zero and OS is OpenBSD.
-        # Dated 28 December 2022.
-        # The Tcl interface to Berkeley DB does not support the maxlocks
-        # parameter.  Put the argument in <home>/DB_CONFIG file and delete
-        # the file immediately after opening the environment.
-        # Delete the file first too avoiding mis-use.
-        if self.home_directory is not None:
-            try:
-                os.remove(os.path.join(self.home_directory, "DB_CONFIG"))
-            except FileNotFoundError:
-                pass
-        if _openbsd_platform:
-            maxlocks = self.environment.get("maxlocks", 0)
-            if maxlocks:
-                with open(
-                    os.path.join(self.home_directory, "DB_CONFIG"), mode="w"
-                ) as file:
-                    file.write(" ".join(("set_lk_max_locks", str(maxlocks))))
-
-        options.append("-home")
-        if self.home_directory is not None:
-            options.append(self.home_directory)
-        else:
-            options.append("")
-        options.extend(self.environment_flags(dbe))
-        self.dbenv = tcl_tk_call(tuple(["berkdb", "env"] + options))
-        if self.home_directory is not None:
-            try:
-                os.remove(os.path.join(self.home_directory, "DB_CONFIG"))
-            except FileNotFoundError:
-                pass
-        if files is None:
-            files = self.specification.keys()
-        # Set self._dbe earlier than in the bsddb3 and berkeleydb version of
-        # this module because start_transaction() needs the dbe attribute,
-        # actually a Tcl interpreter, and it seems too disruptive to change
-        # the start_transaction arguments in all the other modules too.
-        # The apsw and sqlite3 version of this module uses the self.dbenv
-        # attribute for this, but in this module self.dbenv has it's natural
-        # Berkeley DB meaning.
-        self._dbe = dbe
-        self.start_transaction()
-        command = [
-            "berkdb",
-            "open",
-            "-env",
-            self.dbenv,
-            "-dupsort",
-            "-btree",
-        ]
-        if db_create:
-            command.append("-create")
-        fnfd = self.file_name_for_database(CONTROL_FILE)
-        if fnfd is None:
-            fnfd = ""
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        command.extend(
-            [
-                "--",
-                fnfd,
-                CONTROL_FILE,
-            ]
-        )
+        # The ___design table should be present already if the file exists.
+        # Other database engines use the ___control table for this task.
+        # The specification record datasize will usually exceed the default
+        # compile-time limit for data in Symas LMMD dupsort databases.
+        dbenv = None
+        db_create = False
+        # The create argument to lmdb.open does not correspond to any of
+        # the Environment flags in Symas LMMD documentation.  Reading the
+        # py-lmdb/cpython.c source code at github implies the create argument
+        # controls whether a mkdir call is done if readonly==False and
+        # subdir==True.  So accept the default create argument value because
+        # subdir==False, which means only two argument cominations have to be
+        # tried: readonly==True and readonly==False.
+        # The OpenBSD port, as published on ports@openbsd.org mailing list
+        # on 28 January 2023, does not set LMDB_FORCE_CFFI and gives the
+        # first str(exc) below.
+        # The FreeBSD port of py-lmdb is built with 'LMDB_FORCE_CFFI=1' and
+        # this emerges as the second str(exc) below.
+        # The OpenBSD development environment does not, but the FreeBSD
+        # development environment must, have py-cffi installed.
         try:
-            self.table[CONTROL_FILE] = tcl_tk_call(tuple(command))
-        except TclError:
+            dbenv = dbe.Environment(
+                path=self.database_file,
+                map_size=DEFAULT_MAP_SIZE*self.map_blocks,
+                readonly=True,
+                max_dbs=self._calculate_max_dbs(files=files),
+                **self.environment_flags(dbe),
+            )
+        except dbe.Error as exc:
+            if (
+                str(exc) != ": ".join(
+                    (self.database_file, "No such file or directory")
+                )
+                and str(exc) != "".join(
+                    (
+                        "b'",
+                        self.database_file,
+                        "': b'No such file or directory'",
+                    )
+                )
+            ):
+                raise DatabaseError(str(exc)) from exc
+            db_create = True
+        if dbenv is None:
+            dbenv = dbe.Environment(
+                path=self.database_file,
+                map_size=DEFAULT_MAP_SIZE*self.map_blocks,
+                readonly=False,
+                max_dbs=self._calculate_max_dbs(files=files),
+                **self.environment_flags(dbe),
+            )
+        try:
+            self.table[DESIGN_FILE] = _Datastore(
+                self._encoded_database_name(DESIGN_FILE),
+                dupsort=False,
+                create=db_create,
+            )
+        except:
+            self.table[DESIGN_FILE] = None
+            raise
+        try:
+            self.table[CONTROL_FILE] = _Datastore(
+                self._encoded_database_name(CONTROL_FILE),
+                dupsort=True,
+                create=db_create,
+            )
+        except:
             self.table[CONTROL_FILE] = None
             raise
+        if files is None:
+            files = self.specification.keys()
         for file, specification in self.specification.items():
             if file not in files:
                 continue
             fields = specification[SECONDARY]
-            command = [
-                "berkdb",
-                "open",
-                "-env",
-                self.dbenv,
-                "-recno",
-            ]
-            if db_create:
-                command.append("-create")
-            if self.dbtxn:
-                command.extend(["-txn", self.dbtxn])
-            command.extend(
-                [
-                    "--",
-                    fnfd,
-                    file,
-                ]
-            )
             self.table[file] = [None]
             try:
-                self.table[file][0] = tcl_tk_call(tuple(command))
-            except TclError:
-                self.table[file] = None
+                self.table[file][0] = _Datastore(
+                    self._encoded_database_name(file),
+                    integerkey=False,
+                    create=db_create,
+                )
+            except:
                 raise
             self.ebm_control[file] = ExistenceBitmapControl(
                 file, self, dbe, db_create
             )
             segmentfile = SUBFILE_DELIMITER.join((file, SEGMENT_SUFFIX))
-            command = [
-                "berkdb",
-                "open",
-                "-env",
-                self.dbenv,
-                "-recno",
-            ]
-            if db_create:
-                command.append("-create")
-            if self.dbtxn:
-                command.extend(["-txn", self.dbtxn])
-            command.extend(
-                [
-                    "--",
-                    fnfd,
-                    segmentfile,
-                ]
-            )
             try:
-                self.segment_table[file] = tcl_tk_call(tuple(command))
-            except TclError:
+                self.segment_table[file] = _Datastore(
+                    self._encoded_database_name(segmentfile),
+                    integerkey=False,
+                    create=db_create,
+                )
+            except:
                 self.segment_table[file] = None
                 raise
-            fieldprops = specification[FIELDS]
             for field, fieldname in fields.items():
                 if fieldname is None:
                     fieldname = filespec.FileSpec.field_name(field)
-                if fieldprops[fieldname] is None:
-                    access_method = "-btree"
-                elif ACCESS_METHOD in fieldprops[fieldname]:
-                    if fieldprops[fieldname][ACCESS_METHOD] == HASH:
-                        access_method = "-hash"
-                    else:
-                        access_method = "-btree"
-                else:
-                    access_method = "-btree"
                 secondary = SUBFILE_DELIMITER.join((file, field))
-                command = [
-                    "berkdb",
-                    "open",
-                    "-env",
-                    self.dbenv,
-                    "-dupsort",
-                    access_method,
-                ]
-                if db_create:
-                    command.append("-create")
-                if self.dbtxn:
-                    command.extend(["-txn", self.dbtxn])
-                command.extend(
-                    [
-                        "--",
-                        fnfd,
-                        secondary,
-                    ]
-                )
                 self.table[secondary] = [None]
                 try:
-                    self.table[secondary][0] = tcl_tk_call(tuple(command))
-                except TclError as exc:
-                    if not str(exc).endswith(
-                        "".join(
-                            (
-                                secondary,
-                                ": unexpected file type or format",
-                            )
-                        )
-                    ):
-                        raise
-                    if access_method != "-hash":
-                        raise
-
-                    # Accept existing DB_BTREE database if DB_HASH was in the
-                    # supplied specification for database.
-                    command = [
-                        "berkdb open",
-                        "-env",
-                        self.dbenv,
-                        "-dupsort",
-                        "-btree",
-                        "-txn",
-                        self.dbtxn,
-                        "--",
-                        self.file_name_for_database(secondary),
-                        secondary,
-                    ]
-                    self.table[secondary] = [None]
-                    try:
-                        self.table[secondary][0] = tcl_tk_call(tuple(command))
-                    except:
-                        self.table[secondary] = None
-                        raise
-
+                    self.table[secondary][0] = _Datastore(
+                        self._encoded_database_name(secondary),
+                        dupsort=True,
+                        create=db_create,
+                    )
                 except:
-                    self.table[secondary] = None
                     raise
+        # If db_create==True there is no database version of the specification
+        # to check the supplied specification against, so write it to the
+        # database.
+        self.dbenv = dbenv
         if db_create:  # and files:
-            command = [self.table[CONTROL_FILE], "put"]
-            if self.dbtxn:
-                command.extend(["-txn", self.dbtxn])
-            command.extend(
-                [SPECIFICATION_KEY, repr(self.specification).encode()]
+            self.table[DESIGN_FILE].open_datastore(self.dbenv)
+            self.start_transaction()
+            txn = self.dbtxn.transaction
+            # Using txn.put(<key>, <value>, db=<instance>) rather than a
+            # cursor leads to a segmentation fault on the txn.put for
+            # SEGMENT_SIZE_BYTES_KEY after success with SPECIFICATION_KEY.
+            # The problem does not occur if the env.begin() and env.open_db()
+            # calls are arranged so the open_db() call uses the txn argument.
+            # It is usually not convenient to open and close the databases
+            # for each transaction.
+            cursor = txn.cursor(self.table[DESIGN_FILE].datastore)
+            cursor.put(
+                SPECIFICATION_KEY,
+                repr(self.specification).encode(),
             )
-            tcl_tk_call(tuple(command))
-            command = [self.table[CONTROL_FILE], "put"]
-            if self.dbtxn:
-                command.extend(["-txn", self.dbtxn])
-            command.extend(
-                [
-                    SEGMENT_SIZE_BYTES_KEY,
-                    repr(self.segment_size_bytes).encode(),
-                ]
+            cursor.put(
+                SEGMENT_SIZE_BYTES_KEY,
+                repr(self.segment_size_bytes).encode(),
             )
-            tcl_tk_call(tuple(command))
-        self.commit()
+            cursor.close()
+            self.table[DESIGN_FILE].close_datastore()
+            self.open_database_contexts()
+            self.close_database_context_files()
+            self.commit()
+            self.dbenv = None
+        dbenv.close()
+        dbenv = None
+        # This open must not be readonly so both read-only and read-wrrite
+        # tranasction can be done in the environment.
+        self.dbenv = dbe.Environment(
+            path=self.database_file,
+            map_size=DEFAULT_MAP_SIZE*self.map_blocks,
+            readonly=False,
+            max_dbs=self._calculate_max_dbs(files=files),
+            **self.environment_flags(dbe),
+        )
+        self.table[DESIGN_FILE].open_datastore(self.dbenv)
+        # self.table[CONTROL_FILE].open_datastore(self.dbenv)
+        #self.start_transaction()
+        self.start_read_only_transaction()
+        cursor = self.dbtxn.transaction.cursor(
+            self.table[DESIGN_FILE].datastore
+        )
+        spec_from_db = cursor.get(SPECIFICATION_KEY)
+        segment_size = cursor.get(SEGMENT_SIZE_BYTES_KEY)
+        cursor.close()
+        #self.commit()
+        self.end_read_only_transaction()
+        self.table[DESIGN_FILE].close_datastore()
+        # self.table[CONTROL_FILE].close_datastore()
+        spec_from_db = literal_eval(spec_from_db.decode())
+        if self._use_specification_items is not None:
+            self.specification.is_consistent_with(
+                {
+                    k: v
+                    for k, v in spec_from_db.items()
+                    if k in self._use_specification_items
+                }
+            )
+        else:
+            self.specification.is_consistent_with(spec_from_db)
+        segment_size = literal_eval(segment_size.decode())
+        if self._real_segment_size_bytes is not False:
+            self.segment_size_bytes = self._real_segment_size_bytes
+            self._real_segment_size_bytes = False
+        if segment_size != self.segment_size_bytes:
+            self._real_segment_size_bytes = segment_size
+            raise self.SegmentSizeError(
+                " ".join(
+                    (
+                        "Segment size recorded in database is not",
+                        "the one used attemping to open database",
+                    )
+                )
+            )
+        self.set_segment_size()
+        self.open_database_contexts()
+        self._dbe = dbe
+
+    def _calculate_max_dbs(self, files=None):
+        """Return the number of databases that will be opened."""
+        if files is None:
+            files = self.specification.keys()
+        # The control and design databases.
+        db_count = 2
+        for file, specification in self.specification.items():
+            if file not in files:
+                continue
+            # Data, existence bitmap, and index bitmap or list, databases.
+            db_count += 3
+            # Index databases.
+            db_count += len(specification[SECONDARY])
+        return db_count
 
     def environment_flags(self, dbe):
-        """Return environment flags for transaction update."""
-        return list(
-            self.environment.get("flags", ("-create", "-recover", "-txn"))
-        )
+        """Return environment flags for transaction update.
+
+        The flag arguments to the 'mdb_env_open' method with their
+        Symas documentation equivalents appear to be:
+        subdir            MDB_NOSUBDIR
+        readonly          MDB_RDONLY
+        metasync          MDB_NOMETASYNC
+        sync              MDB_NOSYNC
+        map_async         MDB_MAPASYNC
+        mode
+        create
+        readahead         MDB_NORDAHEAD
+        writemap          MDB_WRITEMAP
+        meminit           MDB_NOMEMINIT
+        max_readers
+        max_dbs
+        max_spare_txns
+        lock              MDB_NOLOCK
+
+        It is not clear where MDB_FIXEDMAP and MDB_NOTLS fit.
+
+        In python lmdb code:
+        MDB_NOTLS seems to be permanently set,
+        MDB_MIXEDMAP seems to be permanently unset,
+        and cannot be changed by users of python package lmdb.
+
+        What about mode, create, max_readers, max_dbs, and max_spare_txns?
+
+        Python source code suggests mode is file permissions, and maybe
+        create controls creation of non-existent directory before call to
+        Symas LMMD mdb_env_open() method.
+
+        Not yet sure what the max_*s are counting precisely.
+        max_dbs must be equal to or greater than the number of open_db
+        calls implied by the FileSpec instance for the database.
+        (Could, but do not, put this in the return from this method which
+        is equivalent to the evironment properties in Berkeley DB).
+
+        """
+        # subdir and readahead seem to default to True (1).
+        # subdir==True means create two files, data.mdb and lock.mdb, in the
+        #       directory named in path argument to lmdb.open() call.
+        # subdir==False means create two files, <path> and <path>-lock,
+        #       in the directory named os.path.dirname(<path>) in path
+        #       argument to lmdb.open() call.
+        # The default leads to self.home_directory and self.database_file
+        # being the same in this module's version of Database.
+        # subdir==False leads to self.home_directory and self.database_file
+        # having the same releationship as in the sibling modules for the
+        # Berkeley DB (_db), Sqlite3 (_sqlite), Unqlite, Vedis, Gnu, and
+        # Ndbm, (all _nosql), interfaces.
+        #
+        # Adding 'lock=False' cures the symptoms of a lmdb.BadRslotError hit
+        # by, well first seen in, LiteResults application by tab navigation
+        # Events | Performances; Cancel (when done); Players.  Task in hand
+        # was fitting explicit read-only transactions to converted Berkeley
+        # DB code.
+        # See stackoverflow.com/questions/56905502/lmdb... and referenced
+        # openldap.org/lists/openldap-devel/201409/... thread for informed
+        # comment.
+        return dict(subdir=False, readahead=False)
 
     def checkpoint_before_close_dbenv(self):
         """Do a checkpoint call."""
         # Rely on environment_flags() call for transaction state.
-        tcl_tk_call((self.dbenv, "txn_checkpoint"))
+        # self.dbenv.txn_checkpoint()
 
-    def close_database_contexts(self, files=None):
-        """Close files in database.
+    def open_database_contexts(self, files=None):
+        """Open files in the transaction, if any, in self.dbtxn.
 
-        Provided for compatibility with the DPT interface where there is a real
-        difference between close_database_contexts() and close_database().
+        Method named from the DPT interface and given a new purpose.  In
+        Berkeley DB interfaces, bsddb3 and berkeleydb, this method has no
+        purpose separate from open_database.
 
-        In Berkeley DB most of the implementation detail is handled by cursors
-        created on DB objects bound to elements of dictionaries such as table.
-
-        The files argument is ignored because the DBEnv object is deleted and
-        all the DB objects were created in the context of the DBEnv object.
+        Assume the self.dbtxn object notes the correct transaction type:
+        read-only or read-write.
 
         """
+        if files is None:
+            files = self.specification.keys()
+        else:
+            files = files or {}
+        dbenv = self.dbenv
+        txn = self.dbtxn.transaction
+        self.table[CONTROL_FILE].open_datastore(dbenv, txn=txn)
+        for file, specification in self.specification.items():
+            if file not in files:
+                continue
+            if file in self.table:
+                if self.table[file] is not None:
+                    for dbo in self.table[file]:
+                        dbo.open_datastore(dbenv, txn=txn)
+            if file in self.segment_table:
+                if self.segment_table[file] is not None:
+                    self.segment_table[file].open_datastore(dbenv, txn=txn)
+            if file in self.ebm_control:
+                if self.ebm_control[file] is not None:
+                    self.ebm_control[file].ebm_table.open_datastore(
+                        dbenv, txn=txn
+                    )
+                    # Counting this seems to be available via a transaction
+                    # only.  If not in one, avoid setting self.dbenv if at
+                    # all possible.
+                    if txn:
+                        self.ebm_control[file].set_segment_count(txn)
+                    else:
+                        localtxn = dbenv.begin(write=False)
+                        self.ebm_control[file].set_segment_count(localtxn)
+                        localtxn.commit()
+            for field in specification[SECONDARY]:
+                secondary = SUBFILE_DELIMITER.join((file, field))
+                if secondary in self.table:
+                    for dbo in self.table[secondary]:
+                        dbo.open_datastore(dbenv, txn=txn)
+
+    def close_database_context_files(self, files=None):
+        """Close datastores implementing files in database.
+
+        Method name based on close_database_contexts provided for DPT
+        compatibility.
+
+        The files argument is ignored because all current database handles
+        will be invalid in the next transaction, read-only or read-write.
+        All database handle bindings are released.
+
+        File close action is delegated to the close_datastore() method of
+        the key:value datastore managers.
+
+        """
+        del files
+        if CONTROL_FILE in self.table:
+            if self.table[CONTROL_FILE] is not None:
+                self.table[CONTROL_FILE].close_datastore()
         for file, specification in self.specification.items():
             if file in self.table:
                 if self.table[file] is not None:
                     for dbo in self.table[file]:
-                        tcl_tk_call((dbo, "close"))
-                    self.table[file] = None
+                        dbo.close_datastore()
             if file in self.segment_table:
                 if self.segment_table[file] is not None:
-                    tcl_tk_call((self.segment_table[file], "close"))
-                    self.segment_table[file] = None
+                    self.segment_table[file].close_datastore()
             if file in self.ebm_control:
                 if self.ebm_control[file] is not None:
-                    tcl_tk_call((self.ebm_control[file].ebm_table, "close"))
-                    self.ebm_control[file] = None
+                    self.ebm_control[file].ebm_table.close_datastore()
             for field in specification[SECONDARY]:
                 secondary = SUBFILE_DELIMITER.join((file, field))
                 if secondary in self.table:
-                    # The bsddb3 and berkeleydb version of this module is
-                    # careless about deleting closed secondary database DB
-                    # objects in deferred update mode.  Exceptions occur
-                    # here if that is allowed to happen with the Tcl API.
                     for dbo in self.table[secondary]:
-                        tcl_tk_call((dbo, "close"))
-                    self.table[secondary] = None
-        for k, dbo in self.table.items():
-            if dbo is not None:
-                tcl_tk_call((dbo, "close"))
-                self.table[k] = None
+                        dbo.close_datastore()
+
+    def close_database_contexts(self, files=None):
+        """Commit or backout transaction then delete the database handles.
+
+        Provided for compatibility with the DPT interface where there is a
+        real difference between close_database_contexts() and
+        close_database().
+
+        In Symas LMMD interface, lmdb, this method has no purpose separate
+        from close_database.
+
+        In Symas LMMD the files are closed in close_database_context_files()
+        because open_database() may need to close the files without closing
+        the environment.
+
+        """
+        self._dbe = None
+        self.close_database_context_files(files=files)
         if self.dbenv is not None:
             self.checkpoint_before_close_dbenv()
-            # The bsddb3 and berkeleydb version of close environment seems
-            # to do a silent close transaction: not sure if it is commit
-            # or abort.
-            self.backout()
-            tcl_tk_call((self.dbenv, "close"))
+            self.dbenv.close()
             self.dbenv = None
             self.table = {}
             self.segment_table = {}
@@ -659,27 +616,35 @@ class Database(_database.Database):
     def close_database(self):
         """Close primary and secondary databases and environment.
 
-        That means close all DB objects for tables and indicies and the DBEnv
-        object defining the environment, and clear all dictionaries and the
-        environment references.
+        That means close all _Database objects for tables and indicies and
+        the Environment object defining the environment, and clear all
+        dictionaries and the environment references.
 
         """
-        self.close_database_contexts()
+        self.close_database_contexts(files=None)
 
     def put(self, file, key, value):
         """Insert key, or replace key, in table for file using value."""
         assert file in self.specification
-        command = [self.table[file][0], "put"]
         if key is None:
-            command.append("-append")
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        if key is not None:
-            command.append(key)
-        command.append(value.encode())
-        if key is None:
-            return tcl_tk_call(tuple(command))
-        tcl_tk_call(tuple(command))
+            with self.dbtxn.transaction.cursor(
+                self.table[file][0].datastore
+            ) as cursor:
+                if cursor.last():
+                    key = int.from_bytes(cursor.key(), byteorder="big") + 1
+                else:
+                    key = 0
+                cursor.put(
+                    key.to_bytes(4, byteorder="big"),
+                    value.encode(),
+                    overwrite=False,
+                )
+            return key
+        self.dbtxn.transaction.put(
+            key.to_bytes(4, byteorder="big"),
+            value.encode(),
+            db=self.table[file][0].datastore,
+        )
         return None
 
     def replace(self, file, key, oldvalue, newvalue):
@@ -688,41 +653,39 @@ class Database(_database.Database):
         oldvalue is ignored in _sqlite version of replace() method.
         """
         assert file in self.specification
-        command = [self.table[file][0], "put"]
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        command.extend([key, newvalue.encode()])
-        tcl_tk_call(tuple(command))
+        self.dbtxn.transaction.put(
+            key.to_bytes(4, byteorder="big"),
+            newvalue.encode(),
+            db=self.table[file][0].datastore,
+        )
 
     def delete(self, file, key, value):
         """Delete key from table for file.
 
-        value is ignored in _db_tkinter version of delete() method.
+        value is ignored in _lmdb version of delete() method.
+
+        The return value is ignored: True meaning deleted and False meaning
+        key not in database.
+
         """
         assert file in self.specification
-        del value
-        command = [self.table[file][0], "del"]
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        command.append(key)
-        try:
-            tcl_tk_call(tuple(command))
-        except TclError:
-            pass
+        self.dbtxn.transaction.delete(
+            key.to_bytes(4, byteorder="big"),
+            db=self.table[file][0].datastore,
+        )
 
     def get_primary_record(self, file, key):
         """Return primary record (key, value) given primary key on dbset."""
         assert file in self.specification
         if key is None:
             return None
-        command = [self.table[file][0], "get"]
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        command.append(key)
-        record = tcl_tk_call(tuple(command))
-        if not record:
+        record = self.dbtxn.transaction.get(
+            key.to_bytes(4, byteorder="big"),
+            db=self.table[file][0].datastore,
+        )
+        if record is None:
             return None
-        return key, record[0][1].decode()
+        return key, record.decode()
 
     def encode_record_number(self, key):
         """Return repr(key).encode() because this is bsddb(3) version.
@@ -759,19 +722,16 @@ class Database(_database.Database):
         ebmc = self.ebm_control[dbset]
         if ebmc.freed_record_number_pages is None:
             ebmc.freed_record_number_pages = []
-            command = [self.table[CONTROL_FILE], "cursor"]
-            if self.dbtxn:
-                command.extend(["-txn", self.dbtxn])
-            cursor = tcl_tk_call(tuple(command))
-            try:
-                record = tcl_tk_call((cursor, "get", "-set", ebmc.ebmkey))
+            with self.dbtxn.transaction.cursor(
+                self.table[CONTROL_FILE].datastore
+            ) as cursor:
+                record = cursor.set_key(ebmc.ebmkey)
                 while record:
+                    record = cursor.item()
                     ebmc.freed_record_number_pages.append(
                         int.from_bytes(record[1], byteorder="big")
                     )
-                    record = tcl_tk_call((cursor, "get", "-nextdup"))
-            finally:
-                tcl_tk_call((cursor, "close"))
+                    record = cursor.next_dup()
         while len(ebmc.freed_record_number_pages):
             segment_number = ebmc.freed_record_number_pages[0]
 
@@ -787,30 +747,21 @@ class Database(_database.Database):
                 continue
 
             try:
-                first_zero_bit = lfrns.index(False, 0 if segment_number else 1)
+                first_zero_bit = lfrns.index(False, 0)
             except ValueError:
-                command = [self.table[CONTROL_FILE], "cursor"]
-                if self.dbtxn:
-                    command.extend(["-txn", self.dbtxn])
-                cursor = tcl_tk_call(tuple(command))
-                try:
-                    if tcl_tk_call(
-                        (
-                            cursor,
-                            "get",
-                            "-get_both",
-                            ebmc.ebmkey,
-                            segment_number.to_bytes(
-                                1 + segment_number.bit_length() // 8,
-                                byteorder="big",
-                            ),
-                        )
+                with self.dbtxn.transaction.cursor(
+                    self.table[CONTROL_FILE].datastore
+                ) as cursor:
+                    if cursor.set_key_dup(
+                        ebmc.ebmkey,
+                        segment_number.to_bytes(
+                            1 + segment_number.bit_length() // 8,
+                            byteorder="big",
+                        ),
                     ):
-                        tcl_tk_call((cursor, "del"))
+                        cursor.delete()
                     else:
                         raise
-                finally:
-                    tcl_tk_call((cursor, "close"))
                 del ebmc.freed_record_number_pages[0]
                 continue
             return (
@@ -830,9 +781,7 @@ class Database(_database.Database):
         passes this test.
         """
         try:
-            high_segment = divmod(high_record[0], SegmentSize.db_segment_size)[
-                0
-            ]
+            high_segment = divmod(high_record, SegmentSize.db_segment_size)[0]
         except TypeError:
 
             # Implies attempt to delete record from empty database.
@@ -844,19 +793,16 @@ class Database(_database.Database):
         ebmc = self.ebm_control[dbset]
         if ebmc.freed_record_number_pages is None:
             ebmc.freed_record_number_pages = []
-            command = [self.table[CONTROL_FILE], "cursor"]
-            if self.dbtxn:
-                command.extend(["-txn", self.dbtxn])
-            cursor = tcl_tk_call(tuple(command))
-            try:
-                record = tcl_tk_call((cursor, "get", "-set", ebmc.ebmkey))
+            with self.dbtxn.transaction.cursor(
+                self.table[CONTROL_FILE].datastore
+            ) as cursor:
+                record = cursor.set_key(ebmc.ebmkey)
                 while record:
+                    record = cursor.item()
                     ebmc.freed_record_number_pages.append(
-                        int.from_bytes(record[0][1], byteorder="big")
+                        int.from_bytes(record[1], byteorder="big")
                     )
-                    record = tcl_tk_call((cursor, "get", "-nextdup"))
-            finally:
-                tcl_tk_call((cursor, "close"))
+                    record = cursor.next_dup()
         insert = bisect.bisect_left(ebmc.freed_record_number_pages, segment)
 
         # Should be:
@@ -869,22 +815,11 @@ class Database(_database.Database):
                     return
 
         ebmc.freed_record_number_pages.insert(insert, segment)
-        command = [self.table[CONTROL_FILE], "put"]
-        # The Tcl API has no equivalent to self.DB_NODUPDATA flag for put.
-        # It seems this flag should not be used in bsddb3 put, but is
-        # ignored anyway.
-        # The "-nooverwrite" option constrains each key to one value.
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        command.extend(
-            [
-                ebmc.ebmkey,
-                segment.to_bytes(
-                    1 + segment.bit_length() // 8, byteorder="big"
-                ),
-            ]
+        self.dbtxn.transaction.put(
+            ebmc.ebmkey,
+            segment.to_bytes(1 + segment.bit_length() // 8, byteorder="big"),
+            db=self.table[CONTROL_FILE].datastore,
         )
-        tcl_tk_call(tuple(command))
 
     def remove_record_from_ebm(self, file, deletekey):
         """Remove deletekey from file's existence bitmap; return key.
@@ -893,21 +828,21 @@ class Database(_database.Database):
         segment to form the returned value.
         """
         segment, record_number = divmod(deletekey, SegmentSize.db_segment_size)
-        command = [self.ebm_control[file].ebm_table, "get"]
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        command.append(segment + 1)
-        ebmb = tcl_tk_call(tuple(command))
-        if not ebmb:
+        key = segment.to_bytes(4, byteorder="big")
+        ebmb = self.dbtxn.transaction.get(
+            key,
+            db=self.ebm_control[file].ebm_table.datastore,
+        )
+        if ebmb is None:
             raise DatabaseError("Existence bit map for segment does not exist")
         ebm = Bitarray()
-        ebm.frombytes(ebmb[0][1])
+        ebm.frombytes(ebmb)
         ebm[record_number] = False
-        command = [self.ebm_control[file].ebm_table, "put"]
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        command.extend([segment + 1, ebm.tobytes()])
-        tcl_tk_call(tuple(command))
+        self.dbtxn.transaction.put(
+            key,
+            ebm.tobytes(),
+            db=self.ebm_control[file].ebm_table.datastore,
+        )
         return segment, record_number
 
     def add_record_to_ebm(self, file, putkey):
@@ -917,47 +852,40 @@ class Database(_database.Database):
         segment to form the returned value.
         """
         segment, record_number = divmod(putkey, SegmentSize.db_segment_size)
-        command = [self.ebm_control[file].ebm_table, "get"]
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        command.append(segment + 1)
-        ebmb = tcl_tk_call(tuple(command))
-        if not ebmb:
+        key = segment.to_bytes(4, byteorder="big")
+        ebmb = self.dbtxn.transaction.get(
+            key,
+            db=self.ebm_control[file].ebm_table.datastore,
+        )
+        if ebmb is None:
             ebm = SegmentSize.empty_bitarray.copy()
         else:
             ebm = Bitarray()
-            ebm.frombytes(ebmb[0][1])
+            ebm.frombytes(ebmb)
         ebm[record_number] = True
-        command = [self.ebm_control[file].ebm_table, "put"]
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        command.extend([segment + 1, ebm.tobytes()])
-        tcl_tk_call(tuple(command))
+        self.dbtxn.transaction.put(
+            key,
+            ebm.tobytes(),
+            db=self.ebm_control[file].ebm_table.datastore,
+        )
         return segment, record_number
 
     # Change to return just the record number, and the name to fit.
     # Only used in one place, and it is extra work to get the data in_nosql.
     def get_high_record(self, file):
         """Return the high existing record number in table for file."""
-        command = [self.table[file][0], "cursor"]
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        cursor = tcl_tk_call(tuple(command))
-        try:
-            return tcl_tk_call((cursor, "get", "-last")) or None
-        finally:
-            tcl_tk_call((cursor, "close"))
+        with self.dbtxn.transaction.cursor(
+            self.table[file][0].datastore
+        ) as cursor:
+            if cursor.last():
+                return int.from_bytes(cursor.key(), byteorder="big")
+            return None
 
     def _get_segment_record_numbers(self, file, reference):
-        command = [self.segment_table[file], "get"]
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        command.append(reference)
-        segment_record = tcl_tk_call(tuple(command))
-        if not segment_record:
-            segment_record = None
-        else:
-            segment_record = segment_record[0][1]
+        segment_record = self.dbtxn.transaction.get(
+            reference.to_bytes(4, byteorder="big"),
+            db=self.segment_table[file].datastore,
+        )
         if len(segment_record) < SegmentSize.db_segment_size_bytes:
             return [
                 int.from_bytes(segment_record[i : i + 2], byteorder="big")
@@ -981,52 +909,44 @@ class Database(_database.Database):
         """
         key = self.encode_record_selector(key)
         secondary = SUBFILE_DELIMITER.join((file, field))
-        command = [self.table[secondary][0], "cursor"]
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        cursor = tcl_tk_call(tuple(command))
-        try:
-            record = tcl_tk_call((cursor, "get", "-set_range", key))
+        with self.dbtxn.transaction.cursor(
+            self.table[secondary][0].datastore
+        ) as cursor:
+            segment_bytes = segment.to_bytes(4, byteorder="big")
+            record = cursor.set_range_dup(key, segment_bytes)
             while record:
-                record_key, value = record[0]
+                record_key, value = cursor.item()
                 if record_key != key:
 
+                    # Not reachable given py-lmdb set_range_dup behaviour.
+                    # Code copied for Berkeley DB set_range behaviour.
                     # No index entry for key.
-                    command = (
-                        cursor,
-                        "put",
-                        "-keylast",
+                    cursor.put(
                         key,
                         b"".join(
                             (
-                                segment.to_bytes(4, byteorder="big"),
+                                segment_bytes,
                                 record_number.to_bytes(2, byteorder="big"),
                             )
                         ),
                     )
-                    tcl_tk_call(command)
                     return
 
                 segment_number = int.from_bytes(value[:4], byteorder="big")
-                if segment_number < segment:
-                    record = tcl_tk_call((cursor, "get", "-nextdup"))
-                    continue
                 if segment_number > segment:
 
+                    # Not reachable given py-lmdb set_range_dup behaviour.
+                    # Code copied for Berkeley DB set_range behaviour.
                     # No index entry for key in this segment.
-                    command = (
-                        cursor,
-                        "put",
-                        "-keylast",
+                    cursor.put(
                         key,
                         b"".join(
                             (
-                                segment.to_bytes(4, byteorder="big"),
+                                segment_bytes,
                                 record_number.to_bytes(2, byteorder="big"),
                             )
                         ),
                     )
-                    tcl_tk_call(command)
                     return
 
                 if len(value) == SEGMENT_HEADER_LENGTH:
@@ -1034,39 +954,52 @@ class Database(_database.Database):
                         value[4:], byteorder="big"
                     )
                     if existing_record_number != record_number:
-                        command = [self.segment_table[file], "put", "-append"]
-                        if self.dbtxn:
-                            command.extend(["-txn", self.dbtxn])
-                        command.append(
-                            b"".join(
-                                sorted(
-                                    [
-                                        record_number.to_bytes(
-                                            length=2, byteorder="big"
-                                        ),
-                                        existing_record_number.to_bytes(
-                                            length=2, byteorder="big"
-                                        ),
-                                    ]
+                        with self.dbtxn.transaction.cursor(
+                            self.segment_table[file].datastore
+                        ) as seg_cursor:
+                            if seg_cursor.last():
+                                segment_key = (
+                                    int.from_bytes(
+                                        seg_cursor.key(), byteorder="big"
+                                    )
+                                    + 1
                                 )
+                            else:
+                                # Should not be reached.
+                                # Sibling _db module for Berkeley DB uses
+                                # append() method and does not care if any of
+                                # these records exist.
+                                segment_key = 0
+                            segment_key = segment_key.to_bytes(
+                                4, byteorder="big"
                             )
-                        )
-                        segment_key = tcl_tk_call(tuple(command))
-                        tcl_tk_call((cursor, "del"))
-                        command = (
-                            cursor,
-                            "put",
-                            "-keylast",
-                            key,
-                            b"".join(
-                                (
-                                    value[:4],
-                                    b"\x00\x02",
-                                    segment_key.to_bytes(4, byteorder="big"),
-                                )
-                            ),
-                        )
-                        tcl_tk_call(command)
+                            seg_cursor.put(
+                                segment_key,
+                                b"".join(
+                                    sorted(
+                                        [
+                                            record_number.to_bytes(
+                                                length=2, byteorder="big"
+                                            ),
+                                            existing_record_number.to_bytes(
+                                                length=2, byteorder="big"
+                                            ),
+                                        ]
+                                    )
+                                ),
+                                overwrite=False,
+                            )
+                            cursor.delete()
+                            cursor.put(
+                                key,
+                                b"".join(
+                                    (
+                                        value[:4],
+                                        b"\x00\x02",
+                                        segment_key,
+                                    )
+                                ),
+                            )
                     return
                 segment_key = int.from_bytes(
                     value[SEGMENT_HEADER_LENGTH:], byteorder="big"
@@ -1084,32 +1017,13 @@ class Database(_database.Database):
                         seg = SegmentSize.empty_bitarray.copy()
                         for i in recnums:
                             seg[i] = True
-                        command = [
-                            self.segment_table[file],
-                            "put",
-                        ]
-                        if self.dbtxn:
-                            command.extend(["-txn", self.dbtxn])
-                        command.extend(
-                            [
-                                key,
-                                b"".join(
-                                    (
-                                        value[:4],
-                                        b"\x00\x02",
-                                        segment_key.to_bytes(
-                                            4, byteorder="big"
-                                        ),
-                                    )
-                                ),
-                            ]
+                        self.dbtxn.transaction.put(
+                            value[SEGMENT_HEADER_LENGTH:],
+                            seg.tobytes(),
+                            db=self.segment_table[file].datastore,
                         )
-                        tcl_tk_call(tuple(command))
-                        tcl_tk_call((cursor, "del"))
-                        command = (
-                            cursor,
-                            "put",
-                            "-keylast",
+                        cursor.delete()
+                        cursor.put(
                             key,
                             b"".join(
                                 (
@@ -1119,31 +1033,19 @@ class Database(_database.Database):
                                 )
                             ),
                         )
-                        tcl_tk_call(command)
                     else:
-                        command = [
-                            self.segment_table[file],
-                            "put",
-                        ]
-                        if self.dbtxn:
-                            command.extend(["-txn", self.dbtxn])
-                        command.extend(
-                            [
-                                segment_key,
-                                b"".join(
-                                    (
-                                        rn.to_bytes(length=2, byteorder="big")
-                                        for rn in recnums
-                                    )
-                                ),
-                            ]
+                        self.dbtxn.transaction.put(
+                            value[SEGMENT_HEADER_LENGTH:],
+                            b"".join(
+                                (
+                                    rn.to_bytes(length=2, byteorder="big")
+                                    for rn in recnums
+                                )
+                            ),
+                            db=self.segment_table[file].datastore,
                         )
-                        tcl_tk_call(tuple(command))
-                        tcl_tk_call((cursor, "del"))
-                        command = (
-                            cursor,
-                            "put",
-                            "-keylast",
+                        cursor.delete()
+                        cursor.put(
                             key,
                             b"".join(
                                 (
@@ -1153,29 +1055,17 @@ class Database(_database.Database):
                                 )
                             ),
                         )
-                        tcl_tk_call(command)
                     return
 
                 # ignore possibility record_number already present
                 recnums[record_number] = True
-                command = [
-                    self.segment_table[file],
-                    "put",
-                ]
-                if self.dbtxn:
-                    command.extend(["-txn", self.dbtxn])
-                command.extend(
-                    [
-                        segment_key,
-                        recnums.tobytes(),
-                    ]
+                self.dbtxn.transaction.put(
+                    value[SEGMENT_HEADER_LENGTH:],
+                    recnums.tobytes(),
+                    db=self.segment_table[file].datastore,
                 )
-                tcl_tk_call(tuple(command))
-                tcl_tk_call((cursor, "del"))
-                command = (
-                    cursor,
-                    "put",
-                    "-keylast",
+                cursor.delete()
+                cursor.put(
                     key,
                     b"".join(
                         (
@@ -1185,14 +1075,10 @@ class Database(_database.Database):
                         )
                     ),
                 )
-                tcl_tk_call(command)
                 return
 
             # No index entry for key because database is empty.
-            command = (
-                cursor,
-                "put",
-                "-keylast",
+            cursor.put(
                 key,
                 b"".join(
                     (
@@ -1201,10 +1087,6 @@ class Database(_database.Database):
                     )
                 ),
             )
-            tcl_tk_call(command)
-
-        finally:
-            tcl_tk_call((cursor, "close"))
 
     def remove_record_from_field_value(
         self, file, field, key, segment, record_number
@@ -1219,14 +1101,13 @@ class Database(_database.Database):
         """
         key = self.encode_record_selector(key)
         secondary = SUBFILE_DELIMITER.join((file, field))
-        command = [self.table[secondary][0], "cursor"]
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        cursor = tcl_tk_call(tuple(command))
-        try:
-            record = tcl_tk_call((cursor, "get", "-set_range", key))
+        with self.dbtxn.transaction.cursor(
+            self.table[secondary][0].datastore
+        ) as cursor:
+            segment_bytes = segment.to_bytes(4, byteorder="big")
+            record = cursor.set_range_dup(key, segment_bytes)
             while record:
-                record_key, value = record[0]
+                record_key, value = cursor.item()
                 if record_key != key:
 
                     # Assume that multiple requests to delete an index value
@@ -1238,7 +1119,7 @@ class Database(_database.Database):
 
                 segment_number = int.from_bytes(value[:4], byteorder="big")
                 if segment_number < segment:
-                    record = tcl_tk_call((cursor, "get", "-nextdup"))
+                    record = cursor.next_dup()
                     continue
                 if segment_number > segment:
                     return
@@ -1246,7 +1127,7 @@ class Database(_database.Database):
                     if record_number == int.from_bytes(
                         value[4:], byteorder="big"
                     ):
-                        tcl_tk_call((cursor, "del"))
+                        cursor.delete()
                     return
                 segment_key = int.from_bytes(
                     value[SEGMENT_HEADER_LENGTH:], byteorder="big"
@@ -1265,35 +1146,26 @@ class Database(_database.Database):
                                     i.to_bytes(2, byteorder="big"),
                                 )
                             )
-                        command = [self.segment_table[file], "del"]
-                        if self.dbtxn:
-                            command.extend(["-txn", self.dbtxn])
-                        command.append(segment_key)
-                        tcl_tk_call(tuple(command))
-                        tcl_tk_call((cursor, "del"))
-                        if count:
-                            tcl_tk_call((cursor, "put", "-keylast", key, ref))
-                    else:
-                        command = [self.segment_table[file], "put"]
-                        if self.dbtxn:
-                            command.extend(["-txn", self.dbtxn])
-                        command.extend(
-                            [
-                                segment_key,
-                                b"".join(
-                                    (
-                                        i.to_bytes(length=2, byteorder="big")
-                                        for i in sorted(recnums)
-                                    )
-                                ),
-                            ]
+                        self.dbtxn.transaction.delete(
+                            value[SEGMENT_HEADER_LENGTH:],
+                            db=self.segment_table[file].datastore,
                         )
-                        tcl_tk_call(tuple(command))
-                        tcl_tk_call((cursor, "del"))
-                        command = (
-                            cursor,
-                            "put",
-                            "-keylast",
+                        cursor.delete()
+                        if count:
+                            cursor.put(key, ref)
+                    else:
+                        self.dbtxn.transaction.put(
+                            value[SEGMENT_HEADER_LENGTH:],
+                            b"".join(
+                                (
+                                    i.to_bytes(length=2, byteorder="big")
+                                    for i in sorted(recnums)
+                                )
+                            ),
+                            db=self.segment_table[file].datastore,
+                        )
+                        cursor.delete()
+                        cursor.put(
                             key,
                             b"".join(
                                 (
@@ -1303,7 +1175,6 @@ class Database(_database.Database):
                                 )
                             ),
                         )
-                        tcl_tk_call(command)
                     return
 
                 # ignore possibility record_number already absent
@@ -1311,16 +1182,13 @@ class Database(_database.Database):
 
                 count = recnums.count()
                 if count > SegmentSize.db_lower_conversion_limit:
-                    command = [self.segment_table[file], "put"]
-                    if self.dbtxn:
-                        command.extend(["-txn", self.dbtxn])
-                    command.extend([segment_key, recnums.tobytes()])
-                    tcl_tk_call(tuple(command))
-                    tcl_tk_call((cursor, "del"))
-                    command = (
-                        cursor,
-                        "put",
-                        "-keylast",
+                    self.dbtxn.transaction.put(
+                        value[SEGMENT_HEADER_LENGTH:],
+                        recnums.tobytes(),
+                        db=self.segment_table[file].datastore,
+                    )
+                    cursor.delete()
+                    cursor.put(
                         key,
                         b"".join(
                             (
@@ -1330,29 +1198,20 @@ class Database(_database.Database):
                             )
                         ),
                     )
-                    tcl_tk_call(command)
                 else:
                     recnums = set(recnums.search(SINGLEBIT))
-                    command = [self.segment_table[file], "put"]
-                    if self.dbtxn:
-                        command.extend(["-txn", self.dbtxn])
-                    command.extend(
-                        [
-                            segment_key,
-                            b"".join(
-                                (
-                                    i.to_bytes(length=2, byteorder="big")
-                                    for i in sorted(recnums)
-                                )
-                            ),
-                        ]
+                    self.dbtxn.transaction.put(
+                        value[SEGMENT_HEADER_LENGTH:],
+                        b"".join(
+                            (
+                                i.to_bytes(length=2, byteorder="big")
+                                for i in sorted(recnums)
+                            )
+                        ),
+                        db=self.segment_table[file].datastore,
                     )
-                    tcl_tk_call(tuple(command))
-                    tcl_tk_call((cursor, "del"))
-                    command = (
-                        cursor,
-                        "put",
-                        "-keylast",
+                    cursor.delete()
+                    cursor.put(
                         key,
                         b"".join(
                             (
@@ -1362,10 +1221,7 @@ class Database(_database.Database):
                             )
                         ),
                     )
-                    tcl_tk_call(command)
                 return
-        finally:
-            tcl_tk_call((cursor, "close"))
 
     def populate_segment(self, segment_reference, file):
         """Return records for segment_reference in segment table for file.
@@ -1382,20 +1238,12 @@ class Database(_database.Database):
                 None,
                 records=segment_reference[4:],
             )
-        command = [self.segment_table[file], "get"]
-        # The replaced get() call does not use the txn argument.
-        # But surely it should?
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        command.append(
-            int.from_bytes(
-                segment_reference[SEGMENT_HEADER_LENGTH:], byteorder="big"
-            )
+        segment_record = self.dbtxn.transaction.get(
+            segment_reference[SEGMENT_HEADER_LENGTH:],
+            db=self.segment_table[file].datastore,
         )
-        segment_record = tcl_tk_call(tuple(command))
-        if not segment_record:
+        if segment_record is None:
             raise DatabaseError("Segment record missing")
-        segment_record = segment_record[0][1]
         if len(segment_record) == SegmentSize.db_segment_size_bytes:
             return RecordsetSegmentBitarray(
                 int.from_bytes(segment_reference[:4], byteorder="big"),
@@ -1410,142 +1258,95 @@ class Database(_database.Database):
 
     def find_values(self, valuespec, file):
         """Yield values in range defined in valuespec in index named file."""
-        command = [
-            self.table[SUBFILE_DELIMITER.join((file, valuespec.field))][0],
-            "cursor",
-        ]
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        cursor = tcl_tk_call(tuple(command))
-        try:
+        with self.dbtxn.transaction.cursor(
+            self.table[SUBFILE_DELIMITER.join((file, valuespec.field))][
+                0
+            ].datastore
+        ) as cursor:
             if valuespec.above_value and valuespec.below_value:
-                record = tcl_tk_call(
-                    (
-                        cursor,
-                        "get",
-                        "-set_range",
-                        valuespec.above_value.encode(),
-                    )
-                )
+                record = cursor.set_range(valuespec.above_value.encode())
                 if record:
-                    if record[0][0] == valuespec.above_value.encode():
-                        record = tcl_tk_call((cursor, "get", "-nextnodup"))
+                    if rcursor.item()[0] == valuespec.above_value.encode():
+                        record = cursor.next_nodup()
                 while record:
-                    key = record[0][0].decode()
+                    key = cursor.item()[0].decode()
                     if key >= valuespec.below_value:
                         break
                     if valuespec.apply_pattern_and_set_filters_to_value(key):
                         yield key
-                    record = tcl_tk_call((cursor, "get", "-nextnodup"))
+                    record = cursor.next_nodup()
             elif valuespec.above_value and valuespec.to_value:
-                record = tcl_tk_call(
-                    (
-                        cursor,
-                        "get",
-                        "-set_range",
-                        valuespec.above_value.encode(),
-                    )
-                )
+                record = cursor.set_range(valuespec.above_value.encode())
                 if record:
-                    if record[0][0] == valuespec.above_value.encode():
-                        record = tcl_tk_call((cursor, "get", "-nextnodup"))
+                    if cursor.item()[0] == valuespec.above_value.encode():
+                        record = cursor.next_nodup()
                 while record:
-                    key = record[0][0].decode()
+                    key = cursor.item()[0].decode()
                     if key > valuespec.to_value:
                         break
                     if valuespec.apply_pattern_and_set_filters_to_value(key):
                         yield key
-                    record = tcl_tk_call((cursor, "get", "-nextnodup"))
+                    record = cursor.next_nodup()
             elif valuespec.from_value and valuespec.to_value:
-                record = tcl_tk_call(
-                    (
-                        cursor,
-                        "get",
-                        "-set_range",
-                        valuespec.from_value.encode(),
-                    )
-                )
+                record = cursor.set_range(valuespec.from_value.encode())
                 while record:
-                    key = record[0][0].decode()
+                    key = cursor.item()[0].decode()
                     if key > valuespec.to_value:
                         break
                     if valuespec.apply_pattern_and_set_filters_to_value(key):
                         yield key
-                    record = tcl_tk_call((cursor, "get", "-nextnodup"))
+                    record = cursor.next_nodup()
             elif valuespec.from_value and valuespec.below_value:
-                record = tcl_tk_call(
-                    (
-                        cursor,
-                        "get",
-                        "-set_range",
-                        valuespec.from_value.encode(),
-                    )
-                )
+                record = cursor.set_range(valuespec.from_value.encode())
                 while record:
-                    key = record[0][0].decode()
+                    key = cursor.item()[0].decode()
                     if key >= valuespec.below_value:
                         break
                     if valuespec.apply_pattern_and_set_filters_to_value(key):
                         yield key
-                    record = tcl_tk_call((cursor, "get", "-nextnodup"))
+                    record = cursor.next_nodup()
             elif valuespec.above_value:
-                record = tcl_tk_call(
-                    (
-                        cursor,
-                        "get",
-                        "-set_range",
-                        valuespec.above_value.encode(),
-                    )
-                )
+                record = cursor.set_range(valuespec.above_value.encode())
                 if record:
-                    if record[0][0] == valuespec.above_value.encode():
-                        record = tcl_tk_call((cursor, "get", "-nextnodup"))
+                    if cursor.item()[0] == valuespec.above_value.encode():
+                        record = cursor.next_nodup()
                 while record:
-                    key = record[0][0].decode()
+                    key = cursor.item()[0].decode()
                     if valuespec.apply_pattern_and_set_filters_to_value(key):
                         yield key
-                    record = tcl_tk_call((cursor, "get", "-nextnodup"))
+                    record = cursor.next_nodup()
             elif valuespec.from_value:
-                record = tcl_tk_call(
-                    (
-                        cursor,
-                        "get",
-                        "-set_range",
-                        valuespec.from_value.encode(),
-                    )
-                )
+                record = cursor.set_range(valuespec.from_value.encode())
                 while record:
-                    key = record[0][0].decode()
+                    key = cursor.item()[0].decode()
                     if valuespec.apply_pattern_and_set_filters_to_value(key):
                         yield key
-                    record = tcl_tk_call((cursor, "get", "-nextnodup"))
+                    record = cursor.next_nodup()
             elif valuespec.to_value:
-                record = tcl_tk_call((cursor, "get", "-first"))
+                record = cursor.first()
                 while record:
-                    key = record[0][0].decode()
+                    key = cursor.item()[0].decode()
                     if key > valuespec.to_value:
                         break
                     if valuespec.apply_pattern_and_set_filters_to_value(key):
                         yield key
-                    record = tcl_tk_call((cursor, "get", "-nextnodup"))
+                    record = cursor.next_nodup()
             elif valuespec.below_value:
-                record = tcl_tk_call((cursor, "get", "-first"))
+                record = cursor.first()
                 while record:
-                    key = record[0][0].decode()
+                    key = cursor.item()[0].decode()
                     if key >= valuespec.below_value:
                         break
                     if valuespec.apply_pattern_and_set_filters_to_value(key):
                         yield key
-                    record = tcl_tk_call((cursor, "get", "-nextnodup"))
+                    record = cursor.next_nodup()
             else:
-                record = tcl_tk_call((cursor, "get", "-first"))
+                record = cursor.first()
                 while record:
-                    key = record[0][0].decode()
+                    key = cursor.item()[0].decode()
                     if valuespec.apply_pattern_and_set_filters_to_value(key):
                         yield key
-                    record = tcl_tk_call((cursor, "get", "-nextnodup"))
-        finally:
-            tcl_tk_call((cursor, "close"))
+                    record = cursor.next_nodup()
 
     # The bit setting in existence bit map decides if a record is put on the
     # recordset created by the make_recordset_*() methods.
@@ -1560,16 +1361,12 @@ class Database(_database.Database):
         segment_number, record_number = divmod(
             key, SegmentSize.db_segment_size
         )
-        command = [
-            self.ebm_control[file].ebm_table,
-            "get",
-        ]
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        command.append(segment_number + 1)
-        record = tcl_tk_call(tuple(command))
+        record = self.dbtxn.transaction.get(
+            segment_number.to_bytes(4, byteorder="big"),
+            db=self.ebm_control[file].ebm_table.datastore,
+        )
         if record and record_number in RecordsetSegmentBitarray(
-            segment_number, key, records=record[0][1]
+            segment_number, key, records=record
         ):
             recordlist[segment_number] = RecordsetSegmentList(
                 segment_number,
@@ -1586,8 +1383,6 @@ class Database(_database.Database):
         The records have record number between keystart and keyend.  Both
         default to include all records to the respective edge of segment.
         """
-        # The keys in self.ebm_control[file].ebm_table are always
-        # 'segment + 1', see note in recordlist_ebm method.
         recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
         if keystart is None:
             segment_start, recnum_start = 0, 1
@@ -1601,24 +1396,22 @@ class Database(_database.Database):
             )
         else:
             segment_end, recnum_end = None, None
-        command = [self.ebm_control[file].ebm_table, "cursor"]
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        cursor = tcl_tk_call(tuple(command))
-        try:
+        with self.dbtxn.transaction.cursor(
+            self.ebm_control[file].ebm_table.datastore
+        ) as cursor:
             first_segment = None
             final_segment = None
-            record = tcl_tk_call(
-                tuple((cursor, "get", "-set", segment_start + 1))
-            )
+            record = cursor.first()
             while record:
-                segment_number, segment_record = record[0]
-                segment_number -= 1
+                segment_number, segment_record = cursor.item()
+                segment_number = int.from_bytes(
+                    segment_number, byteorder="big"
+                )
                 if segment_number < segment_start:
-                    record = tcl_tk_call((cursor, "get", "-next"))
+                    record = cursor.next()
                     continue
                 if segment_end is not None and segment_number > segment_end:
-                    record = tcl_tk_call((cursor, "get", "-next"))
+                    record = cursor.next()
                     continue
                 if segment_number == segment_start:
                     if (segment_number and recnum_start) or recnum_start > 1:
@@ -1645,7 +1438,7 @@ class Database(_database.Database):
                 recordlist[segment_number] = RecordsetSegmentBitarray(
                     segment_number, None, records=segment_record
                 )
-                record = tcl_tk_call((cursor, "get", "-next"))
+                record = cursor.next()
             if first_segment is not None:
                 for i in range(
                     first_segment * 8, first_segment * 8 + start_byte
@@ -1656,34 +1449,24 @@ class Database(_database.Database):
                     final_segment * 8 + end_byte, (final_segment + 1) * 8
                 ):
                     recordlist[segment_end][(segment_end, i)] = False
-        finally:
-            tcl_tk_call((cursor, "close"))
         return recordlist
 
     def recordlist_ebm(self, file, cache_size=1):
         """Return RecordList containing records on file."""
         recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
-        command = [self.ebm_control[file].ebm_table, "cursor"]
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        cursor = tcl_tk_call(tuple(command))
-        try:
-            record = tcl_tk_call((cursor, "get", "-first"))
+        with self.dbtxn.transaction.cursor(
+            self.ebm_control[file].ebm_table.datastore
+        ) as cursor:
+            record = cursor.first()
             while record:
-                record = record[0]
-
-                # The keys in self.ebm_control[file].ebm_table are always
-                # 'segment + 1' because automatically allocated RECNO keys
-                # start at 1 in an empty table and segment numbers start at 0.
-                # It is not possible to use the actual segment number because
-                # 0 is not allowed as a RECNO key.
-                recordlist[record[0] - 1] = RecordsetSegmentBitarray(
-                    record[0] - 1, None, records=record[1]
+                segment_number, segment_record = cursor.item()
+                segment_number = int.from_bytes(
+                    segment_number, byteorder="big"
                 )
-                record = tcl_tk_call((cursor, "get", "-next"))
-
-        finally:
-            tcl_tk_call((cursor, "close"))
+                recordlist[segment_number] = RecordsetSegmentBitarray(
+                    segment_number, None, records=segment_record
+                )
+                record = cursor.next()
         return recordlist
 
     def populate_recordset_segment(self, recordset, reference):
@@ -1699,15 +1482,10 @@ class Database(_database.Database):
                 segment_number, None, records=reference[4:]
             )
         else:
-            segment_record = tcl_tk_call(
-                (
-                    self.segment_table[recordset.dbset],
-                    "get",
-                    int.from_bytes(
-                        reference[SEGMENT_HEADER_LENGTH:], byteorder="big"
-                    ),
-                )
-            )[0][1]
+            segment_record = self.dbtxn.transaction.get(
+                reference[SEGMENT_HEADER_LENGTH:],
+                db=self.segment_table[recordset.dbset].datastore,
+            )
             if len(segment_record) == SegmentSize.db_segment_size_bytes:
                 segment = RecordsetSegmentBitarray(
                     segment_number, None, records=segment_record
@@ -1730,22 +1508,15 @@ class Database(_database.Database):
         if keylike is None:
             return recordlist
         pattern = b".*?" + keylike
-        command = [
-            self.table[SUBFILE_DELIMITER.join((file, field))][0],
-            "cursor",
-        ]
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        cursor = tcl_tk_call(tuple(command))
-        try:
-            record = tcl_tk_call((cursor, "get", "-first"))
+        with self.dbtxn.transaction.cursor(
+            self.table[SUBFILE_DELIMITER.join((file, field))][0].datastore
+        ) as cursor:
+            record = cursor.first()
             while record:
-                key, value = record[0]
+                key, value = cursor.item()
                 if re.match(pattern, key, flags=re.IGNORECASE | re.DOTALL):
                     self.populate_recordset_segment(recordlist, value)
-                record = tcl_tk_call((cursor, "get", "-next"))
-        finally:
-            tcl_tk_call((cursor, "close"))
+                record = cursor.next()
         return recordlist
 
     def recordlist_key(self, file, field, key=None, cache_size=1):
@@ -1753,23 +1524,16 @@ class Database(_database.Database):
         recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
         if key is None:
             return recordlist
-        command = [
-            self.table[SUBFILE_DELIMITER.join((file, field))][0],
-            "cursor",
-        ]
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        cursor = tcl_tk_call(tuple(command))
-        try:
-            record = tcl_tk_call((cursor, "get", "-set_range", key))
+        with self.dbtxn.transaction.cursor(
+            self.table[SUBFILE_DELIMITER.join((file, field))][0].datastore
+        ) as cursor:
+            record = cursor.set_range(key)
             while record:
-                record_key, value = record[0]
+                record_key, value = cursor.item()
                 if record_key != key:
                     break
                 self.populate_recordset_segment(recordlist, value)
-                record = tcl_tk_call((cursor, "get", "-next"))
-        finally:
-            tcl_tk_call((cursor, "close"))
+                record = cursor.next()
         return recordlist
 
     def recordlist_key_startswith(
@@ -1782,23 +1546,16 @@ class Database(_database.Database):
         recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
         if keystart is None:
             return recordlist
-        command = [
-            self.table[SUBFILE_DELIMITER.join((file, field))][0],
-            "cursor",
-        ]
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        cursor = tcl_tk_call(tuple(command))
-        try:
-            record = tcl_tk_call((cursor, "get", "-set_range", keystart))
+        with self.dbtxn.transaction.cursor(
+            self.table[SUBFILE_DELIMITER.join((file, field))][0].datastore
+        ) as cursor:
+            record = cursor.set_range(keystart)
             while record:
-                record = record[0]
+                record = cursor.item()
                 if not record[0].startswith(keystart):
                     break
                 self.populate_recordset_segment(recordlist, record[1])
-                record = tcl_tk_call((cursor, "get", "-next"))
-        finally:
-            tcl_tk_call((cursor, "close"))
+                record = cursor.next()
         return recordlist
 
     def recordlist_key_range(
@@ -1813,65 +1570,51 @@ class Database(_database.Database):
         if le and lt:
             raise DatabaseError("Both 'le' and 'lt' given in key range")
         recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
-        command = [
-            self.table[SUBFILE_DELIMITER.join((file, field))][0],
-            "cursor",
-        ]
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        cursor = tcl_tk_call(tuple(command))
-        try:
+        with self.dbtxn.transaction.cursor(
+            self.table[SUBFILE_DELIMITER.join((file, field))][0].datastore
+        ) as cursor:
             if ge is None and gt is None:
-                record = tcl_tk_call((cursor, "get", "-first"))
+                record = cursor.first()
             else:
-                record = tcl_tk_call((cursor, "get", "-set_range", ge or gt))
+                record = cursor.set_range(ge or gt)
             if gt:
                 while record:
-                    record0 = record[0]
-                    if record0[0] > gt:
+                    record = cursor.item()
+                    if record[0] > gt:
                         break
-                    record = tcl_tk_call((cursor, "get", "-next"))
+                    record = cursor.next()
             if le is None and lt is None:
                 while record:
-                    record0 = record[0]
-                    self.populate_recordset_segment(recordlist, record0[1])
-                    record = tcl_tk_call((cursor, "get", "-next"))
+                    record = cursor.item()
+                    self.populate_recordset_segment(recordlist, record[1])
+                    record = cursor.next()
             elif lt is None:
                 while record:
-                    record0 = record[0]
-                    if record0[0] > le:
+                    record = cursor.item()
+                    if record[0] > le:
                         break
-                    self.populate_recordset_segment(recordlist, record0[1])
-                    record = tcl_tk_call((cursor, "get", "-next"))
+                    self.populate_recordset_segment(recordlist, record[1])
+                    record = cursor.next()
             else:
                 while record:
-                    record0 = record[0]
-                    if record0[0] >= lt:
+                    record = cursor.item()
+                    if record[0] >= lt:
                         break
-                    self.populate_recordset_segment(recordlist, record0[1])
-                    record = tcl_tk_call((cursor, "get", "-next"))
-        finally:
-            tcl_tk_call((cursor, "close"))
+                    self.populate_recordset_segment(recordlist, record[1])
+                    record = cursor.next()
         return recordlist
 
     def recordlist_all(self, file, field, cache_size=1):
         """Return RecordList on file containing records for field."""
         recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
-        command = [
-            self.table[SUBFILE_DELIMITER.join((file, field))][0],
-            "cursor",
-        ]
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        cursor = tcl_tk_call(tuple(command))
-        try:
-            record = tcl_tk_call((cursor, "get", "-first"))
+        with self.dbtxn.transaction.cursor(
+            self.table[SUBFILE_DELIMITER.join((file, field))][0].datastore
+        ) as cursor:
+            record = cursor.first()
             while record:
-                record = record[0]
+                record = cursor.item()
                 self.populate_recordset_segment(recordlist, record[1])
-                record = tcl_tk_call((cursor, "get", "-next"))
-        finally:
-            tcl_tk_call((cursor, "close"))
+                record = cursor.next()
         return recordlist
 
     def recordlist_nil(self, file, cache_size=1):
@@ -1885,42 +1628,28 @@ class Database(_database.Database):
         is deleted.
 
         """
-        command = [
-            self.table[SUBFILE_DELIMITER.join((file, field))][0],
-            "cursor",
-        ]
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        cursor = tcl_tk_call(tuple(command))
-        try:
+        with self.dbtxn.transaction.cursor(
+            self.table[SUBFILE_DELIMITER.join((file, field))][0].datastore
+        ) as cursor:
 
             # Delete segment records.
-            record = tcl_tk_call((cursor, "get", "-set_range", key))
+            record = cursor.set_range(key)
             while record:
-                record = record[0]
+                record = cursor.item()
                 record_key, value = record
                 if record_key != key:
                     break
                 if len(value) > SEGMENT_HEADER_LENGTH:
-                    command = [self.segment_table[file], "del"]
-                    if self.dbtxn:
-                        command.extend(["-txn", self.dbtxn])
-                    command.append(
-                        int.from_bytes(
-                            value[SEGMENT_HEADER_LENGTH:], byteorder="big"
-                        )
+                    self.dbtxn.transaction.delete(
+                        value[SEGMENT_HEADER_LENGTH:],
+                        db=self.segment_table[file].datastore,
                     )
-                    tcl_tk_call(tuple(command))
 
-                # Kept so block comment after finally clause makes sense.
-                # Not converted to Tcl API.
                 # Delete segment references.
                 # cursor.delete()
 
-                record = tcl_tk_call((cursor, "get", "-next"))
+                record = cursor.next()
 
-            # Kept so block comment after finally clause makes sense.
-            # Not converted to Tcl API.
             # Delete segment references.
             # try:
             #    self.table[SUBFILE_DELIMITER.join((file, field))
@@ -1928,14 +1657,13 @@ class Database(_database.Database):
             # except self._dbe.DBNotFoundError:
             #    pass
 
-        finally:
-            tcl_tk_call((cursor, "close"))
-
+        # This block comment and commented statements in preceding "with"
+        # block retained from _db module for Berkeley DB.
         # Delete segment references.
         # The commented delete methods, cursor and database, within preceding
         # try ... finally ... attract exceptions when deleting a partial
-        # position query from the database while that query is displayed
-        # (by F11 for example).
+        # position query from a chesstab database while that query is
+        # displayed (by F11 for example).
         # cursor gets 'BDB0097 Transaction not specified for a transactional
         # database'.
         # database gets 'BDB0087 DB_RUNRECOVERY: Fatal error, run database
@@ -1946,11 +1674,10 @@ class Database(_database.Database):
         # not displayed, and displaying a different record does not result in
         # an exception.
         #
-        command = [self.table[SUBFILE_DELIMITER.join((file, field))][0], "del"]
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        command.append(key)
-        tcl_tk_call(tuple((command)))
+        self.dbtxn.transaction.delete(
+            key,
+            db=self.table[SUBFILE_DELIMITER.join((file, field))][0].datastore,
+        )
 
     def file_records_under(self, file, field, recordset, key):
         """Replace records for index field[key] with recordset records."""
@@ -1960,23 +1687,15 @@ class Database(_database.Database):
         # Delete existing segments for key
         self.unfile_records_under(file, field, key)
 
-        command = [
-            self.table[SUBFILE_DELIMITER.join((file, field))][0],
-            "cursor",
-        ]
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        cursor = tcl_tk_call(tuple(command))
-        try:
+        with self.dbtxn.transaction.cursor(
+            self.table[SUBFILE_DELIMITER.join((file, field))][0].datastore
+        ) as cursor:
             recordset.normalize()
             for segment_number in recordset.sorted_segnums:
                 if isinstance(
                     recordset.rs_segments[segment_number], RecordsetSegmentInt
                 ):
-                    command = (
-                        cursor,
-                        "put",
-                        "-keylast",
+                    cursor.put(
                         key,
                         b"".join(
                             (
@@ -1987,22 +1706,27 @@ class Database(_database.Database):
                             )
                         ),
                     )
-                    tcl_tk_call(command)
                 else:
                     count = recordset.rs_segments[
                         segment_number
                     ].count_records()
-                    command = [self.segment_table[file], "put", "-append"]
-                    if self.dbtxn:
-                        command.extend(["-txn", self.dbtxn])
-                    command.append(
-                        recordset.rs_segments[segment_number].tobytes()
-                    )
-                    segment_key = tcl_tk_call(tuple(command))
-                    command = (
-                        cursor,
-                        "put",
-                        "-keylast",
+                    with self.dbtxn.transaction.cursor(
+                        self.segment_table[file].datastore
+                    ) as seg_cursor:
+                        if seg_cursor.last():
+                            segment_key = (
+                                int.from_bytes(
+                                    seg_cursor.key(), byteorder="big"
+                                )
+                                + 1
+                            )
+                        else:
+                            # Should not be reached.
+                            # Sibling _db module for Berkeley DB uses
+                            # append() method and does not care if any of
+                            # these records exist.
+                            segment_key = 0
+                    cursor.put(
                         key,
                         b"".join(
                             (
@@ -2012,9 +1736,6 @@ class Database(_database.Database):
                             )
                         ),
                     )
-                    tcl_tk_call(command)
-        finally:
-            tcl_tk_call((cursor, "close"))
 
     def database_cursor(self, file, field, keyrange=None):
         """Create and return a cursor on DB() for (file, field).
@@ -2036,7 +1757,6 @@ class Database(_database.Database):
             keyrange=keyrange,
             transaction=self.dbtxn,
             segment=self.segment_table[file],
-            engine=self._dbe,
         )
 
     def create_recordset_cursor(self, recordset):
@@ -2056,8 +1776,11 @@ class Database(_database.Database):
     def get_table_connection(self, file):
         """Return main DB object for file."""
         if self.dbenv:
-            return self.table[file][0]
+            return self.table[file][0].datastore
         return None
+
+    def _datastoreclass(self):
+        return _Datastore
 
     def do_database_task(
         self,
@@ -2114,6 +1837,174 @@ class Database(_database.Database):
         finally:
             db.close_database()
 
+    def database_stats(self):
+        """Return dict of dicts of database stats."""
+        stats = {}
+        for file, table in self.table.items():
+            if file == DESIGN_FILE or file == CONTROL_FILE:
+                stats[file] = table.datastore_stats(self.dbtxn)
+            elif table is not None:
+                for count, dbo in enumerate(table):
+                    stats[(file, count)] = dbo.datastore_stats(self.dbtxn)
+            if file in self.segment_table:
+                if self.segment_table[file] is not None:
+                    stats[
+                        (file, "segment")
+                    ] = self.segment_table[file].datastore_stats(self.dbtxn)
+            if file in self.ebm_control:
+                if self.ebm_control[file] is not None:
+                    stats[
+                        (file, "ebm")
+                    ] = self.ebm_control[
+                        file].ebm_table.datastore_stats(self.dbtxn)
+        return stats
+
+    def database_stats_summary(self):
+        """Return tuple of environment size and usage, and database stats.
+
+        database_stats_summary should be called outside any transaction.
+
+        """
+        env_info = self.dbenv.info()
+        env_stat = self.dbenv.stat()
+        self.start_read_only_transaction()
+        stats = self.database_stats()
+        self.end_read_only_transaction()
+        used_page_count = sum(
+            env_stat[pages] for pages in (
+                "branch_pages", "leaf_pages", "overflow_pages"
+            )
+        )
+        used_byte_count = used_page_count * env_stat["psize"]
+        for value in stats.values():
+            psize = value["psize"]
+            branch_pages = value["branch_pages"]
+            leaf_pages = value["leaf_pages"]
+            overflow_pages = value["overflow_pages"]
+            pages = branch_pages + leaf_pages + overflow_pages
+            used_page_count += pages
+            used_byte_count += pages * psize
+        return (
+            env_info["map_size"],
+            env_info["last_pgno"] + 1,  # page numbers start at 0.
+            used_byte_count,
+            used_page_count,
+            stats,  # for application specific purposes.
+        )
+
+
+class _DBtxn:
+    """Provide a Symas LMMD read-only or read-write transaction instance.
+
+    This class is intended to implement transactions for Symas LMMD with
+    the existing open_database_contexts, close_database_contexts, commit,
+    backout, and start_transaction, methods in the Database classes for
+    each database engine.  The other engines do not need their own version
+    of this class because 'read transactions' are implicit.
+
+    """
+
+    def __init__(self):
+        self._write_requested = False
+        self._transaction = None
+
+    @property
+    def transaction(self):
+        """Return self._transaction."""
+        return self._transaction
+
+    def start_transaction(self, dbenv, write):
+        """Begin a read-only or read-write transaction in dbenv environment.
+
+        bool(write)==True   A read-write transaction.
+        bool(write)==False  A read-only transaction.
+
+        """
+        if self._transaction is not None:
+            return
+        self._write_requested = write
+        self._transaction = dbenv.begin(write=self._write_requested)
+
+    def end_transaction(self):
+        """Discard transaction and set self._read_write_requested False.
+
+        Assume the caller has arranged for transaction commit or backout,
+        and destroying the self._transaction instance, before calling this
+        method.
+
+        This is likely called by Database.close_database_contexts().
+
+        """
+        if self._transaction is None:
+            return
+        self._transaction = None
+        self._write_requested = False
+
+
+class _Datastore:
+    """This class is used to access datastores in a Symas LMMD database.
+
+    Instances are created as necessary by a Database.open_database() call.
+
+    The definition of the datastores, in Database.open_database, needs to
+    be separated from opening and accessing the datastore.
+
+    The sibling modules for Berkeley DB and SQLite3 do not have classes like
+    _Datastore.  (They used to have such but it seems simpler there
+    without.  The _dpt module has a _DPTFile class for similar reasons.)
+
+    """
+
+    def __init__(self, datastorename, **keywords):
+        """Set arguments for py-lmdb.open_db (Symas LMMD mdb_dbi_open) call.
+
+        datastorename is the name argument.
+        **keywords is a dict used by open_db to set flags for mdb_dbi_open.
+
+        **kewwords does not include the txn argument which must be supplied
+        in open_* calls.
+
+        """
+        self._name = datastorename
+        self._flags = keywords
+        self._datastore = None
+
+    @property
+    def datastore(self):
+        """Return the self._datastore lmdb.open_db instance."""
+        return self._datastore
+
+    def open_datastore(self, dbenv, txn=None):
+        """Open lmdb datastore in dbenv, and optionally in a transaction."""
+        # It is possible to pass a transaction to the open_db() call.
+        # This implies the database is opened and closed in each transaction.
+        # By not passing a transaction opening and closing databases is done
+        # similar to the style used in the _db, _sqlite, and _nosql modules.
+        # The datastore must be created in a transaction so that commit or
+        # backout action can be done.
+        assert self._datastore is None
+        self._datastore = dbenv.open_db(self._name, txn=txn, **self._flags)
+
+    def close_datastore(self):
+        """Set datastore handle to None.
+
+        Intended for use just after commit or backout of a transaction.
+
+        """
+        # py-lmdb does not expose the mdb_dbi_close method.
+        # It is assumed the only time mdb_dbi_close action might occur is
+        # when the reference count of the object bound to self._datastore
+        # in the open_datastore method reaches zero.
+        # Symas LMMD documentation states closing a handle allows it to be
+        # reused in a future mdb_dbi_open() call; but also states this action
+        # is unnecessary and 'use with care'.
+        # But this method throws the handle away.
+        self._datastore = None
+
+    def datastore_stats(self, txn):
+        """Return dict of database stats."""
+        return txn.transaction.stat(self._datastore)
+
 
 class Cursor(_cursor.Cursor):
     """Define a cursor on the underlying database engine dbset.
@@ -2136,40 +2027,14 @@ class Cursor(_cursor.Cursor):
     style cursor methods peculiar to primary and secondary databases.
     """
 
-    def __init__(
-        self,
-        dbset,
-        keyrange=None,
-        transaction=None,
-        engine=None,
-        **kargs,
-    ):
-        """Define a cursor on the underlying database engine dbset.
-
-        engine - tkinter module.  Use Tcl interface to Berkeley DB.
-        """
+    def __init__(self, dbset, keyrange=None, transaction=None, **kargs):
+        """Define a cursor on the underlying database engine dbset."""
         super().__init__(dbset)
         self._transaction = transaction
-        self._engine = engine
-        command = [self._dbset, "cursor"]
-        if transaction:
-            command.extend(["-txn", transaction])
-        # Define a subclass of str with close() method?  See close() below.
-        self._cursor = tcl_tk_call(tuple(command))
+        self._cursor = transaction.transaction.cursor(dbset.datastore)
         self._current_segment = None
         self.current_segment_number = None
         self._current_record_number_in_segment = None
-
-    def close(self):
-        """Close database cursor via tkinter then delegate to tidy up.
-
-        Superclass method expects self._cursor to have a close() method
-        but here self._cursor is a str naming the tcl command for the
-        cursor.
-
-        """
-        tcl_tk_call((self._cursor, "close"))
-        super().close()
 
     def get_converted_partial(self):
         """Return self._partial as it would be held on database."""
@@ -2198,58 +2063,59 @@ class CursorPrimary(Cursor):
 
     dbset - bsddb3 DB() object.
     ebm - bsddb3 DB() object for existence bitmap.
+    engine - bsddb3.db module.  Only the DB_FAST_STAT flag is used at present.
     kargs - superclass arguments and absorb arguments for other engines.
 
     """
 
-    def __init__(self, dbset, ebm=None, **kargs):
+    def __init__(self, dbset, ebm=None, engine=None, **kargs):
         """Extend, note existence bitmap table and engine."""
         super().__init__(dbset, **kargs)
         self._ebm = ebm
+        self._engine = engine
 
     def count_records(self):
         """Return record count."""
-        # No "-txn" option in Tcl API.
-        # Not giving "-txn" option gets a _tkinter.TclError exception.
-        # Giving the "-txn" option seems to work anyway.
-        command = [self._dbset, "stat", "-faststat"]
-        if self._transaction:
-            command.extend(["-txn", self._transaction])
-        return ndata(tcl_tk_call(tuple(command)))
+        return self._transaction.transaction.stat(self._dbset.datastore)[
+            "entries"
+        ]
 
     def first(self):
         """Return first record taking partial key into account."""
-        return self._decode_record(
-            tcl_tk_call((self._cursor, "get", "-first"))
-        )
+        if not self._cursor.first():
+            return None
+        return self._decode_record(self._cursor.item())
 
     def get_position_of_record(self, record=None):
         """Return position of record in file or 0 (zero)."""
-        # record keys are 1-based but segment_numbers are 0-based.
+        # record keys are 0-based converted to bytes.
+        # segment_numbers are 0-based.
         if record is None:
             return 0
         segment_number, record_number = divmod(
             record[0], SegmentSize.db_segment_size
         )
-        command = [self._ebm, "get"]
-        if self._transaction:
-            command.extend(["-txn", self._transaction])
-        segment = tcl_tk_call(tuple(command + [segment_number + 1]))
-        if not segment:
+        segment = self._transaction.transaction.get(
+            segment_number.to_bytes(4, byteorder="big"), db=self._ebm.datastore
+        )
+        if segment is None:
             return 0
         position = 0
         for i in range(segment_number):
             segment_ebm = Bitarray()
-            segment_ebm.frombytes(tcl_tk_call(tuple(command + [i + 1]))[0][1])
+            segment_ebm.frombytes(
+                self._transaction.transaction.get(
+                    i.to_bytes(4, byteorder="big"),
+                    db=self._ebm.datastore,
+                )
+            )
             position += segment_ebm.count()
         segment_ebm = Bitarray()
-        segment_ebm.frombytes(segment[0][1])
+        segment_ebm.frombytes(segment)
         try:
             position += segment_ebm.search(SINGLEBIT).index(record_number)
         except ValueError:
-            position += bisect.bisect_left(
-                record_number, segment_ebm.search(SINGLEBIT)
-            )
+            return 0
         return position
 
     def get_record_at_position(self, position=None):
@@ -2258,64 +2124,77 @@ class CursorPrimary(Cursor):
             return None
         count = 0
         abspos = abs(position)
-        command = [self._ebm, "cursor"]
-        if self._transaction:
-            command.extend(["-txn", self._transaction])
-        ebm_cursor = tcl_tk_call(tuple(command))
+        ebm_cursor = self._transaction.transaction.cursor(
+            db=self._ebm.datastore
+        )
         try:
             if position < 0:
-                record = tcl_tk_call((ebm_cursor, "get", "-last"))
+                record = ebm_cursor.last()
                 while record:
+                    record = ebm_cursor.item()
                     segment_ebm = Bitarray()
-                    segment_ebm.frombytes(record[0][1])
+                    segment_ebm.frombytes(record[1])
                     ebm_count = segment_ebm.count()
                     if count + ebm_count < abspos:
                         count += ebm_count
-                        record = tcl_tk_call((ebm_cursor, "get", "-prev"))
+                        record = ebm_cursor.prev()
                         continue
                     recno = segment_ebm.search(SINGLEBIT)[position + count] + (
-                        (record[0][0] - 1) * SegmentSize.db_segment_size
+                        (int.from_bytes(
+                            record[0], byteorder="big") - 1
+                         ) * SegmentSize.db_segment_size
                     )
-                    return self._decode_record(
-                        tcl_tk_call((self._cursor, "get", "-set", recno))
-                    )
+                    if recno < 0:
+                        return None
+                    self._cursor.set_key(recno.to_bytes(4, byteorder="big"))
+                    return self._decode_record(self._cursor.item())
             else:
-                record = tcl_tk_call((ebm_cursor, "get", "-first"))
+                record = ebm_cursor.first()
                 while record:
+                    record = ebm_cursor.item()
                     segment_ebm = Bitarray()
-                    segment_ebm.frombytes(record[0][1])
+                    segment_ebm.frombytes(record[1])
                     ebm_count = segment_ebm.count()
-                    if count + ebm_count < abspos:
+                    if count + ebm_count <= abspos:
                         count += ebm_count
-                        record = tcl_tk_call((ebm_cursor, "get", "-next"))
+                        record = ebm_cursor.next()
                         continue
                     recno = segment_ebm.search(SINGLEBIT)[position - count] + (
-                        (record[0][0] - 1) * SegmentSize.db_segment_size
+                        (int.from_bytes(
+                            record[0], byteorder="big") - 1
+                         ) * SegmentSize.db_segment_size
                     )
-                    return self._decode_record(
-                        tcl_tk_call((self._cursor, "get", "-set", recno))
-                    )
+                    if recno < 0:
+                        return None
+                    self._cursor.set_key(recno.to_bytes(4, byteorder="big"))
+                    return self._decode_record(self._cursor.item())
         finally:
-            tcl_tk_call((ebm_cursor, "close"))
+            ebm_cursor.close()
         return None
 
     def last(self):
         """Return last record taking partial key into account."""
-        return self._decode_record(tcl_tk_call((self._cursor, "get", "-last")))
+        if not self._cursor.last():
+            return None
+        return self._decode_record(self._cursor.item())
 
     def nearest(self, key):
         """Return nearest record to key taking partial key into account."""
-        return self._decode_record(
-            tcl_tk_call((self._cursor, "get", "-set_range", key))
-        )
+        if not self._cursor.set_range(key.to_bytes(4, byteorder="big")):
+            return None
+        return self._decode_record(self._cursor.item())
 
     def next(self):
         """Return next record taking partial key into account."""
-        return self._decode_record(tcl_tk_call((self._cursor, "get", "-next")))
+        if not self._cursor.next():
+            return None
+        return self._decode_record(self._cursor.item())
 
     def prev(self):
         """Return previous record taking partial key into account."""
-        return self._decode_record(tcl_tk_call((self._cursor, "get", "-prev")))
+        if not self._cursor.prev():
+            return None
+        return self._decode_record(self._cursor.item())
 
     def setat(self, record):
         """Return current record after positioning cursor at record.
@@ -2328,25 +2207,20 @@ class CursorPrimary(Cursor):
         Do not know if there is a difference to go with the words but
         bsddb3 works as specified.
 
-        There seems to be a difference from the Tcl interface: cannot use
-        _decode_record() method simply so return (key, value.decode()) or
-        None directly.
-
         """
-        key = record[0]
-        value = tcl_tk_call((self._cursor, "get", "-set", key))
-        if not value:
-            return None
-        return (key, value[0][1].decode())
+        # Should this be 'set_key_dup' and, or, return None if the 'set_*'
+        # call returns False?
+        self._cursor.set_key(record[0].to_bytes(4, byteorder="big"))
+        return self._decode_record(self._cursor.item())
 
     def _decode_record(self, record):
         """Return decoded (key, value) of record."""
         try:
-            key, value = record[0]
-            return key, value.decode()
+            key, value = record
+            return int.from_bytes(key, byteorder="big"), value.decode()
         except:
-            if not record:
-                return None
+            if record is None:
+                return record
             raise
 
     def _get_record(self, record):
@@ -2380,33 +2254,28 @@ class CursorSecondary(Cursor):
         """Return record count."""
         if self.get_partial() in (None, False):
             count = 0
-            record = tcl_tk_call((self._cursor, "get", "-first"))
+            record = self._cursor.first()
             while record:
-                record = record[0]
+                record = self._cursor.item()
                 if len(record[1]) > SEGMENT_HEADER_LENGTH:
                     count += int.from_bytes(record[1][4:6], byteorder="big")
                 else:
                     count += 1
-                record = tcl_tk_call((self._cursor, "get", "-next"))
+                record = self._cursor.next()
             return count
         count = 0
-        record = tcl_tk_call(
-            (
-                self._cursor,
-                "get",
-                "-set_range",
-                self.get_converted_partial_with_wildcard(),
-            )
+        record = self._cursor.set_range(
+            self.get_converted_partial_with_wildcard()
         )
         while record:
-            record = record[0]
+            record = self._cursor.item()
             if not record[0].startswith(self.get_converted_partial()):
                 break
             if len(record[1]) > SEGMENT_HEADER_LENGTH:
                 count += int.from_bytes(record[1][4:6], byteorder="big")
             else:
                 count += 1
-            record = tcl_tk_call((self._cursor, "get", "-next"))
+            record = self._cursor.next()
         return count
 
     def first(self):
@@ -2433,13 +2302,10 @@ class CursorSecondary(Cursor):
         if self.current_segment_number == segment_number:
             if key == self._current_segment.index_key:
                 return self._current_segment
-        command = [self._segment, "get"]
-        if self._transaction:
-            command.extend(["-txn", self._transaction])
-        command.append(
-            int.from_bytes(reference[SEGMENT_HEADER_LENGTH:], byteorder="big")
+        records = self._transaction.transaction.get(
+            reference[SEGMENT_HEADER_LENGTH:],
+            db=self._segment.datastore,
         )
-        records = tcl_tk_call(tuple(command))[0][1]
         if len(records) < SegmentSize.db_segment_size_bytes:
             return RecordsetSegmentList(segment_number, key, records=records)
         return RecordsetSegmentBitarray(segment_number, key, records=records)
@@ -2463,18 +2329,13 @@ class CursorSecondary(Cursor):
         # Get position of record relative to start point
         position = 0
         if not self.get_partial():
-            j = tcl_tk_call((self._cursor, "get", "-first"))
+            j = self._cursor.first()
         else:
-            j = tcl_tk_call(
-                (
-                    self._cursor,
-                    "get",
-                    "-set_range",
-                    self.get_converted_partial_with_wildcard(),
-                )
+            j = self._cursor.set_range(
+                self.get_converted_partial_with_wildcard()
             )
         while j:
-            j = j[0]
+            j = self._cursor.item()
             if low(j[0].decode(), key):
                 if len(j[1]) > SEGMENT_HEADER_LENGTH:
                     position += int.from_bytes(j[1][4:6], byteorder="big")
@@ -2496,7 +2357,7 @@ class CursorSecondary(Cursor):
                         key, segment_number, j[1]
                     ).get_position_of_record_number(record_number)
                     break
-            j = tcl_tk_call((self._cursor, "get", "-next"))
+            j = self._cursor.next()
         return position
 
     def get_record_at_position(self, position=None):
@@ -2504,23 +2365,38 @@ class CursorSecondary(Cursor):
         if position is None:
             return None
 
+        # Start at first or last record whichever is likely closer to position
+        # and define lambdas to handle presence or absence of partial key.
+        if not self.get_partial():
+            get_partial = self.get_partial
+        else:
+            get_partial = self.get_converted_partial
+        if position < 0:
+            step = self._cursor.prev
+            if not self.get_partial():
+                start = lambda partial: self._cursor.last()
+            else:
+                start = lambda partial: self._last_partial(partial)
+        else:
+            step = self._cursor.next
+            if not self.get_partial():
+                start = lambda partial: self._cursor.first()
+            else:
+                start = lambda partial: self._first_partial(partial)
+
         # Get record at position relative to start point.
         count = 0
+        record = start(get_partial())
         if position < 0:
-            if not self.get_partial():  # Replace start() part 1 of 2.
-                record = tcl_tk_call((self._cursor, "get", "-last"))
-            else:
-                record = self._last_partial(self.get_converted_partial())
-            step = (self._cursor, "get", "-prev")
             while record:
-                record = record[0]
+                record = self._cursor.item()
                 if len(record[1]) > SEGMENT_HEADER_LENGTH:
                     offset = int.from_bytes(record[1][4:6], byteorder="big")
                 else:
                     offset = 1
                 count -= offset
                 if count > position:
-                    record = tcl_tk_call(step)
+                    record = step()
                     continue
                 record_number = self._get_segment(
                     record[0],
@@ -2531,20 +2407,15 @@ class CursorSecondary(Cursor):
                     return record[0].decode(), record_number
                 break
         else:
-            if not self.get_partial():  # Replace start() part 2 of 2.
-                record = tcl_tk_call((self._cursor, "get", "-first"))
-            else:
-                record = self._first_partial(self.get_converted_partial())
-            step = (self._cursor, "get", "-next")
             while record:
-                record = record[0]
+                record = self._cursor.item()
                 if len(record[1]) > SEGMENT_HEADER_LENGTH:
                     offset = int.from_bytes(record[1][4:6], byteorder="big")
                 else:
                     offset = 1
                 count += offset
                 if count <= position:
-                    record = tcl_tk_call(step)
+                    record = step()
                     continue
                 record_number = self._get_segment(
                     record[0],
@@ -2573,9 +2444,7 @@ class CursorSecondary(Cursor):
                 chars.pop()
                 if not chars:
                     try:
-                        key, value = tcl_tk_call(
-                            (self._cursor, "get", "-last")
-                        )
+                        key, value = self._cursor.last()
                     except TypeError:
                         return None
                     return key.decode(), value
@@ -2678,24 +2547,21 @@ class CursorSecondary(Cursor):
         return segment
 
     def _first(self):
-        record = tcl_tk_call((self._cursor, "get", "-first"))
-        if not record:
+        if not self._cursor.first():
             return None
-        return self.set_current_segment(*record[0]).first()
+        return self.set_current_segment(*self._cursor.item()).first()
 
     def _last(self):
-        record = tcl_tk_call((self._cursor, "get", "-last"))
-        if not record:
+        if not self._cursor.last():
             return None
-        return self.set_current_segment(*record[0]).last()
+        return self.set_current_segment(*self._cursor.item()).last()
 
     def _next(self):
         record = self._current_segment.next()
         if record is None:
-            record = tcl_tk_call((self._cursor, "get", "-next"))
-            if not record:
+            if not self._cursor.next():
                 return None
-            record = record[0]
+            record = self._cursor.item()
             if self.get_partial() is not None:
                 if not record[0].startswith(self.get_converted_partial()):
                     return None
@@ -2705,10 +2571,9 @@ class CursorSecondary(Cursor):
     def _prev(self):
         record = self._current_segment.prev()
         if record is None:
-            record = tcl_tk_call((self._cursor, "get", "-prev"))
-            if not record:
+            if not self._cursor.prev():
                 return None
-            record = record[0]
+            record = self._cursor.item()
             if self.get_partial() is not None:
                 if not record[0].startswith(self.get_converted_partial()):
                     return None
@@ -2717,14 +2582,11 @@ class CursorSecondary(Cursor):
 
     def _set_both(self, key, value):
         segment, record_number = divmod(value, SegmentSize.db_segment_size)
-        command = [self._dbset, "cursor"]
-        if self._transaction:
-            command.extend(["-txn", self._transaction])
-        cursor = tcl_tk_call(tuple(command))
+        cursor = self._transaction.transaction.cursor(db=self._dbset.datastore)
         try:
-            record = tcl_tk_call((cursor, "get", "-set_range", key))
+            record = cursor.set_range(key)
             while record:
-                record = record[0]
+                record = cursor.item()
                 if record[0] != key:
                     return None
                 segment_number = int.from_bytes(record[1][:4], byteorder="big")
@@ -2732,57 +2594,56 @@ class CursorSecondary(Cursor):
                     return None
                 if segment_number == segment:
                     break
-                record = tcl_tk_call((cursor, "get", "-next"))
+                record = cursor.next()
             else:
                 return None
         finally:
-            tcl_tk_call((cursor, "close"))
+            cursor.close()
         segment = self._get_segment(
             key, int.from_bytes(record[1][:4], byteorder="big"), record[1]
         )
         if segment.setat(value) is None:
             return None
-        record = tcl_tk_call(
-            (self._cursor, "get", "-get_both", key, record[1])
-        )
-        if not record:
+        record = self._cursor.set_key_dup(key, record[1])
+        if record is None:
             return None
         self._current_segment = segment
         self.current_segment_number = segment_number
         return key, value
 
     def _set_range(self, key):
-        record = tcl_tk_call((self._cursor, "get", "-set_range", key))
-        if not record:
+        if not self._cursor.set_range(key):
             self._current_segment = None
             self.current_segment_number = None
             self._current_record_number_in_segment = None
             return None
-        segment_number = int.from_bytes(record[0][1][:4], byteorder="big")
-        segment = self._get_segment(record[0][0], segment_number, record[0][1])
+        record = self._cursor.item()
+        segment_number = int.from_bytes(record[1][:4], byteorder="big")
+        segment = self._get_segment(record[0], segment_number, record[1])
         self._current_segment = segment
         self.current_segment_number = segment_number
         return segment.first()
 
     def _first_partial(self, partial):
-        record = tcl_tk_call((self._cursor, "get", "-set_range", partial))
-        if record is None:
+        record = self._cursor.set_range(partial)
+        if not record:
             return None
+        record = self._cursor.item()
         if not record[0].startswith(partial):
             return None
         return record
 
     def _last_partial(self, partial):
-        partial_key = partial.encode()
-        record = tcl_tk_call((cursor, "get", "-set_range", partial_key))
-        while record is not None:
-            if not record[0].startswith(partial_key):
+        record = self._cursor.set_range(partial)
+        while record:
+            record = self._cursor.item()
+            if not record[0].startswith(partial):
                 break
-            record = tcl_tk_call((self._cursor, "get", "-nextnodup"))
-        record = tcl_tk_call((self._cursor, "get", "-prev"))
-        if record is None:
+            record = self._cursor.next_nodup()
+        if not self._cursor.prev():
             return None
-        if record[0].startswith(partial_key):
+        record = self._cursor.item()
+        if record[0].startswith(partial):
             return self.set_current_segment(*record).last()
 
     def refresh_recordset(self, instance=None):
@@ -2839,12 +2700,11 @@ class RecordsetCursor(_RecordsetCursor):
             return None  # maybe raise
         if recnum not in dbset.rs_segments[segment]:
             return None  # maybe raise
-        command = [self._database, "get"]
-        if self._transaction:
-            command.extend(["-txn", self._transaction])
-        command.append(record_number)
         try:
-            record = tcl_tk_call(tuple(command))[0][1].decode()
+            record = self._transaction.transaction.get(
+                record_number.to_bytes(4, byteorder="big"),
+                db=self._database.datastore,
+            ).decode()
         except AttributeError:
             # Assume get() returned None.
             record = None
@@ -2858,72 +2718,46 @@ class RecordsetCursor(_RecordsetCursor):
 class ExistenceBitmapControl(_database.ExistenceBitmapControl):
     """Access existence bit map for file in database.
 
-    The dbe and create arguments are needed to open the Berkeley DB database
-    which holds the existence bit map segment records.
+    The database and create arguments are needed to open the Symas LMMD
+    database which holds the existence bit map segment records.
+
+    Unresolved is whether, and if so how, the re_pad(..) and set_re_len(..)
+    actions need to be replicated.
+
     """
 
     def __init__(self, file, database, dbe, db_create):
         """Note file whose existence bitmap is managed."""
         super().__init__(file, database)
-        self.ebm_table = None
-        dbname = SUBFILE_DELIMITER.join((file, EXISTENCE_BITMAP_SUFFIX))
-        command = [
-            "berkdb",
-            "open",
-            "-env",
-            database.dbenv,
-            "-pad",
-            "0",
-            "-len",
-            str(SegmentSize.db_segment_size_bytes),
-            "-recno",
-        ]
-        if db_create:
-            command.append("-create")
-        if database.dbtxn:
-            command.extend(["-txn", database.dbtxn])
-        fnfd = database.file_name_for_database(dbname)
-        if fnfd is None:
-            fnfd = ""
-        command.extend(
-            [
-                "--",
-                fnfd,
-                dbname,
-            ]
-        )
         try:
-            self.ebm_table = tcl_tk_call(tuple(command))
-            # No "-txn" option in Tcl API.
-            # Not giving "-txn" option gets a _tkinter.TclError exception.
-            # Giving the "-txn" option seems to work anyway.
-            command = [self.ebm_table, "stat", "-faststat"]
-            if database.dbtxn:
-                command.extend(["-txn", database.dbtxn])
-            self._segment_count = ndata(tcl_tk_call(tuple(command)))
-        except TclError:
+            dbname = SUBFILE_DELIMITER.join((file, EXISTENCE_BITMAP_SUFFIX))
+            self.ebm_table = _Datastore(
+                database._encoded_database_name(dbname),
+                integerkey=False,
+                create=db_create,
+            )
+        except:
             self.ebm_table = None
             raise
-        self._dbe = dbe
+
+    def set_segment_count(self, txn):
+        """Set _segment_count to number of entries in datastore."""
+        self._segment_count = txn.stat(self.ebm_table.datastore)["entries"]
 
     def read_exists_segment(self, segment_number, dbtxn):
         """Return existence bitmap for segment_number in database dbenv."""
-        # record keys are 1-based but segment_numbers are 0-based.
-        command = [self.ebm_table, "get"]
-        if dbtxn:
-            command.extend(["-txn", dbtxn])
-        command.append(segment_number + 1)
+        # record keys are 0-based converted to bytes.
+        # segment_numbers are 0-based.
         ebm = Bitarray()
-        ebm.frombytes(tcl_tk_call(tuple(command))[0][1])
+        ebm.frombytes(
+            dbtxn.transaction.get(
+                segment_number.to_bytes(4, byteorder="big"),
+                db=self.ebm_table.datastore,
+            )
+        )
         return ebm
 
     def close(self):
         """Close the table."""
         if self.ebm_table is not None:
-            self.ebm_table.close()
-            self.ebm_table = None
-
-
-def ndata(faststat_str):
-    """Return the number of records."""
-    return dict(faststat_str)[b"Number of records"]
+            self.ebm_table.close_datastore()

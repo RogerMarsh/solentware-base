@@ -1,62 +1,51 @@
-# test__dbdu_tkinter.py
+# test__lmdbdu.py
 # Copyright 2023 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""_dbdu_tkinter _database tests."""
+"""_lmdbdu _database tests"""
 
 import unittest
 import os
 
 try:
-    from ... import db_tcl
+    import lmdb
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
-    db_tcl = None
-from .. import _db_tkinter
-from .. import _dbdu_tkinter
+    lmdb = None
+
+from .. import _lmdb
+from .. import _lmdbdu
 from .. import filespec
 from .. import recordset
 from ..segmentsize import SegmentSize
 from ..bytebit import Bitarray
 
+from .test__lmdb import _Specification
+from .test__lmdb_setUp_tearDown import (
+    HOME,
+    HOME_DATA,
+    DBdu,
+)
+
 _segment_sort_scale = SegmentSize._segment_sort_scale
-
-
-class _DBdu(unittest.TestCase):
-    def setUp(self):
-        class _D(_dbdu_tkinter.Database, _db_tkinter.Database):
-            def open_database(self, **k):
-                super().open_database(bdb, **k)
-
-        self._D = _D
-
-    def tearDown(self):
-        self.database = None
-        self._D = None
-        logdir = "___memlogs_memory_db"
-        if os.path.exists(logdir):
-            for f in os.listdir(logdir):
-                if f.startswith("log."):
-                    os.remove(os.path.join(logdir, f))
-            os.rmdir(logdir)
 
 
 # Same tests as test__sqlite.Database___init__ with relevant additions.
 # Alternative is one test method with just the additional tests.
-class Database___init__(_DBdu):
-    def test_01(self):
+class Database___init__(DBdu):
+    def test_01_exceptions_01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
                 (
-                    r"__init__\(\) takes from 2 to 7 positional arguments ",
-                    "but 8 were given",
+                    r"__init__\(\) takes from 2 to 3 positional arguments ",
+                    "but 4 were given",
                 )
             ),
             self._D,
-            *(None, None, None, None, None, None, None),
+            *(None, None, None),
         )
 
-    def test_02(self):
+    def test_01_exceptions_02(self):
         t = r"(?:type object|solentware_base\.core\.filespec\.FileSpec\(\))"
         self.assertRaisesRegex(
             TypeError,
@@ -73,16 +62,16 @@ class Database___init__(_DBdu):
         self.assertIsInstance(self._D({}), self._D)
         self.assertIsInstance(self._D(filespec.FileSpec()), self._D)
 
-    def test_03(self):
+    def test_01_exceptions_03(self):
         self.assertRaisesRegex(
-            _db_tkinter.DatabaseError,
+            _lmdb.DatabaseError,
             "".join(("Database folder name {} is not valid",)),
             self._D,
             *({},),
             **dict(folder={}),
         )
 
-    def test_04(self):
+    def test_04___init___01(self):
         database = self._D({}, folder="a")
         self.assertIsInstance(database, self._D)
         self.assertEqual(os.path.basename(database.home_directory), "a")
@@ -94,7 +83,7 @@ class Database___init__(_DBdu):
         self.assertEqual(database.segment_size_bytes, 4000)
         self.assertEqual(database.dbenv, None)
         self.assertEqual(database.table, {})
-        self.assertEqual(database.dbtxn, None)
+        self.assertEqual(database.dbtxn.transaction, None)
         self.assertEqual(database._dbe, None)
         self.assertEqual(database.segment_table, {})
         self.assertEqual(database.ebm_control, {})
@@ -111,15 +100,15 @@ class Database___init__(_DBdu):
         self.assertEqual(database.existence_bit_maps, {})
         self.assertEqual(database.value_segments, {})
 
-    def test_05(self):
+    def test_04___init___02(self):
         database = self._D({})
-        self.assertEqual(database.home_directory, None)
-        self.assertEqual(database.database_file, None)
+        self.assertEqual(database.home_directory, HOME)
+        self.assertEqual(database.database_file, HOME_DATA)
 
     # This combination of folder and segment_size_bytes arguments is used for
     # unittests, except for one to see a non-memory database with a realistic
     # segment size.
-    def test_06(self):
+    def test_04___init___03(self):
         database = self._D({}, segment_size_bytes=None)
         self.assertEqual(database.segment_size_bytes, None)
         database.set_segment_size()
@@ -129,98 +118,194 @@ class Database___init__(_DBdu):
 
 # Transaction methods, except start_transaction, do not raise exceptions if
 # called when no database open but do nothing.
-class Database_transaction_methods(_DBdu):
+class Database_transaction_bad_calls(DBdu):
     def setUp(self):
         super().setUp()
         self.database = self._D({})
 
-    def test_01_start_transaction(self):
-        self.assertEqual(self.database.dbenv, None)
-        self.database.start_transaction()
-        self.assertEqual(self.database.dbtxn, None)
-
-    def test_02_environment_flags(self):
-        self.assertEqual(
-            self.database.environment_flags(bdb),
-            ["-create", "-private"],
-        )
-
-    def test_03_checkpoint_before_close_dbenv(self):
-        self.database.checkpoint_before_close_dbenv()
-
-    def test_04(self):
+    def test_02_transaction_bad_calls_01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
                 (
-                    r"start_transaction\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    r"start_transaction\(\) takes 1 positional ",
+                    "argument but 2 were given",
                 )
             ),
             self.database.start_transaction,
             *(None,),
         )
+
+    def test_02_transaction_bad_calls_02(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
                 (
-                    r"environment_flags\(\) missing 1 required ",
-                    "positional argument: 'dbe'",
+                    r"backout\(\) takes 1 positional argument ",
+                    "but 2 were given",
                 )
             ),
-            self.database.environment_flags,
+            self.database.backout,
+            *(None,),
         )
+
+    def test_02_transaction_bad_calls_03(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
                 (
-                    r"checkpoint_before_close_dbenv\(\) takes 1 positional ",
-                    "argument but 2 were given",
+                    r"commit\(\) takes 1 positional argument ",
+                    "but 2 were given",
                 )
             ),
-            self.database.checkpoint_before_close_dbenv,
+            self.database.commit,
             *(None,),
         )
 
 
-# Memory databases are used for these tests.
-class Database_open_database(_DBdu):
+class Database_start_transaction(DBdu):
+    def setUp(self):
+        super().setUp()
+        self.database = self._D({})
+        self.database.dbenv = self.dbe_module.open(HOME)
+
+    def test_01_start_transaction_01(self):
+        sdb = self.database
+        ae = self.assertEqual
+        ae(len(sdb.table), 0)
+        ae(len(sdb.segment_table), 0)
+        ae(len(sdb.ebm_control), 0)
+        sdb.start_transaction()
+        ae(len(sdb.table), 0)
+        ae(len(sdb.segment_table), 0)
+        ae(len(sdb.ebm_control), 0)
+        self.assertIsInstance(
+            sdb.dbtxn._transaction, self.dbe_module.Transaction
+        )
+        self.assertEqual(sdb.dbtxn._write_requested, True)
+
+    def test_01_start_transaction_02(self):
+        sdb = self.database
+        ae = self.assertEqual
+        ae(len(sdb.table), 0)
+        ae(len(sdb.segment_table), 0)
+        ae(len(sdb.ebm_control), 0)
+        sdb.start_transaction()
+        ae(len(sdb.table), 0)
+        ae(len(sdb.segment_table), 0)
+        ae(len(sdb.ebm_control), 0)
+        self.assertIsInstance(
+            sdb.dbtxn._transaction, self.dbe_module.Transaction
+        )
+        self.assertEqual(sdb.dbtxn._write_requested, True)
+
+    def test_01_start_transaction_03(self):
+        sdb = self.database
+        ae = self.assertEqual
+        ae(len(sdb.table), 0)
+        ae(len(sdb.segment_table), 0)
+        ae(len(sdb.ebm_control), 0)
+        sdb.start_read_only_transaction()
+        ae(len(sdb.table), 0)
+        ae(len(sdb.segment_table), 0)
+        ae(len(sdb.ebm_control), 0)
+        self.assertIsInstance(
+            sdb.dbtxn._transaction, self.dbe_module.Transaction
+        )
+        self.assertEqual(sdb.dbtxn._write_requested, False)
+
+
+class Database_backout_and_commit(DBdu):
+    def setUp(self):
+        super().setUp()
+        self.database = self._D({})
+        self.database.dbenv = self.dbe_module.open(HOME)
+        self.database.dbtxn._transaction = self.database.dbenv.begin()
+
+    def test_01_backout_01(self):
+        sdb = self.database
+        ae = self.assertEqual
+        sdb.backout()
+        ae(len(sdb.table), 0)
+        ae(len(sdb.segment_table), 0)
+        ae(len(sdb.ebm_control), 0)
+        self.assertEqual(sdb.dbtxn._transaction, None)
+        self.assertEqual(sdb.dbtxn._write_requested, False)
+
+    def test_02_commit_01(self):
+        sdb = self.database
+        ae = self.assertEqual
+        sdb.commit()
+        ae(len(sdb.table), 0)
+        ae(len(sdb.segment_table), 0)
+        ae(len(sdb.ebm_control), 0)
+        self.assertEqual(sdb.dbtxn._transaction, None)
+        self.assertEqual(sdb.dbtxn._write_requested, False)
+
+
+class Database_open_database(DBdu, _Specification):
     def test_01(self):
         self.database = self._D({})
-        repr_open_database = "".join(
-            (
-                "<bound method _DBdu.setUp.<locals>._D.open_database of ",
-                "<__main__._DBdu.setUp.<locals>._D object at ",
-            )
-        )
-        self.assertEqual(
-            repr(self.database.open_database).startswith(repr_open_database),
-            True,
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"open_database\(\) takes from 2 to 3 ",
+                    "positional arguments but 4 were given",
+                )
+            ),
+            self.database.open_database,
+            *(None, None, None),
         )
 
     def test_02(self):
         self.database = self._D({}, segment_size_bytes=None)
-        self.database.open_database()
-        self.assertEqual(self.database.dbenv.__class__.__name__, "str")
+        self.database.open_database(self.dbe_module)
+        self.assertEqual(self.database.dbenv.__class__.__name__, "Environment")
         self.database.close_database()
         self.assertEqual(self.database.dbenv, None)
 
 
 # Memory databases are used for these tests.
-class _DBOpen(_DBdu):
+class _DBOpen(DBdu):
     def setUp(self):
         super().setUp()
         self.database = self._D(
             filespec.FileSpec(**{"file1": {"field1"}}), segment_size_bytes=None
         )
-        self.database.open_database()
+        self.database.open_database(self.dbe_module)
 
     def tearDown(self):
         self.database.close_database()
         super().tearDown()
 
+    def append_arbitrary_record(self):
+        # Many tests do the commented statement in Berkeley DB.  Here the
+        # expansion justifies a convenience method.
+        with self.database.dbtxn.transaction.cursor(
+            self.database.table["file1"][0].datastore
+        ) as cursor:
+            if cursor.last():
+                key = int.from_bytes(cursor.key(), byteorder="big") + 1
+            else:
+                key = 0
+            cursor.put(
+                key.to_bytes(4, byteorder="big"),
+                ("any value").encode(),
+                overwrite=False,
+            )
 
+
+# These methods must be in transaction in py-lmdb.
 class Database_methods(_DBOpen):
+    def setUp(self):
+        super().setUp()
+        self.database.start_transaction()
+
+    def tearDown(self):
+        self.database.commit()
+        super().tearDown()
+
     def test_01(self):
         self.assertRaisesRegex(
             TypeError,
@@ -289,7 +374,7 @@ class Database_methods(_DBOpen):
 
     def test_02_database_cursor(self):
         self.assertRaisesRegex(
-            _dbdu_tkinter.DatabaseError,
+            _lmdbdu.DatabaseError,
             "database_cursor not implemented",
             self.database.database_cursor,
             *(None, None),
@@ -307,23 +392,13 @@ class Database_methods(_DBOpen):
         self.database.existence_bit_maps["file1"][segment] = bs
         self.database.write_existence_bit_map("file1", segment)
 
-    # Commented code in this test retained from bsddb3 and berkeleydb
-    # version (without conversion to Tcl API).
     def test_05_new_deferred_root(self):
         self.assertEqual(
-            self.database.table["file1_field1"][0].__class__.__name__, "str"
+            self.database.table["file1_field1"][0].__class__.__name__,
+            "_Datastore",
         )
-        # self.assertEqual(
-        #    self.database.index['file1_field1'],
-        #    ['ixfile1_field1'])
         self.database.new_deferred_root("file1", "field1")
-        self.assertEqual(
-            self.database.table["file1_field1"][1].__class__.__name__, "str"
-        )
-        # self.assertEqual(
-        #    self.database.index['file1_field1'],
-        #    ['ixfile1_field1', 'ixt_0_file1_field1'])
-        self.assertEqual(len(self.database.table["file1_field1"]), 2)
+        self.assertEqual(len(self.database.table["file1_field1"]), 1)
 
     def test_06_set_defer_update_01(self):
         self.database.set_defer_update()
@@ -332,14 +407,18 @@ class Database_methods(_DBOpen):
         self.assertEqual(self.database.first_chunk["file1"], None)
 
     def test_07_set_defer_update_02(self):
-        db_tcl.tcl_tk_call(
-            (
-                self.database.table["file1"][0],
-                "put",
-                "-append",
-                encode("any value"),
+        with self.database.dbtxn.transaction.cursor(
+            self.database.table["file1"][0].datastore
+        ) as cursor:
+            if cursor.last():
+                key = int.from_bytes(cursor.key(), byteorder="big") + 1
+            else:
+                key = 0
+            cursor.put(
+                key.to_bytes(4, byteorder="big"),
+                ("any value").encode(),
+                overwrite=False,
             )
-        )
         self.database.set_defer_update()
         self.assertEqual(self.database.initial_high_segment["file1"], 0)
         self.assertEqual(self.database.high_segment["file1"], 0)
@@ -355,6 +434,10 @@ class Database_methods(_DBOpen):
 
 
 class Database_do_final_segment_deferred_updates(_DBOpen):
+    def setUp(self):
+        super().setUp()
+        self.database.start_transaction()
+
     def test_01(self):
         database = self._D({}, segment_size_bytes=None)
         self.assertRaisesRegex(
@@ -385,14 +468,7 @@ class Database_do_final_segment_deferred_updates(_DBOpen):
         self.database.do_final_segment_deferred_updates()
 
     def test_04(self):
-        db_tcl.tcl_tk_call(
-            (
-                self.database.table["file1"][0],
-                "put",
-                "-append",
-                b"Any value",
-            )
-        )
+        self.append_arbitrary_record()
         self.database.existence_bit_maps["file1"] = None
         self.assertEqual(len(self.database.existence_bit_maps), 1)
         self.assertIn(
@@ -405,14 +481,7 @@ class Database_do_final_segment_deferred_updates(_DBOpen):
         )
 
     def test_05(self):
-        db_tcl.tcl_tk_call(
-            (
-                self.database.table["file1"][0],
-                "put",
-                "-append",
-                b"Any value",
-            )
-        )
+        self.append_arbitrary_record()
         self.database.existence_bit_maps["file1"] = {}
         ba = Bitarray()
         ba.frombytes(
@@ -429,21 +498,16 @@ class Database_do_final_segment_deferred_updates(_DBOpen):
         self.database.value_segments["file1"] = {}
         self.database.do_final_segment_deferred_updates()
         self.assertEqual(
-            db_tcl.tcl_tk_call(
-                (self.database.ebm_control["file1"].ebm_table, "get", 1)
-            )[0][1],
+            self.database.dbtxn.transaction.get(
+                (0).to_bytes(4, byteorder="big"),
+                db=self.database.ebm_control["file1"].ebm_table.datastore,
+            ),
             b"\x18" + b"\x00" * 15,
         )
 
     def test_06(self):
-        command = (
-            self.database.table["file1"][0],
-            "put",
-            "-append",
-            b"Any value",
-        )
-        for i in range(127):
-            db_tcl.tcl_tk_call(command)
+        for i in range(128):
+            self.append_arbitrary_record()
         self.database.existence_bit_maps["file1"] = {}
         ba = Bitarray()
         ba.frombytes(
@@ -457,20 +521,22 @@ class Database_do_final_segment_deferred_updates(_DBOpen):
 
         # The segment has high record, and in this case others, in segment but
         # no index references.  See test_05 for opposite.
-        self.assertEqual(self.database.deferred_update_points, {i + 1})
+        self.assertEqual(self.database.deferred_update_points, {i})
         self.database.do_final_segment_deferred_updates()
-        # The empty Tcl list returned by the 'get' command becomes "" on
-        # return to Python.
-        # The berkeleydb and bsddb3 interfaces return None.
         self.assertEqual(
-            db_tcl.tcl_tk_call(
-                (self.database.ebm_control["file1"].ebm_table, "get", 1)
+            self.database.dbtxn.transaction.get(
+                (0).to_bytes(4, byteorder="big"),
+                db=self.database.ebm_control["file1"].ebm_table.datastore,
             ),
-            "",
+            None,
         )
 
 
 class Database__sort_and_write_high_or_chunk(_DBOpen):
+    def setUp(self):
+        super().setUp()
+        self.database.start_transaction()
+
     def test_13(self):
         ba = Bitarray()
         ba.frombytes(b"\x0a" * 16)
@@ -488,42 +554,38 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
         dt = self.database.table["file1_field1"]
         self.assertEqual(len(dt), 1)
         for t in dt:
-            self.assertEqual(t.__class__.__name__, "str")
-        # self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
-        # The Tcl API does not have an equivalent to get_dbname.
-        cursor = db_tcl.tcl_tk_call((dt[0], "cursor"))
+            self.assertEqual(t.__class__.__name__, "_Datastore")
         ra = []
-        while True:
-            r = db_tcl.tcl_tk_call((cursor, "get", "-next"))
-            if not r:
-                break
-            ra.append(r[0])
-        # Must close cursor explicitly in Tcl API.
-        db_tcl.tcl_tk_call((cursor, "close"))
+        with self.database.dbtxn.transaction.cursor(
+            db=dt[0].datastore
+        ) as cursor:
+            while True:
+                r = cursor.next()
+                if not r:
+                    break
+                ra.append(cursor.item())
         self.assertEqual(
             ra,
             [
-                (b"bits", b"\x00\x00\x00\x05\x00\x20\x00\x00\x00\x01"),
+                (b"bits", b"\x00\x00\x00\x05\x00\x20\x00\x00\x00\x00"),
                 (b"int", b"\x00\x00\x00\x05\x00\x09"),
-                (b"list", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x02"),
+                (b"list", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x01"),
             ],
         )
-        cursor = db_tcl.tcl_tk_call(
-            (self.database.segment_table["file1"], "cursor")
-        )
         ra = []
-        while True:
-            r = db_tcl.tcl_tk_call((cursor, "get", "-next"))
-            if not r:
-                break
-            ra.append(r[0])
-        # Must close cursor explicitly in Tcl API.
-        db_tcl.tcl_tk_call((cursor, "close"))
+        with self.database.dbtxn.transaction.cursor(
+            db=self.database.segment_table["file1"].datastore
+        ) as cursor:
+            while True:
+                r = cursor.next()
+                if not r:
+                    break
+                ra.append(cursor.item())
         self.assertEqual(
             ra,
             [
-                (1, b"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"),
-                (2, b"\x00\x01\x00\x02"),
+                (b"\x00\x00\x00\x00", b"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"),
+                (b"\x00\x00\x00\x01", b"\x00\x01\x00\x02"),
             ],
         )
 
@@ -545,25 +607,17 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
     # confusing if one looks closely.
     def test_14(self):
         dt = self.database.table["file1_field1"]
-        db_tcl.tcl_tk_call((dt[0], "put", b"int", b"\x00\x00\x00\x05\x00\x01"))
-        db_tcl.tcl_tk_call(
-            (
-                dt[0],
-                "put",
-                b"list",
-                b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x02",
-            )
-        )
-        db_tcl.tcl_tk_call(
-            (dt[0], "put", b"bits", b"\x00\x00\x00\x05\x00\x02")
-        )
-        db_tcl.tcl_tk_call(
-            (
-                self.database.segment_table["file1"],
-                "put",
-                2,
-                b"\x00\x01\x00\x04",
-            )
+        txn = self.database.dbtxn.transaction
+        for key, value in (
+            (b"int", b"\x00\x00\x00\x05\x00\x01"),
+            (b"list", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x02"),
+            (b"bits", b"\x00\x00\x00\x05\x00\x02"),
+        ):
+            txn.put(key, value, db=dt[0].datastore)
+        txn.put(
+            b"\x00\x00\x00\x02",
+            b"\x00\x01\x00\x04",
+            db=self.database.segment_table["file1"].datastore,
         )
         ba = Bitarray()
         ba.frombytes(b"\x0a" * 16)
@@ -580,19 +634,16 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
         self.database.sort_and_write("file1", "field1", 5)
         self.assertEqual(len(dt), 1)
         for t in dt:
-            self.assertEqual(t.__class__.__name__, "str")
-        # self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
-        # The Tcl API does not have an equivalent to get_dbname.
-        # cursor = dt[0].cursor()
-        cursor = db_tcl.tcl_tk_call((dt[0], "cursor"))
+            self.assertEqual(t.__class__.__name__, "_Datastore")
         ra = []
-        while True:
-            r = db_tcl.tcl_tk_call((cursor, "get", "-next"))
-            if not r:
-                break
-            ra.append(r[0])
-        # Must close cursor explicitly in Tcl API.
-        db_tcl.tcl_tk_call((cursor, "close"))
+        with self.database.dbtxn.transaction.cursor(
+            db=dt[0].datastore
+        ) as cursor:
+            while True:
+                r = cursor.next()
+                if not r:
+                    break
+                ra.append(cursor.item())
         self.assertEqual(
             ra,
             [
@@ -603,23 +654,21 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
                 (b"list", b"\x00\x00\x00\x05\x00\x04\x00\x00\x00\x02"),
             ],
         )
-        cursor = db_tcl.tcl_tk_call(
-            (self.database.segment_table["file1"], "cursor")
-        )
         ra = []
-        while True:
-            r = db_tcl.tcl_tk_call((cursor, "get", "-next"))
-            if not r:
-                break
-            ra.append(r[0])
-        # Must close cursor explicitly in Tcl API.
-        db_tcl.tcl_tk_call((cursor, "close"))
+        with self.database.dbtxn.transaction.cursor(
+            db=self.database.segment_table["file1"].datastore
+        ) as cursor:
+            while True:
+                r = cursor.next()
+                if not r:
+                    break
+                ra.append(cursor.item())
         self.assertEqual(
             ra,
             [
-                (2, b"\x00\x01\x00\x02\x00\x03\x00\x04"),
-                (3, b"*\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"),
-                (4, b"\x00\x01\x00\t"),
+                (b"\x00\x00\x00\x02", b"\x00\x01\x00\x02\x00\x03\x00\x04"),
+                (b"\x00\x00\x00\x03", b"*\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"),
+                (b"\x00\x00\x00\x04", b"\x00\x01\x00\t"),
             ],
         )
         if hasattr(self.database, "_path_marker"):
@@ -645,33 +694,18 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
     # like putting the new segment 5 records in a separate record.
     def test_15(self):
         dt = self.database.table["file1_field1"]
-        db_tcl.tcl_tk_call((dt[0], "put", b"int", b"\x00\x00\x00\x05\x00\x01"))
-        db_tcl.tcl_tk_call(
-            (
-                dt[0],
-                "put",
-                b"list",
-                b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x02",
-            )
-        )
-        db_tcl.tcl_tk_call(
-            (
-                dt[0],
-                "put",
-                b"list",
-                b"\x00\x00\x00\x06\x00\x02\x00\x00\x00\x07",
-            )
-        )
-        db_tcl.tcl_tk_call(
-            (dt[0], "put", b"bits", b"\x00\x00\x00\x05\x00\x02")
-        )
-        db_tcl.tcl_tk_call(
-            (
-                self.database.segment_table["file1"],
-                "put",
-                2,
-                b"\x00\x01\x00\x04",
-            )
+        txn = self.database.dbtxn.transaction
+        for key, value in (
+            (b"int", b"\x00\x00\x00\x05\x00\x01"),
+            (b"list", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x02"),
+            (b"list", b"\x00\x00\x00\x06\x00\x02\x00\x00\x00\x07"),
+            (b"bits", b"\x00\x00\x00\x05\x00\x02"),
+        ):
+            txn.put(key, value, db=dt[0].datastore)
+        txn.put(
+            b"\x00\x00\x00\x02",
+            b"\x00\x01\x00\x04",
+            db=self.database.segment_table["file1"].datastore,
         )
         ba = Bitarray()
         ba.frombytes(b"\x0a" * 16)
@@ -688,18 +722,16 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
         self.database.sort_and_write("file1", "field1", 5)
         self.assertEqual(len(dt), 1)
         for t in dt:
-            self.assertEqual(t.__class__.__name__, "str")
-        # self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
-        # The Tcl API does not have an equivalent to get_dbname.
-        cursor = db_tcl.tcl_tk_call((dt[0], "cursor"))
+            self.assertEqual(t.__class__.__name__, "_Datastore")
         ra = []
-        while True:
-            r = db_tcl.tcl_tk_call((cursor, "get", "-next"))
-            if not r:
-                break
-            ra.append(r[0])
-        # Must close cursor explicitly in Tcl API.
-        db_tcl.tcl_tk_call((cursor, "close"))
+        with self.database.dbtxn.transaction.cursor(
+            db=dt[0].datastore
+        ) as cursor:
+            while True:
+                r = cursor.next()
+                if not r:
+                    break
+                ra.append(cursor.item())
         self.assertEqual(
             ra,
             [
@@ -712,24 +744,22 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
                 (b"list", b"\x00\x00\x00\x06\x00\x02\x00\x00\x00\x07"),
             ],
         )
-        cursor = db_tcl.tcl_tk_call(
-            (self.database.segment_table["file1"], "cursor")
-        )
         ra = []
-        while True:
-            r = db_tcl.tcl_tk_call((cursor, "get", "-next"))
-            if not r:
-                break
-            ra.append(r[0])
-        # Must close cursor explicitly in Tcl API.
-        db_tcl.tcl_tk_call((cursor, "close"))
+        with self.database.dbtxn.transaction.cursor(
+            db=self.database.segment_table["file1"].datastore
+        ) as cursor:
+            while True:
+                r = cursor.next()
+                if not r:
+                    break
+                ra.append(cursor.item())
         self.assertEqual(
             ra,
             [
-                (2, b"\x00\x01\x00\x04"),
-                (3, b"*\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"),
-                (4, b"\x00\x01\x00\t"),
-                (5, b"\x00\x02\x00\x03"),
+                (b"\x00\x00\x00\x02", b"\x00\x01\x00\x04"),
+                (b"\x00\x00\x00\x03", b"*\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"),
+                (b"\x00\x00\x00\x04", b"\x00\x01\x00\t"),
+                (b"\x00\x00\x00\x05", b"\x00\x02\x00\x03"),
             ],
         )
         if hasattr(self.database, "_path_marker"):
@@ -750,37 +780,29 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
 
     def test_16(self):
         dt = self.database.table["file1_field1"]
-        db_tcl.tcl_tk_call(
+        txn = self.database.dbtxn.transaction
+        for key, value in (
+            (b"list", b"\x00\x00\x00\x02\x00\x02\x00\x00\x00\x01"),
+            (b"bits", b"\x00\x00\x00\x02\x00\x08\x00\x00\x00\x02"),
+        ):
+            txn.put(key, value, db=dt[0].datastore)
+        for key, value in (
+            (b"\x00\x00\x00\x01", b"\x00\x01\x00\x04"),
             (
-                dt[0],
-                "put",
-                b"list",
-                b"\x00\x00\x00\x02\x00\x02\x00\x00\x00\x01",
-            )
-        )
-        db_tcl.tcl_tk_call(
-            (
-                dt[0],
-                "put",
-                b"bits",
-                b"\x00\x00\x00\x02\x00\x08\x00\x00\x00\x02",
-            )
-        )
-        dst = self.database.segment_table["file1"]
-        db_tcl.tcl_tk_call((dst, "put", 1, b"\x00\x01\x00\x04"))
-        db_tcl.tcl_tk_call(
-            (
-                dst,
-                "put",
-                2,
+                b"\x00\x00\x00\x02",
                 b"".join(
                     (
                         b"\x00\x00\xff\x00\x00\x00\x00\x00",
                         b"\x00\x00\x00\x00\x00\x00\x00\x00",
                     )
                 ),
+            ),
+        ):
+            txn.put(
+                key,
+                value,
+                db=self.database.segment_table["file1"].datastore,
             )
-        )
         ba = Bitarray()
         ba.frombytes(b"\x0a" * 16)
         self.database.value_segments["file1"] = {"field1": {"bits": ba}}
@@ -794,34 +816,37 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
         self.database.sort_and_write("file1", "field1", 2)
         self.assertEqual(len(dt), 1)
         for t in dt:
-            self.assertEqual(t.__class__.__name__, "str")
-        # self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
-        cursor = db_tcl.tcl_tk_call((dt[0], "cursor"))
+            self.assertEqual(t.__class__.__name__, "_Datastore")
         ra = []
-        while True:
-            r = db_tcl.tcl_tk_call((cursor, "get", "-next"))
-            if not r:
-                break
-            ra.append(r)
+        with self.database.dbtxn.transaction.cursor(
+            db=dt[0].datastore
+        ) as cursor:
+            while True:
+                r = cursor.next()
+                if not r:
+                    break
+                ra.append(cursor.item())
         self.assertEqual(
             ra,
             [
-                ((b"bits", b"\x00\x00\x00\x02\x00(\x00\x00\x00\x02"),),
-                ((b"list", b"\x00\x00\x00\x02\x00\x02\x00\x00\x00\x01"),),
+                (b"bits", b"\x00\x00\x00\x02\x00(\x00\x00\x00\x02"),
+                (b"list", b"\x00\x00\x00\x02\x00\x02\x00\x00\x00\x01"),
             ],
         )
-        cursor = db_tcl.tcl_tk_call((dst, "cursor"))
         ra = []
-        while True:
-            r = db_tcl.tcl_tk_call((cursor, "get", "-next"))
-            if not r:
-                break
-            ra.append(r)
+        with self.database.dbtxn.transaction.cursor(
+            db=self.database.segment_table["file1"].datastore
+        ) as cursor:
+            while True:
+                r = cursor.next()
+                if not r:
+                    break
+                ra.append(cursor.item())
         self.assertEqual(
             ra,
             [
-                ((1, b"\x00\x01\x00\x04"),),
-                ((2, b"\n\n\xff\n\n\n\n\n\n\n\n\n\n\n\n\n"),),
+                (b"\x00\x00\x00\x01", b"\x00\x01\x00\x04"),
+                (b"\x00\x00\x00\x02", b"\n\n\xff\n\n\n\n\n\n\n\n\n\n\n\n\n"),
             ],
         )
         if hasattr(self.database, "_path_marker"):
@@ -843,37 +868,29 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
 
     def test_17(self):
         dt = self.database.table["file1_field1"]
-        db_tcl.tcl_tk_call(
+        txn = self.database.dbtxn.transaction
+        for key, value in (
+            (b"list", b"\x00\x00\x00\x01\x00\x02\x00\x00\x00\x01"),
+            (b"bits", b"\x00\x00\x00\x02\x00\x08\x00\x00\x00\x02"),
+        ):
+            txn.put(key, value, db=dt[0].datastore)
+        for key, value in (
+            (b"\x00\x00\x00\x01", b"\x00\x01\x00\x04"),
             (
-                dt[0],
-                "put",
-                b"list",
-                b"\x00\x00\x00\x01\x00\x02\x00\x00\x00\x01",
-            )
-        )
-        db_tcl.tcl_tk_call(
-            (
-                dt[0],
-                "put",
-                b"bits",
-                b"\x00\x00\x00\x02\x00\x08\x00\x00\x00\x02",
-            )
-        )
-        dst = self.database.segment_table["file1"]
-        db_tcl.tcl_tk_call((dst, "put", 1, b"\x00\x01\x00\x04"))
-        db_tcl.tcl_tk_call(
-            (
-                dst,
-                "put",
-                2,
+                b"\x00\x00\x00\x02",
                 b"".join(
                     (
                         b"\x00\x00\xff\x00\x00\x00\x00\x00",
                         b"\x00\x00\x00\x00\x00\x00\x00\x00",
                     )
                 ),
+            ),
+        ):
+            txn.put(
+                key,
+                value,
+                db=self.database.segment_table["file1"].datastore,
             )
-        )
         ba = Bitarray()
         ba.frombytes(b"\x0a" * 16)
         self.database.value_segments["file1"] = {"field1": {"list": ba}}
@@ -887,43 +904,43 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
         self.database.sort_and_write("file1", "field1", 1)
         self.assertEqual(len(dt), 1)
         for t in dt:
-            self.assertEqual(t.__class__.__name__, "str")
-        # self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
-        # The Tcl API does not have an equivalent to get_dbname.
-        cursor = db_tcl.tcl_tk_call((dt[0], "cursor"))
+            self.assertEqual(t.__class__.__name__, "_Datastore")
         ra = []
-        while True:
-            r = db_tcl.tcl_tk_call((cursor, "get", "-next"))
-            if not r:
-                break
-            ra.append(r)
+        with self.database.dbtxn.transaction.cursor(
+            db=dt[0].datastore
+        ) as cursor:
+            while True:
+                r = cursor.next()
+                if not r:
+                    break
+                ra.append(cursor.item())
         self.assertEqual(
             ra,
             [
-                ((b"bits", b"\x00\x00\x00\x02\x00\x08\x00\x00\x00\x02"),),
-                ((b"list", b'\x00\x00\x00\x01\x00"\x00\x00\x00\x01'),),
+                (b"bits", b"\x00\x00\x00\x02\x00\x08\x00\x00\x00\x02"),
+                (b"list", b'\x00\x00\x00\x01\x00"\x00\x00\x00\x01'),
             ],
         )
-        cursor = db_tcl.tcl_tk_call((dst, "cursor"))
         ra = []
-        while True:
-            r = db_tcl.tcl_tk_call((cursor, "get", "-next"))
-            if not r:
-                break
-            ra.append(r)
+        with self.database.dbtxn.transaction.cursor(
+            db=self.database.segment_table["file1"].datastore
+        ) as cursor:
+            while True:
+                r = cursor.next()
+                if not r:
+                    break
+                ra.append(cursor.item())
         self.assertEqual(
             ra,
             [
-                ((1, b"J\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"),),
+                (b"\x00\x00\x00\x01", b"J\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"),
                 (
-                    (
-                        2,
-                        b"".join(
-                            (
-                                b"\x00\x00\xff\x00\x00\x00\x00\x00",
-                                b"\x00\x00\x00\x00\x00\x00\x00\x00",
-                            )
-                        ),
+                    b"\x00\x00\x00\x02",
+                    b"".join(
+                        (
+                            b"\x00\x00\xff\x00\x00\x00\x00\x00",
+                            b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                        )
                     ),
                 ),
             ],
@@ -947,6 +964,10 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
 
 
 class Database_sort_and_write(_DBOpen):
+    def setUp(self):
+        super().setUp()
+        self.database.start_transaction()
+
     def test_01(self):
         database = self._D({}, segment_size_bytes=None)
         self.assertRaisesRegex(
@@ -1011,9 +1032,7 @@ class Database_sort_and_write(_DBOpen):
         dt = self.database.table["file1_field1"]
         self.assertEqual(len(dt), 1)
         for t in dt:
-            self.assertEqual(t.__class__.__name__, "str")
-        # self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
-        # The Tcl API does not have an equivalent to get_dbname.
+            self.assertEqual(t.__class__.__name__, "_Datastore")
 
     def test_08(self):
         self.database.value_segments["file1"] = {"field1": {}}
@@ -1022,12 +1041,9 @@ class Database_sort_and_write(_DBOpen):
         self.database.high_segment["file1"] = 3
         self.database.sort_and_write("file1", "field1", 5)
         dt = self.database.table["file1_field1"]
-        self.assertEqual(len(dt), 2)
+        self.assertEqual(len(dt), 1)
         for t in dt:
-            self.assertEqual(t.__class__.__name__, "str")
-        # self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
-        # self.assertEqual(dt[1].get_dbname(), (None, "1_file1_field1"))
-        # The Tcl API does not have an equivalent to get_dbname.
+            self.assertEqual(t.__class__.__name__, "_Datastore")
 
     def test_09(self):
         self.database.value_segments["file1"] = {"field1": {}}
@@ -1038,9 +1054,7 @@ class Database_sort_and_write(_DBOpen):
         dt = self.database.table["file1_field1"]
         self.assertEqual(len(dt), 1)
         for t in dt:
-            self.assertEqual(t.__class__.__name__, "str")
-        # self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
-        # The Tcl API does not have an equivalent to get_dbname.
+            self.assertEqual(t.__class__.__name__, "_Datastore")
 
     def test_10(self):
         self.database.value_segments["file1"] = {"field1": {"int": 1}}
@@ -1051,30 +1065,26 @@ class Database_sort_and_write(_DBOpen):
         dt = self.database.table["file1_field1"]
         self.assertEqual(len(dt), 1)
         for t in dt:
-            self.assertEqual(t.__class__.__name__, "str")
-        # self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
-        # The Tcl API does not have an equivalent to get_dbname.
-        cursor = db_tcl.tcl_tk_call((dt[0], "cursor"))
+            self.assertEqual(t.__class__.__name__, "_Datastore")
         ra = []
-        while True:
-            r = db_tcl.tcl_tk_call((cursor, "get", "-next"))
-            if not r:
-                break
-            ra.append(r[0])
-        # Must close cursor explicitly in Tcl API.
-        db_tcl.tcl_tk_call((cursor, "close"))
+        with self.database.dbtxn.transaction.cursor(
+            db=dt[0].datastore
+        ) as cursor:
+            while True:
+                r = cursor.next()
+                if not r:
+                    break
+                ra.append(cursor.item())
         self.assertEqual(ra, [(b"int", b"\x00\x00\x00\x05\x00\x01")])
-        cursor = db_tcl.tcl_tk_call(
-            (self.database.segment_table["file1"], "cursor")
-        )
         ra = []
-        while True:
-            r = db_tcl.tcl_tk_call((cursor, "get", "-next"))
-            if not r:
-                break
-            ra.append(r[0])
-        # Must close cursor explicitly in Tcl API.
-        db_tcl.tcl_tk_call((cursor, "close"))
+        with self.database.dbtxn.transaction.cursor(
+            db=self.database.segment_table["file1"].datastore
+        ) as cursor:
+            while True:
+                r = cursor.next()
+                if not r:
+                    break
+                ra.append(cursor.item())
         self.assertEqual(ra, [])
 
     def test_11(self):
@@ -1090,33 +1100,29 @@ class Database_sort_and_write(_DBOpen):
         dt = self.database.table["file1_field1"]
         self.assertEqual(len(dt), 1)
         for t in dt:
-            self.assertEqual(t.__class__.__name__, "str")
-        # self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
-        # The Tcl API does not have an equivalent to get_dbname.
-        cursor = db_tcl.tcl_tk_call((dt[0], "cursor"))
+            self.assertEqual(t.__class__.__name__, "_Datastore")
         ra = []
-        while True:
-            r = db_tcl.tcl_tk_call((cursor, "get", "-next"))
-            if not r:
-                break
-            ra.append(r[0])
-        # Must close cursor explicitly in Tcl API.
-        db_tcl.tcl_tk_call((cursor, "close"))
+        with self.database.dbtxn.transaction.cursor(
+            db=dt[0].datastore
+        ) as cursor:
+            while True:
+                r = cursor.next()
+                if not r:
+                    break
+                ra.append(cursor.item())
         self.assertEqual(
-            ra, [(b"list", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x01")]
-        )
-        cursor = db_tcl.tcl_tk_call(
-            (self.database.segment_table["file1"], "cursor")
+            ra, [(b"list", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x00")]
         )
         ra = []
-        while True:
-            r = db_tcl.tcl_tk_call((cursor, "get", "-next"))
-            if not r:
-                break
-            ra.append(r[0])
-        # Must close cursor explicitly in Tcl API.
-        db_tcl.tcl_tk_call((cursor, "close"))
-        self.assertEqual(ra, [(1, b"\x00\x01\x00\x04")])
+        with self.database.dbtxn.transaction.cursor(
+            db=self.database.segment_table["file1"].datastore
+        ) as cursor:
+            while True:
+                r = cursor.next()
+                if not r:
+                    break
+                ra.append(cursor.item())
+        self.assertEqual(ra, [(b"\x00\x00\x00\x00", b"\x00\x01\x00\x04")])
 
     def test_12(self):
         ba = Bitarray()
@@ -1129,34 +1135,31 @@ class Database_sort_and_write(_DBOpen):
         dt = self.database.table["file1_field1"]
         self.assertEqual(len(dt), 1)
         for t in dt:
-            self.assertEqual(t.__class__.__name__, "str")
-        # self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
-        # The Tcl API does not have an equivalent to get_dbname.
-        # cursor = dt[0].cursor()
-        cursor = db_tcl.tcl_tk_call((dt[0], "cursor"))
+            self.assertEqual(t.__class__.__name__, "_Datastore")
         ra = []
-        while True:
-            r = db_tcl.tcl_tk_call((cursor, "get", "-next"))
-            if not r:
-                break
-            ra.append(r[0])
-        # Must close cursor explicitly in Tcl API.
-        db_tcl.tcl_tk_call((cursor, "close"))
+        with self.database.dbtxn.transaction.cursor(
+            db=dt[0].datastore
+        ) as cursor:
+            while True:
+                r = cursor.next()
+                if not r:
+                    break
+                ra.append(cursor.item())
         self.assertEqual(
-            ra, [(b"bits", b"\x00\x00\x00\x05\x00\x20\x00\x00\x00\x01")]
-        )
-        cursor = db_tcl.tcl_tk_call(
-            (self.database.segment_table["file1"], "cursor")
+            ra, [(b"bits", b"\x00\x00\x00\x05\x00\x20\x00\x00\x00\x00")]
         )
         ra = []
-        while True:
-            r = db_tcl.tcl_tk_call((cursor, "get", "-next"))
-            if not r:
-                break
-            ra.append(r[0])
-        # Must close cursor explicitly in Tcl API.
-        db_tcl.tcl_tk_call((cursor, "close"))
-        self.assertEqual(ra, [(1, b"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")])
+        with self.database.dbtxn.transaction.cursor(
+            db=self.database.segment_table["file1"].datastore
+        ) as cursor:
+            while True:
+                r = cursor.next()
+                if not r:
+                    break
+                ra.append(cursor.item())
+        self.assertEqual(
+            ra, [(b"\x00\x00\x00\x00", b"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")]
+        )
 
 
 class Database_merge(_DBOpen):
@@ -1184,7 +1187,7 @@ class Database_merge(_DBOpen):
         dbo = set(t for t in self.database.table["file1_field1"])
         self.assertEqual(len(dbo), 1)
         for t in dbo:
-            self.assertEqual(t.__class__.__name__, "str")
+            self.assertEqual(t.__class__.__name__, "DB")
         self.database.merge("file1", "field1")
         if hasattr(self.database, "_path_marker"):
             self.assertEqual(self.database._path_marker, {"p1"})
@@ -1197,11 +1200,9 @@ class Database_merge(_DBOpen):
         dbo = set(t for t in dt)
         self.assertEqual(len(dbo), 2)
         for t in dbo:
-            self.assertEqual(t.__class__.__name__, "str")
+            self.assertEqual(t.__class__.__name__, "DB")
         for t in dt[1:]:
-            # t.close()
-            db_tcl.tcl_tk_call((t, "close"))
-        del dt[1:]
+            t.close()
         self.database.merge("file1", "field1")
         if hasattr(self.database, "_path_marker"):
             self.assertEqual(
@@ -1220,24 +1221,14 @@ class Database_merge(_DBOpen):
         self.assertEqual(SegmentSize._segment_sort_scale, _segment_sort_scale)
         dt = self.database.table["file1_field1"]
         self.database.new_deferred_root("file1", "field1")
-        command = [dt[-1], "put"]
-        if self.database.dbtxn:
-            command.extend(["-txn", self.database.dbtxn])
-        command.extend([b"list", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x02"])
-        db_tcl.tcl_tk_call(tuple(command))
+        dt[-1].put(b"list", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x02")
         self.assertEqual(len(dt), 2)
         dbo = set(t for t in dt)
         self.assertEqual(len(dbo), 2)
         for t in dbo:
-            self.assertEqual(t.__class__.__name__, "str")
-        for t in dt[1:]:
-            db_tcl.tcl_tk_call((t, "close"))
-        del dt[1:]
-        command = [self.database.segment_table["file1"], "put"]
-        if self.database.dbtxn:
-            command.extend(["-txn", self.database.dbtxn])
-        command.extend([2, b"\x00\x01\x00\x04"])
-        db_tcl.tcl_tk_call(tuple(command))
+            self.assertEqual(t.__class__.__name__, "DB")
+        dt[-1].close()
+        self.database.segment_table["file1"].put(2, b"\x00\x01\x00\x04")
         self.database.merge("file1", "field1")
         if hasattr(self.database, "_path_marker"):
             self.assertEqual(
@@ -1267,31 +1258,15 @@ class Database_merge(_DBOpen):
         self.assertEqual(SegmentSize._segment_sort_scale, 1)
         dt = self.database.table["file1_field1"]
         self.database.new_deferred_root("file1", "field1")
-        command = [dt[-1], "put"]
-        if self.database.dbtxn:
-            command.extend(["-txn", self.database.dbtxn])
-        command.extend([b"list", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x02"])
-        db_tcl.tcl_tk_call(tuple(command))
+        dt[-1].put(b"list", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x02")
         self.database.new_deferred_root("file1", "field1")
         self.assertEqual(len(dt), 3)
         dbo = set(t for t in dt)
         self.assertEqual(len(dbo), 3)
         for t in dbo:
-            self.assertEqual(t.__class__.__name__, "str")
-        # The single 'dt[-1].close()' in bsddb3 and berkeleydb version is
-        # wrong but those interfaces allow one to get away with not closing
-        # the database.
-        # With Tcl API a _tkinter.TclError exception is raised in tearDown():
-        # 'env<n>: Database handles still open at environment close'.
-        # Close and forget about all except dt[0].
-        for t in dt[1:]:
-            db_tcl.tcl_tk_call((t, "close"))
-        del dt[1:]
-        command = [self.database.segment_table["file1"], "put"]
-        if self.database.dbtxn:
-            command.extend(["-txn", self.database.dbtxn])
-        command.extend([2, b"\x00\x01\x00\x04"])
-        db_tcl.tcl_tk_call(tuple(command))
+            self.assertEqual(t.__class__.__name__, "DB")
+        dt[-1].close()
+        self.database.segment_table["file1"].put(2, b"\x00\x01\x00\x04")
         self.database.merge("file1", "field1")
         if hasattr(self.database, "_path_marker"):
             self.assertEqual(
@@ -1358,73 +1333,40 @@ class Database_merge(_DBOpen):
     def merge_06_07(self):
         dt = self.database.table["file1_field1"]
         self.database.new_deferred_root("file1", "field1")
-        command = [dt[-1], "put"]
-        if self.database.dbtxn:
-            command.extend(["-txn", self.database.dbtxn])
-        command.extend([b"list", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x02"])
-        db_tcl.tcl_tk_call(tuple(command))
-        command = [dt[-1], "put"]
-        if self.database.dbtxn:
-            command.extend(["-txn", self.database.dbtxn])
-        command.extend([b"list1", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x03"])
-        db_tcl.tcl_tk_call(tuple(command))
+        dt[-1].put(b"list", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x02")
+        dt[-1].put(b"list1", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x03")
         self.database.new_deferred_root("file1", "field1")
-        command = [dt[-1], "put"]
-        if self.database.dbtxn:
-            command.extend(["-txn", self.database.dbtxn])
-        command.extend([b"list1", b"\x00\x00\x00\x06\x00\x02\x00\x00\x00\x04"])
-        db_tcl.tcl_tk_call(tuple(command))
+        dt[-1].put(b"list1", b"\x00\x00\x00\x06\x00\x02\x00\x00\x00\x04")
         self.assertEqual(len(dt), 3)
         dbo = set(t for t in dt)
         self.assertEqual(len(dbo), 3)
         for t in dbo:
-            self.assertEqual(t.__class__.__name__, "str")
-        # The single 'dt[-1].close()' in bsddb3 and berkeleydb version is
-        # wrong but those interfaces allow one to get away with not closing
-        # the database.
-        # With Tcl API a _tkinter.TclError exception is raised in tearDown():
-        # 'env<n>: Database handles still open at environment close'.
-        # Close and forget about all except dt[0].
-        for t in dt[1:]:
-            db_tcl.tcl_tk_call((t, "close"))
-        del dt[1:]
-        command = [self.database.segment_table["file1"], "put"]
-        if self.database.dbtxn:
-            command.extend(["-txn", self.database.dbtxn])
-        command.extend([2, b"\x00\x01\x00\x04"])
-        db_tcl.tcl_tk_call(tuple(command))
-        command = [self.database.segment_table["file1"], "put"]
-        if self.database.dbtxn:
-            command.extend(["-txn", self.database.dbtxn])
-        command.extend([3, b"\x00\x01\x00\x04"])
-        db_tcl.tcl_tk_call(tuple(command))
-        command = [self.database.segment_table["file1"], "put"]
-        if self.database.dbtxn:
-            command.extend(["-txn", self.database.dbtxn])
-        command.extend([4, b"\x00\x01\x00\x04"])
-        db_tcl.tcl_tk_call(tuple(command))
+            self.assertEqual(t.__class__.__name__, "DB")
+        dt[-1].close()
+        self.database.segment_table["file1"].put(2, b"\x00\x01\x00\x04")
+        self.database.segment_table["file1"].put(3, b"\x00\x01\x00\x04")
+        self.database.segment_table["file1"].put(4, b"\x00\x01\x00\x04")
         self.database.merge("file1", "field1")
 
 
 if __name__ == "__main__":
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
-    for dbe_module in (db_tcl,):
+    for dbe_module in (lmdb,):
         if dbe_module is None:
             continue
-        # bdb = dbe_module.Tk(useTk=False)
-        bdb = dbe_module.tcl
-        if dbe_module is db_tcl:
 
-            def encode(value):
-                return value
+        def encode(value):
+            return value
 
         runner().run(loader(Database___init__))
-        runner().run(loader(Database_transaction_methods))
+        runner().run(loader(Database_transaction_bad_calls))
+        runner().run(loader(Database_start_transaction))
+        runner().run(loader(Database_backout_and_commit))
         runner().run(loader(Database_open_database))
         runner().run(loader(Database_methods))
         # runner().run(loader(Database__rows))
         runner().run(loader(Database_do_final_segment_deferred_updates))
         runner().run(loader(Database__sort_and_write_high_or_chunk))
         runner().run(loader(Database_sort_and_write))
-        runner().run(loader(Database_merge))
+        # runner().run(loader(Database_merge))

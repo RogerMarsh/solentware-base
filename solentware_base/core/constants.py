@@ -20,7 +20,8 @@ UNQLITE_MODULE = "unqlite"
 VEDIS_MODULE = "vedis"
 GNU_MODULE = "dbm.gnu"
 NDBM_MODULE = "dbm.ndbm"
-DB_TCL_MODULE = "db_tcl"
+DB_TCL_MODULE = "solentware_base.db_tcl"
+LMDB_MODULE = "lmdb"
 
 SQLITE_VALUE_COLUMN = "Value"
 # Notes on SQLITE_VALUE_COLUMN from a Berkeley DB perspective.
@@ -200,3 +201,22 @@ SEGMENT_VALUE_SUFFIX = "1"
 TREE_NODE_SUFFIX = "2"
 LIST_BYTES = "L"
 BITMAP_BYTES = "B"
+
+# Constants defined for Symas LMMD database.
+# DESIGN_FILE is for non-dupsort records previously held in CONTROL_FILE.
+# The specification record typically has more than 511 bytes, breaking the
+# default compile-time limit on data size in dupsort databases.
+# There is a case for splitting like this everywhere: but leave well alone.
+DESIGN_FILE = SUBFILE_DELIMITER * 3 + "design"
+
+# The default map size defined in Symas LMMD is 10485760 bytes, expressed
+# here as the number of 4096 byte pages, a typical OS block size.
+DEFAULT_MAP_PAGES = 2560
+DEFAULT_MAP_SIZE = 4096 * DEFAULT_MAP_PAGES
+
+# The default initial map size for a database is one DEFAULT_MAP_SIZE block.
+# A map size can only be increased: attempts to reduce the map size leave it
+# unaltered.
+# Initial maximum, and changes in maximum, size of a database are expressed
+# as a number of map blocks.
+DEFAULT_MAP_BLOCKS = 1

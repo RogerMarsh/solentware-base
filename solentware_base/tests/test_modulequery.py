@@ -59,7 +59,7 @@ class Modulequery(unittest.TestCase):
                         "dptdb.dptapi",
                         "berkeleydb",
                         "bsddb3",
-                        "db_tcl",
+                        "solentware_base.db_tcl",
                         "vedis",
                         "unqlite",
                         "apsw",
@@ -71,7 +71,7 @@ class Modulequery(unittest.TestCase):
                     (
                         "berkeleydb",
                         "bsddb3",
-                        "db_tcl",
+                        "solentware_base.db_tcl",
                         "vedis",
                         "unqlite",
                         "apsw",
@@ -87,7 +87,7 @@ class Modulequery(unittest.TestCase):
                         "dptdb.dptapi",
                         "berkeleydb",
                         "bsddb3",
-                        "db_tcl",
+                        "solentware_base.db_tcl",
                         "vedis",
                         "unqlite",
                         "apsw",
@@ -98,9 +98,10 @@ class Modulequery(unittest.TestCase):
                 self.assertEqual(
                     r,
                     (
+                        "lmdb",
                         "berkeleydb",
                         "bsddb3",
-                        "db_tcl",
+                        "solentware_base.db_tcl",
                         "vedis",
                         "unqlite",
                         "apsw",
@@ -123,6 +124,7 @@ class Modulequery(unittest.TestCase):
                     "dbm.gnu",
                     "dbm.ndbm",
                     "dptdb.dptapi",
+                    "lmdb",
                     "sqlite3",
                     "unqlite",
                     "vedis",
@@ -142,6 +144,7 @@ class Modulequery(unittest.TestCase):
                 modulequery.sqlite3,
                 modulequery.unqlite,
                 modulequery.vedis,
+                modulequery.lmdb,
             )
             if i
         }

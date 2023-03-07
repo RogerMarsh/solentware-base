@@ -19,8 +19,6 @@ See ports@openbsd.org thread 'Python access to Berkeley DB' December 2022.
 import tkinter
 import os
 
-__name__ = "db_tcl"
-
 # The commands provided by the Db_tcl package in the tcl interpreter created
 # below is used to meet external references the way done in apsw_database,
 # sqlite3_database, berkeleydb_database, bsddb3_database, unqlite_database,
