@@ -222,6 +222,9 @@ class Database(_databasedu.Database):
                     elif isinstance(current_segment, RecordsetSegmentInt):
                         # self._path_marker.add('p5a-b')
                         srn = self.segment_table[file].append(seg.tobytes())
+                        # Why not use cursor_high throughout this method?
+                        # Then why not use DB_CURRENT and remove the delete()?
+                        cursor_high.delete()
                         cursor_new.put(
                             k,
                             b"".join(
@@ -255,6 +258,9 @@ class Database(_databasedu.Database):
                     if isinstance(current_segment, RecordsetSegmentInt):
                         # self._path_marker.add('p5b-a')
                         srn = self.segment_table[file].append(seg.tobytes())
+                        # Why not use cursor_high throughout this method?
+                        # Then why not use DB_CURRENT and remove the delete()?
+                        cursor_high.delete()
                         cursor_new.put(
                             k,
                             b"".join(

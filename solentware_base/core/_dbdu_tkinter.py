@@ -253,6 +253,9 @@ class Database(_databasedu.Database):
                             command.extend(["-txn", self.dbtxn])
                         command.append(seg.tobytes())
                         srn = tcl_tk_call(tuple(command))
+                        # Why not use cursor_high throughout this method?
+                        # Then why not use -current and remove the delete()?
+                        tcl_tk_call((cursor_high, "del"))
                         tcl_tk_call(
                             (
                                 cursor_new,
@@ -302,6 +305,9 @@ class Database(_databasedu.Database):
                             command.extend(["-txn", self.dbtxn])
                         command.append(seg.tobytes())
                         srn = tcl_tk_call(tuple(command))
+                        # Why not use cursor_high throughout this method?
+                        # Then why not use -current and remove the delete()?
+                        tcl_tk_call((cursor_high, "del"))
                         tcl_tk_call(
                             (
                                 cursor_new,
