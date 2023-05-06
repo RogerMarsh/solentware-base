@@ -1877,10 +1877,10 @@ class Database(_database.Database):
         )
         used_byte_count = used_page_count * env_stat["psize"]
         for value in stats.values():
-            psize = value["psize"]
-            branch_pages = value["branch_pages"]
-            leaf_pages = value["leaf_pages"]
-            overflow_pages = value["overflow_pages"]
+            psize = value.get("psize", 0)
+            branch_pages = value.get("branch_pages", 0)
+            leaf_pages = value.get("leaf_pages", 0)
+            overflow_pages = value.get("overflow_pages", 0)
             pages = branch_pages + leaf_pages + overflow_pages
             used_page_count += pages
             used_byte_count += pages * psize
@@ -2002,8 +2002,20 @@ class _Datastore:
         self._datastore = None
 
     def datastore_stats(self, txn):
-        """Return dict of database stats."""
-        return txn.transaction.stat(self._datastore)
+        """Return dict of database stats.
+
+        An empty dict is returned if self._datastore is None on catching
+        the consequential AttributeError.
+
+        """
+        # The exception is expected on the first call only, when the database
+        # has not yet been opened.
+        try:
+            return txn.transaction.stat(self._datastore)
+        except AttributeError:
+            if self._datastore is None:
+                return {}
+            raise
 
 
 class Cursor(_cursor.Cursor):
