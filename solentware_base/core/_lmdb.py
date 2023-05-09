@@ -1486,14 +1486,31 @@ class Database(_database.Database):
                 reference[SEGMENT_HEADER_LENGTH:],
                 db=self.segment_table[recordset.dbset].datastore,
             )
-            if len(segment_record) == SegmentSize.db_segment_size_bytes:
-                segment = RecordsetSegmentBitarray(
-                    segment_number, None, records=segment_record
-                )
-            else:
-                segment = RecordsetSegmentList(
-                    segment_number, None, records=segment_record
-                )
+            # Workaround a problem found in ChessTab evaluating ChessQL
+            # statements using Symas LMMD, assuming an exception catch at
+            # the appropriate place.
+            # For compatibility with other database engines which might be
+            # used raise a TypeError with a non-standard unique message.
+            # In one simple case this commented code works, but segment_record
+            # should never be 'None' and the statement
+            # 'assert segment_record is not None'
+            # would be reasonable at this point.
+            #if segment_record is None:
+            #    print(repr(reference))  # Trace occurrences.
+            #    return
+            try:
+                if len(segment_record) == SegmentSize.db_segment_size_bytes:
+                    segment = RecordsetSegmentBitarray(
+                        segment_number, None, records=segment_record
+                    )
+                else:
+                    segment = RecordsetSegmentList(
+                        segment_number, None, records=segment_record
+                    )
+            except TypeError as exc:
+                if segment_record is not None:
+                    raise
+                raise TypeError("lmdb segment_record is None") from exc
         if segment_number not in recordset:
             recordset[segment_number] = segment
         else:
