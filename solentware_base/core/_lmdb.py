@@ -1486,31 +1486,18 @@ class Database(_database.Database):
                 reference[SEGMENT_HEADER_LENGTH:],
                 db=self.segment_table[recordset.dbset].datastore,
             )
-            # Workaround a problem found in ChessTab evaluating ChessQL
-            # statements using Symas LMMD, assuming an exception catch at
-            # the appropriate place.
-            # For compatibility with other database engines which might be
-            # used raise a TypeError with a non-standard unique message.
-            # In one simple case this commented code works, but segment_record
-            # should never be 'None' and the statement
-            # 'assert segment_record is not None'
-            # would be reasonable at this point.
-            #if segment_record is None:
-            #    print(repr(reference))  # Trace occurrences.
-            #    return
-            try:
-                if len(segment_record) == SegmentSize.db_segment_size_bytes:
-                    segment = RecordsetSegmentBitarray(
-                        segment_number, None, records=segment_record
-                    )
-                else:
-                    segment = RecordsetSegmentList(
-                        segment_number, None, records=segment_record
-                    )
-            except TypeError as exc:
-                if segment_record is not None:
-                    raise
-                raise TypeError("lmdb segment_record is None") from exc
+            # 'assert segment_record is not None' is reasonable at this point.
+            # Working on version 5.0.1 much time was lost looking for a
+            # transaction design problem which turned out to be not writing
+            # the record this assert statement tests.
+            if len(segment_record) == SegmentSize.db_segment_size_bytes:
+                segment = RecordsetSegmentBitarray(
+                    segment_number, None, records=segment_record
+                )
+            else:
+                segment = RecordsetSegmentList(
+                    segment_number, None, records=segment_record
+                )
         if segment_number not in recordset:
             recordset[segment_number] = segment
         else:
@@ -1709,24 +1696,19 @@ class Database(_database.Database):
         ) as cursor:
             recordset.normalize()
             for segment_number in recordset.sorted_segnums:
-                if isinstance(
-                    recordset.rs_segments[segment_number], RecordsetSegmentInt
-                ):
+                rs_segment = recordset.rs_segments[segment_number]
+                if isinstance(rs_segment, RecordsetSegmentInt):
                     cursor.put(
                         key,
                         b"".join(
                             (
                                 segment_number.to_bytes(4, byteorder="big"),
-                                recordset.rs_segments[
-                                    segment_number
-                                ].tobytes(),
+                                rs_segment.tobytes(),
                             )
                         ),
                     )
                 else:
-                    count = recordset.rs_segments[
-                        segment_number
-                    ].count_records()
+                    count = rs_segment.count_records()
                     with self.dbtxn.transaction.cursor(
                         self.segment_table[file].datastore
                     ) as seg_cursor:
@@ -1736,20 +1718,30 @@ class Database(_database.Database):
                                     seg_cursor.key(), byteorder="big"
                                 )
                                 + 1
-                            )
+                            ).to_bytes(4, byteorder="big")
                         else:
                             # Should not be reached.
                             # Sibling _db module for Berkeley DB uses
                             # append() method and does not care if any of
                             # these records exist.
-                            segment_key = 0
+                            segment_key = int(0).to_bytes(4, byteorder="big")
+
+                    # This write was missing at version 5.0 and the problem
+                    # was initially thought to be transaction design related
+                    # to explicit read-only transactions in lmdb.
+                    self.dbtxn.transaction.put(
+                        segment_key,
+                        rs_segment.tobytes(),
+                        db=self.segment_table[file].datastore,
+                    )
+
                     cursor.put(
                         key,
                         b"".join(
                             (
                                 segment_number.to_bytes(4, byteorder="big"),
                                 count.to_bytes(2, byteorder="big"),
-                                segment_key.to_bytes(4, byteorder="big"),
+                                segment_key,
                             )
                         ),
                     )
