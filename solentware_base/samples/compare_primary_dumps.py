@@ -59,9 +59,9 @@ if __name__ == "__main__":
             if len(key) == 8:
                 r[
                     int.from_bytes(binascii.unhexlify(key), byteorder="big")
-                ] = binascii.unhexlify(
-                    line.encode("iso-8859-1")
-                ).decode("iso-8859-1")
+                ] = binascii.unhexlify(line.encode("iso-8859-1")).decode(
+                    "iso-8859-1"
+                )
             else:
                 r[int(key) - 1] = line
             key = None

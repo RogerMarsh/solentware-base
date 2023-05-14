@@ -55,6 +55,7 @@ except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     bsddb3 = None
 try:
     from .. import db_tcl
+
     if db_tcl.tcl_tk_call is None:
         db_tcl = None
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6

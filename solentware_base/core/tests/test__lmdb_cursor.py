@@ -323,9 +323,7 @@ class Cursor_primary(_DB):
         self.assertEqual(self.cursor.get_position_of_record(), 0)
 
     def test_05_get_position_of_record_02(self):
-        self.assertEqual(
-            self.cursor.get_position_of_record((5, None)), 0
-        )
+        self.assertEqual(self.cursor.get_position_of_record((5, None)), 0)
 
     def test_05_get_position_of_record_03(self):
         self.create_ebm()
@@ -333,15 +331,9 @@ class Cursor_primary(_DB):
         self.create_ebm_extra(
             b"\x00\x00\x00\x00\x00\x00\x80\x04\x00\x00\x00\x00\x00\x00\x00\x00"
         )
-        self.assertEqual(
-            self.cursor.get_position_of_record((304, None)), 255
-        )
-        self.assertEqual(
-            self.cursor.get_position_of_record((317, None)), 256
-        )
-        self.assertEqual(
-            self.cursor.get_position_of_record((319, None)), 0
-        )
+        self.assertEqual(self.cursor.get_position_of_record((304, None)), 255)
+        self.assertEqual(self.cursor.get_position_of_record((317, None)), 256)
+        self.assertEqual(self.cursor.get_position_of_record((319, None)), 0)
 
     def test_08_get_record_at_position_01(self):
         self.assertEqual(self.cursor.get_record_at_position(), None)

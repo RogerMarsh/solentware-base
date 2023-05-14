@@ -250,22 +250,19 @@ class Database(_database.Database):
         try:
             dbenv = dbe.Environment(
                 path=self.database_file,
-                map_size=DEFAULT_MAP_SIZE*self.map_blocks,
+                map_size=DEFAULT_MAP_SIZE * self.map_blocks,
                 readonly=True,
                 max_dbs=self._calculate_max_dbs(files=files),
                 **self.environment_flags(dbe),
             )
         except dbe.Error as exc:
-            if (
-                str(exc) != ": ".join(
-                    (self.database_file, "No such file or directory")
-                )
-                and str(exc) != "".join(
-                    (
-                        "b'",
-                        self.database_file,
-                        "': b'No such file or directory'",
-                    )
+            if str(exc) != ": ".join(
+                (self.database_file, "No such file or directory")
+            ) and str(exc) != "".join(
+                (
+                    "b'",
+                    self.database_file,
+                    "': b'No such file or directory'",
                 )
             ):
                 raise DatabaseError(str(exc)) from exc
@@ -273,7 +270,7 @@ class Database(_database.Database):
         if dbenv is None:
             dbenv = dbe.Environment(
                 path=self.database_file,
-                map_size=DEFAULT_MAP_SIZE*self.map_blocks,
+                map_size=DEFAULT_MAP_SIZE * self.map_blocks,
                 readonly=False,
                 max_dbs=self._calculate_max_dbs(files=files),
                 **self.environment_flags(dbe),
@@ -373,14 +370,14 @@ class Database(_database.Database):
         # tranasction can be done in the environment.
         self.dbenv = dbe.Environment(
             path=self.database_file,
-            map_size=DEFAULT_MAP_SIZE*self.map_blocks,
+            map_size=DEFAULT_MAP_SIZE * self.map_blocks,
             readonly=False,
             max_dbs=self._calculate_max_dbs(files=files),
             **self.environment_flags(dbe),
         )
         self.table[DESIGN_FILE].open_datastore(self.dbenv)
         # self.table[CONTROL_FILE].open_datastore(self.dbenv)
-        #self.start_transaction()
+        # self.start_transaction()
         self.start_read_only_transaction()
         cursor = self.dbtxn.transaction.cursor(
             self.table[DESIGN_FILE].datastore
@@ -388,7 +385,7 @@ class Database(_database.Database):
         spec_from_db = cursor.get(SPECIFICATION_KEY)
         segment_size = cursor.get(SEGMENT_SIZE_BYTES_KEY)
         cursor.close()
-        #self.commit()
+        # self.commit()
         self.end_read_only_transaction()
         self.table[DESIGN_FILE].close_datastore()
         # self.table[CONTROL_FILE].close_datastore()
@@ -1857,15 +1854,14 @@ class Database(_database.Database):
                     stats[(file, count)] = dbo.datastore_stats(self.dbtxn)
             if file in self.segment_table:
                 if self.segment_table[file] is not None:
-                    stats[
-                        (file, "segment")
-                    ] = self.segment_table[file].datastore_stats(self.dbtxn)
+                    stats[(file, "segment")] = self.segment_table[
+                        file
+                    ].datastore_stats(self.dbtxn)
             if file in self.ebm_control:
                 if self.ebm_control[file] is not None:
-                    stats[
-                        (file, "ebm")
-                    ] = self.ebm_control[
-                        file].ebm_table.datastore_stats(self.dbtxn)
+                    stats[(file, "ebm")] = self.ebm_control[
+                        file
+                    ].ebm_table.datastore_stats(self.dbtxn)
         return stats
 
     def database_stats_summary(self):
@@ -1880,9 +1876,8 @@ class Database(_database.Database):
         stats = self.database_stats()
         self.end_read_only_transaction()
         used_page_count = sum(
-            env_stat[pages] for pages in (
-                "branch_pages", "leaf_pages", "overflow_pages"
-            )
+            env_stat[pages]
+            for pages in ("branch_pages", "leaf_pages", "overflow_pages")
         )
         used_byte_count = used_page_count * env_stat["psize"]
         for value in stats.values():
@@ -2161,9 +2156,8 @@ class CursorPrimary(Cursor):
                         record = ebm_cursor.prev()
                         continue
                     recno = segment_ebm.search(SINGLEBIT)[position + count] + (
-                        (int.from_bytes(
-                            record[0], byteorder="big") - 1
-                         ) * SegmentSize.db_segment_size
+                        (int.from_bytes(record[0], byteorder="big") - 1)
+                        * SegmentSize.db_segment_size
                     )
                     if recno < 0:
                         return None
@@ -2181,9 +2175,8 @@ class CursorPrimary(Cursor):
                         record = ebm_cursor.next()
                         continue
                     recno = segment_ebm.search(SINGLEBIT)[position - count] + (
-                        (int.from_bytes(
-                            record[0], byteorder="big") - 1
-                         ) * SegmentSize.db_segment_size
+                        (int.from_bytes(record[0], byteorder="big") - 1)
+                        * SegmentSize.db_segment_size
                     )
                     if recno < 0:
                         return None
