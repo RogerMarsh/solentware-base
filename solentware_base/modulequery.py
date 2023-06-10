@@ -151,20 +151,20 @@ if _deny_sqlite3:
     if sys.platform == "win32":
         DATABASE_MODULES_IN_DEFAULT_PREFERENCE_ORDER = (
             DPT_MODULE,
-            LMDB_MODULE,
             BERKELEYDB_MODULE,
             BSDDB3_MODULE,
             DB_TCL_MODULE,
+            LMDB_MODULE,
             VEDIS_MODULE,
             UNQLITE_MODULE,
             APSW_MODULE,
         )
     else:
         DATABASE_MODULES_IN_DEFAULT_PREFERENCE_ORDER = (
-            LMDB_MODULE,
             BERKELEYDB_MODULE,
             BSDDB3_MODULE,
             DB_TCL_MODULE,
+            LMDB_MODULE,
             VEDIS_MODULE,
             UNQLITE_MODULE,
             APSW_MODULE,
@@ -175,10 +175,10 @@ else:
     if sys.platform == "win32":
         DATABASE_MODULES_IN_DEFAULT_PREFERENCE_ORDER = (
             DPT_MODULE,
-            LMDB_MODULE,
             BERKELEYDB_MODULE,
             BSDDB3_MODULE,
             DB_TCL_MODULE,
+            LMDB_MODULE,
             VEDIS_MODULE,
             UNQLITE_MODULE,
             APSW_MODULE,
@@ -186,10 +186,10 @@ else:
         )
     else:
         DATABASE_MODULES_IN_DEFAULT_PREFERENCE_ORDER = (
-            LMDB_MODULE,
             BERKELEYDB_MODULE,
             BSDDB3_MODULE,
             DB_TCL_MODULE,
+            LMDB_MODULE,
             VEDIS_MODULE,
             UNQLITE_MODULE,
             APSW_MODULE,
@@ -365,7 +365,7 @@ def modules_for_existing_databases(folder, filespec):
 
                         # Catch cases where 'filename' is not a database
                         # in 'filepath'.  (module.db.DBNoSuchFileError)
-                        except module.tkinter.TclError:
+                        except module.TclError:
                             continue
 
                         finally:
@@ -390,7 +390,7 @@ def modules_for_existing_databases(folder, filespec):
                             )
 
                         # Catch cases where 'filepath' does not exist.
-                        except module.tkinter.TclError:
+                        except module.TclError:
                             continue
 
                         finally:

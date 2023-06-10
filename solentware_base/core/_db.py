@@ -2,7 +2,22 @@
 # Copyright 2019 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""Access a Berkeley DB database with the bsddb3 module."""
+"""Access a Berkeley DB database with the berkeleydb or bsddb3 modules.
+
+berkeleydb is available at Python 3.6 versions and later.
+bsddb3 is available at Python 3.9 versions and earlier.
+
+See jcea.es/programacion/pybsddb.htm for restrictions on combining bsddb3
+and berkeleydb with versions of Berkeley DB.
+
+OpenBSD 7.3 ports and packages provides Berkeley DB 4.6.21 and bsddb3-6.0.1
+which works on Python 3.9, but not Python 3.10 (the default version) or
+Python 3.11; which are the three Python ports provided.
+
+Berkeley DB 4.6 is not compatible with berkeleydb, but can be accessed by
+the _db_tkinter module, a sibling of _db (this module).
+
+"""
 import os
 from ast import literal_eval
 import bisect
@@ -53,6 +68,9 @@ class DatabaseError(Exception):
 
 class Database(_database.Database):
     """Define file and record access methods."""
+
+    # Default checkpoint interval after commits.
+    _MINIMUM_CHECKPOINT_INTERVAL = 5
 
     class SegmentSizeError(Exception):
         """Raise when segment size in database is not in specification."""
@@ -140,14 +158,14 @@ class Database(_database.Database):
         if self.dbtxn is not None:
             self.dbtxn.abort()
             self.dbtxn = None
-            self.dbenv.txn_checkpoint(5)
+            self.dbenv.txn_checkpoint(self._MINIMUM_CHECKPOINT_INTERVAL)
 
     def commit(self):
         """Commit the active transaction and remove binding to txn object."""
         if self.dbtxn is not None:
             self.dbtxn.commit()
             self.dbtxn = None
-            self.dbenv.txn_checkpoint(5)
+            self.dbenv.txn_checkpoint(self._MINIMUM_CHECKPOINT_INTERVAL)
 
     def file_name_for_database(self, database):
         """Return filename for database.
@@ -269,6 +287,29 @@ class Database(_database.Database):
         gbytes = self.environment.get("gbytes", 0)
         bytes_ = self.environment.get("bytes", 0)
         self.dbenv = dbe.DBEnv()
+        # bsddb3-6.0.1 does not have the log_set_config() method.
+        # bsddb3-6.1.0 does have this method.
+        # OpenBSD 7.3 has Berkeley DB 4.6 which is compatible with
+        # bsddb3-6.0.1 but not bsddb3-6.1.0 but most other BSDs which use
+        # an old Berkeley DB (licence reasons assumed) have version 5.3.28
+        # which is compatible with bsddb3-6.1.0 but not bsddb3-6.0.1.
+        # bsddb3-6.0.1 documentation advertises the log_set_config() method
+        # but the Berkeley DB 4.6.21 documentation does not.
+        # bsddb3-6.1.0 documentation advertises the log_set_config() method
+        # as does the Berkeley DB 5.3.28 documentation.
+        # The sibling _db_tkinter module cannot call the log_set_config()
+        # method and runs a subprocesss to do a db archive to remove old
+        # log files at some useful points: it expects the utility to be
+        # '/usr/local/bin/db4_archive', being the OpenBSD name.
+        # Above ignores recommendation to use berkeleydb, not bsddb3, at
+        # Python 3.6 and later.
+        try:
+            self.dbenv.log_set_config(dbe.DB_LOG_AUTO_REMOVE, 1)
+        except AttributeError as exc:
+            if not _openbsd_platform:
+                raise
+            if "'log_set_config'" not in str(exc):
+                raise
         if gbytes or bytes_:
             self.dbenv.set_cachesize(gbytes, bytes_)
         if self.home_directory is not None:
@@ -333,8 +374,11 @@ class Database(_database.Database):
                 pass
         if _openbsd_platform:
             maxlocks = self.environment.get("maxlocks", 0)
+            maxobjects = self.environment.get("maxobjects", 0)
             if maxlocks:
                 self.dbenv.set_lk_max_locks(maxlocks)
+            if maxobjects:
+                self.dbenv.set_lk_max_objects(maxobjects)
 
         self.dbenv.open(self.home_directory, self.environment_flags(dbe))
         if files is None:
@@ -468,7 +512,8 @@ class Database(_database.Database):
     def checkpoint_before_close_dbenv(self):
         """Do a checkpoint call."""
         # Rely on environment_flags() call for transaction state.
-        self.dbenv.txn_checkpoint()
+        if self.dbtxn is not None:
+            self.dbenv.txn_checkpoint()
 
     def close_database_contexts(self, files=None):
         """Close files in database.

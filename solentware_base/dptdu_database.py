@@ -90,6 +90,9 @@ class Database(_dpt.Database):
     def unset_defer_update(self):
         """Do nothing.  Provided for compatibility with other engines."""
 
+    def do_final_segment_deferred_updates(self):
+        """Do nothing.  Provided for compatibility with other engines."""
+
 
 class _DPTFile(_dpt._DPTFile):
     """This class is used to access files in a DPT database.

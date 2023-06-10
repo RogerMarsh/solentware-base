@@ -142,10 +142,10 @@ class CreateDatabase:
             eng
             for eng in (
                 dptapi,
-                lmdb,
                 berkeleydb,
                 bsddb3,
                 db_tcl,
+                lmdb,
                 vedis,
                 unqlite,
                 apsw,

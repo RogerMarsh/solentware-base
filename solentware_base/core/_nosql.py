@@ -129,6 +129,19 @@ class Database(_database.Database):
         # database.
         self._initial_segment_size_bytes = segment_size_bytes
 
+    def _generate_database_file_name(self, path):
+        """Return path to database file.
+
+        By default this is a file where os.path.basename(path) ia same as
+        os.path.dirname(path); and path is assumed to follow this rule.
+
+        However some database engine mangle os.path.basename(path) to give
+        the file name.  Override this method if necessary to apply the
+        required mangle to os.path.basename(path).
+
+        """
+        return path
+
     def _validate_segment_size_bytes(self, segment_size_bytes):
         if segment_size_bytes is None:
             return
@@ -151,6 +164,97 @@ class Database(_database.Database):
         """Commit tranaction."""
         if self.dbenv:
             self.dbenv.commit()
+
+    def _default_checkpoint_guard(self):
+        """Implement a default scheme for emulating checkpoint.
+
+        Intended for use only in overrides of open_database() where the
+        database engine does not support transaction commit and backout.
+
+        """
+        name = self._generate_database_file_name(self.database_file)
+        if os.path.exists(os.path.join(".".join((name, "stage1")))):
+            raise DatabaseError(
+                "".join(
+                    (
+                        "The database may be corrupted: the *.commit ",
+                        "version is probably fine",
+                    )
+                )
+            )
+        original = ".".join((name, "commit"))
+        if os.path.exists(original):
+            with open(name, "wb") as copyto:
+                with open(original, "rb") as copyfrom:
+                    copyto.write(copyfrom.read())
+        # May not get as far as a _default_commit_implementation() call
+        # after changes otherwise.  Better to hit the exception just above
+        # rather than be left with an otherwise unrecoverable database.
+        elif os.path.exists(name):
+            self._default_commit_implementation()
+
+    def _default_checkpoint_implementation(self):
+        """Implement a default scheme for emulating checkpoint.
+
+        Intended for use only in overrides of _commit_on_close() where the
+        database engine does not support transaction commit and backout.
+
+        """
+        name = self._generate_database_file_name(self.database_file)
+        if os.path.isfile(
+            os.path.join(".".join((name, "commit")))
+        ):
+            os.replace(
+                os.path.join(".".join((name, "commit"))),
+                name,
+            )
+
+    def _default_commit_implementation(self):
+        """Implement a default scheme for emulating commit.
+
+        Intended for use only in _default_checkpoint_guard() or overrides
+        of _commit_on_close() and _commit_on_housekeeping() where the
+        database engine does not support transaction commit and backout.
+
+        """
+        name = self._generate_database_file_name(self.database_file)
+        with open(os.path.join(".".join((name, "stage1"))), "xb") as stage1:
+            with open(name, "rb") as original:
+                stage1.write(original.read())
+        os.replace(
+            os.path.join(".".join((name, "stage1"))),
+            os.path.join(".".join((name, "commit"))),
+        )
+
+    def _commit_on_close(self):
+        """Do nothing.
+
+        Subclasses of _nosql.Database should override this method if the
+        target database engine does not support transactions.  This method
+        is called in _nosqldu.Database.deferred_update_housekeeping() and
+        _nosql.Database.close_database().  Overrides are expected to revert
+        the database to the state at implied start of transaction if an
+        error occurred preventing implied end of transaction.
+
+        _nosql.Database._default_commit_on_close() implements a scheme that
+        may be suitable for many subclasses.  It should be called only from
+        overrides of _nosql.Database._commit_on_close().
+        """
+
+    def _commit_on_housekeeping(self):
+        """Do nothing.
+
+        Subclasses of _nosql.Database should override this method if the
+        target database engine does not support transactions.  This method
+        is called in _nosqldu.Database.deferred_update_housekeeping() and
+        _nosql.Database.close_database().  Overrides are expected to revert
+        the database to the state at implied start of transaction if an
+        error occurred preventing implied end of transaction.
+
+        _nosql.Database._default_commit_on_close() implements a scheme that
+        may be suitable for many subclasses.  It should be called only from
+        overrides of _nosql.Database._commit_on_close().
+        """
 
     def open_database(self, dbe, dbclass, dberror, files=None):
         """Open NoSQL connection and specified tables and indicies.
@@ -199,6 +303,7 @@ class Database(_database.Database):
         # The ___control table should be present already if the file exists.
         if self.database_file is not None:
             dbenv = dbclass(self.database_file)
+            dbenv.disable_autocommit()
             if specification_key in dbenv:
                 rsk = dbenv[specification_key]
             else:
@@ -284,6 +389,7 @@ class Database(_database.Database):
                                     SECONDARY_FIELDATTS[fieldattr] // 10, 4
                                 )
             dbenv = dbclass()
+            dbenv.disable_autocommit()
 
         self.set_segment_size()
         self.dbenv = dbenv
@@ -421,6 +527,7 @@ class Database(_database.Database):
 
         """
         self.close_database_contexts()
+        self._commit_on_close()
 
     def put(self, file, key, value):
         """Insert key, or replace key, in table for file using value."""

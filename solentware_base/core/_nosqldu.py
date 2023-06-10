@@ -61,14 +61,22 @@ class Database(_databasedu.Database):
         """Not implemented for deferred update."""
         raise DatabaseError("database_cursor not implemented")
 
-    def start_transaction(self):
-        """Do not start transaction in deferred update mode."""
+    def deferred_update_housekeeping(self):
+        """Override to commit transaction for segment.
 
-    def backout(self):
-        """Do not backout transaction in deferred update mode."""
+        In the various engines with the _nosqldu API this is not essential,
+        but is done for compatibility with Berkeley DB where it is necessary
+        to prune log files frequently.  In some engines start_transaction
+        does nothing.  In some engines commit either does nothing or just
+        synchronizes the database with memory.
 
-    def commit(self):
-        """Do not commit transaction in deferred update mode."""
+        Applications should extend this method as required: perhaps to
+        record progress at commit time to assist restart.
+
+        """
+        self.commit()
+        self._commit_on_housekeeping()
+        self.start_transaction()
 
     def do_final_segment_deferred_updates(self):
         """Do deferred updates for partially filled final segment."""
@@ -261,3 +269,32 @@ class Database(_databasedu.Database):
     def get_ebm_segment(self, ebm_control, key):
         """Return existence bitmap for segment number 'key'."""
         return ebm_control.get_ebm_segment(key, self.dbenv)
+
+
+class _Database_temporary:
+    """Provide methods to override those in Database class.
+
+    Say SubClass(..., _nosqldu._Database_temporary, _nosqldu.Database, ...)
+    instead of SubClass(..., _nosqldu.Database, ...).
+
+    The methods here were the implementations in _nosqldu.Database before
+    addition of the _Database_temporary class.
+
+    The new_deferred_root() and merge() methods are not included, unlike
+    for some other engines, because they did, and continue to do, nothing.
+    """
+
+    def start_transaction(self):
+        """Do not start transaction in deferred update mode."""
+
+    def backout(self):
+        """Do not backout transaction in deferred update mode."""
+
+    def commit(self):
+        """Do not commit transaction in deferred update mode."""
+
+    def deferred_update_housekeeping(self):
+        """Override to restore behaviour overridden in _nosqldu.Database.
+
+        Do nothing.
+        """

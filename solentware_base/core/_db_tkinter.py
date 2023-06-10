@@ -2,11 +2,24 @@
 # Copyright 2022 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""Access a Berkeley DB database with the tkinter module."""
+"""Access a Berkeley DB database with the tkinter module.
+
+There are combinations of Berkeley DB, Python, bsddb3, and berkeleydb,
+versions which do not work.  See jcea.es/programacion/pybsddb.htm for
+details.
+
+If Berkeley DB has been built with Tcl support it is possible to use the
+Tcl interface via tkinter.
+
+In particular on OpenBSD 7.3 where the default Python is 3.10 and 4.6.21
+is the version of Berkeley DB.
+
+"""
 import os
 from ast import literal_eval
 import bisect
 import re
+import subprocess
 
 import sys
 
@@ -54,6 +67,9 @@ class DatabaseError(Exception):
 
 class Database(_database.Database):
     """Define file and record access methods."""
+
+    # Default checkpoint interval after commits.
+    _MINIMUM_CHECKPOINT_INTERVAL = 5
 
     class SegmentSizeError(Exception):
         """Raise when segment size in database is not in specification."""
@@ -147,14 +163,28 @@ class Database(_database.Database):
         if self.dbtxn is not None:
             tcl_tk_call((self.dbtxn, "abort"))
             self.dbtxn = None
-            tcl_tk_call((self.dbenv, "txn_checkpoint", "-min", "5"))
+            tcl_tk_call(
+                (
+                    self.dbenv,
+                    "txn_checkpoint",
+                    "-min",
+                    str(self._MINIMUM_CHECKPOINT_INTERVAL),
+                )
+            )
 
     def commit(self):
         """Commit the active transaction and remove binding to txn object."""
         if self.dbtxn is not None:
             tcl_tk_call((self.dbtxn, "commit"))
             self.dbtxn = None
-            tcl_tk_call((self.dbenv, "txn_checkpoint", "-min", "5"))
+            tcl_tk_call(
+                (
+                    self.dbenv,
+                    "txn_checkpoint",
+                    "-min",
+                    str(self._MINIMUM_CHECKPOINT_INTERVAL),
+                )
+            )
 
     def file_name_for_database(self, database):
         """Return filename for database.
@@ -379,6 +409,9 @@ class Database(_database.Database):
         # The Tcl interface to Berkeley DB does not support the maxlocks
         # parameter.  Put the argument in <home>/DB_CONFIG file and delete
         # the file immediately after opening the environment.
+        # maxobjects needed too on doing deferred updates in a transaction.
+        # Both maxobjects and maxlocks had to be set to 120000 to allow a
+        # full segment, plus some, to be imported into an empty database.
         # Delete the file first too avoiding mis-use.
         if self.home_directory is not None:
             try:
@@ -387,12 +420,16 @@ class Database(_database.Database):
                 pass
         if _openbsd_platform:
             maxlocks = self.environment.get("maxlocks", 0)
+            maxobjects = self.environment.get("maxobjects", 0)
             if maxlocks:
                 with open(
                     os.path.join(self.home_directory, "DB_CONFIG"), mode="w"
                 ) as file:
                     file.write(" ".join(("set_lk_max_locks", str(maxlocks))))
+                    file.write("\n")
+                    file.write(" ".join(("set_lk_max_objects", str(maxobjects))))
 
+        self._run_db_archive()
         options.append("-home")
         if self.home_directory is not None:
             options.append(self.home_directory)
@@ -400,6 +437,9 @@ class Database(_database.Database):
             options.append("")
         options.extend(self.environment_flags(dbe))
         self.dbenv = tcl_tk_call(tuple(["berkdb", "env"] + options))
+        # log_set_config method not documented in Tcl interface, and indeed
+        # is not a supported command, so use the db_archive utility just
+        # before opening and after closing environment.
         if self.home_directory is not None:
             try:
                 os.remove(os.path.join(self.home_directory, "DB_CONFIG"))
@@ -591,6 +631,31 @@ class Database(_database.Database):
             tcl_tk_call(tuple(command))
         self.commit()
 
+    def _run_db_archive(self):
+        """Run the db_archive utility to remove redundant log files."""
+        if self.home_directory is None:
+            return
+        # This module is intended for OpenBSD 7.3 where Python 3.10 has
+        # become the default making access to Berkeley DB 4.6 impossible
+        # via Python packages bsddb3 or berkeleydb.
+        # In other cases the archive utility should be run separately as
+        # required to keep space taken by log files low.  The name will
+        # indicate the Berkeley DB version somehow.
+        db_archive_utility = "db4_archive"
+        try:
+            subprocess.run(
+                [
+                    os.path.join(
+                        os.path.sep, "usr", "local", "bin", db_archive_utility
+                    ),
+                    "-d"
+                ],
+                cwd=self._get_log_dir_name(),
+            )
+        except FileNotFoundError as exc:
+            if db_archive_utility not in str(exc):
+                raise
+
     def environment_flags(self, dbe):
         """Return environment flags for transaction update."""
         return list(
@@ -600,7 +665,8 @@ class Database(_database.Database):
     def checkpoint_before_close_dbenv(self):
         """Do a checkpoint call."""
         # Rely on environment_flags() call for transaction state.
-        tcl_tk_call((self.dbenv, "txn_checkpoint"))
+        if self.dbtxn is not None:
+            tcl_tk_call((self.dbenv, "txn_checkpoint"))
 
     def close_database_contexts(self, files=None):
         """Close files in database.
@@ -651,6 +717,7 @@ class Database(_database.Database):
             self.backout()
             tcl_tk_call((self.dbenv, "close"))
             self.dbenv = None
+            self._run_db_archive()
             self.table = {}
             self.segment_table = {}
             self.ebm_control = {}

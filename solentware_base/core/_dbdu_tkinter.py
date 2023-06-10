@@ -41,6 +41,9 @@ class Database(_databasedu.Database):
     segment.
     """
 
+    # Always checkpoint after commit in deferred update.
+    _MINIMUM_CHECKPOINT_INTERVAL = 0
+
     def __init__(self, *a, **kw):
         """Extend and initialize deferred update data structures."""
         super().__init__(*a, **kw)
@@ -56,22 +59,19 @@ class Database(_databasedu.Database):
         """Not implemented for deferred update."""
         raise DatabaseError("database_cursor not implemented")
 
-    # Deferred updates are non-transactional in Berkeley DB.
-    def environment_flags(self, dbe):
-        """Return environment flags for deferred update."""
-        # Do not see how to say DB_INIT_MPOOL and DB_INIT_LOCK.
-        # Maybe setting those is pointless in _dbdu module?
-        return ["-create", "-private"]
+    def deferred_update_housekeeping(self):
+        """Override to commit transaction for segment and clear log files.
 
-    def checkpoint_before_close_dbenv(self):
-        """Do nothing.  Deferred updates are non-transactional."""
-        # Most calls of txn_checkpoint() are conditional on self.dbtxn, but the
-        # call when closing the database does not check for a transaction.
-        # Rely on environment_flags() call for transaction state.
+        Deferred update within transactions is not practical in Berkeley DB
+        unless the log files are pruned frequently.
 
-    def start_transaction(self):
-        """Do not start transaction in deferred update mode."""
-        self.dbtxn = None
+        Applications should extend this method as required: perhaps to
+        record progress at commit time to assist restart.
+
+        """
+        self.commit()
+        self._run_db_archive()
+        self.start_transaction()
 
     def do_final_segment_deferred_updates(self):
         """Do deferred updates for partially filled final segment."""
@@ -144,14 +144,13 @@ class Database(_databasedu.Database):
 
     def write_existence_bit_map(self, file, segment):
         """Write the existence bit map for segment."""
-        tcl_tk_call(
-            (
-                self.ebm_control[file].ebm_table,
-                "put",
-                segment + 1,
-                self.existence_bit_maps[file][segment].tobytes(),
-            )
+        command = [self.ebm_control[file].ebm_table, "put"]
+        if self.dbtxn:
+            command.extend(["-txn", self.dbtxn])
+        command.extend(
+            [segment + 1, self.existence_bit_maps[file][segment].tobytes()]
         )
+        tcl_tk_call(tuple(command))
 
     def _sort_and_write_high_or_chunk(
         self, file, field, segment, cursor_new, segvalues
@@ -487,6 +486,62 @@ class Database(_databasedu.Database):
         tcl_tk_call((self.segment_table[file], "sync"))
 
     def new_deferred_root(self, file, field):
+        """Do nothing.
+
+        Populating main database is slower than using a sequence of small
+        staging areas, but makes transaction commits in applications at
+        convenient intervals awkward.
+
+        Deferred update always uses the '-1' database so the main database is
+        accessed automatically since it is the '0' database.
+
+        The staging area technique can be restored in applications by use of
+        the _Database_temporary class.
+        """
+        # Lots of log files, and various lock table entries, are needed to
+        # support transactions.  This was not a problem when deferred updates
+        # were done without transactions, but now transactions are preferred
+        # managing the log limits is not seen as worth the saving in run
+        # times.
+
+    def merge(self, file, field):
+        """Do nothing: there is nothing to do in _dbdu_tkinter module."""
+
+    def get_ebm_segment(self, ebm_control, key):
+        """Return existence bitmap for segment number 'key'."""
+        # record keys are 1-based but segment_numbers are 0-based.
+        command = [ebm_control.ebm_table, "get"]
+        if self.dbtxn:
+            command.extend(["-txn", self.dbtxn])
+        command.append(key + 1)
+        seg = tcl_tk_call(tuple(command))
+        if not seg:
+            return None
+        return seg[0][1]
+
+
+class _Database_temporary:
+    """Provide methods to override those in Database class.
+
+    SC(..., _dbdu_tkinter._Database_temporary, _dbdu_tkinter.Database, ...)
+    instead of SC(..., _dbdu_tkinter.Database, ...), say.
+
+    The methods here were the implementations in _dbdu_tkinter.Database
+    before addition of the _Database_temporary class.  These implementations
+    are retained because they can be significantly faster in some large
+    updates although they use more of other resources such as disk space.
+    Disk space is cheap at time of writing but thought may have to be given
+    to how it is organized so enough is available in the right places,
+    mostly depending on Operating System.
+    """
+
+    def deferred_update_housekeeping(self):
+        """Override, restore behaviour overridden in _dbdu_tkinter.Database.
+
+        Do nothing.
+        """
+
+    def new_deferred_root(self, file, field):
         """Make new DB in dbenv for deferred updates and close current one."""
         command = [
             "berkdb",
@@ -651,11 +706,16 @@ class Database(_databasedu.Database):
                     tcl_tk_call((db_deferred[i], "close"))
                     # print('*', f, d)
                     fname, dname = db_file_database[db_deferred[i]]
+                    #print(fname, dname)
                     if fname:
                         command = ["berkdb", "dbremove"]
                         if self.dbenv:
                             command.extend(["-env", self.dbenv])
-                        command.extend(["--", fname, dname])
+                        # txn argument not documented in Tcl interface
+                        # but is needed to avoid 'Fatal error, ...'.
+                        if self.dbtxn:
+                            command.extend(["-txn", self.dbtxn])
+                        command.extend(["--", fname])#, dname])
                         tcl_tk_call(tuple(command))
                     del fname, dname
                 del buffer
@@ -714,11 +774,16 @@ class Database(_databasedu.Database):
                             tcl_tk_call((db_deferred[i], "close"))
                             # print('*', f, d)
                             fname, dname = db_file_database[db_deferred[i]]
+                            #print(fname, dname)
                             if fname:
                                 command = ["berkdb", "dbremove"]
                                 if self.dbenv:
                                     command.extend(["-env", self.dbenv])
-                                command.extend(["--", fname, dname])
+                                # txn argument not documented in Tcl interface
+                                # but is needed to avoid 'Fatal error, ...'.
+                                if self.dbtxn:
+                                    command.extend(["-txn", self.dbtxn])
+                                command.extend(["--", fname])#, dname])
                                 tcl_tk_call(tuple(command))
                             del fname, dname
                             continue
@@ -738,12 +803,3 @@ class Database(_databasedu.Database):
             # Exceptions are raised in close_database_contexts() if these are
             # not deleted here.
             del self.table[tablename][1:]
-
-    def get_ebm_segment(self, ebm_control, key):
-        """Return existence bitmap for segment number 'key'."""
-        # record keys are 1-based but segment_numbers are 0-based.
-        command = [ebm_control.ebm_table, "get"]
-        if self.dbtxn:
-            command.extend(["-txn", self.dbtxn])
-        command.append(key + 1)
-        return tcl_tk_call(tuple(command)) or None

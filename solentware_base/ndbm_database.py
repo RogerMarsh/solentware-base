@@ -34,7 +34,21 @@ class Database(_nosql.Database):
         Then the super().open_database() call in except path should succeed
         because segment size is now same as that on the database.
         """
+        self._default_checkpoint_guard()
         try:
             super().open_database(ndbm_module, ndbm_module.Ndbm, None, **k)
         except self.__class__.SegmentSizeError:
             super().open_database(ndbm_module, ndbm_module.Ndbm, None, **k)
+
+    def _commit_on_close(self):
+        """Override to use the default commit on close scheme."""
+        self._default_commit_implementation()
+        self._default_checkpoint_implementation()
+
+    def _commit_on_housekeeping(self):
+        """Override to use the default commit on close scheme."""
+        self._default_commit_implementation()
+
+    def _generate_database_file_name(self, path):
+        """Override and return path to ndbm database file."""
+        return ".".join((path, "db"))

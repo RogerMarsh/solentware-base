@@ -57,16 +57,18 @@ class Database(_databasedu.Database):
         """Return environment flags for deferred update."""
         return super().environment_flags(dbe)
 
-    def checkpoint_before_close_dbenv(self):
-        """Do nothing.  Deferred updates are non-transactional."""
-        # Most calls of txn_checkpoint() are conditional on self.dbtxn, but the
-        # call when closing the database does not check for a transaction.
-        # Rely on environment_flags() call for transaction state.
+    def deferred_update_housekeeping(self):
+        """Override to commit transaction for segment.
 
-    # Must do transactions in Symas LMMD.
-    # def start_transaction(self):
-    #     """Do not start transaction in deferred update mode."""
-    #     self.dbtxn = None
+        In Symas LMMD this is not essential, but is done for compatibility
+        with Berkeley DB where it is necessary to prune log files frequently.
+
+        Applications should extend this method as required: perhaps to
+        record progress at commit time to assist restart.
+
+        """
+        self.commit()
+        self.start_transaction()
 
     def do_final_segment_deferred_updates(self):
         """Do deferred updates for partially filled final segment."""
@@ -471,3 +473,23 @@ class Database(_databasedu.Database):
             key.to_bytes(4, byteorder="big"),
             db=ebm_control.ebm_table.datastore,
         )
+
+
+class _Database_temporary:
+    """Provide methods to override those in Database class.
+
+    Say SubClass(..., _lmdbdu._Database_temporary, _lmdbdu.Database, ...)
+    instead of SubClass(..., _lmdbdu.Database, ...).
+
+    The methods here were the implementations in _lmdbdu.Database before
+    addition of the _Database_temporary class.
+
+    The new_deferred_root() and merge() methods are not included, unlike
+    for some other engines, because they did, and continue to do, nothing.
+    """
+
+    def deferred_update_housekeeping(self):
+        """Override to restore behaviour overridden in _lmdbdu.Database.
+
+        Do nothing.
+        """

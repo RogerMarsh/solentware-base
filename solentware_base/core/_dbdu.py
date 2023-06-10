@@ -40,6 +40,9 @@ class Database(_databasedu.Database):
     segment.
     """
 
+    # Always checkpoint after commit in deferred update.
+    _MINIMUM_CHECKPOINT_INTERVAL = 0
+
     def __init__(self, *a, **kw):
         """Extend and initialize deferred update data structures."""
         super().__init__(*a, **kw)
@@ -55,30 +58,18 @@ class Database(_databasedu.Database):
         """Not implemented for deferred update."""
         raise DatabaseError("database_cursor not implemented")
 
-    # Deferred updates are non-transactional in Berkeley DB.
-    def environment_flags(self, dbe):
-        """Return environment flags for deferred update."""
-        return (
-            dbe.DB_CREATE
-            |
-            # dbe.DB_RECOVER |
-            dbe.DB_INIT_MPOOL
-            | dbe.DB_INIT_LOCK
-            |
-            # dbe.DB_INIT_LOG |
-            # dbe.DB_INIT_TXN |
-            dbe.DB_PRIVATE
-        )
+    def deferred_update_housekeeping(self):
+        """Override to commit transaction for segment and clear log files.
 
-    def checkpoint_before_close_dbenv(self):
-        """Do nothing.  Deferred updates are non-transactional."""
-        # Most calls of txn_checkpoint() are conditional on self.dbtxn, but the
-        # call when closing the database does not check for a transaction.
-        # Rely on environment_flags() call for transaction state.
+        Deferred update within transactions is not practical in Berkeley DB
+        unless the log files are pruned frequently.
 
-    def start_transaction(self):
-        """Do not start transaction in deferred update mode."""
-        self.dbtxn = None
+        Applications should extend this method as required: perhaps to
+        record progress at commit time to assist restart.
+
+        """
+        self.commit()
+        self.start_transaction()
 
     def do_final_segment_deferred_updates(self):
         """Do deferred updates for partially filled final segment."""
@@ -108,7 +99,7 @@ class Database(_databasedu.Database):
         ]
         self.start_transaction()
         for file in self.specification:
-            dbc = self.table[file][0].cursor()
+            dbc = self.table[file][0].cursor(txn=self.dbtxn)
             try:
                 high_record = dbc.last()
             finally:
@@ -136,7 +127,9 @@ class Database(_databasedu.Database):
     def write_existence_bit_map(self, file, segment):
         """Write the existence bit map for segment."""
         self.ebm_control[file].ebm_table.put(
-            segment + 1, self.existence_bit_maps[file][segment].tobytes()
+            segment + 1,
+            self.existence_bit_maps[file][segment].tobytes(),
+            txn=self.dbtxn,
         )
 
     def _sort_and_write_high_or_chunk(
@@ -205,7 +198,9 @@ class Database(_databasedu.Database):
                     if isinstance(current_segment, RecordsetSegmentList):
                         # self._path_marker.add('p5a-a')
                         self.segment_table[file].put(
-                            int.from_bytes(segref[-4:], "big"), seg.tobytes()
+                            int.from_bytes(segref[-4:], "big"),
+                            seg.tobytes(),
+                            txn=self.dbtxn,
                         )
                         cursor_high.delete()
                         cursor_high.put(
@@ -221,7 +216,9 @@ class Database(_databasedu.Database):
                         )
                     elif isinstance(current_segment, RecordsetSegmentInt):
                         # self._path_marker.add('p5a-b')
-                        srn = self.segment_table[file].append(seg.tobytes())
+                        srn = self.segment_table[file].append(
+                            seg.tobytes(), txn=self.dbtxn
+                        )
                         # Why not use cursor_high throughout this method?
                         # Then why not use DB_CURRENT and remove the delete()?
                         cursor_high.delete()
@@ -239,7 +236,9 @@ class Database(_databasedu.Database):
                     else:
                         # self._path_marker.add('p5a-c')
                         self.segment_table[file].put(
-                            int.from_bytes(segref[-4:], "big"), seg.tobytes()
+                            int.from_bytes(segref[-4:], "big"),
+                            seg.tobytes(),
+                            txn=self.dbtxn,
                         )
                         cursor_high.delete()
                         cursor_high.put(
@@ -257,7 +256,9 @@ class Database(_databasedu.Database):
                     # self._path_marker.add('p5b')
                     if isinstance(current_segment, RecordsetSegmentInt):
                         # self._path_marker.add('p5b-a')
-                        srn = self.segment_table[file].append(seg.tobytes())
+                        srn = self.segment_table[file].append(
+                            seg.tobytes(), txn=self.dbtxn
+                        )
                         # Why not use cursor_high throughout this method?
                         # Then why not use DB_CURRENT and remove the delete()?
                         cursor_high.delete()
@@ -275,7 +276,9 @@ class Database(_databasedu.Database):
                     else:
                         # self._path_marker.add('p5b-b')
                         self.segment_table[file].put(
-                            int.from_bytes(segref[-4:], "big"), seg.tobytes()
+                            int.from_bytes(segref[-4:], "big"),
+                            seg.tobytes(),
+                            txn=self.dbtxn,
                         )
                         cursor_high.delete()
                         cursor_high.put(
@@ -373,7 +376,9 @@ class Database(_databasedu.Database):
                 del segvalues[skey]
                 k = skey.encode()
                 if count > 1:
-                    srn = self.segment_table[file].append(records)
+                    srn = self.segment_table[file].append(
+                        records, txn=self.dbtxn
+                    )
                     cursor_new.put(
                         k,
                         b"".join(
@@ -405,6 +410,55 @@ class Database(_databasedu.Database):
         # calls in later multi-chunk updates on same segment.  Not known to be
         # needed generally yet.
         self.segment_table[file].sync()
+
+    def new_deferred_root(self, file, field):
+        """Do nothing.
+
+        Populating main database is slower than using a sequence of small
+        staging areas, but makes transaction commits in applications at
+        convenient intervals awkward.
+
+        Deferred update always uses the '-1' database so the main database is
+        accessed automatically since it is the '0' database.
+
+        The staging area technique can be restored in applications by use of
+        the _Database_temporary class.
+        """
+        # Lots of log files, and various lock table entries, are needed to
+        # support transactions.  This was not a problem when deferred updates
+        # were done without transactions, but now transactions are preferred
+        # managing the log limits is not seen as worth the saving in run
+        # times.
+
+    def merge(self, file, field):
+        """Do nothing: there is nothing to do in _dbdu module."""
+
+    def get_ebm_segment(self, ebm_control, key):
+        """Return existence bitmap for segment number 'key'."""
+        # record keys are 1-based but segment_numbers are 0-based.
+        return ebm_control.ebm_table.get(key + 1, txn=self.dbtxn)
+
+
+class _Database_temporary:
+    """Provide methods to override those in Database class.
+
+    Say SubClass(..., _dbdu._Database_temporary, _dbdu.Database, ...)
+    instead of SubClass(..., _dbdu.Database, ...).
+
+    The methods here were the implementations in _dbdu.Database before
+    addition of the _Database_temporary class.  These implementations
+    are retained because they can be significantly faster in some large
+    updates although they use more of other resources such as disk space.
+    Disk space is cheap at time of writing but thought may have to be given
+    to how it is organized so enough is available in the right places,
+    mostly depending on Operating System.
+    """
+
+    def deferred_update_housekeeping(self):
+        """Override to restore behaviour overridden in _dbdu.Database.
+
+        Do nothing.
+        """
 
     def new_deferred_root(self, file, field):
         """Make new DB in dbenv for deferred updates and close current one."""
@@ -492,6 +546,7 @@ class Database(_databasedu.Database):
                 secondary if self.home_directory is not None else None,
                 dbname=secondary,
                 dbtype=self._dbe.DB_BTREE,
+                txn=self.dbtxn,
             )
         # if self._file_per_database:
         #    self.table[tablename].insert(1, self._dbe.DB(self.dbenv))
@@ -513,7 +568,7 @@ class Database(_databasedu.Database):
         for dbo in db_deferred:
             # self._path_marker.add('p4')
             db_buffers.append(collections.deque())
-            db_cursors.append(dbo.cursor())
+            db_cursors.append(dbo.cursor(txn=self.dbtxn))
         try:
             length_limit = int(
                 SegmentSize.segment_sort_scale // max(1, len(db_buffers))
@@ -537,7 +592,7 @@ class Database(_databasedu.Database):
                     db_deferred[i].close()
                     # print('*', f, d)
                     if fname is not None:
-                        self.dbenv.dbremove(fname)  # , database=d)
+                        self.dbenv.dbremove(fname, txn=self.dbtxn)
                     del fname, dname
                 del buffer
                 del dbc
@@ -550,7 +605,7 @@ class Database(_databasedu.Database):
                 if buffer:
                     # self._path_marker.add('p11')
                     heappush(updates, (buffer.popleft(), i))
-            cursor = self.table[tablename][0].cursor()
+            cursor = self.table[tablename][0].cursor(txn=self.dbtxn)
             try:
                 while updates:
                     # self._path_marker.add('p12')
@@ -579,7 +634,7 @@ class Database(_databasedu.Database):
                             db_deferred[i].close()
                             # print(f, d)
                             if fname is not None:
-                                self.dbenv.dbremove(fname)  # , database=d)
+                                self.dbenv.dbremove(fname, txn=self.dbtxn)
                             del fname, dname
                             continue
                         del dbc
@@ -592,8 +647,3 @@ class Database(_databasedu.Database):
                 if dbc:
                     # self._path_marker.add('p20')
                     dbc.close()
-
-    def get_ebm_segment(self, ebm_control, key):
-        """Return existence bitmap for segment number 'key'."""
-        # record keys are 1-based but segment_numbers are 0-based.
-        return ebm_control.ebm_table.get(key + 1, txn=self.dbtxn)

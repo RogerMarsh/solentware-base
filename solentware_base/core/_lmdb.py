@@ -9,8 +9,6 @@ import bisect
 import re
 import shutil
 
-import sys
-
 from . import filespec
 from .constants import (
     SECONDARY,
@@ -25,15 +23,11 @@ from .constants import (
     SEGMENT_HEADER_LENGTH,
     DEFAULT_MAP_SIZE,
     DEFAULT_MAP_BLOCKS,
+    DEFAULT_MAP_PAGES,
 )
 from . import _database
 from .bytebit import Bitarray, SINGLEBIT
 from .segmentsize import SegmentSize
-
-# Some names are imported '* as _*' to avoid confusion with sensible
-# object names within the _db module.
-# Did not bother about this until pylint with default settings gave
-# warnings.
 from . import cursor as _cursor
 from .recordset import (
     RecordsetSegmentBitarray,
@@ -42,10 +36,6 @@ from .recordset import (
     RecordsetCursor as _RecordsetCursor,
     RecordList,
 )
-
-# DBenv parameter maxlocks may need setting on OpenBSD.
-_openbsd_platform = sys.platform.startswith("openbsd")
-del sys
 
 
 class DatabaseError(Exception):
@@ -366,8 +356,8 @@ class Database(_database.Database):
             self.dbenv = None
         dbenv.close()
         dbenv = None
-        # This open must not be readonly so both read-only and read-wrrite
-        # tranasction can be done in the environment.
+        # This open must not be readonly so both read-only and read-write
+        # tranasctions can be done in the environment.
         self.dbenv = dbe.Environment(
             path=self.database_file,
             map_size=DEFAULT_MAP_SIZE * self.map_blocks,
@@ -376,8 +366,6 @@ class Database(_database.Database):
             **self.environment_flags(dbe),
         )
         self.table[DESIGN_FILE].open_datastore(self.dbenv)
-        # self.table[CONTROL_FILE].open_datastore(self.dbenv)
-        # self.start_transaction()
         self.start_read_only_transaction()
         cursor = self.dbtxn.transaction.cursor(
             self.table[DESIGN_FILE].datastore
@@ -385,10 +373,8 @@ class Database(_database.Database):
         spec_from_db = cursor.get(SPECIFICATION_KEY)
         segment_size = cursor.get(SEGMENT_SIZE_BYTES_KEY)
         cursor.close()
-        # self.commit()
         self.end_read_only_transaction()
         self.table[DESIGN_FILE].close_datastore()
-        # self.table[CONTROL_FILE].close_datastore()
         spec_from_db = literal_eval(spec_from_db.decode())
         if self._use_specification_items is not None:
             self.specification.is_consistent_with(
@@ -497,9 +483,7 @@ class Database(_database.Database):
         return dict(subdir=False, readahead=False)
 
     def checkpoint_before_close_dbenv(self):
-        """Do a checkpoint call."""
-        # Rely on environment_flags() call for transaction state.
-        # self.dbenv.txn_checkpoint()
+        """Do nothing.  Present for compatibility with _db module."""
 
     def open_database_contexts(self, files=None):
         """Open files in the transaction, if any, in self.dbtxn.
@@ -685,7 +669,7 @@ class Database(_database.Database):
         return key, record.decode()
 
     def encode_record_number(self, key):
-        """Return repr(key).encode() because this is bsddb(3) version.
+        """Return repr(key).encode() because this is Symas LMMB version.
 
         Typically used to convert primary key, a record number, to secondary
         index format.
@@ -694,7 +678,7 @@ class Database(_database.Database):
         return repr(key).encode()
 
     def decode_record_number(self, skey):
-        """Return literal_eval(skey.decode()) because this is bsddb(3) version.
+        """Return literal_eval(skey.decode()) for Symas LMMB version.
 
         Typically used to convert secondary index reference to primary record,
         a str(int), to a record number.
@@ -703,7 +687,7 @@ class Database(_database.Database):
         return literal_eval(skey.decode())
 
     def encode_record_selector(self, key):
-        """Return key.encode() because this is bsddb(3) version.
+        """Return key.encode() because this is Symas LMMB version.
 
         Typically used to convert a key being used to search a secondary index
         to the form held on the database.
@@ -1645,36 +1629,8 @@ class Database(_database.Database):
                         value[SEGMENT_HEADER_LENGTH:],
                         db=self.segment_table[file].datastore,
                     )
-
-                # Delete segment references.
-                # cursor.delete()
-
                 record = cursor.next()
 
-            # Delete segment references.
-            # try:
-            #    self.table[SUBFILE_DELIMITER.join((file, field))
-            #               ][0].delete(key, txn=self.dbtxn)
-            # except self._dbe.DBNotFoundError:
-            #    pass
-
-        # This block comment and commented statements in preceding "with"
-        # block retained from _db module for Berkeley DB.
-        # Delete segment references.
-        # The commented delete methods, cursor and database, within preceding
-        # try ... finally ... attract exceptions when deleting a partial
-        # position query from a chesstab database while that query is
-        # displayed (by F11 for example).
-        # cursor gets 'BDB0097 Transaction not specified for a transactional
-        # database'.
-        # database gets 'BDB0087 DB_RUNRECOVERY: Fatal error, run database
-        # recovery -- BDB0060 PANIC: fatal region error detected; run recovery'
-        # In both cases recovery run when starting application normally seems
-        # to leave things in good order, with the record deleted.
-        # In neither case is an exception generated when the deleted record is
-        # not displayed, and displaying a different record does not result in
-        # an exception.
-        #
         self.dbtxn.transaction.delete(
             key,
             db=self.table[SUBFILE_DELIMITER.join((file, field))][0].datastore,
@@ -1744,7 +1700,7 @@ class Database(_database.Database):
                     )
 
     def database_cursor(self, file, field, keyrange=None):
-        """Create and return a cursor on DB() for (file, field).
+        """Return a cursor on Symas LMMD sub-database for (file, field).
 
         keyrange is an addition for DPT. It may yet be removed.
 
@@ -1776,11 +1732,11 @@ class Database(_database.Database):
     # Comment in chess_ui for make_position_analysis_data_source method, only
     # call, suggests is_database_file_active should not be needed.
     def is_database_file_active(self, file):
-        """Return True if the DB object for file exists."""
+        """Return True if Symas LMMD sub-database object for file exists."""
         return self.table[file][0] is not None
 
     def get_table_connection(self, file):
-        """Return main DB object for file."""
+        """Return main Symas LMMD sub-database object for file."""
         if self.dbenv:
             return self.table[file][0].datastore
         return None
@@ -1795,42 +1751,7 @@ class Database(_database.Database):
         taskmethodargs=None,
         use_specification_items=None,
     ):
-        """Run taskmethod to perform database task.
-
-        This method is structured to be compatible with the requirements of
-        the sqlite3 version which is intended for use in a separate thread and
-        must open a separate connection to the database.  Such action seems to
-        be unnecessary in Berkeley DB so far.
-
-        This method assumes usage like:
-
-        class _ED(_db.Database):
-            def open_database(self, **k):
-                try:
-                    super().open_database(bsddb3.db, **k)
-                except self.__class__.SegmentSizeError:
-                    super().open_database(bsddb3.db, **k)
-        class DPTcompatibility:
-            def open_database(self, files=None):
-                super().open_database(files=files)
-                return True
-        class _AD(DPTcompatibility, _ED):
-            def __init__(self, folder, **k):
-                super().__init__(FileSpec(**kargs), folder, **k)
-        d = _AD(foldername, **k)
-        d.do_database_task(method_name, **k)
-
-        but the unittest abbreviates the class structure to:
-
-        class _ED(_db.Database):
-            def open_database(self, **k):
-                super().open_database(bsddb3.db, **k)
-        class _AD(_ED):
-            def __init__(self, folder, **k):
-                super().__init__({}, folder, **k)
-
-        """
-        # taskmethod(self, logwidget, **taskmethodargs)
+        """Run taskmethod to perform database task."""
         db = self.__class__(
             self.home_directory,
             use_specification_items=use_specification_items,
@@ -1895,6 +1816,45 @@ class Database(_database.Database):
             used_page_count,
             stats,  # for application specific purposes.
         )
+
+    def _set_map_blocks_above_used_pages(self, increment):
+        """Set map_blocks to increase enviroment size by increment blocks.
+
+        Approximately DEFAULT_MAP_PAGES * increment pages are set to be
+        added to the environment size when the database is next opened.
+
+        The figure is approximate because blocks = pages // block size.
+
+        This method assumes the database and environment are closed.
+
+        """
+        # self.open_database(), and self.close_database(), are used because
+        # the environment is opened inside open_database; and extracting it
+        # has to be done in way compatible with the open_database() methods
+        # for other database engines.
+        self.open_database()
+        map_pages = self.dbenv.info()["last_pgno"] + 1  # numbered from 0.
+        self.close_database()
+        self.map_blocks = (
+            map_pages + DEFAULT_MAP_PAGES * increment
+        ) // DEFAULT_MAP_PAGES
+
+    def _set_map_size_above_used_pages_between_transactions(self, increment):
+        """Set enviroment size to increment blocks above used size.
+
+        Approximately DEFAULT_MAP_PAGES * increment pages are added to the
+        environment size and map_blocks is set to fit this size.
+
+        The figure is approximate because blocks = pages // block size.
+
+        This method assumes the database and environment are open.
+
+        """
+        map_pages = self.dbenv.info()["last_pgno"] + 1  # numbered from 0.
+        self.map_blocks = (
+            map_pages + DEFAULT_MAP_PAGES * increment
+        ) // DEFAULT_MAP_PAGES
+        self.dbenv.set_mapsize(self.map_blocks * DEFAULT_MAP_SIZE)
 
 
 class _DBtxn:
@@ -2025,16 +1985,16 @@ class _Datastore:
 class Cursor(_cursor.Cursor):
     """Define a cursor on the underlying database engine dbset.
 
-    dbset - bsddb3 DB() object.
+    dbset - Symas LMMD sub-database object.
     keyrange - not used.
     transaction - the current transaction.
     kargs - absorb argunents relevant to other database engines.
 
-    The wrapped cursor is created on the Berkeley DB database in a File
+    The wrapped cursor is created on the Symas LMMD sub-database in a File
     instance.
 
     The transaction argument in the Cursor() call should be a function
-    which returns current tranasction active on the Berkeley DB environment,
+    which returns current tranasction active on the Symas LMMD environment,
     or None if there isn't one.  If supplied it's return value is used in all
     calls to methods of the wrapped cursor which have the 'txn' parameter.
     By default the calls are not within a transaction.
@@ -2067,7 +2027,7 @@ class Cursor(_cursor.Cursor):
     def refresh_recordset(self, instance=None):
         """Refresh records for datagrid access after database update.
 
-        Do nothing in Berkeley DB.  The cursor (for the datagrid) accesses
+        Do nothing in Symas LMMD.  The cursor (for the datagrid) accesses
         database directly.  There are no intervening data structures which
         could be inconsistent.
 
@@ -2077,9 +2037,9 @@ class Cursor(_cursor.Cursor):
 class CursorPrimary(Cursor):
     """Define a cursor on the underlying database engine dbset.
 
-    dbset - bsddb3 DB() object.
-    ebm - bsddb3 DB() object for existence bitmap.
-    engine - bsddb3.db module.  Only the DB_FAST_STAT flag is used at present.
+    dbset - Symas LMMD sub-database object.
+    ebm - Symas LMMD sub-database object for existence bitmap.
+    engine - lmdb module.  Only the DB_FAST_STAT flag is used at present.
     kargs - superclass arguments and absorb arguments for other engines.
 
     """
@@ -2156,7 +2116,7 @@ class CursorPrimary(Cursor):
                         record = ebm_cursor.prev()
                         continue
                     recno = segment_ebm.search(SINGLEBIT)[position + count] + (
-                        (int.from_bytes(record[0], byteorder="big") - 1)
+                        (int.from_bytes(record[0], byteorder="big"))
                         * SegmentSize.db_segment_size
                     )
                     if recno < 0:
@@ -2175,7 +2135,7 @@ class CursorPrimary(Cursor):
                         record = ebm_cursor.next()
                         continue
                     recno = segment_ebm.search(SINGLEBIT)[position - count] + (
-                        (int.from_bytes(record[0], byteorder="big") - 1)
+                        (int.from_bytes(record[0], byteorder="big"))
                         * SegmentSize.db_segment_size
                     )
                     if recno < 0:
@@ -2215,12 +2175,6 @@ class CursorPrimary(Cursor):
 
         Take partial key into account.
 
-        Words used in bsddb3 (Python) to describe set and set_both say
-        (key, value) is returned while Berkeley DB description seems to
-        say that value is returned by the corresponding C functions.
-        Do not know if there is a difference to go with the words but
-        bsddb3 works as specified.
-
         """
         # Should this be 'set_key_dup' and, or, return None if the 'set_*'
         # call returns False?
@@ -2253,8 +2207,9 @@ class CursorPrimary(Cursor):
 class CursorSecondary(Cursor):
     """Define a cursor on the underlying database engine dbset.
 
-    dbset - bsddb3 DB() object.
-    segment - bsddb3 DB() object for segment, list of record numbers or bitmap.
+    dbset - Symas LMMD sub-database object.
+    segment - Symas LMMD sub-database object for segment, list of record
+            numbers or bitmap.
     kargs - superclass arguments and absorb arguments for other engines.
 
     """
@@ -2511,12 +2466,6 @@ class CursorSecondary(Cursor):
         """Return current record after positioning cursor at record.
 
         Take partial key into account.
-
-        Words used in bsddb3 (Python) to describe set and set_both say
-        (key, value) is returned while Berkeley DB description seems to
-        say that value is returned by the corresponding C functions.
-        Do not know if there is a difference to go with the words but
-        bsddb3 works as specified.
 
         """
         if self.get_partial() is False:

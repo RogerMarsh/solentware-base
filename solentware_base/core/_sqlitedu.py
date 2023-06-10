@@ -63,6 +63,19 @@ class Database(_databasedu.Database):
         """Not implemented for deferred update."""
         raise DatabaseError("database_cursor not implemented")
 
+    def deferred_update_housekeeping(self):
+        """Override to commit transaction for segment.
+
+        In Sqlite 3 this is not essential, but is done for compatibility
+        with Berkeley DB where it is necessary to prune log files frequently.
+
+        Applications should extend this method as required: perhaps to
+        record progress at commit time to assist restart.
+
+        """
+        self.commit()
+        self.start_transaction()
+
     def do_final_segment_deferred_updates(self):
         """Do deferred updates for partially filled final segment."""
         # Write the final deferred segment database for each index
@@ -375,6 +388,54 @@ class Database(_databasedu.Database):
             yield (k, segment, svk[0], svk[1])
 
     def new_deferred_root(self, file, field):
+        """Do nothing.
+
+        Populating main database is slower than using a sequence of small
+        staging areas, but makes transaction commits in applications at
+        convenient intervals awkward.
+
+        Deferred update always uses the '-1' database so the main database is
+        accessed automatically since it is the '0' database.
+
+        The staging area technique can be restored in applications by use of
+        the _Database_temporary class.
+        """
+        # Lots of temporary databases are needed to support staging deferred
+        # updates: where will these be put and how much otherwise unused
+        # space is needed.
+        # Ensuring this space is available is not seen as worth the saving
+        # in run times.
+
+    def merge(self, file, field):
+        """Do nothing: there is nothing to do in _sqlitedu module."""
+
+    def get_ebm_segment(self, ebm_control, key):
+        """Return existence bitmap for segment number 'key'."""
+        return ebm_control.get_ebm_segment(key, self.dbenv)
+
+
+class _Database_temporary:
+    """Provide methods to override those in Database class.
+
+    Say SubClass(..., _sqliteedu._Database_temporary, _sqlitedu.Database, ...)
+    instead of SubClass(..., _sqlitedu.Database, ...).
+
+    The methods here were the implementations in _sqlitedu.Database before
+    addition of the _Database_temporary class.  These implementations
+    are retained because they can be significantly faster in some large
+    updates although they use more of other resources such as disk space.
+    Disk space is cheap at time of writing but thought may have to be given
+    to how it is organized so enough is available in the right places,
+    mostly depending on Operating System.
+    """
+
+    def deferred_update_housekeeping(self):
+        """Override to restore behaviour overridden in _sqlitedu.Database.
+
+        Do nothing.
+        """
+
+    def new_deferred_root(self, file, field):
         """Make new temporary table for deferred updates and close current."""
         # The temporary tables go in /tmp, at least in OpenBSD where the
         # default mount points allocate far too little space to /tmp for this
@@ -586,7 +647,3 @@ class Database(_databasedu.Database):
                     # self._path_marker.add('p20')
                     sqc.close()
         # self._path_marker.add('p21')
-
-    def get_ebm_segment(self, ebm_control, key):
-        """Return existence bitmap for segment number 'key'."""
-        return ebm_control.get_ebm_segment(key, self.dbenv)

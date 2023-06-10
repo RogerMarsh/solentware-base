@@ -36,6 +36,13 @@ class Ndbm:
         Python interface does not support explicit synchronization with disk.
         """
 
+    def disable_autocommit(self):
+        """Do nothing: present for compatibility with unqlite and vedis.
+
+        Definition and use of ndbm_database.Database._commit_on_close()
+        should emulate behaviour to the extent possible.
+        """
+
     def exists(self, key):
         """Return True if key is in dbm.ndbm database.
 
