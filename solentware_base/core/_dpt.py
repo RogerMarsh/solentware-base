@@ -1462,7 +1462,7 @@ class _DPTFile:
         while advance():
             if fieldocc() == primary:
                 value.append(valueocc().ExtractString())
-        return "".join(value)
+        return "".join(value) or repr("")
 
     def delete_instance(self, instance):
         """Delete an existing instance from database."""
@@ -1821,6 +1821,7 @@ class Cursor(cursor.Cursor):
                 self.get_converted_partial_with_wildcard()
             )
         games = context.CreateRecordList()
+        foundset = _cursor.foundset_all_records()
         dvcursor.GotoFirst()
         while dvcursor.Accessible():
             value = dvcursor.GetCurrentValue()
@@ -2802,19 +2803,16 @@ class _CursorDPT:
         self._foundset = None
 
     def join_primary_field_occs(self, record):
-        """Return concatenated occurrences of primary field.
-
-        It is assumed the primary field is the only visible field, so
-        there is no need to check the field name before including the
-        value in the concatenation.
-        """
+        """Return concatenated occurrences of primary field."""
         advance = record.AdvanceToNextFVPair
-        # fieldocc = record.LastAdvancedFieldName
+        fieldocc = record.LastAdvancedFieldName
         valueocc = record.LastAdvancedFieldValue
+        primary = self.dptfieldname
         value = []
         while advance():
-            value.append(valueocc().ExtractString())
-        return "".join(value)
+            if fieldocc() == primary:
+                value.append(valueocc().ExtractString())
+        return "".join(value) or repr("")
 
     def _last(self):
         self._foundset.recordset.CloseCursor(self._rscursor)

@@ -24,9 +24,9 @@ class Database(_dpt.Database):
 
     Support DPT single-step deferred updates.
 
-    DPT non-deferred (normal) update methods provided by the dptbase.Database
-    superclass are overridden here to prevent delete and edit of existing
-    records.
+    DPT non-deferred (normal) update methods provided by the _dpt.Database
+    superclass are overridden here to implement deferred update and prevent
+    delete and edit of existing records.
 
     """
 
