@@ -201,9 +201,7 @@ class Database(_database.Database):
 
         """
         name = self._generate_database_file_name(self.database_file)
-        if os.path.isfile(
-            os.path.join(".".join((name, "commit")))
-        ):
+        if os.path.isfile(os.path.join(".".join((name, "commit")))):
             os.replace(
                 os.path.join(".".join((name, "commit"))),
                 name,

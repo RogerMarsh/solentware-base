@@ -427,7 +427,9 @@ class Database(_database.Database):
                 ) as file:
                     file.write(" ".join(("set_lk_max_locks", str(maxlocks))))
                     file.write("\n")
-                    file.write(" ".join(("set_lk_max_objects", str(maxobjects))))
+                    file.write(
+                        " ".join(("set_lk_max_objects", str(maxobjects)))
+                    )
 
         self._run_db_archive()
         options.append("-home")
@@ -648,7 +650,7 @@ class Database(_database.Database):
                     os.path.join(
                         os.path.sep, "usr", "local", "bin", db_archive_utility
                     ),
-                    "-d"
+                    "-d",
                 ],
                 cwd=self._get_log_dir_name(),
             )

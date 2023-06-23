@@ -704,9 +704,7 @@ class _Database_temporary:
                     # from the list of open databases, but not in the bsddb3
                     # and berkeleydb version of this module.
                     tcl_tk_call((db_deferred[i], "close"))
-                    # print('*', f, d)
                     fname, dname = db_file_database[db_deferred[i]]
-                    #print(fname, dname)
                     if fname:
                         command = ["berkdb", "dbremove"]
                         if self.dbenv:
@@ -715,7 +713,7 @@ class _Database_temporary:
                         # but is needed to avoid 'Fatal error, ...'.
                         if self.dbtxn:
                             command.extend(["-txn", self.dbtxn])
-                        command.extend(["--", fname])#, dname])
+                        command.extend(["--", fname])
                         tcl_tk_call(tuple(command))
                     del fname, dname
                 del buffer
@@ -772,9 +770,7 @@ class _Database_temporary:
                             # not in the bsddb3 and berkeleydb version of
                             # this module.
                             tcl_tk_call((db_deferred[i], "close"))
-                            # print('*', f, d)
                             fname, dname = db_file_database[db_deferred[i]]
-                            #print(fname, dname)
                             if fname:
                                 command = ["berkdb", "dbremove"]
                                 if self.dbenv:
@@ -783,7 +779,7 @@ class _Database_temporary:
                                 # but is needed to avoid 'Fatal error, ...'.
                                 if self.dbtxn:
                                     command.extend(["-txn", self.dbtxn])
-                                command.extend(["--", fname])#, dname])
+                                command.extend(["--", fname])
                                 tcl_tk_call(tuple(command))
                             del fname, dname
                             continue
