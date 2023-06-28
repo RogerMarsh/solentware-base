@@ -18,7 +18,7 @@ from . import filespec
 from . import cursor
 from .constants import (
     SECONDARY,
-    DEFAULT_SEGMENT_SIZE_BYTES,
+    TABLE_B_SIZE,
     DPT_SYS_FOLDER,
     FILEDESC,
     DEFAULT_RECORDS,
@@ -52,6 +52,7 @@ from .find import Find
 from .where import Where
 from .findvalues import FindValues
 from .wherevalues import WhereValues
+from .segmentsize import SegmentSize
 
 FILE_PARAMETER_LIST = (
     "BHIGHPG",
@@ -62,6 +63,7 @@ FILE_PARAMETER_LIST = (
     "DSIZE",
     "FIFLAGS",
 )
+SegmentSize.db_segment_size_bytes = TABLE_B_SIZE
 
 
 class DatabaseError(Exception):
@@ -75,6 +77,8 @@ class Database:
     in the dpt_database or dptdu_database modules which customize this class.
 
     """
+
+    segment_size_bytes = SegmentSize.db_segment_size_bytes
 
     # Not used by _dpt: segment size follows page size defined by DPT.
     # Present to be compatible with _db and _sqlite modules, where segment size
@@ -97,7 +101,6 @@ class Database:
         self,
         specification,
         folder=None,
-        segment_size_bytes=None,
         sysfolder=None,
         sysprint=None,
         parms=None,
@@ -118,15 +121,12 @@ class Database:
                 ["Database folder name", str(folder), "is not valid"]
             )
             raise DatabaseError(msg)
-        if segment_size_bytes is None:
-            segment_size_bytes = DEFAULT_SEGMENT_SIZE_BYTES
         if not isinstance(specification, filespec.FileSpec):
             specification = filespec.FileSpec(**specification)
-        self._validate_segment_size_bytes(segment_size_bytes)
+        self._validate_segment_size_bytes(self.segment_size_bytes)
         self.home_directory = path
         self.database_file = None
         self.specification = specification
-        self.segment_size_bytes = segment_size_bytes
         self.dbenv = None
         self.table = {}
         self.dbtxn = None
