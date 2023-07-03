@@ -541,7 +541,7 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
         ba = Bitarray()
         ba.frombytes(b"\x0a" * 16)
         self.database.value_segments["file1"] = {
-            "field1": {"bits": ba, "list": [1, 2], "int": 9}
+            "field1": {"bits": ba, "list": [1, 2], "list": [9]}
         }
         self.database.first_chunk["file1"] = False
         self.database.initial_high_segment["file1"] = 4
@@ -568,8 +568,7 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
             ra,
             [
                 (b"bits", b"\x00\x00\x00\x05\x00\x20\x00\x00\x00\x00"),
-                (b"int", b"\x00\x00\x00\x05\x00\x09"),
-                (b"list", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x01"),
+                (b"list", b"\x00\x00\x00\x05\x00\x09"),
             ],
         )
         ra = []
@@ -585,7 +584,6 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
             ra,
             [
                 (b"\x00\x00\x00\x00", b"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"),
-                (b"\x00\x00\x00\x01", b"\x00\x01\x00\x02"),
             ],
         )
 
@@ -622,7 +620,7 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
         ba = Bitarray()
         ba.frombytes(b"\x0a" * 16)
         self.database.value_segments["file1"] = {
-            "field1": {"bits": ba, "list": [2, 3], "int": 9}
+            "field1": {"bits": ba, "list": [2, 3], "list": [9]}
         }
         self.database.first_chunk["file1"] = False
         self.database.initial_high_segment["file1"] = 4
@@ -647,11 +645,9 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
         self.assertEqual(
             ra,
             [
-                (b"bits", b"\x00\x00\x00\x05\x00\x02"),
                 (b"bits", b"\x00\x00\x00\x05\x00!\x00\x00\x00\x03"),
                 (b"int", b"\x00\x00\x00\x05\x00\x01"),
-                (b"int", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x04"),
-                (b"list", b"\x00\x00\x00\x05\x00\x04\x00\x00\x00\x02"),
+                (b"list", b"\x00\x00\x00\x05\x00\x03\x00\x00\x00\x02"),
             ],
         )
         ra = []
@@ -666,9 +662,8 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
         self.assertEqual(
             ra,
             [
-                (b"\x00\x00\x00\x02", b"\x00\x01\x00\x02\x00\x03\x00\x04"),
+                (b"\x00\x00\x00\x02", b"\x00\x01\x00\x04\x00\t"),
                 (b"\x00\x00\x00\x03", b"*\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"),
-                (b"\x00\x00\x00\x04", b"\x00\x01\x00\t"),
             ],
         )
         if hasattr(self.database, "_path_marker"):
@@ -710,7 +705,7 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
         ba = Bitarray()
         ba.frombytes(b"\x0a" * 16)
         self.database.value_segments["file1"] = {
-            "field1": {"bits": ba, "list": [2, 3], "int": 9}
+            "field1": {"bits": ba, "list": [2, 3], "list": [9]}
         }
         self.database.first_chunk["file1"] = False
         self.database.initial_high_segment["file1"] = 4
@@ -735,12 +730,10 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
         self.assertEqual(
             ra,
             [
-                (b"bits", b"\x00\x00\x00\x05\x00\x02"),
                 (b"bits", b"\x00\x00\x00\x05\x00!\x00\x00\x00\x03"),
                 (b"int", b"\x00\x00\x00\x05\x00\x01"),
-                (b"int", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x04"),
                 (b"list", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x02"),
-                (b"list", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x05"),
+                (b"list", b"\x00\x00\x00\x05\x00\t"),
                 (b"list", b"\x00\x00\x00\x06\x00\x02\x00\x00\x00\x07"),
             ],
         )
@@ -758,8 +751,6 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
             [
                 (b"\x00\x00\x00\x02", b"\x00\x01\x00\x04"),
                 (b"\x00\x00\x00\x03", b"*\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"),
-                (b"\x00\x00\x00\x04", b"\x00\x01\x00\t"),
-                (b"\x00\x00\x00\x05", b"\x00\x02\x00\x03"),
             ],
         )
         if hasattr(self.database, "_path_marker"):
@@ -1057,7 +1048,7 @@ class Database_sort_and_write(_DBOpen):
             self.assertEqual(t.__class__.__name__, "_Datastore")
 
     def test_10(self):
-        self.database.value_segments["file1"] = {"field1": {"int": 1}}
+        self.database.value_segments["file1"] = {"field1": {"list": [1]}}
         self.database.first_chunk["file1"] = False
         self.database.initial_high_segment["file1"] = 4
         self.database.high_segment["file1"] = 3
@@ -1075,7 +1066,7 @@ class Database_sort_and_write(_DBOpen):
                 if not r:
                     break
                 ra.append(cursor.item())
-        self.assertEqual(ra, [(b"int", b"\x00\x00\x00\x05\x00\x01")])
+        self.assertEqual(ra, [(b"list", b"\x00\x00\x00\x05\x00\x01")])
         ra = []
         with self.database.dbtxn.transaction.cursor(
             db=self.database.segment_table["file1"].datastore

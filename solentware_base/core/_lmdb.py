@@ -2091,12 +2091,14 @@ class CursorPrimary(Cursor):
         try:
             position += segment_ebm.search(SINGLEBIT).index(record_number)
         except ValueError:
-            return 0
+            position += bisect.bisect_left(
+                segment_ebm.search(SINGLEBIT), record_number
+            )
         return position
 
     def get_record_at_position(self, position=None):
         """Return record for positionth record in file or None."""
-        if position is None:
+        if not position:  # Include position 0 in this case.
             return None
         count = 0
         abspos = abs(position)
@@ -2130,11 +2132,13 @@ class CursorPrimary(Cursor):
                     segment_ebm = Bitarray()
                     segment_ebm.frombytes(record[1])
                     ebm_count = segment_ebm.count()
-                    if count + ebm_count <= abspos:
+                    if count + ebm_count < abspos:
                         count += ebm_count
                         record = ebm_cursor.next()
                         continue
-                    recno = segment_ebm.search(SINGLEBIT)[position - count] + (
+                    recno = segment_ebm.search(SINGLEBIT)[
+                        position - count - 1
+                    ] + (
                         (int.from_bytes(record[0], byteorder="big"))
                         * SegmentSize.db_segment_size
                     )

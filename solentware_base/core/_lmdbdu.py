@@ -6,7 +6,6 @@
 import heapq
 import collections
 
-from .bytebit import Bitarray
 from .constants import (
     SECONDARY,
     SUBFILE_DELIMITER,
@@ -333,26 +332,9 @@ class Database(_databasedu.Database):
         if field not in self.value_segments[file]:
             return
 
-        # Lookup table is much quicker, and noticeable, in bulk use.
-        int_to_bytes = self._int_to_bytes
-
-        segvalues = self.value_segments[file][field]
-
         # Prepare to wrap the record numbers in an appropriate Segment class.
-        for k in segvalues:
-            value = segvalues[k]
-            if isinstance(value, list):
-                segvalues[k] = [
-                    len(value),
-                    b"".join([int_to_bytes[n] for n in value]),
-                ]
-            elif isinstance(value, Bitarray):
-                segvalues[k] = [
-                    value.count(),
-                    value.tobytes(),
-                ]
-            elif isinstance(value, int):
-                segvalues[k] = [1, value]
+        self._prepare_segment_record_list(file, field)
+        segvalues = self.value_segments[file][field]
 
         # New records go into temporary databases, one for each segment, except
         # when filling the segment which was high when this update started.
@@ -369,10 +351,6 @@ class Database(_databasedu.Database):
         # the indentation seems too far right for easy reading: there is an
         # extra 'try ... finally ...' compared with the _sqlitedu module which
         # makes the difference.)
-        # Note the substantive difference between this module and _sqlitedu:
-        # the code for Berkeley DB updates the main index directly if an entry
-        # already exists, but the code for SQLite always updates a temporary
-        # table and merges into the main table later.
         with self.dbtxn.transaction.cursor(
             db=self.table[SUBFILE_DELIMITER.join((file, field))][-1].datastore
         ) as cursor_new:

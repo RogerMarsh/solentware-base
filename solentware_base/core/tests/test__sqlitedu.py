@@ -250,11 +250,11 @@ class Database_methods(_SQLiteOpen):
         self.database.new_deferred_root("file1", "field1")
         self.assertEqual(
             self.database.table["file1_field1"],
-            ["file1_field1", "t_0_file1_field1"],
+            ["file1_field1"],
         )
         self.assertEqual(
             self.database.index["file1_field1"],
-            ["ixfile1_field1", "ixt_0_file1_field1"],
+            ["ixfile1_field1"],
         )
 
     def test_06_set_defer_update_01(self):
@@ -514,7 +514,7 @@ class Database_sort_and_write(_SQLiteOpen):
         self.database.sort_and_write("file1", "field1", 5)
         self.assertEqual(
             self.database.table["file1_field1"],
-            ["file1_field1", "t_0_file1_field1"],
+            ["file1_field1"],
         )
 
     def test_09(self):
@@ -526,7 +526,7 @@ class Database_sort_and_write(_SQLiteOpen):
         self.assertEqual(self.database.table["file1_field1"], ["file1_field1"])
 
     def test_10(self):
-        self.database.value_segments["file1"] = {"field1": {"int": 1}}
+        self.database.value_segments["file1"] = {"field1": {"list": [1]}}
         self.database.first_chunk["file1"] = False
         self.database.initial_high_segment["file1"] = 4
         self.database.high_segment["file1"] = 3
@@ -535,7 +535,7 @@ class Database_sort_and_write(_SQLiteOpen):
         cursor = self.database.dbenv.cursor()
         self.assertEqual(
             cursor.execute("select * from file1_field1").fetchall(),
-            [("int", 5, 1, 1)],
+            [("list", 5, 1, 1)],
         )
         self.assertEqual(
             cursor.execute("select * from file1__segment").fetchall(), []
@@ -585,7 +585,7 @@ class Database_sort_and_write(_SQLiteOpen):
         ba = Bitarray()
         ba.frombytes(b"\x0a" * 16)
         self.database.value_segments["file1"] = {
-            "field1": {"bits": ba, "list": [1, 2], "int": 9}
+            "field1": {"bits": ba, "list": [1, 2], "list": [9]}
         }
         self.database.first_chunk["file1"] = False
         self.database.initial_high_segment["file1"] = 4
@@ -599,13 +599,13 @@ class Database_sort_and_write(_SQLiteOpen):
         cursor = self.database.dbenv.cursor()
         self.assertEqual(
             cursor.execute("select count ( * ) from file1_field1").fetchall(),
-            [(3,)],
+            [(2,)],
         )
         self.assertEqual(
             cursor.execute(
                 "select count ( * ) from file1__segment"
             ).fetchall(),
-            [(2,)],
+            [(1,)],
         )
 
     def test_14(self):
@@ -654,7 +654,7 @@ class Database_sort_and_write(_SQLiteOpen):
         ba = Bitarray()
         ba.frombytes(b"\x0a" * 16)
         self.database.value_segments["file1"] = {
-            "field1": {"bits": ba, "list": [1, 2], "int": 9}
+            "field1": {"bits": ba, "list": [1, 2], "list": [9]}
         }
         self.database.first_chunk["file1"] = False
         self.database.initial_high_segment["file1"] = 4
@@ -673,7 +673,7 @@ class Database_sort_and_write(_SQLiteOpen):
             cursor.execute(
                 "select count ( * ) from file1__segment"
             ).fetchall(),
-            [(3,)],
+            [(2,)],
         )
 
 
@@ -705,19 +705,17 @@ class Database_merge(_SQLiteOpen):
 
     def test_03(self):
         self.database.table["file1_field1"].append("t_0_file1_field1")
-        self.assertRaisesRegex(
-            Exception,
-            "(SQLError: )?no such table: t_0_file1_field1",
-            self.database.merge,
-            *("file1", "field1"),
-        )
+        # When extra tables, 't_0_*, were used merge(...) caused an
+        # sqlite3.OperationalError exception caught by assertRaisesRegex()
+        # call.
+        self.database.merge("file1", "field1")
 
     def test_04(self):
         self.assertEqual(SegmentSize._segment_sort_scale, _segment_sort_scale)
         self.database.new_deferred_root("file1", "field1")
         self.assertEqual(
             self.database.table["file1_field1"],
-            ["file1_field1", "t_0_file1_field1"],
+            ["file1_field1"],
         )
         self.database.merge("file1", "field1")
         if hasattr(self.database, "_path_marker"):
@@ -748,13 +746,13 @@ class Database_merge(_SQLiteOpen):
         self.database.new_deferred_root("file1", "field1")
         self.assertEqual(
             self.database.table["file1_field1"],
-            ["file1_field1", "t_0_file1_field1"],
+            ["file1_field1"],
         )
         cursor = self.database.dbenv.cursor()
         cursor.execute(
             " ".join(
                 (
-                    "insert into t_0_file1_field1 ( field1 , Segment ,"
+                    "insert into file1_field1 ( field1 , Segment ,"
                     "RecordCount , file1 )",
                     "values ( ? , ? , ? , ? )",
                 )
@@ -800,13 +798,13 @@ class Database_merge(_SQLiteOpen):
         self.database.new_deferred_root("file1", "field1")
         self.assertEqual(
             self.database.table["file1_field1"],
-            ["file1_field1", "t_0_file1_field1", "t_1_file1_field1"],
+            ["file1_field1"],
         )
         cursor = self.database.dbenv.cursor()
         cursor.execute(
             " ".join(
                 (
-                    "insert into t_0_file1_field1 ( field1 , Segment ,"
+                    "insert into file1_field1 ( field1 , Segment ,"
                     "RecordCount , file1 )",
                     "values ( ? , ? , ? , ? )",
                 )
@@ -887,13 +885,13 @@ class Database_merge(_SQLiteOpen):
         self.database.new_deferred_root("file1", "field1")
         self.assertEqual(
             self.database.table["file1_field1"],
-            ["file1_field1", "t_0_file1_field1", "t_1_file1_field1"],
+            ["file1_field1"],
         )
         cursor = self.database.dbenv.cursor()
         cursor.execute(
             " ".join(
                 (
-                    "insert into t_0_file1_field1 ( field1 , Segment ,"
+                    "insert into file1_field1 ( field1 , Segment ,"
                     "RecordCount , file1 )",
                     "values ( ? , ? , ? , ? )",
                 )
@@ -912,7 +910,7 @@ class Database_merge(_SQLiteOpen):
         cursor.execute(
             " ".join(
                 (
-                    "insert into t_1_file1_field1 ( field1 , Segment ,"
+                    "insert into file1_field1 ( field1 , Segment ,"
                     "RecordCount , file1 )",
                     "values ( ? , ? , ? , ? )",
                 )
@@ -931,7 +929,7 @@ class Database_merge(_SQLiteOpen):
         cursor.execute(
             " ".join(
                 (
-                    "insert into t_0_file1_field1 ( field1 , Segment ,"
+                    "insert into file1_field1 ( field1 , Segment ,"
                     "RecordCount , file1 )",
                     "values ( ? , ? , ? , ? )",
                 )

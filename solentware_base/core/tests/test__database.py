@@ -809,6 +809,7 @@ class Database_06_subclass_methods(unittest.TestCase):
                     "file_name_for_database",
                     "checkpoint_before_close_dbenv",
                     "SegmentSizeError",
+                    "_MINIMUM_CHECKPOINT_INTERVAL",
                 )
             ),
         )

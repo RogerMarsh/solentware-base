@@ -104,19 +104,57 @@ class Database(_database.Database):
             ).setdefault(field, {})
         values = value_segments.get(key)
         if values is None:
-            value_segments[key] = record_number
-        elif isinstance(values, int):
-            value_segments[key] = [values]
-            value_segments[key].append(record_number)
+            value_segments[key] = [record_number]
         elif isinstance(values, list):
-            values.append(record_number)
-            if len(values) > SegmentSize.db_upper_conversion_limit:
-                vsk = value_segments[key] = SegmentSize.empty_bitarray.copy()
-                for j in values:
-                    vsk[j] = True
-                vsk[record_number] = True
+
+            # A (value, record_number) can be given many times.
+            # Ensure a record_number appears in the list once only.
+            if values[-1] != record_number:
+                values.append(record_number)
+                if len(values) > SegmentSize.db_upper_conversion_limit:
+                    vsk = value_segments[
+                        key
+                    ] = SegmentSize.empty_bitarray.copy()
+                    for j in values:
+                        vsk[j] = True
+                    vsk[record_number] = True
+
         else:
             values[record_number] = True
+
+    def _prepare_segment_record_list(self, file, field):
+        """Convert dict of record number lists to database record format.
+
+        A single record in a segment for an index value is represented
+        as a number within the segment.
+
+        Multiple records are represented as lists of record numbers or
+        bitmaps depending on how many are in the segment.
+
+        """
+        # Lookup table is much quicker, and noticeable, in bulk use.
+        int_to_bytes = self._int_to_bytes
+
+        segvalues = self.value_segments[file][field]
+        for k in segvalues:
+            value = segvalues[k]
+            if isinstance(value, list):
+
+                # A single record is presented as an integer: the
+                # database engine will decide the transformation.
+                if len(value) == 1:
+                    segvalues[k] = [1, value[-1]]
+                else:
+                    segvalues[k] = [
+                        len(value),
+                        b"".join([int_to_bytes[n] for n in value]),
+                    ]
+
+            else:
+                segvalues[k] = [
+                    value.count(),
+                    value.tobytes(),
+                ]
 
     def set_segment_size(self):
         """Extend and set a deferred update point at end of segment."""

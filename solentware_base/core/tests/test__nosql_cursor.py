@@ -412,27 +412,29 @@ class Cursor_primary(_NoSQL):
     def test_06_get_position_of_record_01(self):
         self.assertEqual(self.cursor.get_position_of_record(), 0)
 
-    def test_07_get_position_of_record_02(self):
-        self.assertEqual(self.cursor.get_position_of_record((5, None)), 5)
-        self.assertEqual(self.cursor.get_position_of_record((170, None)), 50)
+    def test_06_get_position_of_record_02(self):
+        self.assertEqual(self.cursor.get_position_of_record((5, None)), 6)
+        self.assertEqual(self.cursor.get_position_of_record((170, None)), 51)
 
-    def test_08_get_position_of_record_03(self):
-        self.assertEqual(self.cursor.get_position_of_record((175, None)), 55)
-        self.assertEqual(self.cursor.get_position_of_record((176, None)), 56)
-        self.assertEqual(self.cursor.get_position_of_record((177, None)), 56)
-        self.assertEqual(self.cursor.get_position_of_record((318, None)), 78)
-        self.assertEqual(self.cursor.get_position_of_record((319, None)), 79)
-        self.assertEqual(self.cursor.get_position_of_record((320, None)), 80)
-        self.assertEqual(self.cursor.get_position_of_record((383, None)), 80)
-        self.assertEqual(self.cursor.get_position_of_record((384, None)), 80)
+    def test_06_get_position_of_record_03(self):
+        self.assertEqual(self.cursor.get_position_of_record((175, None)), 56)
+        self.assertEqual(self.cursor.get_position_of_record((176, None)), 57)
+        self.assertEqual(self.cursor.get_position_of_record((177, None)), 57)
+        self.assertEqual(self.cursor.get_position_of_record((296, None)), 57)
+        self.assertEqual(self.cursor.get_position_of_record((297, None)), 58)
+        self.assertEqual(self.cursor.get_position_of_record((318, None)), 79)
+        self.assertEqual(self.cursor.get_position_of_record((319, None)), 80)
+        self.assertEqual(self.cursor.get_position_of_record((320, None)), 81)
+        self.assertEqual(self.cursor.get_position_of_record((383, None)), 81)
+        self.assertEqual(self.cursor.get_position_of_record((384, None)), 81)
 
-    def test_09_get_record_at_position_01(self):
+    def test_08_get_record_at_position_01(self):
         cgrap = self.cursor.get_record_at_position
         self.assertEqual(cgrap(), None)
         self.cursor._ebm.table_ebm_segments.clear()
         self.assertEqual(cgrap(30), None)
 
-    def test_10_get_record_at_position_02(self):
+    def test_08_get_record_at_position_02(self):
         cgrap = self.cursor.get_record_at_position
         self.assertEqual(cgrap(-1), (319, repr("Data for record 319")))
         self.assertEqual(cgrap(-23), (297, repr("Data for record 297")))
@@ -443,16 +445,17 @@ class Cursor_primary(_NoSQL):
         self.assertEqual(cgrap(-80), (0, repr("Data for record 0")))
         self.assertEqual(cgrap(-81), None)
 
-    def test_11_get_record_at_position_03(self):
+    def test_08_get_record_at_position_03(self):
         cgrap = self.cursor.get_record_at_position
-        self.assertEqual(cgrap(0), (0, repr("Data for record 0")))
-        self.assertEqual(cgrap(30), (30, repr("Data for record 30")))
-        self.assertEqual(cgrap(31), (31, repr("Data for record 31")))
-        self.assertEqual(cgrap(32), (152, repr("Data for record 152")))
-        self.assertEqual(cgrap(55), (175, repr("Data for record 175")))
-        self.assertEqual(cgrap(56), (296, repr("Data for record 296")))
-        self.assertEqual(cgrap(79), (319, repr("Data for record 319")))
-        self.assertEqual(cgrap(80), None)
+        self.assertEqual(cgrap(1), (0, "'Data for record 0'"))
+        self.assertEqual(cgrap(30), (29, repr("Data for record 29")))
+        self.assertEqual(cgrap(31), (30, repr("Data for record 30")))
+        self.assertEqual(cgrap(32), (31, repr("Data for record 31")))
+        self.assertEqual(cgrap(33), (152, repr("Data for record 152")))
+        self.assertEqual(cgrap(56), (175, repr("Data for record 175")))
+        self.assertEqual(cgrap(57), (296, repr("Data for record 296")))
+        self.assertEqual(cgrap(80), (319, repr("Data for record 319")))
+        self.assertEqual(cgrap(81), None)
 
     def test_12_last(self):
         self.assertEqual(
@@ -572,6 +575,60 @@ class Cursor_primary(_NoSQL):
 
     def test_21_refresh_recordset(self):
         self.cursor.refresh_recordset()
+
+
+class Cursor_primary__get_record_at_position(_NoSQL):
+    # The Cursor_primary setup does not allow 'get_record_at_position(0)'
+    # with 'record 0' absent; which was a problem in all other database
+    # engines.
+    # Other get_record_at_position tests remain in Cursor_primary.
+    def setUp(self):
+        super().setUp()
+        segments = (
+            b"".join(
+                (
+                    b"\x01\x80\x00\x00\x00\x00\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
+            b"".join(
+                (
+                    b"\x00\x00\x00\xff\xff\xff\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
+        )
+        db = self.database.dbenv
+        tes = []
+        for e, s in enumerate(segments):
+            db["1_0__ebm_" + str(e)] = repr(s)
+            tes.append(e)
+        db["1_0__ebm"] = repr(tes)
+        for i in range(7, 9):
+            db["1_0_" + str(i)] = repr("Data for record " + str(i))
+        for i in range(24):
+            j = i + 128 + 24
+            db["1_0_" + str(j)] = repr("Data for record " + str(j))
+        self.database.ebm_control["file1"] = _nosql.ExistenceBitmapControl(
+            "1", "0", self.database
+        )
+        self.cursor = _nosql.CursorPrimary(self.database, file="file1")
+
+    def tearDown(self):
+        self.cursor.close()
+        super().tearDown()
+
+    def test_01_get_record_at_position_01(self):
+        cgrap = self.cursor.get_record_at_position
+        self.assertEqual(cgrap(0), None)
+        self.assertEqual(cgrap(1), (7, "'Data for record 7'"))
+        self.assertEqual(cgrap(2), (8, "'Data for record 8'"))
+        self.assertEqual(cgrap(3), (152, "'Data for record 152'"))
+        self.assertEqual(cgrap(26), (175, "'Data for record 175'"))
+        self.assertEqual(cgrap(27), None)
+        self.assertEqual(cgrap(-1), (175, "'Data for record 175'"))
+        self.assertEqual(cgrap(-26), (7, "'Data for record 7'"))
+        self.assertEqual(cgrap(-27), None)
 
 
 class Cursor_secondary(_NoSQL):
@@ -1176,5 +1233,6 @@ if __name__ == "__main__":
             continue
         runner().run(loader(Cursor_nosql))
         runner().run(loader(Cursor_primary))
+        runner().run(loader(Cursor_primary__get_record_at_position))
         runner().run(loader(Cursor_secondary))
         runner().run(loader(Cursor_secondary__get_record_at_position))

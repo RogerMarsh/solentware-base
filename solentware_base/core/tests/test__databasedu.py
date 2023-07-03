@@ -182,7 +182,7 @@ class Database_defer_add_record_to_field_value(unittest.TestCase):
             None,
         )
         v = self.database.value_segments["file1"]["field1"]
-        self.assertIsInstance(v["v1"], int)
+        self.assertIsInstance(v["v1"], list)
         self.assertEqual(
             self.database.defer_add_record_to_field_value(
                 "file1", "field1", "v1", 1, 30
@@ -225,6 +225,73 @@ class Database_defer_add_record_to_field_value(unittest.TestCase):
         self.assertIsInstance(v["v1"], _bytebit.Bitarray)
 
 
+class Database__prepare_segment_record_list(unittest.TestCase):
+    def setUp(self):
+        class _D(_databasedu.Database):
+            def __init__(self):
+                self.value_segments = {"file": {"field": {"index": []}}}
+                self._int_to_bytes = [
+                    n.to_bytes(2, byteorder="big") for n in range(8)
+                ]
+
+            def _grl(self):
+                return self.value_segments["file"]["field"]["index"]
+
+            def _vsff(self):
+                return self.value_segments["file"]["field"]
+
+        self.database = _D()
+
+    def tearDown(self):
+        self.database = None
+
+    def test__prepare_segment_record_list_01(self):
+        database = self.database
+        database._grl().append(4)
+        database._prepare_segment_record_list("file", "field")
+        self.assertEqual(database._grl(), [1, 4])
+
+    def test__prepare_segment_record_list_02(self):
+        database = self.database
+        database._grl().extend([4, 7])
+        database._prepare_segment_record_list("file", "field")
+        self.assertEqual(database._grl(), [2, b"\x00\x04\x00\x07"])
+
+    def test__prepare_segment_record_list_03(self):
+        database = self.database
+        database._vsff()["index"] = _bytebit.Bitarray(8)
+        database._grl()[0] = True
+        database._grl()[6] = True
+        database._prepare_segment_record_list("file", "field")
+        self.assertEqual(database._grl(), [2, b"\x82"])
+
+    def test__prepare_segment_record_list_04(self):
+        database = self.database
+        database._vsff()["index"] = _bytebit.Bitarray(8)
+        database._grl()[0] = True
+        database._grl()[6] = True
+        database._grl()[3] = True
+        database._prepare_segment_record_list("file", "field")
+        self.assertEqual(database._grl(), [3, b"\x92"])
+
+    def test__prepare_segment_record_list_05(self):
+        database = self.database
+        database._vsff()["field"] = 10
+        self.assertRaisesRegex(
+            AttributeError,
+            "".join((r"'int' object has no attribute 'count'",)),
+            database._prepare_segment_record_list,
+            *("file", "field"),
+        )
+
+    def test__prepare_segment_record_list_06(self):
+        # What happens: but will break somewhere.
+        database = self.database
+        database._vsff()["field"] = []
+        database._prepare_segment_record_list("file", "field")
+        self.assertEqual(database._grl(), [0, b""])
+
+
 class Database_set_segment_size(unittest.TestCase):
     def setUp(self):
         class _D(_databasedu.Database):
@@ -264,5 +331,6 @@ if __name__ == "__main__":
     runner().run(loader(Database_put_instance_02))
     runner().run(loader(Database_defer_add_record_to_ebm))
     runner().run(loader(Database_defer_add_record_to_field_value))
+    runner().run(loader(Database__prepare_segment_record_list))
     runner().run(loader(Database_set_segment_size))
     runner().run(loader(Database_deferred_update_housekeeping))

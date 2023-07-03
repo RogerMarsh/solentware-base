@@ -18,6 +18,7 @@ except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
 from .. import _sqlite
 from .. import filespec
 from .. import recordset
+from ..segmentsize import SegmentSize
 
 
 class _SQLite(unittest.TestCase):
@@ -295,21 +296,80 @@ class Cursor_primary(_SQLite):
     def test_06_get_position_of_record_01(self):
         self.assertEqual(self.cursor.get_position_of_record(), 0)
 
-    def test_07_get_position_of_record_02(self):
+    def test_06_get_position_of_record_02(self):
         self.assertEqual(self.cursor.get_position_of_record((5, None)), 0)
 
-    def test_08_get_position_of_record_03(self):
-        # With a populated databse.
-        pass
+    def test_06_get_position_of_record_03(self):
+        self.create_ebm()
+        self.create_ebm_extra(2)
+        # Records 304 and 317, in segment 3, have bits set.
+        self.create_ebm_extra(
+            3,
+            b"\x00\x00\x00\x00\x00\x00\x80\x04\x00\x00\x00\x00\x00\x00\x00\x00",
+        )
+        self.assertEqual(self.cursor.get_position_of_record((304, None)), 255)
+        self.assertEqual(self.cursor.get_position_of_record((310, None)), 256)
+        self.assertEqual(self.cursor.get_position_of_record((317, None)), 256)
+        self.assertEqual(self.cursor.get_position_of_record((319, None)), 257)
+        self.assertEqual(self.cursor.get_position_of_record((320, None)), 257)
 
-    def test_09_get_record_at_position_01(self):
+    def test_08_get_record_at_position_01(self):
         self.assertEqual(self.cursor.get_record_at_position(), None)
 
-    def test_10_get_record_at_position_02(self):
+    def test_08_get_record_at_position_02(self):
         self.assertEqual(self.cursor.get_record_at_position(-1), None)
 
-    def test_11_get_record_at_position_03(self):
+    def test_08_get_record_at_position_03(self):
         self.assertEqual(self.cursor.get_record_at_position(0), None)
+
+    def test_08_get_record_at_position_04(self):
+        # Records 1 to 255, 299, 304 and 317, in segment 3, exist.
+        for start, stop in ((1, 256), (299, 300), (304, 305), (317, 318)):
+            for record_number in range(start, stop):
+                self.create_record(record_number)
+        self.assertEqual(self.cursor.get_record_at_position(260), None)
+        self.assertEqual(self.cursor.get_record_at_position(259), None)
+        self.assertEqual(
+            self.cursor.get_record_at_position(258), (317, str(317))
+        )
+        self.assertEqual(
+            self.cursor.get_record_at_position(257), (304, str(304))
+        )
+        self.assertEqual(
+            self.cursor.get_record_at_position(256), (299, str(299))
+        )
+        self.assertEqual(
+            self.cursor.get_record_at_position(255), (255, str(255))
+        )
+        self.assertEqual(
+            self.cursor.get_record_at_position(254), (254, str(254))
+        )
+        self.assertEqual(
+            self.cursor.get_record_at_position(128), (128, str(128))
+        )
+        self.assertEqual(
+            self.cursor.get_record_at_position(127), (127, str(127))
+        )
+        self.assertEqual(
+            self.cursor.get_record_at_position(126), (126, str(126))
+        )
+        self.assertEqual(self.cursor.get_record_at_position(1), (1, str(1)))
+        # Same as self.cursor.get_record_at_position(-259)
+        self.assertEqual(self.cursor.get_record_at_position(0), None)
+
+    def test_08_get_record_at_position_05(self):
+        # Records 1 to 255, 299, 304 and 317, in segment 3, exist.
+        for start, stop in ((1, 256), (299, 300), (304, 305), (317, 318)):
+            for record_number in range(start, stop):
+                self.create_record(record_number)
+        self.assertEqual(self.cursor.get_record_at_position(-260), None)
+        self.assertEqual(self.cursor.get_record_at_position(-259), None)
+        self.assertEqual(self.cursor.get_record_at_position(-258), (1, str(1)))
+        self.assertEqual(self.cursor.get_record_at_position(-257), (2, str(2)))
+        self.assertEqual(self.cursor.get_record_at_position(-256), (3, str(3)))
+        self.assertEqual(
+            self.cursor.get_record_at_position(-1), (317, str(317))
+        )
 
     def test_12_last(self):
         self.assertEqual(self.cursor.last(), None)
@@ -352,6 +412,61 @@ class Cursor_primary(_SQLite):
 
     def test_21_refresh_recordset(self):
         self.cursor.refresh_recordset()
+
+    def create_ebm(self, bmb=None):
+        if bmb is None:
+            bmb = b"\x7f" + b"\xff" * (SegmentSize.db_segment_size_bytes - 1)
+        cursor = self.database.dbenv.cursor()
+        statement = " ".join(
+            (
+                "insert into",
+                "file1__ebm",
+                "(",
+                "file1__ebm",
+                ",",
+                "Value",
+                ")",
+                "values ( ? , ? )",
+            )
+        )
+        values = 1, bmb
+        cursor.execute(statement, values)
+
+    def create_ebm_extra(self, segment, bmb=None):
+        if bmb is None:
+            bmb = b"\xff" + b"\xff" * (SegmentSize.db_segment_size_bytes - 1)
+        cursor = self.database.dbenv.cursor()
+        statement = " ".join(
+            (
+                "insert into",
+                "file1__ebm",
+                "(",
+                "file1__ebm",
+                ",",
+                "Value",
+                ")",
+                "values ( ? , ? )",
+            )
+        )
+        values = (segment, bmb)
+        cursor.execute(statement, values)
+
+    def create_record(self, record_number):
+        cursor = self.database.dbenv.cursor()
+        statement = " ".join(
+            (
+                "insert into",
+                "file1",
+                "(",
+                "file1",
+                ",",
+                "Value",
+                ")",
+                "values ( ? , ? )",
+            )
+        )
+        values = record_number, str(record_number)
+        cursor.execute(statement, values)
 
 
 class Cursor_secondary(_SQLite):

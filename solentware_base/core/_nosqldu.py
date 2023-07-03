@@ -13,7 +13,6 @@ modules can be found in PyPI.
 from ast import literal_eval
 from bisect import bisect_right
 
-from .bytebit import Bitarray
 from .constants import (
     SECONDARY,
     SUBFILE_DELIMITER,
@@ -164,11 +163,8 @@ class Database(_databasedu.Database):
         # The low segment in the import may have to be merged with an existing
         # high segment on the database, or the current segment in the import
         # may be done in chunks of less than a complete segment.
-        # Note the difference between this code, and the similar code in module
-        # apswduapi.py, and the code in module dbduapi.py: the Berkeley DB
-        # code updates the main index directly if an entry already exists, but
-        # the Sqlite code always updates a temporary table and merges into the
-        # main table later.
+        # Note this module implements sort_and_write in a different way to
+        # _dbdu, _dbdu_tkinter, _lmdbdu, and _sqlitedu.
         fieldkey = SUBFILE_DELIMITER.join((file, field))
         tablename = self.table[fieldkey][-1]
         if fieldkey in self.trees:
@@ -187,17 +183,16 @@ class Database(_databasedu.Database):
                 if fieldtree:
                     fieldtree.insert(k)
                 if isinstance(value, list):
+                    if len(value) == 1:
+                        db[table_key] = repr({segment: (value[-1], 1)})
+                        continue
                     db[table_key] = repr({segment: (LIST_BYTES, len(value))})
                     db[segment_key] = repr(
                         b"".join([int_to_bytes[n] for n in value])
                     )
-                elif isinstance(value, Bitarray):
-                    db[table_key] = repr(
-                        {segment: (BITMAP_BYTES, value.count())}
-                    )
-                    db[segment_key] = repr(value.tobytes())
-                else:
-                    db[table_key] = repr({segment: (value, 1)})
+                    continue
+                db[table_key] = repr({segment: (BITMAP_BYTES, value.count())})
+                db[segment_key] = repr(value.tobytes())
                 continue
             segment_table = literal_eval(db[table_key].decode())
             if segment in segment_table:
@@ -213,13 +208,14 @@ class Database(_databasedu.Database):
                 else:
                     current_segment = self.populate_segment(segment, ref, file)
                 if isinstance(value, list):
-                    segref = len(value), b"".join(
-                        [int_to_bytes[n] for n in value]
-                    )
-                elif isinstance(value, Bitarray):
-                    segref = value.count(), value.tobytes()
+                    if len(value) == 1:
+                        segref = (1, value[-1])
+                    else:
+                        segref = len(value), b"".join(
+                            [int_to_bytes[n] for n in value]
+                        )
                 else:
-                    segref = 1, value
+                    segref = value.count(), value.tobytes()
                 seg = (
                     self.make_segment(k, segment, *segref) | current_segment
                 ).normalize()
@@ -231,15 +227,16 @@ class Database(_databasedu.Database):
                 db[segment_key] = repr(seg.tobytes())
                 continue
             if isinstance(value, list):
-                segment_table[segment] = LIST_BYTES, len(value)
-                db[segment_key] = repr(
-                    b"".join([int_to_bytes[n] for n in value])
-                )
-            elif isinstance(value, Bitarray):
+                if len(value) == 1:
+                    segment_table[segment] = (value[-1], 1)
+                else:
+                    segment_table[segment] = LIST_BYTES, len(value)
+                    db[segment_key] = repr(
+                        b"".join([int_to_bytes[n] for n in value])
+                    )
+            else:
                 segment_table[segment] = BITMAP_BYTES, value.count()
                 db[segment_key] = repr(value.tobytes())
-            else:
-                segment_table[segment] = value, 1
             db[table_key] = repr(segment_table)
             continue
         segvalues.clear()

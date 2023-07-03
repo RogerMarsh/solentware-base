@@ -598,7 +598,7 @@ class Database_sort_and_write(_NoSQLOpen):
         self.assertEqual(self.database.table["file1_field1"], ["1_1"])
 
     def test_10(self):
-        self.database.value_segments["file1"] = {"field1": {"int": 7}}
+        self.database.value_segments["file1"] = {"field1": {"list": [7]}}
         self.database.first_chunk["file1"] = False
         self.database.initial_high_segment["file1"] = 4
         self.database.high_segment["file1"] = 3
@@ -606,7 +606,7 @@ class Database_sort_and_write(_NoSQLOpen):
         ae = self.assertEqual
         db = self.database.dbenv
         ae(self.database.table["file1_field1"], ["1_1"])
-        ae(literal_eval(db["1_1_0_int"].decode()), {5: (7, 1)})
+        ae(literal_eval(db["1_1_0_list"].decode()), {5: (7, 1)})
         ae("1_1_1_5_int" in db, False)
 
     def test_11(self):

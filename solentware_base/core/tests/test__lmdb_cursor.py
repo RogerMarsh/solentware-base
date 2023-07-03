@@ -328,12 +328,15 @@ class Cursor_primary(_DB):
     def test_05_get_position_of_record_03(self):
         self.create_ebm()
         self.create_ebm_extra()
+        # Records 304 and 317, in segment 3, have bits set.
         self.create_ebm_extra(
             b"\x00\x00\x00\x00\x00\x00\x80\x04\x00\x00\x00\x00\x00\x00\x00\x00"
         )
         self.assertEqual(self.cursor.get_position_of_record((304, None)), 255)
+        self.assertEqual(self.cursor.get_position_of_record((310, None)), 0)
         self.assertEqual(self.cursor.get_position_of_record((317, None)), 256)
         self.assertEqual(self.cursor.get_position_of_record((319, None)), 0)
+        self.assertEqual(self.cursor.get_position_of_record((320, None)), 0)
 
     def test_08_get_record_at_position_01(self):
         self.assertEqual(self.cursor.get_record_at_position(), None)
@@ -344,35 +347,64 @@ class Cursor_primary(_DB):
     def test_08_get_record_at_position_03(self):
         self.assertEqual(self.cursor.get_record_at_position(0), None)
 
-    # Bizarre results: method must be wrong.
-    def est_08_get_record_at_position_04(self):
+    def test_08_get_record_at_position_04(self):
+        # Records 1 to 255, 299, 304 and 317, in segment 3, exist.
         self.create_ebm()
         self.create_ebm_extra()
         self.create_ebm_extra(
             b"\x00\x00\x00\x00\x00\x10\x80\x04\x00\x00\x00\x00\x00\x00\x00\x00"
         )
+        for start, stop in ((1, 256), (299, 300), (304, 305), (317, 318)):
+            for record_number in range(start, stop):
+                self.create_record(record_number)
         self.assertEqual(self.cursor.get_record_at_position(260), None)
         self.assertEqual(self.cursor.get_record_at_position(259), None)
-        self.assertEqual(self.cursor.get_record_at_position(258), None)
-        self.assertEqual(self.cursor.get_record_at_position(257), (0, ""))
-        self.assertEqual(self.cursor.get_record_at_position(256), (0, ""))
-        self.assertEqual(self.cursor.get_record_at_position(255), (0, ""))
-        self.assertEqual(self.cursor.get_record_at_position(254), (0, ""))
-        self.assertEqual(self.cursor.get_record_at_position(128), (0, ""))
-        self.assertEqual(self.cursor.get_record_at_position(127), (0, ""))
-        self.assertEqual(self.cursor.get_record_at_position(126), None)
+        self.assertEqual(
+            self.cursor.get_record_at_position(258), (317, str(317))
+        )
+        self.assertEqual(
+            self.cursor.get_record_at_position(257), (304, str(304))
+        )
+        self.assertEqual(
+            self.cursor.get_record_at_position(256), (299, str(299))
+        )
+        self.assertEqual(
+            self.cursor.get_record_at_position(255), (255, str(255))
+        )
+        self.assertEqual(
+            self.cursor.get_record_at_position(254), (254, str(254))
+        )
+        self.assertEqual(
+            self.cursor.get_record_at_position(128), (128, str(128))
+        )
+        self.assertEqual(
+            self.cursor.get_record_at_position(127), (127, str(127))
+        )
+        self.assertEqual(
+            self.cursor.get_record_at_position(126), (126, str(126))
+        )
+        self.assertEqual(self.cursor.get_record_at_position(1), (1, str(1)))
+        # Same as self.cursor.get_record_at_position(-259)
+        self.assertEqual(self.cursor.get_record_at_position(0), None)
 
     def test_08_get_record_at_position_05(self):
+        # Records 1 to 255, 299, 304 and 317, in segment 3, exist.
         self.create_ebm()
         self.create_ebm_extra()
         self.create_ebm_extra(
             b"\x00\x00\x00\x00\x00\x10\x80\x04\x00\x00\x00\x00\x00\x00\x00\x00"
         )
+        for start, stop in ((1, 256), (299, 300), (304, 305), (317, 318)):
+            for record_number in range(start, stop):
+                self.create_record(record_number)
         self.assertEqual(self.cursor.get_record_at_position(-260), None)
         self.assertEqual(self.cursor.get_record_at_position(-259), None)
-        self.assertEqual(self.cursor.get_record_at_position(-258), None)
-        self.assertEqual(self.cursor.get_record_at_position(-257), None)
-        self.assertEqual(self.cursor.get_record_at_position(-256), None)
+        self.assertEqual(self.cursor.get_record_at_position(-258), (1, str(1)))
+        self.assertEqual(self.cursor.get_record_at_position(-257), (2, str(2)))
+        self.assertEqual(self.cursor.get_record_at_position(-256), (3, str(3)))
+        self.assertEqual(
+            self.cursor.get_record_at_position(-1), (317, str(317))
+        )
 
     def test_11_last_01(self):
         self.assertEqual(self.cursor.last(), None)

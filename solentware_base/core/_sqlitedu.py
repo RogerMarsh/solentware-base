@@ -10,7 +10,6 @@ When using sqlite3 the Python version must be 3.6 or later.
 import heapq
 import collections
 
-from .bytebit import Bitarray
 from .constants import (
     SECONDARY,
     SQLITE_SEGMENT_COLUMN,
@@ -208,26 +207,9 @@ class Database(_databasedu.Database):
         if field not in self.value_segments[file]:
             return
 
-        # Lookup table is much quicker, and noticeable, in bulk use.
-        int_to_bytes = self._int_to_bytes
-
-        segvalues = self.value_segments[file][field]
-
         # Prepare to wrap the record numbers in an appropriate Segment class.
-        for k in segvalues:
-            svk = segvalues[k]
-            if isinstance(svk, list):
-                segvalues[k] = [
-                    len(svk),
-                    b"".join([int_to_bytes[n] for n in svk]),
-                ]
-            elif isinstance(svk, Bitarray):
-                segvalues[k] = [
-                    svk.count(),
-                    svk.tobytes(),
-                ]
-            elif isinstance(svk, int):
-                segvalues[k] = [1, svk]
+        self._prepare_segment_record_list(file, field)
+        segvalues = self.value_segments[file][field]
 
         # New records go into temporary databases, one for each segment, except
         # when filling the segment which was high when this update started.
@@ -240,11 +222,11 @@ class Database(_databasedu.Database):
         # The low segment in the import may have to be merged with an existing
         # high segment on the database, or the current segment in the import
         # may be done in chunks of less than a complete segment.
-        # Note the difference between this code, and the similar code in module
-        # apswduapi.py, and the code in module dbduapi.py: the Berkeley DB
-        # code updates the main index directly if an entry already exists, but
-        # the Sqlite code always updates a temporary table and merges into the
-        # main table later.
+        # Below now obsolete.
+        # Note the substantive difference between this module and _dbdu:
+        # the code for Berkeley DB updates the main index directly if an entry
+        # already exists, but the code for SQLite always updates a temporary
+        # table and merges into the main table later.
         tablename = self.table[SUBFILE_DELIMITER.join((file, field))][-1]
         if self.high_segment[file] == segment or not self.first_chunk[file]:
 

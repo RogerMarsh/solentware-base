@@ -2191,7 +2191,7 @@ class CursorPrimary(Cursor):
 
     def get_record_at_position(self, position=None):
         """Return record for positionth record in file or None."""
-        if position is None:
+        if not position:  # Include position 0 in this case.
             return None
         if position < 0:
             statement = " ".join(

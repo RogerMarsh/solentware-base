@@ -172,6 +172,10 @@ class Database(_database.Database):
         database engine does not support transaction commit and backout.
 
         """
+        # No file: no checkpoint to guard.
+        if self.database_file is None:
+            return
+
         name = self._generate_database_file_name(self.database_file)
         if os.path.exists(os.path.join(".".join((name, "stage1")))):
             raise DatabaseError(
@@ -1730,11 +1734,11 @@ class CursorPrimary(Cursor):
             ).get_position_of_record_number(record_number)
         elif tes[index - 1] < segment_number:
             count += ebm.read_exists_segment(tes[index - 1], db).count()
-        return count
+        return count + 1  # Calculation is 0-based in this version of method.
 
     def get_record_at_position(self, position=None):
         """Return record for positionth record in file or None."""
-        if position is None:
+        if not position:  # Include position 0 in this case.
             return None
         db = self._dbset
         ebm = self._ebm
@@ -1762,6 +1766,7 @@ class CursorPrimary(Cursor):
             else:
                 return None
         else:
+            position -= 1  # Calculation is 0-based in this version of method.
             for segment_number in tes:
                 bitarray = ebm.read_exists_segment(segment_number, db)
                 bacount = bitarray.count()

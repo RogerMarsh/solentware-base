@@ -98,10 +98,10 @@ class Modulequery(unittest.TestCase):
                 self.assertEqual(
                     r,
                     (
-                        "lmdb",
                         "berkeleydb",
                         "bsddb3",
                         "solentware_base.db_tcl",
+                        "lmdb",
                         "vedis",
                         "unqlite",
                         "apsw",

@@ -139,6 +139,16 @@ class DB(HomeNull):
                 overwrite=False,
             )
 
+    def create_record(self, record_number):
+        # self.database.table["file1"][0].put(
+        #    record_number, str(record_number).encode()
+        # )
+        self.database.dbtxn.transaction.put(
+            record_number.to_bytes(4, byteorder="big"),
+            str(record_number).encode(),
+            db=self.database.table["file1"][0].datastore,
+        )
+
 
 class DBdu(HomeNull):
     # SegmentSize.db_segment_size_bytes is not reset in this class because only

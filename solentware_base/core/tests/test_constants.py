@@ -175,10 +175,12 @@ class ConstantsFunctions(unittest.TestCase):
         ae(constants.TABLE_REGISTER_KEY, b"_table_register")
         ae(constants.FIELD_REGISTER_KEY, b"_field_register")
         ae(constants.DESIGN_FILE, "___design")
+        ae(constants.DEFAULT_MAP_PAGES, 2560)
         ae(constants.DEFAULT_MAP_SIZE, 10485760)
-        ae(constants.DEFAULT_MAP_BLOCKS, 10)
+        ae(constants.DEFAULT_MAP_BLOCKS, 1)
+        ae(constants.LMDB_MODULE, "lmdb")
         cc = [d for d in dir(constants) if not d.endswith("__")]
-        ae(len(cc), 101)
+        ae(len(cc), 103)
         ae(
             sorted(cc),
             sorted(
@@ -191,6 +193,7 @@ class ConstantsFunctions(unittest.TestCase):
                     "GNU_MODULE",
                     "NDBM_MODULE",
                     "DB_TCL_MODULE",
+                    "LMDB_MODULE",
                     "SQLITE_VALUE_COLUMN",
                     "SQLITE_SEGMENT_COLUMN",
                     "SQLITE_COUNT_COLUMN",
@@ -284,6 +287,7 @@ class ConstantsFunctions(unittest.TestCase):
                     "DESIGN_FILE",
                     "DEFAULT_MAP_SIZE",
                     "DEFAULT_MAP_BLOCKS",
+                    "DEFAULT_MAP_PAGES",
                 ]
             ),
         )

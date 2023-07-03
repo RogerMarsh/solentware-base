@@ -1141,7 +1141,8 @@ class Database(_database.Database):
         segment_record = self.segment_table[file].get(
             int.from_bytes(
                 segment_reference[SEGMENT_HEADER_LENGTH:], byteorder="big"
-            )
+            ),
+            txn=self.dbtxn,
         )
         if segment_record is None:
             raise DatabaseError("Segment record missing")
@@ -1847,13 +1848,13 @@ class CursorPrimary(Cursor):
             position += segment_ebm.search(SINGLEBIT).index(record_number)
         except ValueError:
             position += bisect.bisect_left(
-                record_number, segment_ebm.search(SINGLEBIT)
+                segment_ebm.search(SINGLEBIT), record_number
             )
         return position
 
     def get_record_at_position(self, position=None):
         """Return record for positionth record in file or None."""
-        if position is None:
+        if not position:  # Include position 0 in this case.
             return None
         count = 0
         abspos = abs(position)
@@ -1884,9 +1885,9 @@ class CursorPrimary(Cursor):
                         count += ebm_count
                         record = ebm_cursor.next()
                         continue
-                    recno = segment_ebm.search(SINGLEBIT)[position - count] + (
-                        (record[0] - 1) * SegmentSize.db_segment_size
-                    )
+                    recno = segment_ebm.search(SINGLEBIT)[
+                        position - count - 1
+                    ] + ((record[0] - 1) * SegmentSize.db_segment_size)
                     # ebm_cursor.close()
                     return self._decode_record(self._cursor.set(recno))
         finally:
