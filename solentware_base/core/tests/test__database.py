@@ -339,6 +339,13 @@ class Database_02_empty_instance(unittest.TestCase):
             self.database.put_instance("file1", self.instance), None
         )
 
+    def test_file_per_database(self):
+        self.assertEqual(self.database.file_per_database, False)
+
+    def test__generate_database_file_name(self):
+        self.database.database_file = "x"
+        self.assertEqual(self.database._generate_database_file_name("a"), "x")
+
 
 class Database_03_delete_instance(unittest.TestCase):
     def setUp(self):

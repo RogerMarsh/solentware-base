@@ -519,6 +519,7 @@ class Tree:
         node.modified = True
 
     def _merge_leaf(self, key, nodepath, deletion_point):
+        del key
         node = nodepath[-1]
         parent = nodepath[-2]
         entries = parent.node[_Node.ENTRIES]
@@ -942,6 +943,7 @@ class _Node:
         return len(self.node[_Node.KEYS])
 
     def insert_into_branch_or_root(self, key, node_number):
+        """Insert key into node node_number in sorted order."""
         keys = self.node[_Node.KEYS]
         insertion_point = bisect_left(keys, key)
         assert insertion_point == len(keys) or key != keys[insertion_point]

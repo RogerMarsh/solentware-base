@@ -12,6 +12,7 @@ import os
 
 from .core import _dpt
 from .core.constants import DPT_SYS_FOLDER
+from .core.archivedu import Archivedu
 
 
 class DptfastloadDatabaseError(Exception):
@@ -20,7 +21,7 @@ class DptfastloadDatabaseError(Exception):
 
 # This class may end up similar enough to dptdu_database.dptdu_database to
 # become a subclass, or perhaps the other way round.
-class Database(_dpt.Database):
+class Database(Archivedu, _dpt.Database):
     """Bulk insert to DPT database in folder using specification.
 
     Support DPT fastload updates.
@@ -54,12 +55,9 @@ class Database(_dpt.Database):
 
         """
         if not os.path.exists(self.parms):
-            parms = open(self.parms, "w")
-            try:
+            with open(self.parms, "w", encoding="iso-8859-1") as parms:
                 parms.write("RCVOPT=X'00' " + os.linesep)
                 parms.write("MAXBUF=100 " + os.linesep)
-            finally:
-                parms.close()
 
     # Same as dptdu_database and _dpt versions.
     # Probably will need to be like versions for the other database
@@ -93,9 +91,9 @@ class Database(_dpt.Database):
         )
 
     # Same as dptdu_database version.
-    # Must return dptfastload_database._DPTFile class.
+    # Must return dptfastload_database.DPTFile class.
     def _dptfileclass(self):
-        return _DPTFile
+        return DPTFile
 
     # Same as dptdu_database version.
     def set_defer_update(self):
@@ -121,12 +119,12 @@ class Database(_dpt.Database):
             file.do_dpt_fastload()
 
 
-class _DPTFile(_dpt._DPTFile):
+class DPTFile(_dpt.DPTFile):
     """This class is used to access files in a DPT database.
 
     Instances are created as necessary by a Database.open_database() call.
 
-    Some methods in _dpt._DPTFile are overridden to provide fastload
+    Some methods in _dpt.DPTFile are overridden to provide fastload
     update mode and ban editing and deleting records on the database.
 
     """
@@ -144,17 +142,19 @@ class _DPTFile(_dpt._DPTFile):
 
     # Same as dptdu_database version except for exception class name.
     def delete_instance(self, instance):
+        """Raise DptfastloadDatabaseError on attempt to delete instance."""
         raise DptfastloadDatabaseError(
             "delete_instance not available in fastload mode"
         )
 
     # Same as dptdu_database version except for exception class name.
     def edit_instance(self, instance):
+        """Raise DptfastloadDatabaseError on attempt to edit instance."""
         raise DptfastloadDatabaseError(
             "edit_instance not available in fastload mode"
         )
 
-    # Definitely different from _dpt._DPTFile and _databasedu.Database
+    # Definitely different from _dpt.DPTFile and _databasedu.Database
     # versions; but the former's algorithm is needed if not the detail.
     def put_instance(self, instance):
         """Override.  Put instance in buffer for fastload to database."""

@@ -214,7 +214,7 @@ class Find:
                     if re.search(obj.value, value):
                         obj.result.answer.place_record_number(record_number)
                         break
-                except:
+                except Exception:
                     pass
 
     def _starts(self, obj, record_number, record):

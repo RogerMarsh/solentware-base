@@ -85,14 +85,15 @@ class Database(_database.Database):
         **soak,
     ):
         """Initialize data structures."""
+        del soak
         if folder is not None:
             try:
                 path = os.path.abspath(folder)
-            except:
+            except Exception as exc:
                 msg = " ".join(
                     ["Database folder name", str(folder), "is not valid"]
                 )
-                raise DatabaseError(msg)
+                raise DatabaseError(msg) from exc
         else:
             path = None
         if not isinstance(specification, filespec.FileSpec):
@@ -136,8 +137,8 @@ class Database(_database.Database):
         # same name as the database.
         # The databases created in an empty home_directory from a FileSpec are
         # placed in separate files if file_per_database is True.
-        self._file_per_database = file_per_database
-        self._initial_file_per_database = file_per_database
+        self._file_per_database = bool(file_per_database)
+        self._initial_file_per_database = bool(file_per_database)
 
     def _validate_segment_size_bytes(self, segment_size_bytes):
         if segment_size_bytes is None:
@@ -191,8 +192,13 @@ class Database(_database.Database):
 
         Berkeley DB supports one database per file or all databases in
         one file.
+
+        The _db module version returns None if self.database_file is None
+        meaning memory-only database.
         """
         if not self._file_per_database:
+            if self.database_file is None:
+                return ""
             return self.database_file
         if self.home_directory is not None:
             return os.path.join(self.home_directory, database)
@@ -314,10 +320,7 @@ class Database(_database.Database):
             command.extend(["-txn", self.dbtxn])
         command.append("--")
         fnfd = self.file_name_for_database(CONTROL_FILE)
-        if fnfd is None:
-            command.append("")
-        else:
-            command.append(fnfd)
+        command.append(fnfd)
         command.append(CONTROL_FILE)
         try:
             control = tcl_tk_call(tuple(command))
@@ -421,9 +424,15 @@ class Database(_database.Database):
         if _openbsd_platform:
             maxlocks = self.environment.get("maxlocks", 0)
             maxobjects = self.environment.get("maxobjects", 0)
+
+            # encoding added in response to pylint W1514.  It is assumed
+            # iso-8859-1 is best here: do not see instruction in Berkeley
+            # DB docs.
             if maxlocks:
                 with open(
-                    os.path.join(self.home_directory, "DB_CONFIG"), mode="w"
+                    os.path.join(self.home_directory, "DB_CONFIG"),
+                    mode="w",
+                    encoding="iso-8859-1",
                 ) as file:
                     file.write(" ".join(("set_lk_max_locks", str(maxlocks))))
                     file.write("\n")
@@ -468,15 +477,12 @@ class Database(_database.Database):
         ]
         if db_create:
             command.append("-create")
-        fnfd = self.file_name_for_database(CONTROL_FILE)
-        if fnfd is None:
-            fnfd = ""
         if self.dbtxn:
             command.extend(["-txn", self.dbtxn])
         command.extend(
             [
                 "--",
-                fnfd,
+                self.file_name_for_database(CONTROL_FILE),
                 CONTROL_FILE,
             ]
         )
@@ -503,7 +509,7 @@ class Database(_database.Database):
             command.extend(
                 [
                     "--",
-                    fnfd,
+                    self.file_name_for_database(file),
                     file,
                 ]
             )
@@ -531,7 +537,7 @@ class Database(_database.Database):
             command.extend(
                 [
                     "--",
-                    fnfd,
+                    self.file_name_for_database(segmentfile),
                     segmentfile,
                 ]
             )
@@ -569,7 +575,7 @@ class Database(_database.Database):
                 command.extend(
                     [
                         "--",
-                        fnfd,
+                        self.file_name_for_database(secondary),
                         secondary,
                     ]
                 )
@@ -653,6 +659,7 @@ class Database(_database.Database):
                     "-d",
                 ],
                 cwd=self._get_log_dir_name(),
+                check=False,  # pylint message W1510: maybe should be True?
             )
         except FileNotFoundError as exc:
             if db_archive_utility not in str(exc):
@@ -660,6 +667,7 @@ class Database(_database.Database):
 
     def environment_flags(self, dbe):
         """Return environment flags for transaction update."""
+        del dbe
         return list(
             self.environment.get("flags", ("-create", "-recover", "-txn"))
         )
@@ -683,6 +691,7 @@ class Database(_database.Database):
         all the DB objects were created in the context of the DBEnv object.
 
         """
+        del files
         for file, specification in self.specification.items():
             if file in self.table:
                 if self.table[file] is not None:
@@ -756,6 +765,7 @@ class Database(_database.Database):
 
         oldvalue is ignored in _sqlite version of replace() method.
         """
+        del oldvalue
         assert file in self.specification
         command = [self.table[file][0], "put"]
         if self.dbtxn:
@@ -898,6 +908,7 @@ class Database(_database.Database):
         note_freed_record_number_segment.  A successful record deletion
         passes this test.
         """
+        del record_number_in_segment
         try:
             high_segment = divmod(high_record[0], SegmentSize.db_segment_size)[
                 0
@@ -2183,6 +2194,18 @@ class Database(_database.Database):
         finally:
             db.close_database()
 
+    def _generate_database_file_name(self, name):
+        """Extend, return path to Berkeley DB file for name.
+
+        Delegate to superclass if all databases are in one file.
+
+        Otherwise return stem of name for databases associated with name.
+
+        """
+        if not self._file_per_database:
+            return super()._generate_database_file_name(name)
+        return os.path.join(self.home_directory, name)
+
 
 class Cursor(_cursor.Cursor):
     """Define a cursor on the underlying database engine dbset.
@@ -2217,6 +2240,7 @@ class Cursor(_cursor.Cursor):
 
         engine - tkinter module.  Use Tcl interface to Berkeley DB.
         """
+        del keyrange, kargs
         super().__init__(dbset)
         self._transaction = transaction
         self._engine = engine
@@ -2785,7 +2809,8 @@ class CursorSecondary(Cursor):
         return record
 
     def _set_both(self, key, value):
-        segment, record_number = divmod(value, SegmentSize.db_segment_size)
+        # segment, record_number = divmod(value, SegmentSize.db_segment_size)
+        segment = divmod(value, SegmentSize.db_segment_size)[0]
         command = [self._dbset, "cursor"]
         if self._transaction:
             command.extend(["-txn", self._transaction])
@@ -2843,7 +2868,7 @@ class CursorSecondary(Cursor):
 
     def _last_partial(self, partial):
         partial_key = partial.encode()
-        record = tcl_tk_call((cursor, "get", "-set_range", partial_key))
+        record = tcl_tk_call((self._cursor, "get", "-set_range", partial_key))
         while record is not None:
             if not record[0].startswith(partial_key):
                 break
@@ -2890,6 +2915,7 @@ class RecordsetCursor(_RecordsetCursor):
         kargs absorbs arguments relevant to other database engines.
 
         """
+        del kargs
         super().__init__(recordset)
         self._transaction = transaction
         self._database = database
@@ -2951,13 +2977,10 @@ class ExistenceBitmapControl(_database.ExistenceBitmapControl):
             command.append("-create")
         if database.dbtxn:
             command.extend(["-txn", database.dbtxn])
-        fnfd = database.file_name_for_database(dbname)
-        if fnfd is None:
-            fnfd = ""
         command.extend(
             [
                 "--",
-                fnfd,
+                database.file_name_for_database(dbname),
                 dbname,
             ]
         )

@@ -27,6 +27,7 @@ python$1 -m solentware_base.core.tests.test__nosqldu
 python$1 -m solentware_base.core.tests.test__sqlite
 python$1 -m solentware_base.core.tests.test__sqlite_cursor
 python$1 -m solentware_base.core.tests.test__sqlitedu
+python$1 -m solentware_base.core.tests.test_archivedu
 python$1 -m solentware_base.core.tests.test_bytebit
 python$1 -m solentware_base.core.tests.test_constants
 python$1 -m solentware_base.core.tests.test_cursor

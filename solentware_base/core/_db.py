@@ -89,11 +89,11 @@ class Database(_database.Database):
         if folder is not None:
             try:
                 path = os.path.abspath(folder)
-            except:
+            except Exception as exc:
                 msg = " ".join(
                     ["Database folder name", str(folder), "is not valid"]
                 )
-                raise DatabaseError(msg)
+                raise DatabaseError(msg) from exc
         else:
             path = None
         if not isinstance(specification, filespec.FileSpec):
@@ -137,8 +137,8 @@ class Database(_database.Database):
         # same name as the database.
         # The databases created in an empty home_directory from a FileSpec are
         # placed in separate files if file_per_database is True.
-        self._file_per_database = file_per_database
-        self._initial_file_per_database = file_per_database
+        self._file_per_database = bool(file_per_database)
+        self._initial_file_per_database = bool(file_per_database)
 
     def _validate_segment_size_bytes(self, segment_size_bytes):
         if segment_size_bytes is None:
@@ -203,7 +203,7 @@ class Database(_database.Database):
                         self.database_file, dbname=name, flags=dbe.DB_RDONLY
                     )
                     all_in_one.add(name)
-                except:
+                except Exception:
                     pass
                 finally:
                     dbo.close()
@@ -215,7 +215,7 @@ class Database(_database.Database):
                         flags=dbe.DB_RDONLY,
                     )
                     one_per_database.add(name)
-                except:
+                except Exception:
                     pass
                 finally:
                     dbo.close()
@@ -454,7 +454,7 @@ class Database(_database.Database):
                         txn=self.dbtxn,
                     )
                 except dbe.DBInvalidArgError as exc:
-                    if not str(exc) == secondary.join(
+                    if str(exc) != secondary.join(
                         (
                             "(22, 'Invalid argument -- ",
                             ": unexpected file type or format')",
@@ -597,7 +597,7 @@ class Database(_database.Database):
         assert file in self.specification
         try:
             self.table[file][0].delete(key, txn=self.dbtxn)
-        except:
+        except Exception:
             pass
 
     def get_primary_record(self, file, key):
@@ -1747,6 +1747,18 @@ class Database(_database.Database):
         finally:
             db.close_database()
 
+    def _generate_database_file_name(self, name):
+        """Extend, return path to Berkeley DB file for name.
+
+        Delegate to superclass if all databases are in one file.
+
+        Otherwise return stem of name for databases associated with name.
+
+        """
+        if not self._file_per_database:
+            return super()._generate_database_file_name(name)
+        return os.path.join(self.home_directory, name)
+
 
 class Cursor(_cursor.Cursor):
     """Define a cursor on the underlying database engine dbset.
@@ -2289,7 +2301,8 @@ class CursorSecondary(Cursor):
         return record
 
     def _set_both(self, key, value):
-        segment, record_number = divmod(value, SegmentSize.db_segment_size)
+        # segment, record_number = divmod(value, SegmentSize.db_segment_size)
+        segment = divmod(value, SegmentSize.db_segment_size)[0]
         cursor = self._dbset.cursor(txn=self._transaction)
         try:
             record = cursor.set_range(key)

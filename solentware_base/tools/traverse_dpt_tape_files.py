@@ -13,10 +13,9 @@ This module verifies the structure by walking though the files.
 """
 
 import tkinter
-import os
-
 import tkinter.messagebox
 import tkinter.filedialog
+import os
 
 STARS70 = b"*" * 70
 DPT_BITMAP_BYTES = 8160
@@ -25,12 +24,13 @@ DPT_BITMAP_FLAG = 65535  # int for 2 byte 'xff\xff' flag.
 
 
 def _seek_data_start(filepath):
-    """Locate end of leading comment lines."""
-    tape = open(filepath, "rb")
+    """Return open files positioned at end of leading comment lines."""
+    tape = open(filepath, "rb")  # Not with ... because open file returned.
     line = tape.read(70)
     if line == STARS70:
         for i in range(5):
             tape.readline()
+        del i
     else:
         tape.seek(0)
     return tape
@@ -48,10 +48,11 @@ def _report_different(filepath1, filepath2):
 
 def _traverse_tapef_file(filepath):
     """Do nothing."""
+    del filepath
 
 
 def _extract_records(data):
-    """Verify TAPED file by following pointers to EOF.
+    r"""Verify TAPED file by following pointers to EOF.
 
     Format is 4 byte record number followed by optional 2 byte block
     transfer marker then field==value pairs until b'\xff\xff' record
@@ -164,7 +165,7 @@ def _extract_values(data, filepath):
                 return values
             if bytes_ != b"\xff\xff":
                 values[value] += 1
-                segnum = bytes_
+                # segnum = bytes_
                 bytes_ = data[position : position + 4]
                 if len(bytes_) != 4:
                     print(
@@ -270,6 +271,7 @@ def traverse_tape_directory(directory):
     """Verify all TAPED, TAPEF, and TAPEI, files in directory."""
     for file in os.listdir(path=directory):
         name, ext = os.path.splitext(file)
+        del name
         if ext.upper() != ".DAT":
             continue
         if file.upper().endswith("TAPED.DAT"):
@@ -285,9 +287,9 @@ def traverse_tape_directory(directory):
 
 if __name__ == "__main__":
 
-    directory = tkinter.filedialog.askdirectory(
+    tape_directory = tkinter.filedialog.askdirectory(
         title="Open TAPE file directory",
         initialdir="~",
     )
-    if directory:
-        traverse_tape_directory(directory)
+    if tape_directory:
+        traverse_tape_directory(tape_directory)

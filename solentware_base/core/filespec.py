@@ -220,7 +220,7 @@ class FileSpec(dict):
         # usually the same.  If not, specification[SECONDARY][i] maps to the
         # key of specification[FIELDS].
         definitions = set()
-        pathnames = dict()
+        pathnames = {}
         for name, specification in self.items():
             if not isinstance(specification, dict):
                 msg = " ".join(
@@ -329,18 +329,18 @@ class FileSpec(dict):
                 raise FileSpecError(msg)
             try:
                 os.path.join(specification.get(FILE))
-            except TypeError:
+            except TypeError as exc:
                 msg = " ".join(
                     ["File name for", name, "must be a valid path name"]
                 )
-                raise FileSpecError(msg)
+                raise FileSpecError(msg) from exc
             try:
                 os.path.join(specification.get(FOLDER, ""))
-            except TypeError:
+            except TypeError as exc:
                 msg = " ".join(
                     ["Folder name for", name, "must be a valid path name"]
                 )
-                raise FileSpecError(msg)
+                raise FileSpecError(msg) from exc
             filedesc = specification.get(FILEDESC)
             if not isinstance(filedesc, dict):
                 msg = " ".join(
@@ -422,7 +422,7 @@ class FileSpec(dict):
             for fieldname in fields:
                 description = fields[fieldname]
                 if description is None:
-                    description = dict()
+                    description = {}
                 if not isinstance(description, dict):
                     msg = " ".join(
                         [
@@ -480,11 +480,11 @@ class FileSpec(dict):
                             raise FileSpecError(msg)
             try:
                 ddname = specification[DDNAME]
-            except KeyError:
+            except KeyError as exc:
                 msg = " ".join(
                     ["Specification for", name, "must have a DD name"]
                 )
-                raise FileSpecError(msg)
+                raise FileSpecError(msg) from exc
             if len(ddname) == 0:
                 msg = " ".join(
                     ["DD name", repr(ddname), "for", name, "is zero length"]
@@ -541,7 +541,7 @@ class FileSpec(dict):
                     )
                 )
 
-            except:
+            except Exception as exc:
                 msg = " ".join(
                     [
                         "Relative path name of DPT file for",
@@ -549,7 +549,7 @@ class FileSpec(dict):
                         "is invalid",
                     ]
                 )
-                raise FileSpecError(msg)
+                raise FileSpecError(msg) from exc
             if fname in pathnames:
                 msg = " ".join(
                     [

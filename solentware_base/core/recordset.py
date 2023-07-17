@@ -140,9 +140,10 @@ class RecordsetSegmentInt:
     def normalize(self, use_upper_limit=True):
         """Return version of self appropriate to record count of self.
 
-        limit is relevant to lists and bitarrays of record numbers.
+        use_upper_limit is relevant to lists and bitarrays of record numbers.
 
         """
+        del use_upper_limit
         return self
 
     def promote(self):
@@ -740,12 +741,12 @@ class _Recordset:
 
         """
         super().__init__()
-        self._rs_segments = dict()
-        self.record_cache = dict()
+        self._rs_segments = {}
+        self.record_cache = {}
         self.record_deque = deque(maxlen=max(1, cache_size))
         self._current_segment = None
         self._sorted_segnums = []
-        # self._clientcursors = dict()
+        # self._clientcursors = {}
         if dbhome.exists(dbset, dbset):
             self._dbhome = dbhome
             self._dbset = dbset
@@ -843,7 +844,7 @@ class _Recordset:
 
     def count_records(self):
         """Return number of records in recordset."""
-        return sum([s.count_records() for s in self._rs_segments.values()])
+        return sum(s.count_records() for s in self._rs_segments.values())
 
     def get_position_of_record_number(self, recnum):
         """Return recnum position in recordset counting records that exist."""
@@ -856,11 +857,9 @@ class _Recordset:
             position = 0
         return (
             sum(
-                [
-                    self._rs_segments[s].count_records()
-                    for s in self._rs_segments
-                    if s < segment
-                ]
+                rss.count_records()
+                for s, rss in self._rs_segments.items()
+                if s < segment
             )
             + position
         )
@@ -960,7 +959,8 @@ class _Recordset:
 
     def setat(self, record):
         """Return current record after positioning cursor at record."""
-        segment, record_number = divmod(record, SegmentSize.db_segment_size)
+        # segment, record_number = divmod(record, SegmentSize.db_segment_size)
+        segment = divmod(record, SegmentSize.db_segment_size)[0]
         if segment not in self:
             return None
         j = self._rs_segments[segment].setat(record)
@@ -1137,7 +1137,7 @@ class _Recordset:
         # the copy forgets the current recordset cursors
         # recordset._clientcursors = dict()
         # the copy forgets the current recordset cache
-        recordset.record_cache = dict()
+        recordset.record_cache = {}
         recordset.record_deque = deque(maxlen=self.record_deque.maxlen)
         # register the copy with the database
         # if recordset._dbhome is not None:
@@ -1220,8 +1220,6 @@ class RecordsetCursor(cursor.Cursor):
                 return self._get_record(self._dbset.first()[1])
             except TypeError:
                 return None
-            except:
-                raise
         return None
 
     def get_position_of_record(self, record=None):
@@ -1253,8 +1251,6 @@ class RecordsetCursor(cursor.Cursor):
                 return self._get_record(self._dbset.last()[1])
             except TypeError:
                 return None
-            except:
-                raise
         return None
 
     def nearest(self, key):
@@ -1274,8 +1270,6 @@ class RecordsetCursor(cursor.Cursor):
                 return self._get_record(self._dbset.setat(key)[1])
             except TypeError:
                 return None
-            except:
-                raise
         return None
 
     def next(self):
@@ -1285,8 +1279,6 @@ class RecordsetCursor(cursor.Cursor):
                 return self._get_record(self._dbset.next()[1])
             except TypeError:
                 return None
-            except:
-                raise
         return None
 
     def prev(self):
@@ -1296,8 +1288,6 @@ class RecordsetCursor(cursor.Cursor):
                 return self._get_record(self._dbset.prev()[1])
             except TypeError:
                 return None
-            except:
-                raise
         return None
 
     def setat(self, record):
@@ -1307,8 +1297,6 @@ class RecordsetCursor(cursor.Cursor):
                 return self._get_record(self._dbset.setat(record[0])[1])
             except TypeError:
                 return None
-            except:
-                raise
         return None
 
     def _get_record(self, record_number, use_cache=False):

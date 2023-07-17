@@ -201,7 +201,7 @@ class SqliteTableNameUpgrade:
                 widget.insert(tkinter.END, "\nNothing to do.\n")
             else:
                 widget.insert(tkinter.END, "\nUpgrade completed.\n")
-        except:
+        except Exception:
             cursor.execute("rollback")
             widget.insert(
                 tkinter.END, "\n\nUpgrade not done because an error occured.\n"

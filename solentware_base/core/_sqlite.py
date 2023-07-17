@@ -65,14 +65,15 @@ class Database(_database.Database):
         **soak
     ):
         """Initialize database structures."""
+        del soak
         if folder is not None:
             try:
                 path = os.path.abspath(folder)
-            except:
+            except Exception as exc:
                 msg = " ".join(
                     ["Database folder name", str(folder), "is not valid"]
                 )
-                raise DatabaseError(msg)
+                raise DatabaseError(msg) from exc
         else:
             path = None
         if not isinstance(specification, filespec.FileSpec):
@@ -182,7 +183,7 @@ class Database(_database.Database):
             try:
                 cursor.execute(statement, (SEGMENT_SIZE_BYTES_KEY,))
                 rssbk = cursor.fetchall()
-            except Exception as exception:
+            except Exception:
                 rssbk = None
             if rsk is not None and rssbk is not None:
                 spec_from_db = literal_eval(rsk[0][0])
@@ -348,6 +349,7 @@ class Database(_database.Database):
         The files argument is ignored because the connection object is deleted.
 
         """
+        del files
         self.table = {}
         self.segment_table = {}
         self.ebm_control = {}
@@ -429,6 +431,7 @@ class Database(_database.Database):
 
         oldvalue is ignored in _sqlite version of replace() method.
         """
+        del oldvalue
         assert file in self.specification
         cursor = self.dbenv.cursor()
         try:
@@ -453,6 +456,7 @@ class Database(_database.Database):
 
         value is ignored in _sqlite version of delete() method.
         """
+        del value
         assert file in self.specification
         cursor = self.dbenv.cursor()
         try:
@@ -615,6 +619,7 @@ class Database(_database.Database):
         note_freed_record_number_segment.  A successful record deletion
         passes this test.
         """
+        del record_number_in_segment
         try:
             high_segment = divmod(high_record[0], SegmentSize.db_segment_size)[
                 0
@@ -1052,7 +1057,7 @@ class Database(_database.Database):
         cursor = self.dbenv.cursor()
         try:
             return cursor.execute(statement, values).fetchone()[0]
-        except TypeError:
+        except TypeError as exc:
             raise DatabaseError(
                 "".join(
                     (
@@ -1063,7 +1068,7 @@ class Database(_database.Database):
                         "'",
                     )
                 )
-            )
+            ) from exc
         finally:
             cursor.close()
 
@@ -1958,6 +1963,7 @@ class Database(_database.Database):
         SQLite version of method ignores file argument.
 
         """
+        del file
         return self.dbenv is not None
 
     def get_table_connection(self, file):
@@ -1972,6 +1978,7 @@ class Database(_database.Database):
         connection object.
 
         """
+        del file
         return self.dbenv
 
     def do_database_task(
@@ -2067,6 +2074,7 @@ class Cursor(_cursor.Cursor):
 
     def __init__(self, dbset, table=None, file=None, keyrange=None, **kargs):
         """Define a cursor on the underlying database engine dbset."""
+        del keyrange, kargs
         super().__init__(dbset)
         self._cursor = dbset.cursor()
         self._table = table
@@ -2409,7 +2417,7 @@ class CursorSecondary(Cursor):
         cursor = self._dbset.cursor()
         try:
             return cursor.execute(statement, values).fetchone()[0]
-        except TypeError:
+        except TypeError as exc:
             raise DatabaseError(
                 "".join(
                     (
@@ -2420,7 +2428,7 @@ class CursorSecondary(Cursor):
                         "'",
                     )
                 )
-            )
+            ) from exc
         finally:
             cursor.close()
 
@@ -3319,6 +3327,7 @@ class RecordsetCursor(_RecordsetCursor):
         kargs absorbs arguments relevant to other database engines.
 
         """
+        del kargs
         super().__init__(recordset)
         self.engine = engine
 

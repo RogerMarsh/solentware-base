@@ -309,6 +309,11 @@ class Cursor_primary(_DB):
 
     def test_02___init___01(self):
         self.assertEqual(self.cursor._ebm.__class__.__name__, "_Datastore")
+
+        # Dated 2023-07-12.
+        # Fails in Python3.9 with FreeBSD port py39-lmdb: no attribute.
+        # Ok in Python3.10 on FreeBSD with pip ... --user install.
+        # Ok in Python3.10 on OpenBSD with pip ... --user install.
         self.assertEqual(
             self.cursor._ebm.datastore.__class__, self.dbe_module._Database
         )
@@ -333,10 +338,10 @@ class Cursor_primary(_DB):
             b"\x00\x00\x00\x00\x00\x00\x80\x04\x00\x00\x00\x00\x00\x00\x00\x00"
         )
         self.assertEqual(self.cursor.get_position_of_record((304, None)), 255)
-        self.assertEqual(self.cursor.get_position_of_record((310, None)), 0)
+        self.assertEqual(self.cursor.get_position_of_record((310, None)), 256)
         self.assertEqual(self.cursor.get_position_of_record((317, None)), 256)
-        self.assertEqual(self.cursor.get_position_of_record((319, None)), 0)
-        self.assertEqual(self.cursor.get_position_of_record((320, None)), 0)
+        self.assertEqual(self.cursor.get_position_of_record((319, None)), 257)
+        self.assertEqual(self.cursor.get_position_of_record((320, None)), 257)
 
     def test_08_get_record_at_position_01(self):
         self.assertEqual(self.cursor.get_record_at_position(), None)

@@ -170,6 +170,7 @@ class WhereValues:
 
     def error(self, token):
         """Return False, token is an unexpected keyword or value."""
+        del token
         return False
 
     def _set_fieldname(self, token):
@@ -217,7 +218,7 @@ class WhereValues:
             return self.error(token)
         try:
             self.node.like_pattern = re.compile(token)
-        except:
+        except Exception:
             self.node.like_pattern = token
         if self._not:
             self.node.like = False

@@ -22,6 +22,25 @@ class DatabaseduError(Exception):
 class Database(_database.Database):
     """Provide deferred update versions of the record update methods."""
 
+    # Deferred updates are done inside transactions if possible, despite
+    # it being slower, so backup should not be necessary in most cases.
+    # Where deferred update within transactions is not available, or is
+    # wanted perhaps, a subclass of _databasedu.Database should override
+    # this attribute to 'True'.
+    # This and it's property, and methods archive and delete_archive are
+    # duplicated in the dptdu_database.Database hierarchy: enough for a
+    # shared superclass for default backup stuff.
+    _take_backup_before_deferred_update = False
+
+    @property
+    def take_backup_before_deferred_update(self):
+        """Return True if temporary backups should protect deferred update.
+
+        It is expected the archive and delete_archive methods will do this.
+
+        """
+        return self._take_backup_before_deferred_update
+
     def put_instance(self, dbset, instance):
         """Put new instance on database dbset.
 
@@ -95,6 +114,7 @@ class Database(_database.Database):
         self, file, field, key, segment, record_number
     ):
         """Add record_number to cached segment for key."""
+        del segment
         assert file in self.specification
         try:
             value_segments = self.value_segments[file][field]

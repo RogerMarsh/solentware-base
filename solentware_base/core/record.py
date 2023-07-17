@@ -235,7 +235,7 @@ class Value(_Comparison):
         Subclasses must extend pack method to populate indexes.
 
         """
-        return (self.pack_value(), dict())
+        return (self.pack_value(), {})
 
     def pack_value(self):
         """Return repr(self.__dict__).
@@ -255,6 +255,7 @@ class Value(_Comparison):
         Added to support Find and Where classes.
 
         """
+        del occurrence
         return self.__dict__.get(fieldname, None)
 
     def get_field_values(self, fieldname):
@@ -318,7 +319,7 @@ class ValueList(Value):
 
     """
 
-    attributes = dict()
+    attributes = {}
     _attribute_order = tuple()
 
     def __init__(self):
@@ -344,8 +345,8 @@ class ValueList(Value):
         try:
             for attr, data in zip(self._attribute_order, literal_eval(value)):
                 self.__dict__[attr] = data
-        except:
-            self.__dict__ = dict()
+        except Exception:
+            self.__dict__ = {}
 
     def pack_value(self):
         """Return repr(list(<attributes in self._attribute_order>))."""
@@ -355,12 +356,12 @@ class ValueList(Value):
         """Set initial attributes to default values."""
         attributes = self.attributes
         if isinstance(attributes, dict):
-            for name in attributes:
-                # if isinstance(attributes[a], collections.Callable):
-                if callable(attributes[name]):
-                    setattr(self, name, attributes[name]())
+            for name, attribute in attributes.items():
+                # if isinstance(attribute, collections.Callable):
+                if callable(attribute):
+                    setattr(self, name, attribute())
                 else:
-                    setattr(self, name, attributes[name])
+                    setattr(self, name, attribute)
 
     def get_field_value(self, fieldname, occurrence=0):
         """Return value of a field occurrence, the first by default.
@@ -592,7 +593,7 @@ class Record:
             if datasource.primary:
                 return [(self.key.recno, self.srvalue)]
             return [(self.value.__dict__[datasource.dbname], self.srkey)]
-        except:
+        except Exception:
             return []
 
     def load_instance(self, database, dbset, dbname, record):
@@ -651,8 +652,8 @@ class Record:
         """
         self.database = database
 
-    deletecallbacks = dict()
-    putcallbacks = dict()
+    deletecallbacks = {}
+    putcallbacks = {}
 
     def packed_key(self):
         """Return self.key converted to string representation.
@@ -703,6 +704,7 @@ class RecorddBaseIII(Record):
 
     def __init__(self, keyclass=None, valueclass=None, **k):
         """Initialize dBaseIII record instance."""
+        del k
         if keyclass is None:
             keyclass = KeydBaseIII
         elif not issubclass(keyclass, KeydBaseIII):
@@ -740,6 +742,7 @@ class RecordText(Record):
 
     def __init__(self, keyclass=None, valueclass=None, **k):
         """Initialize dBaseIII record instance."""
+        del k
         if keyclass is None:
             keyclass = KeyText
         elif not issubclass(keyclass, KeyText):

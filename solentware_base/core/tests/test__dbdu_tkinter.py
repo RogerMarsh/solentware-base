@@ -38,6 +38,9 @@ class _DBdu(unittest.TestCase):
                 if f.startswith("log."):
                     os.remove(os.path.join(logdir, f))
             os.rmdir(logdir)
+        for f in os.listdir():
+            if f.startswith("__db."):
+                os.remove(f)
 
 
 # Same tests as test__sqlite.Database___init__ with relevant additions.

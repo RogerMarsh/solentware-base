@@ -2,7 +2,7 @@
 # Copyright 2008, 2019 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""Define the database interface shared by _db and _sqlite modules.
+"""Define the interface shared by python database modules.
 
 The major components are the delete_instance, edit_instance, and put_instance,
 methods.  The _dpt module's versions of these methods are too different to
@@ -24,8 +24,51 @@ from .recordset import (
 )
 
 
+# The Database class was added to the ignored-classes list of pylint.conf for
+# solentware_base at a time when all the no-member errors (E1101) referred
+# to it or one of it's subclasses with the same name in another module.
 class Database:
-    """Define file and record access methods; which subclasses may override."""
+    """Define file and record access methods; which subclasses may override.
+
+    The set_segment_size() method is used to set the segment size to fit
+    the segment size recorded on a database.  There is no segment_size_bytes
+    class attribute.
+
+    Property file_per_database returns False because all 'key:value' sets,
+    and the associated inverted list indicies, are held in one file by
+    default.  Berkeley DB is the known example where it is reasonable to
+    return True: override the class attribute, and the archive() and
+    delete_archive() methods in .archivedu.Archivedu class, if this case
+    is wanted.
+
+    """
+
+    _file_per_database = False
+
+    @property
+    def file_per_database(self):
+        """Return True if each database is in a separate file.
+
+        Berkeley DB is the known cases where True is reasonable (see ._db
+        module), and DPT is the known case where True is mandatory (see
+        ._dpt module).
+
+        """
+        return self._file_per_database
+
+    def _generate_database_file_name(self, name):
+        """Return path to database file.
+
+        By default this is a file where os.path.basename(path) is same as
+        os.path.dirname(path); and path is assumed to follow this rule.
+
+        However some database engines mangle os.path.basename(path) to
+        give the file name.  Override this method if necessary to apply
+        the required mangle to os.path.basename(path).
+
+        """
+        del name
+        return self.database_file
 
     def delete_instance(self, dbset, instance):
         """Delete an existing instance on databases in dbset.
@@ -229,6 +272,7 @@ class Database:
 
     def make_segment(self, key, segment_number, record_count, records):
         """Return a Segment subclass instance created from arguments."""
+        del key  # Looks reasonable to remove key from arguments.
         if record_count == 1:
             return RecordsetSegmentInt(
                 segment_number,
@@ -300,6 +344,7 @@ class Database:
         *a absorbs the arguments needed by the DPT version of this method.
 
         """
+        del a
         return oldcursor
 
     def allocate_and_open_contexts(self, files=None):
@@ -311,6 +356,7 @@ class Database:
         The Berkeley DB DBEnv or SQLite3 Connection object is assumed closed as
         well so open all files in the specification.
         """
+        del files
         self.open_database()
 
     def open_database_contexts(self, files=None):
@@ -328,6 +374,9 @@ class Database:
 
     def end_read_only_transaction(self):
         """Do nothing, present for compatibility with Symas LMMD."""
+
+    def increase_database_record_capacity(self, **kwargs):
+        """Do nothing, present for compatibility with DPT."""
 
 
 class ExistenceBitmapControl:

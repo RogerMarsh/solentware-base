@@ -29,6 +29,12 @@ class NdbmduDatabase(unittest.TestCase):
             ndbmdu_database.Database({}), ndbmdu_database.Database
         )
 
+    def test_01_take_backup_before_deferred_update(self):
+        self.assertEqual(
+            ndbmdu_database.Database({}).take_backup_before_deferred_update,
+            True,
+        )
+
 
 if __name__ == "__main__":
     runner = unittest.TextTestRunner

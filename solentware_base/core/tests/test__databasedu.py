@@ -324,6 +324,22 @@ class Database_deferred_update_housekeeping(unittest.TestCase):
         self.assertEqual(self.database.deferred_update_housekeeping(), None)
 
 
+class Database_take_backup_before_deferred_update(unittest.TestCase):
+    def setUp(self):
+        class _D(_databasedu.Database):
+            pass
+
+        self.database = _D()
+
+    def tearDown(self):
+        self.database = None
+
+    def test_take_backup_before_deferred_update(self):
+        self.assertEqual(
+            self.database.take_backup_before_deferred_update, False
+        )
+
+
 if __name__ == "__main__":
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
@@ -334,3 +350,4 @@ if __name__ == "__main__":
     runner().run(loader(Database__prepare_segment_record_list))
     runner().run(loader(Database_set_segment_size))
     runner().run(loader(Database_deferred_update_housekeeping))
+    runner().run(loader(Database_take_backup_before_deferred_update))

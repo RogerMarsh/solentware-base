@@ -303,7 +303,6 @@ try:
                 pass
             return True
 
-
 except NameError:
     # Assume sqlite3 is not installed
     pass
@@ -345,7 +344,6 @@ try:
             except:
                 pass
             return True
-
 
 except NameError:
     # Assume apsw is not installed
@@ -400,7 +398,6 @@ try:
             except:
                 pass
             return True
-
 
 except NameError:
     # Assume berkeleydb is not installed
@@ -457,7 +454,6 @@ try:
                 pass
             return True
 
-
 except NameError:
     # Assume bsddb3 is not installed
     pass
@@ -507,7 +503,6 @@ try:
             except:
                 pass
             return True
-
 
 except NameError:
     # Assume dptapi is not installed

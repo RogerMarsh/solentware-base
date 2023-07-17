@@ -29,8 +29,6 @@ from .recordset import RecordsetSegmentList
 class DatabaseError(Exception):
     """Exception for Database class."""
 
-    pass
-
 
 class Database(_databasedu.Database):
     """Customise _nosql.Database for deferred update.
@@ -266,32 +264,3 @@ class Database(_databasedu.Database):
     def get_ebm_segment(self, ebm_control, key):
         """Return existence bitmap for segment number 'key'."""
         return ebm_control.get_ebm_segment(key, self.dbenv)
-
-
-class _Database_temporary:
-    """Provide methods to override those in Database class.
-
-    Say SubClass(..., _nosqldu._Database_temporary, _nosqldu.Database, ...)
-    instead of SubClass(..., _nosqldu.Database, ...).
-
-    The methods here were the implementations in _nosqldu.Database before
-    addition of the _Database_temporary class.
-
-    The new_deferred_root() and merge() methods are not included, unlike
-    for some other engines, because they did, and continue to do, nothing.
-    """
-
-    def start_transaction(self):
-        """Do not start transaction in deferred update mode."""
-
-    def backout(self):
-        """Do not backout transaction in deferred update mode."""
-
-    def commit(self):
-        """Do not commit transaction in deferred update mode."""
-
-    def deferred_update_housekeeping(self):
-        """Override to restore behaviour overridden in _nosqldu.Database.
-
-        Do nothing.
-        """

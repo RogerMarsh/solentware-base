@@ -290,6 +290,11 @@ class _Datastore_open_datastore(_Module, EnvironmentExistsOneDb):
         store.open_datastore(self.env)
         self.assertEqual(store._name, b"store")
         self.assertEqual(store._flags, {})
+
+        # Dated 2023-07-12.
+        # Fails in Python3.9 with FreeBSD port py39-lmdb: no attribute.
+        # Ok in Python3.10 on FreeBSD with pip ... --user install.
+        # Ok in Python3.10 on OpenBSD with pip ... --user install.
         self.assertIsInstance(store._datastore, self.dbe_module._Database)
         self.assertEqual(
             sorted(store.__dict__.keys()),
@@ -301,6 +306,11 @@ class _Datastore_open_datastore(_Module, EnvironmentExistsOneDb):
         store = _lmdb._Datastore(b"store")
         store.open_datastore(self.env)
         spare = _lmdb._Datastore(b"spare")
+
+        # Dated 2023-07-12.
+        # Fails in Python3.9 with FreeBSD port py39-lmdb: message mismatch.
+        # Ok in Python3.10 on FreeBSD with pip ... --user install.
+        # Ok in Python3.10 on OpenBSD with pip ... --user install.
         self.assertRaisesRegex(
             self.dbe_module.DbsFullError,
             "mdb_dbi_open: MDB_DBS_FULL: Environment maxdbs limit reached",
@@ -368,6 +378,11 @@ class _Datastore_close_datastore(_Module, EnvironmentExistsOneDb):
         store.open_datastore(self.env)
         store.close_datastore()
         store.open_datastore(self.env)
+
+        # Dated 2023-07-12.
+        # Fails in Python3.9 with FreeBSD port py39-lmdb: no attribute.
+        # Ok in Python3.10 on FreeBSD with pip ... --user install.
+        # Ok in Python3.10 on OpenBSD with pip ... --user install.
         self.assertIsInstance(store._datastore, self.dbe_module._Database)
 
     def test_01_release_datastore_handle_03(self):
@@ -377,6 +392,11 @@ class _Datastore_close_datastore(_Module, EnvironmentExistsOneDb):
         store.close_datastore()
         store.open_datastore(self.env)
         spare = _lmdb._Datastore(b"spare")
+
+        # Dated 2023-07-12.
+        # Fails in Python3.9 with FreeBSD port py39-lmdb: message mismatch.
+        # Ok in Python3.10 on FreeBSD with pip ... --user install.
+        # Ok in Python3.10 on OpenBSD with pip ... --user install.
         self.assertRaisesRegex(
             self.dbe_module.DbsFullError,
             "mdb_dbi_open: MDB_DBS_FULL: Environment maxdbs limit reached",
@@ -955,7 +975,13 @@ class Database_open_database_contexts(DB):
         sst = self.database.segment_table
         sec = self.database.ebm_control
         dbem = self.dbe_module
+
+        # Dated 2023-07-12.
+        # Fails in Python3.9 with FreeBSD port py39-lmdb: no attribute.
+        # Ok in Python3.10 on FreeBSD with pip ... --user install.
+        # Ok in Python3.10 on OpenBSD with pip ... --user install.
         ae(isinstance(sdt["___design"].datastore, dbem._Database), False)
+
         ae(isinstance(sdt["___control"].datastore, dbem._Database), False)
         ae(sdt["file1"][0].datastore is None, True)
         ae(sdt["file1_field1"][0].datastore is None, True)
@@ -991,7 +1017,13 @@ class Database_open_database_contexts(DB):
         sec = self.database.ebm_control
         dbem = self.dbe_module
         sdb.open_database_contexts(files=False)
+
+        # Dated 2023-07-12.
+        # Fails in Python3.9 with FreeBSD port py39-lmdb: no attribute.
+        # Ok in Python3.10 on FreeBSD with pip ... --user install.
+        # Ok in Python3.10 on OpenBSD with pip ... --user install.
         ae(isinstance(sdt["___design"].datastore, dbem._Database), False)
+
         ae(isinstance(sdt["___control"].datastore, dbem._Database), True)
         ae(sdt["file1"][0].datastore is None, True)
         ae(sdt["file1_field1"][0].datastore is None, True)
@@ -1013,7 +1045,13 @@ class Database_open_database_contexts(DB):
         sec = self.database.ebm_control
         dbem = self.dbe_module
         sdb.open_database_contexts(files={"file2"})
+
+        # Dated 2023-07-12.
+        # Fails in Python3.9 with FreeBSD port py39-lmdb: no attribute.
+        # Ok in Python3.10 on FreeBSD with pip ... --user install.
+        # Ok in Python3.10 on OpenBSD with pip ... --user install.
         ae(isinstance(sdt["___design"].datastore, dbem._Database), False)
+
         ae(isinstance(sdt["___control"].datastore, dbem._Database), True)
         ae(sdt["file1"][0].datastore is None, True)
         ae(sdt["file1_field1"][0].datastore is None, True)

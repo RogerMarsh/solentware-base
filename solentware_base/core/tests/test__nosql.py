@@ -378,6 +378,10 @@ class DatabaseInstance(_NoSQL):
             self.database.recordlist_nil("a"), recordset.RecordList
         )
 
+    # Attribute database file is None at this point.
+    def test_06__generate_database_file_name(self):
+        self.assertEqual(self.database._generate_database_file_name("a"), None)
+
 
 # Memory databases are used for these tests.
 class Database_open_database(_NoSQL):

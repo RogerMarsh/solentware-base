@@ -53,7 +53,7 @@ class Cursor:
         """Close database cursor."""
         try:
             self._cursor.close()
-        except:
+        except Exception:
             pass
         self._cursor = None
         self._dbset = None
@@ -126,6 +126,7 @@ class Cursor:
         the recordset will have picked just the records needed.
 
         """
+        del partial
         self._partial = None
 
     def get_partial(self):

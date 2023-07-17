@@ -81,7 +81,8 @@ def berkeleydb_du_splice_fix(home=None, specification=None):
             specification[key] = value
     # The index name derivation is based on available database examples.
     for primary, definition in specification.items():
-        for secondary, field in definition[constants.SECONDARY].items():
+        # for secondary, field in definition[constants.SECONDARY].items():
+        for secondary in definition[constants.SECONDARY]:
             if isdir:
                 index = "_".join((primary, secondary))
                 if not os.path.isfile(os.path.join(path, index)):

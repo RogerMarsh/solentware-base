@@ -72,6 +72,7 @@ class Bitarray:
 
         """
         # Time taken proportional to number of non-zero bytes.
+        del value
         return sum(self.bitarray_bytes.translate(_bits_count, b"\x00"))
 
     def frombytes(self, from_):
@@ -118,8 +119,8 @@ class Bitarray:
                     ):
                         if self.bitarray_bytes[start_byte] & 128 >> bit:
                             return 8 * start_byte + bit
-            except IndexError:
-                raise ValueError("Set bit (True) not found")
+            except IndexError as exc:
+                raise ValueError("Set bit (True) not found") from exc
             for byte in range(1 + start_byte, stop_byte):
                 if self.bitarray_bytes[byte] != 0:
                     return 8 * byte + _first_set_bit[self.bitarray_bytes[byte]]
@@ -137,8 +138,8 @@ class Bitarray:
                 ):
                     if not self.bitarray_bytes[start_byte] & 128 >> bit:
                         return 8 * start_byte + bit
-        except IndexError:
-            raise ValueError("Unset bit (False) not found")
+        except IndexError as exc:
+            raise ValueError("Unset bit (False) not found") from exc
         for byte in range(1 + start_byte, stop_byte):
             if self.bitarray_bytes[byte] != 255:
                 for bit in range(0, 8):
@@ -183,6 +184,7 @@ class Bitarray:
         in bitarray-0.8.1 is search(bitarray('1')).
 
         """
+        del bitarray, limit
         bitscan = []
         for j, byte in enumerate(self.bitarray_bytes):
             if not byte:

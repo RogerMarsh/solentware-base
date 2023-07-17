@@ -3,9 +3,6 @@
 # Licence: See LICENCE (BSD licence)
 
 """Deferred update access to Symas Lightning Memory-Mapped Database (LMMD)."""
-import heapq
-import collections
-
 from .constants import (
     SECONDARY,
     SUBFILE_DELIMITER,
@@ -451,23 +448,3 @@ class Database(_databasedu.Database):
             key.to_bytes(4, byteorder="big"),
             db=ebm_control.ebm_table.datastore,
         )
-
-
-class _Database_temporary:
-    """Provide methods to override those in Database class.
-
-    Say SubClass(..., _lmdbdu._Database_temporary, _lmdbdu.Database, ...)
-    instead of SubClass(..., _lmdbdu.Database, ...).
-
-    The methods here were the implementations in _lmdbdu.Database before
-    addition of the _Database_temporary class.
-
-    The new_deferred_root() and merge() methods are not included, unlike
-    for some other engines, because they did, and continue to do, nothing.
-    """
-
-    def deferred_update_housekeeping(self):
-        """Override to restore behaviour overridden in _lmdbdu.Database.
-
-        Do nothing.
-        """

@@ -262,7 +262,7 @@ def modules_for_existing_databases(folder, filespec):
                     cursor.execute("pragma schema_version")
 
                     dbm[name] = module
-                except:
+                except Exception:
                     dbm[name] = False
                 finally:
                     cursor.close()
@@ -508,9 +508,9 @@ def modules_for_existing_databases(folder, filespec):
     }
     for name, module in dbm.items():
         if module:
-            for module_names in module_sets:
+            for module_names, module_set in module_sets.items():
                 if name in module_names:
-                    module_sets[module_names].add(module)
+                    module_set.add(module)
     modules = [v for v in module_sets.values() if len(v)]
     if modules:
         return modules

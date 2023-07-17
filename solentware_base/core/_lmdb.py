@@ -7,7 +7,6 @@ import os
 from ast import literal_eval
 import bisect
 import re
-import shutil
 
 from . import filespec
 from .constants import (
@@ -59,14 +58,15 @@ class Database(_database.Database):
         **soak
     ):
         """Initialize data structures."""
+        del soak
         if folder is not None:
             try:
                 path = os.path.abspath(folder)
-            except:
+            except Exception as exc:
                 msg = " ".join(
                     ["Database folder name", str(folder), "is not valid"]
                 )
-                raise DatabaseError(msg)
+                raise DatabaseError(msg) from exc
         else:
             path = None
         if not isinstance(specification, filespec.FileSpec):
@@ -290,14 +290,11 @@ class Database(_database.Database):
                 continue
             fields = specification[SECONDARY]
             self.table[file] = [None]
-            try:
-                self.table[file][0] = _Datastore(
-                    self._encoded_database_name(file),
-                    integerkey=False,
-                    create=db_create,
-                )
-            except:
-                raise
+            self.table[file][0] = _Datastore(
+                self._encoded_database_name(file),
+                integerkey=False,
+                create=db_create,
+            )
             self.ebm_control[file] = ExistenceBitmapControl(
                 file, self, dbe, db_create
             )
@@ -316,14 +313,11 @@ class Database(_database.Database):
                     fieldname = filespec.FileSpec.field_name(field)
                 secondary = SUBFILE_DELIMITER.join((file, field))
                 self.table[secondary] = [None]
-                try:
-                    self.table[secondary][0] = _Datastore(
-                        self._encoded_database_name(secondary),
-                        dupsort=True,
-                        create=db_create,
-                    )
-                except:
-                    raise
+                self.table[secondary][0] = _Datastore(
+                    self._encoded_database_name(secondary),
+                    dupsort=True,
+                    create=db_create,
+                )
         # If db_create==True there is no database version of the specification
         # to check the supplied specification against, so write it to the
         # database.
@@ -480,6 +474,7 @@ class Database(_database.Database):
         # See stackoverflow.com/questions/56905502/lmdb... and referenced
         # openldap.org/lists/openldap-devel/201409/... thread for informed
         # comment.
+        del dbe
         return dict(subdir=False, readahead=False)
 
     def checkpoint_before_close_dbenv(self):
@@ -631,8 +626,9 @@ class Database(_database.Database):
     def replace(self, file, key, oldvalue, newvalue):
         """Replace key from table for file using newvalue.
 
-        oldvalue is ignored in _sqlite version of replace() method.
+        oldvalue is ignored in _lmdb version of replace() method.
         """
+        del oldvalue
         assert file in self.specification
         self.dbtxn.transaction.put(
             key.to_bytes(4, byteorder="big"),
@@ -649,6 +645,7 @@ class Database(_database.Database):
         key not in database.
 
         """
+        del value
         assert file in self.specification
         self.dbtxn.transaction.delete(
             key.to_bytes(4, byteorder="big"),
@@ -761,6 +758,7 @@ class Database(_database.Database):
         note_freed_record_number_segment.  A successful record deletion
         passes this test.
         """
+        del record_number_in_segment
         try:
             high_segment = divmod(high_record, SegmentSize.db_segment_size)[0]
         except TypeError:
@@ -1247,7 +1245,7 @@ class Database(_database.Database):
             if valuespec.above_value and valuespec.below_value:
                 record = cursor.set_range(valuespec.above_value.encode())
                 if record:
-                    if rcursor.item()[0] == valuespec.above_value.encode():
+                    if cursor.item()[0] == valuespec.above_value.encode():
                         record = cursor.next_nodup()
                 while record:
                     key = cursor.item()[0].decode()
@@ -1768,7 +1766,7 @@ class Database(_database.Database):
         """Return dict of dicts of database stats."""
         stats = {}
         for file, table in self.table.items():
-            if file == DESIGN_FILE or file == CONTROL_FILE:
+            if file in {DESIGN_FILE, CONTROL_FILE}:
                 stats[file] = table.datastore_stats(self.dbtxn)
             elif table is not None:
                 for count, dbo in enumerate(table):
@@ -2005,6 +2003,7 @@ class Cursor(_cursor.Cursor):
 
     def __init__(self, dbset, keyrange=None, transaction=None, **kargs):
         """Define a cursor on the underlying database engine dbset."""
+        del keyrange, kargs
         super().__init__(dbset)
         self._transaction = transaction
         self._cursor = transaction.transaction.cursor(dbset.datastore)
@@ -2548,7 +2547,8 @@ class CursorSecondary(Cursor):
         return record
 
     def _set_both(self, key, value):
-        segment, record_number = divmod(value, SegmentSize.db_segment_size)
+        # segment, record_number = divmod(value, SegmentSize.db_segment_size)
+        segment = divmod(value, SegmentSize.db_segment_size)[0]
         cursor = self._transaction.transaction.cursor(db=self._dbset.datastore)
         try:
             record = cursor.set_range(key)
@@ -2649,6 +2649,7 @@ class RecordsetCursor(_RecordsetCursor):
         kargs absorbs arguments relevant to other database engines.
 
         """
+        del kargs
         super().__init__(recordset)
         self._transaction = transaction
         self._database = database
@@ -2695,6 +2696,7 @@ class ExistenceBitmapControl(_database.ExistenceBitmapControl):
 
     def __init__(self, file, database, dbe, db_create):
         """Note file whose existence bitmap is managed."""
+        del dbe
         super().__init__(file, database)
         try:
             dbname = SUBFILE_DELIMITER.join((file, EXISTENCE_BITMAP_SUFFIX))

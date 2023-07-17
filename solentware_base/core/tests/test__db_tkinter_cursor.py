@@ -415,7 +415,12 @@ class Cursor_primary__get_record_at_position(_DB):
         # Records 304 and 317, in segment 3, have bits set.
         self.create_ebm_extra(
             3,
-            b"\x00\x00\x00\x00\x00\x00\x80\x04\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\x00\x00\x00\x00\x00\x00\x80\x04",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
         )
         self.assertEqual(self.cursor.get_position_of_record((304, None)), 255)
         self.assertEqual(self.cursor.get_position_of_record((310, None)), 256)
@@ -429,7 +434,12 @@ class Cursor_primary__get_record_at_position(_DB):
         self.create_ebm_extra(2)
         self.create_ebm_extra(
             3,
-            b"\x00\x00\x00\x00\x00\x10\x80\x04\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\x00\x00\x00\x00\x00\x10\x80\x04",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
         )
         for start, stop in ((1, 256), (299, 300), (304, 305), (317, 318)):
             for record_number in range(start, stop):
@@ -470,7 +480,12 @@ class Cursor_primary__get_record_at_position(_DB):
         self.create_ebm_extra(2)
         self.create_ebm_extra(
             3,
-            b"\x00\x00\x00\x00\x00\x10\x80\x04\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\x00\x00\x00\x00\x00\x10\x80\x04",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
         )
         for start, stop in ((1, 256), (299, 300), (304, 305), (317, 318)):
             for record_number in range(start, stop):

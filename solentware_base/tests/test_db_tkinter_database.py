@@ -21,6 +21,9 @@ class DbTkinterDatabase(unittest.TestCase):
                 if f.startswith("log."):
                     os.remove(os.path.join(logdir, f))
             os.rmdir(logdir)
+        for f in os.listdir():
+            if f.startswith("__db."):
+                os.remove(f)
 
     def test__assumptions(self):
         msg = "Failure of this test invalidates all other tests"

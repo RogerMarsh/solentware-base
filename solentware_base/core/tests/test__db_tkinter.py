@@ -40,6 +40,9 @@ class _DB(unittest.TestCase):
                 if f.startswith("log."):
                     os.remove(os.path.join(logdir, f))
             os.rmdir(logdir)
+        for f in os.listdir():
+            if f.startswith("__db."):
+                os.remove(f)
 
 
 class Database___init__(_DB):
@@ -426,7 +429,7 @@ class Database_open_database(_DB):
         d = self.database
         self.assertEqual(d._file_per_database, False)
         self.assertEqual(d.database_file, None)
-        self.assertEqual(d.file_name_for_database("file1"), None)
+        self.assertEqual(d.file_name_for_database("file1"), "")
         d._file_per_database = True
         self.assertEqual(d.home_directory, None)
         self.assertEqual(d.file_name_for_database("file1"), "file1")
@@ -520,6 +523,9 @@ class Database_do_database_task(unittest.TestCase):
                 if f.startswith("log."):
                     os.remove(os.path.join(logdir, f))
             os.rmdir(logdir)
+        for f in os.listdir():
+            if f.startswith("__db."):
+                os.remove(f)
 
     def test_01_do_database_task(self):
         def m(*a, **k):
@@ -1676,7 +1682,7 @@ class Database_make_recordset(_DBOpen):
     # version raises a DBKeyEmptyError exception?
     def test_55_file_records_under(self):
         rs = self.database.recordlist_key("file1", "field1", key=b"ba_o")
-        ## self.database.file_records_under('file1', 'field1', rs, b'www')
+        # # self.database.file_records_under('file1', 'field1', rs, b'www')
         # self.assertRaisesRegex(
         #    bdb.DBKeyEmptyError,
         #    r"".join(
@@ -1774,7 +1780,9 @@ class Database_freed_record_number(_DBOpen):
         # the environment in tearDown().
         # The bsddb3 and berkeleydb version of this test should be changed to
         # fit this one.
-        # self.database.ebm_control["file1"] = _db_tkinter.ExistenceBitmapControl(
+        # self.database.ebm_control[
+        #    "file1"
+        # ] = _db_tkinter.ExistenceBitmapControl(
         #    #"file1", self.database, dbe_module, dbe_module.db.DB_CREATE
         #    "file1", self.database, bdb, True
         # )
@@ -2017,7 +2025,9 @@ class Database_empty_freed_record_number(_DBOpen):
         # the environment in tearDown().
         # The bsddb3 and berkeleydb version of this test should be changed to
         # fit this one.
-        # self.database.ebm_control["file1"] = _db_tkinter.ExistenceBitmapControl(
+        # self.database.ebm_control[
+        #     "file1"
+        # ] = _db_tkinter.ExistenceBitmapControl(
         #    "file1", self.database, dbe_module.db, dbe_module.db.DB_CREATE
         # )
         self.high_record = self.database.get_high_record("file1")

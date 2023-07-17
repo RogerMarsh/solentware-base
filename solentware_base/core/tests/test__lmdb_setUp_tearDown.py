@@ -244,7 +244,7 @@ class Database_open_database_contexts(DB):
         super().setUp()
         self.database = self._D({**{"file1": {"field1"}, "file2": {"field2"}}})
         self.database.dbenv = self.dbe_module.open(
-            HOME, subdir == False, max_dbs=7
+            HOME, subdir is False, max_dbs=7
         )
 
 

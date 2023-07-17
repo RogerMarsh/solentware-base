@@ -180,7 +180,6 @@ class CreateDatabase:
         text.pack(fill=tkinter.BOTH)
         self.menu = tkinter.Menu(master=frame, tearoff=False)
         self.__menu = self.menu
-        self.__xy = None
         self.root = root
         self.text = text
         self.entry = entry
@@ -204,7 +203,6 @@ class CreateDatabase:
                 )
             )
         entry.focus_set()
-        self.__help = None
 
     def insert_text(self, text):
         """Wrap Text widget insert with Enable and Disable state configure."""
@@ -226,11 +224,11 @@ class CreateDatabase:
     def show_menu(self, event=None):
         """Show the popup menu for widget."""
         self.__menu.tk_popup(*event.widget.winfo_pointerxy())
-        self.__xy = event.x, event.y
         self.__menu = self.menu
 
     def select_database_file(self, event=None):
         """Select a directory."""
+        del event
         localfilename = tkinter.filedialog.askdirectory(
             parent=self.text,
             title="Select directory where database is to be created",
@@ -264,6 +262,7 @@ class CreateDatabase:
 
     def create_folder_and_database(self, event=None):
         """Create database after creating folder if it does not exist."""
+        del event
         if self.directory.get() == "":
             tkinter.messagebox.showerror(
                 master=self.root, message="Please select a directory"
@@ -311,7 +310,7 @@ class CreateDatabase:
         if not os.path.exists(path):
             try:
                 os.mkdir(path)
-            except:
+            except Exception:
                 msg = (
                     "Cannot create directory\n",
                     os.path.basename(self.directory.get()),

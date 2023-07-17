@@ -824,6 +824,7 @@ class Where:
 
     def _first_token_left_parenthesis(self, token):
         """Set nodes for first token is '('."""
+        del token
         node = WhereClause()
         node.down = WhereClause()
         node.down.up = node
@@ -833,6 +834,7 @@ class Where:
 
     def _boolean_left_parenthesis(self, token):
         """Set nodes for '(' token after 'and', 'or', or 'nor'."""
+        del token
         self._deferred_not_phrase()
         node = self.node
         node.down = WhereClause()
@@ -841,6 +843,7 @@ class Where:
 
     def _first_token_invert(self, token):
         """Set nodes for first token is 'not'."""
+        del token
         node = WhereClause()
         node.not_phrase = True
         node.up = self.node

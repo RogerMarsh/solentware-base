@@ -73,10 +73,30 @@ class DatabaseError(Exception):
 class Database:
     """Access a DPT database with transactions enabled by default.
 
-    Direct use of this class is not intended: rather use the Database class
-    in the dpt_database or dptdu_database modules which customize this class.
+    Direct use of this class is not intended: rather use the Database
+    class in the dpt_database or dptdu_database modules which customize
+    this class.
+
+    Class attribute segment_size_bytes is set to the value used within
+    the DPT database engine.  There is no set_segment_size() method.
+
+    Property file_per_database returns True because each 'key:value' set,
+    and the associated inverted list indicies, is held in a separate file.
 
     """
+
+    _file_per_database = True
+
+    @property
+    def file_per_database(self):
+        """Return True if each database is in a separate file.
+
+        DPT is the known cases where True is mandatory, and Berkeley DB
+        is the known case where True is reasonable (see ._database
+        module).
+
+        """
+        return self._file_per_database
 
     segment_size_bytes = SegmentSize.db_segment_size_bytes
 
@@ -110,17 +130,18 @@ class Database:
         **soak
     ):
         """Create definition of database in folder from specification."""
+        del soak
         if folder is None:
             raise DatabaseError(
                 "A directory must be given: DPT does not do memory databases"
             )
         try:
             path = os.path.abspath(folder)
-        except:
+        except Exception as exc:
             msg = " ".join(
                 ["Database folder name", str(folder), "is not valid"]
             )
-            raise DatabaseError(msg)
+            raise DatabaseError(msg) from exc
         if not isinstance(specification, filespec.FileSpec):
             specification = filespec.FileSpec(**specification)
         self._validate_segment_size_bytes(self.segment_size_bytes)
@@ -289,11 +310,8 @@ class Database:
 
         """
         if not os.path.exists(self.parms):
-            parms = open(self.parms, "w")
-            try:
+            with open(self.parms, "w", encoding="iso-8859-1") as parms:
                 parms.write("MAXBUF=10000 " + os.linesep)
-            finally:
-                parms.close()
 
     def close_database(self):
         """Close DPT database and destroy dptapi.APIDatabaseServices object."""
@@ -359,13 +377,22 @@ class Database:
 
         """
         if files is None:
-            files = dict()
+            files = {}
         for k, table in self.table.items():
             if files and k not in files:
                 continue
             table.increase_file_size(
                 self.dbenv, sizing_record_counts=files.get(k)
             )
+
+    def increase_database_record_capacity(self, files=None):
+        """Increase file sizes."""
+        if files is None:
+            return
+        for key, value in files.items():
+            if value[0] == 0 and value[1] == 0:
+                continue
+            self.table[key].increase_file_pages(value)
 
     def initial_database_size(self):
         """Set initial file sizes as specified in file descriptions."""
@@ -606,6 +633,7 @@ class Database:
 
     def create_recordset_cursor(self, dbset, dbname, recordset):
         """Create and return a cursor for this recordset."""
+        del dbname
         return RecordsetCursorDPT(
             self.table[dbset], self.table[dbset].primary, recordset=recordset
         )
@@ -614,6 +642,7 @@ class Database:
     # version in core.database raises an exception if called.
     def create_recordsetlist_cursor(self, dbset, dbname, keyrange, recordset):
         """Create and return a cursor for this recordset."""
+        del keyrange, dbname
         return RecordsetListCursorDPT(
             self.table[dbset], self.table[dbset].primary, recordset=recordset
         )
@@ -698,10 +727,10 @@ class Database:
         return self.table[file].opencontext
 
     def _dptfileclass(self):
-        return _DPTFile
+        return DPTFile
 
     # The make_recordset_* methods should first take a FD recordset to lock
-    # records while evaluating.  Perhaps _DPTFile or _CursorDPT foundset_*
+    # records while evaluating.  Perhaps DPTFile or _CursorDPT foundset_*
     # methods usable.
 
     def recordlist_record_number(self, file, key=None, cache_size=1):
@@ -709,6 +738,7 @@ class Database:
 
         cache_size is not relevant to DPT.
         """
+        del cache_size
         dptfile = self.get_table_connection(file)
         recordlist = _DPTRecordList(dptfile)
         if key is None:
@@ -754,6 +784,7 @@ class Database:
 
         cache_size is not relevant to DPT.
         """
+        del cache_size
         dptfile = self.get_table_connection(file)
         recordlist = _DPTRecordList(dptfile)
         foundset = _DPTFoundSet(
@@ -778,6 +809,7 @@ class Database:
 
         cache_size is not relevant to DPT.
         """
+        del cache_size
         dptfile = self.get_table_connection(file)
         recordlist = _DPTRecordList(dptfile)
         if keylike is None:
@@ -823,6 +855,7 @@ class Database:
 
         cache_size is not relevant to DPT.
         """
+        del cache_size
         dptfile = self.get_table_connection(file)
         recordlist = _DPTRecordList(dptfile)
         if key is None:
@@ -852,6 +885,7 @@ class Database:
 
         cache_size is not relevant to DPT.
         """
+        del cache_size
         dptfile = self.get_table_connection(file)
         recordlist = _DPTRecordList(dptfile)
         if keystart is None:
@@ -959,6 +993,7 @@ class Database:
 
         cache_size is not relevant to DPT.
         """
+        del cache_size
         dptfile = self.get_table_connection(file)
         recordlist = _DPTRecordList(dptfile)
         foundset = _DPTFoundSet(
@@ -982,6 +1017,7 @@ class Database:
 
         cache_size is not relevant to DPT.
         """
+        del cache_size
         return _DPTRecordList(self.get_table_connection(file))
 
     def unfile_records_under(self, file, field, key):
@@ -1022,7 +1058,7 @@ class Database:
         )
 
 
-class _DPTFile:
+class DPTFile:
     """This class is used to access files in a DPT database.
 
     Instances are created as necessary by a Database.open_database() call.
@@ -1031,7 +1067,7 @@ class _DPTFile:
     Database class.
 
     The sibling modules for Berkeley DB and SQLite3 do not have classes like
-    _DPTFile.  (They used to have such but it seems simpler there without.)
+    DPTFile.  (They used to have such but it seems simpler there without.)
 
     """
 
@@ -1053,6 +1089,7 @@ class _DPTFile:
         default_dataset_folder=None,
         sfi=None,
     ):
+        """Create description of a DPT file."""
         self._dbe = None
         self.fieldvalue = None
         self._putrecordcopy = None
@@ -1085,19 +1122,19 @@ class _DPTFile:
             self.filedesc = None
         self.fields = {}
         self.dpt_field_names = {}
-        self.pyappend = dict()
+        self.pyappend = {}
         if fields is not None:
             for fieldname in fields:
                 if primary == fieldname:
                     fieldatts = PRIMARY_FIELDATTS
                 else:
                     fieldatts = SECONDARY_FIELDATTS
-                self.fields[fieldname] = dict()
+                self.fields[fieldname] = {}
                 for attr in DPT_FIELDATTS:
                     self.fields[fieldname][attr] = fieldatts[attr]
                 description = fields[fieldname]
                 if description is None:
-                    description = dict()
+                    description = {}
                 for attr in description:
                     if attr in DPT_FIELDATTS:
                         self.fields[fieldname][attr] = description[attr]
@@ -1141,6 +1178,7 @@ class _DPTFile:
         """
         # Create the file if it does not exist.
         foldername, filename = os.path.split(self.file)
+        del filename
         if os.path.exists(foldername):
             if not os.path.isdir(foldername):
                 msg = " ".join([foldername, "exists but is not a folder"])
@@ -1163,9 +1201,8 @@ class _DPTFile:
             context_specification = dbe.APIContextSpecification(self.ddname)
             open_context = dbenv.OpenContext(context_specification)
             open_context.Initialize()
-            for field in self.fields:
+            for field, fld in self.fields.items():
                 attributes = dbe.APIFieldAttributes()
-                fld = self.fields[field]
                 if fld[FLT]:
                     attributes.SetFloatFlag()
                 if fld[INV]:
@@ -1186,8 +1223,7 @@ class _DPTFile:
             msg = " ".join([self.file, "exists but is not a file"])
             raise DatabaseError(msg)
 
-        for field in self.fields:
-            fld = self.fields[field]
+        for field, fld in self.fields.items():
             if fld[ONM]:
                 self.pyappend[field] = dbe.pyAppendDouble
             elif fld[ORD]:
@@ -1229,6 +1265,27 @@ class _DPTFile:
                 filedesc[DSIZE] = dsize
         return True
 
+    def increase_file_pages(self, page_counts):
+        """Increase file size using page_counts.
+
+        page_counts gives two numbers, page counts for table B and table D
+        respectively, which are the extra pages of the two tables to do
+        the increase in size.
+        """
+        if self.opencontext is not None:
+            table_b_needed, table_d_needed = page_counts
+            if len(self.get_extents()) % 2:
+                if table_b_needed:
+                    self.opencontext.Increase(table_b_needed, False)
+                if table_d_needed:
+                    self.opencontext.Increase(table_d_needed, True)
+            elif table_d_needed:
+                self.opencontext.Increase(table_d_needed, True)
+                if table_b_needed:
+                    self.opencontext.Increase(table_b_needed, False)
+            elif table_b_needed:
+                self.opencontext.Increase(table_b_needed, False)
+
     def increase_file_size(self, dbserv, sizing_record_counts=None):
         """Increase file size using sizing_record_counts.
 
@@ -1264,6 +1321,7 @@ class _DPTFile:
         of this method.
 
         """
+        del dbserv  # Not needed if self.opencontext active.
         b_diff_imp = size_filled["BSIZE"] - size_before["BSIZE"]
         d_diff_imp = size_filled["DSIZE"] - size_before["DSIZE"]
         b_spare = size_before["BSIZE"] - max((0, size_before["BHIGHPG"]))
@@ -1411,7 +1469,7 @@ class _DPTFile:
     def get_file_parameters(self, dbserv):
         """Get current values of selected file parameters."""
         viewer_resetter = dbserv.Core().GetViewerResetter()
-        parameter = dict()
+        parameter = {}
         parameter["FISTAT"] = (
             viewer_resetter.ViewAsInt("FISTAT", self.opencontext),
             viewer_resetter.View("FISTAT", self.opencontext),
@@ -1511,8 +1569,8 @@ class _DPTFile:
         sri = instance.srindex
         nsri = instance.newrecord.srindex
         dcb = instance.deletecallbacks
-        ndcb = instance.newrecord.deletecallbacks
-        pcb = instance.putcallbacks
+        # ndcb = instance.newrecord.deletecallbacks
+        # pcb = instance.putcallbacks
         npcb = instance.newrecord.putcallbacks
         ionly = []
         nionly = []
@@ -1884,7 +1942,7 @@ class Cursor(cursor.Cursor):
                 foundset.recordset.CloseCursor(rscursor)
                 # context.DestroyRecordSet(foundset)
                 return None
-            highrecnum = rscursor.LastAdvancedRecNum()
+            # highrecnum = rscursor.LastAdvancedRecNum()
             foundset.recordset.CloseCursor(rscursor)
             # context.DestroyRecordSet(foundset)
             foundset = _cursor.foundset_records_before_record_number(position)
@@ -2009,10 +2067,10 @@ class Cursor(cursor.Cursor):
             return None
         if self.get_partial() is not None:
             try:
-                key, value = record
-                if not key.startswith(self.get_converted_partial()):
+                # key, value = record
+                if not record[0].startswith(self.get_converted_partial()):
                     return None
-            except:
+            except Exception:
                 return None
         return record
 
@@ -2199,6 +2257,7 @@ class _CursorDPT:
         keyrange=None,
         recordset=None,
     ):
+        del keyrange
 
         # Introduction of DataClient.refresh_cursor method in solentware_grid
         # package may force _foundset to be implementaed as a list to avoid

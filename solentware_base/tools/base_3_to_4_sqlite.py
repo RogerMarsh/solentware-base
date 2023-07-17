@@ -168,7 +168,7 @@ class Base_3_to_4_sqlite(base_3_to_4.Base_3_to_4):
                 cursor.execute(statement)
             except Exception as exc:
                 print(exc)
-                pass
+                # pass
         statement = " ".join(
             (
                 "insert into",

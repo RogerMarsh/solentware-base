@@ -305,7 +305,12 @@ class Cursor_primary(_SQLite):
         # Records 304 and 317, in segment 3, have bits set.
         self.create_ebm_extra(
             3,
-            b"\x00\x00\x00\x00\x00\x00\x80\x04\x00\x00\x00\x00\x00\x00\x00\x00",
+            b"".join(
+                (
+                    b"\x00\x00\x00\x00\x00\x00\x80\x04",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            ),
         )
         self.assertEqual(self.cursor.get_position_of_record((304, None)), 255)
         self.assertEqual(self.cursor.get_position_of_record((310, None)), 256)

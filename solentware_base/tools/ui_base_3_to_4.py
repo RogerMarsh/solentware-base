@@ -86,7 +86,6 @@ class UIBase_3_to_4:
         text.pack(fill=tkinter.BOTH)
         self.menu = tkinter.Menu(master=frame, tearoff=False)
         self.__menu = self.menu
-        self.__xy = None
         self.menu_file_dbf = tkinter.Menu(master=frame, tearoff=False)
         self.menu_file_other = tkinter.Menu(master=frame, tearoff=False)
         self.menu_field = tkinter.Menu(master=frame, tearoff=False)
@@ -265,11 +264,11 @@ class UIBase_3_to_4:
     def show_menu(self, event=None):
         """Show the popup menu for widget."""
         self.__menu.tk_popup(*event.widget.winfo_pointerxy())
-        self.__xy = event.x, event.y
         self.__menu = self.menu
 
     def close_url(self, event=None):
         """Close the URL."""
+        del event
         if not tkinter.messagebox.askokcancel(
             title="Close URL", message="Please confirm close URL"
         ):
@@ -280,6 +279,7 @@ class UIBase_3_to_4:
 
     def browse_localhost_file(self, event=None):
         """Select a directory on localhost."""
+        del event
         localfilename = tkinter.filedialog.askdirectory(
             parent=self.text,
             title="Select directory containing database to upgrade",
@@ -290,6 +290,7 @@ class UIBase_3_to_4:
 
     def upgrade_database(self, event=None):
         """Upgrade the database in selected directory."""
+        del event
         if self.contents.get().strip() == "":
             tkinter.messagebox.showerror(
                 title="Upgrade Database",
@@ -790,10 +791,12 @@ class UIBase_3_to_4:
 
     def show_help(self, event=None):
         """Show database table name upgrade help."""
+        del event
         if self.__help:
             return
 
         def clear_help(event=None):
+            del event
             self.__help = None
 
         self.__help = tkinter.Toplevel(master=self.root)
@@ -808,11 +811,14 @@ class UIBase_3_to_4:
         scrollbar.pack(side=tkinter.RIGHT, fill=tkinter.Y)
         text.pack(fill=tkinter.BOTH)
         try:
-            help_text = open(
-                os.path.join(os.path.dirname(__file__), _HELP)
-            ).read()
-        except:
+            with open(
+                os.path.join(os.path.dirname(__file__), _HELP),
+                encoding="utf-8",
+            ) as file:
+                help_text = file.read()
+        except Exception:
             help_text = "Unable to read help file"
+
         self._bind_for_scrolling_only(text)
         text.insert(tkinter.END, help_text)
 

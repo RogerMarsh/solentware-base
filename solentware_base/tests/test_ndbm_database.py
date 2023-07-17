@@ -35,17 +35,29 @@ class NdbmDatabase(unittest.TestCase):
             ndbm_database.Database,
         )
 
-    def test_open_database_01(self):
+    def test_01_open_database_01(self):
         self.assertRaisesRegex(
             ndbm_module.NdbmError,
             "Memory-only databases not supported by dbm.ndbm",
             ndbm_database.Database({}).open_database,
         )
 
-    def test_open_database_02(self):
+    def test_01_open_database_02(self):
         path = os.path.join(os.path.dirname("__file__"), "___ndbmtest")
         self.assertEqual(
             ndbm_database.Database({}, path).open_database(), None
+        )
+        for f in os.listdir(path):
+            os.remove(os.path.join(path, f))
+        os.rmdir(path)
+
+    def test_02__generate_database_file_name_01(self):
+        path = os.path.join(os.path.dirname("__file__"), "___ndbmtest")
+        d = ndbm_database.Database({}, path)
+        d.open_database()
+        self.assertEqual(
+            os.path.basename(d._generate_database_file_name("a")),
+            ".".join((path, "db")),
         )
         for f in os.listdir(path):
             os.remove(os.path.join(path, f))

@@ -16,23 +16,23 @@ method.
 """
 
 import tkinter
-import os
-
 import tkinter.messagebox
 import tkinter.filedialog
+import os
 
 STARS70 = b"*" * 70
 
 
 def _seek_data_start(filepath1, filepath2):
-    """Locate end of leading comment lines."""
+    """Return open files positioned at end of leading comment lines."""
     files = []
     for path in (filepath1, filepath2):
-        tape = open(path, "rb")
+        tape = open(path, "rb")  # Not with ... because open file returned.
         line = tape.read(70)
         if line == STARS70:
             for i in range(5):
                 tape.readline()
+            del i
         else:
             tape.seek(0)
         files.append(tape)
@@ -50,7 +50,7 @@ def _report_different(filepath1, filepath2):
 
 
 def _compare_tapef_files(filepath1, filepath2):
-    """Compare TAPEF files in directories filepath1 and filepath2"""
+    """Compare TAPEF files in directories filepath1 and filepath2."""
     tape1, tape2 = _seek_data_start(filepath1, filepath2)
     data1 = tape1.read()
     data2 = tape2.read()
@@ -59,7 +59,7 @@ def _compare_tapef_files(filepath1, filepath2):
 
 
 def _extract_records(data):
-    """Go.
+    r"""Go.
 
     Format is 4 byte record number followed by optional 2 byte block
     transfer marker then field==value pairs until b'\xff\xff' record
@@ -135,7 +135,7 @@ def _extract_records(data):
 
 
 def _compare_taped_files(filepath1, filepath2):
-    """Compare TAPED files in directories filepath1 and filepath2"""
+    """Compare TAPED files in directories filepath1 and filepath2."""
     tape1, tape2 = _seek_data_start(filepath1, filepath2)
     data1 = tape1.read()
     data2 = tape2.read()
@@ -204,7 +204,7 @@ def _extract_values(data):
 
 
 def _compare_tapei_files(filepath1, filepath2):
-    """Compare TAPEI files in directories filepath1 and filepath2"""
+    """Compare TAPEI files in directories filepath1 and filepath2."""
     tape1, tape2 = _seek_data_start(filepath1, filepath2)
     data1 = tape1.read()
     data2 = tape2.read()
@@ -237,6 +237,7 @@ def compare_tape_directories(directory1, directory2):
     filelist2 = set(os.listdir(path=directory2))
     for file1 in os.listdir(path=directory1):
         name, ext = os.path.splitext(file1)
+        del name
         if ext != ".DAT":
             continue
         for file2 in filelist2:
@@ -266,14 +267,14 @@ def compare_tape_directories(directory1, directory2):
 
 if __name__ == "__main__":
 
-    directory1 = tkinter.filedialog.askdirectory(
+    first_directory = tkinter.filedialog.askdirectory(
         title="Open First TAPE file directory",
         initialdir="~",
     )
-    if directory1:
-        directory2 = tkinter.filedialog.askdirectory(
+    if first_directory:
+        second_directory = tkinter.filedialog.askdirectory(
             title="Open Second TAPE file directory",
-            initialdir=os.path.dirname(directory1),
+            initialdir=os.path.dirname(first_directory),
         )
-        if directory2:
-            compare_tape_directories(directory1, directory2)
+        if second_directory:
+            compare_tape_directories(first_directory, second_directory)
