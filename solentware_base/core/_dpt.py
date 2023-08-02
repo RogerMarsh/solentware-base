@@ -14,6 +14,7 @@ import re
 
 from dptdb import dptapi
 
+from . import _database
 from . import filespec
 from . import cursor
 from .constants import (
@@ -46,12 +47,6 @@ from .constants import (
     DPT_PATTERN_CHARS,
 )
 
-# from .find_dpt import Find
-# from .where_dpt import Where
-from .find import Find
-from .where import Where
-from .findvalues import FindValues
-from .wherevalues import WhereValues
 from .segmentsize import SegmentSize
 
 FILE_PARAMETER_LIST = (
@@ -70,7 +65,7 @@ class DatabaseError(Exception):
     """Raise when an exceptional case is encountered in Database class."""
 
 
-class Database:
+class Database(_database.Database):
     """Access a DPT database with transactions enabled by default.
 
     Direct use of this class is not intended: rather use the Database
@@ -87,18 +82,16 @@ class Database:
 
     _file_per_database = True
 
-    @property
-    def file_per_database(self):
-        """Return True if each database is in a separate file.
-
-        DPT is the known cases where True is mandatory, and Berkeley DB
-        is the known case where True is reasonable (see ._database
-        module).
-
-        """
-        return self._file_per_database
-
     segment_size_bytes = SegmentSize.db_segment_size_bytes
+
+    # Deferred updates are done without transactions so this attribute
+    # should be False always.
+    # This and it's property, and methods archive and delete_archive are
+    # duplicated in the _databasedu.Database hierarchy: enough for a
+    # shared superclass for default backup stuff.
+    _take_backup_before_deferred_update = True
+
+    import_backup_directory = "__import_backup"
 
     # Not used by _dpt: segment size follows page size defined by DPT.
     # Present to be compatible with _db and _sqlite modules, where segment size
@@ -196,12 +189,6 @@ class Database:
 
         """
 
-    def start_read_only_transaction(self):
-        """Do nothing, present for compatibility with Symas LMMD."""
-
-    def end_read_only_transaction(self):
-        """Do nothing, present for compatibility with Symas LMMD."""
-
     def backout(self):
         """Backout tranaction."""
         if self.dbenv:
@@ -267,16 +254,18 @@ class Database:
                 **specification
             )
         for table in self.table.values():
-            table.open_file(self.dbenv, dptapi)
+            table.open_file(self.dbenv)
 
     def open_database_contexts(self, files=None):
-        """Open all files in normal mode.
+        """Override, open all files in normal mode.
 
         Intended use is to open files to examine file status, or perhaps the
         equivalent of DPT command VIEW TABLES, when the database is closed as
         far as the application subclass of dptbase.Database is concerned.
 
         The Database Services object, bound to self.dbenv, is assumed to exist.
+
+        The overridden method was introduced for compatibity with DPT.
 
         """
         if files is None:
@@ -386,7 +375,11 @@ class Database:
             )
 
     def increase_database_record_capacity(self, files=None):
-        """Increase file sizes."""
+        """Override, increase file sizes.
+
+        The overridden method was introduced for compatibity with DPT.
+
+        """
         if files is None:
             return
         for key, value in files.items():
@@ -425,17 +418,32 @@ class Database:
                 )
         return increases
 
-    def delete_instance(self, file, instance):
-        """Delete instance from file."""
-        self.table[file].delete_instance(instance)
+    def delete_instance(self, dbset, instance):
+        """Override, delete instance from dbset.
 
-    def edit_instance(self, file, instance):
-        """Edit an existing instance on file."""
-        self.table[file].edit_instance(instance)
+        Formerly 'dbset' was called 'file' to fit DPT terminology but
+        'dbset' is a neutral term used in other database interfaces.
 
-    def put_instance(self, file, instance):
-        """Add a new instance to file."""
-        self.table[file].put_instance(instance)
+        """
+        self.table[dbset].delete_instance(instance)
+
+    def edit_instance(self, dbset, instance):
+        """Override, edit an existing instance on dbset.
+
+        Formerly 'dbset' was called 'file' to fit DPT terminology but
+        'dbset' is a neutral term used in other database interfaces.
+
+        """
+        self.table[dbset].edit_instance(instance)
+
+    def put_instance(self, dbset, instance):
+        """Override, add a new instance to dbset.
+
+        Formerly 'dbset' was called 'file' to fit DPT terminology but
+        'dbset' is a neutral term used in other database interfaces.
+
+        """
+        self.table[dbset].put_instance(instance)
 
     # def find_values(self, valuespec, file):
     #    yield self.table[file].find_values(valuespec)
@@ -563,11 +571,13 @@ class Database:
             self.table[file].opencontext.CloseDirectValueCursor(dvcursor)
 
     def allocate_and_open_contexts(self, files=None):
-        """Open contexts which had been closed and possibly freed.
+        """Override, open contexts which had been closed and possibly freed.
 
         This method is intended for use only when re-opening a file after
         closing it temporarily to ask another thread to increase the size
         of the file.
+
+        The overridden method was introduced for compatibity with DPT.
 
         """
         # One thread may close contexts temporarily to allow another thread to
@@ -588,22 +598,6 @@ class Database:
         for name in files:
             self.table[name].open_existing_file(self.dbenv)
 
-    def record_finder(self, dbset, recordclass=None):
-        """Return a solentware_base.core.find.Find instance."""
-        return Find(self, dbset, recordclass=recordclass)
-
-    def record_selector(self, statement):
-        """Return a solentware_base.core.where.Where instance."""
-        return Where(statement)
-
-    def values_finder(self, dbset):
-        """Return a solentware_base.core.findvalues.FindValues instance."""
-        return FindValues(self, dbset)
-
-    def values_selector(self, statement):
-        """Return a solentware_base.core.wherevalues.WhereValues instance."""
-        return WhereValues(statement)
-
     # Cursor instance is created here because there are no other calls to that
     # method.
     def database_cursor(self, file, field, keyrange=None):
@@ -615,7 +609,12 @@ class Database:
         return Cursor(self.table[file], fieldname=field, keyrange=keyrange)
 
     def repair_cursor(self, oldcursor, file, field):
-        """Return new cursor based on oldcursor with fresh recordset."""
+        """Override, return new cursor with fresh recordset.
+
+        The overridden method returns the oldcursor, and was introduced
+        for compatibility with DPT where a new cursor has to be created.
+
+        """
         oldcursor.close()
         return self.database_cursor(file, field)
 
@@ -668,8 +667,7 @@ class Database:
             sysprint="CONSOLE",
             use_specification_items=use_specification_items,
         )
-        if db.open_database() is not True:
-            return
+        db.open_database()
         if taskmethodargs is None:
             taskmethodargs = {}
         try:
@@ -688,39 +686,6 @@ class Database:
 
         """
         return bool(self.table[file].opencontext)
-
-    def exists(self, file, field):
-        """Return True if database specification defines field in file."""
-        if field == file:
-            return field in self.specification
-        if file not in self.specification:
-            return False
-        return field in self.specification[file][SECONDARY]
-
-    def is_primary(self, file, field):
-        """Return True if field in file is specified as primary database.
-
-        The terminology is from the Berkeley DB database engine.
-
-        """
-        assert file in self.specification
-        if field == file:
-            return True
-        assert field in self.specification[file][SECONDARY]
-        return False
-
-    def is_recno(self, file, field):
-        """Return True if field in file is specified as record number.
-
-        The terminology is from the Berkeley DB database engine where
-        field would be a DB_RECNO database.
-
-        """
-        # Same answer as is_primary() by definition now.
-        # Originally Berkeley DB primary databases were potentially not record
-        # number, but addition of DPT and SQLite led to primary databases being
-        # record number only.
-        return self.is_primary(file, field)
 
     def get_table_connection(self, file):
         """Return OpenContext object for file."""
@@ -1057,6 +1022,33 @@ class Database:
             dptapi.APIFieldValue(self.encode_record_selector(key)),
         )
 
+    def make_segment(self, key, segment_number, record_count, records):
+        """Override, raise DatabaseError as operation is internal to DPT."""
+        del key, segment_number, record_count, records
+        raise DatabaseError("Segment operations are internal for DPT")
+
+    def set_segment_size(self):
+        """Override, raise DatabaseError as segment size is a DPT constant.
+
+        The setting is useful, as SegmentSize.db_segment_size_bytes, and is
+        set to the appropriate value during module initialisation.
+
+        """
+        raise DatabaseError("Segment size is a constant set internally by DPT")
+
+    def _generate_database_file_name(self, name):
+        """Override, return path to DPT file for name."""
+        return self.table[name].file
+
+    @property
+    def take_backup_before_deferred_update(self):
+        """Return True if temporary backups should protect deferred update.
+
+        It is expected the archive and delete_archive methods will do this.
+
+        """
+        return self._take_backup_before_deferred_update
+
 
 class DPTFile:
     """This class is used to access files in a DPT database.
@@ -1167,7 +1159,7 @@ class DPTFile:
         self.opencontext = None
         dbenv.Free(self.ddname)
 
-    def open_file(self, dbenv, dbe):
+    def open_file(self, dbenv):
         """Open file, after creation if file's dataset does not exist.
 
         os.path.exists() determines if file's dataset exists.
@@ -1186,7 +1178,7 @@ class DPTFile:
         else:
             os.makedirs(foldername)
         if not os.path.exists(self.file):
-            dbenv.Allocate(self.ddname, self.file, dbe.FILEDISP_COND)
+            dbenv.Allocate(self.ddname, self.file, dptapi.FILEDISP_COND)
             dbenv.Create(
                 self.ddname,
                 self.filedesc[BSIZE],
@@ -1198,11 +1190,11 @@ class DPTFile:
                 self.filedesc[DPGSRES],
                 self.filedesc[FILEORG],
             )
-            context_specification = dbe.APIContextSpecification(self.ddname)
+            context_specification = dptapi.APIContextSpecification(self.ddname)
             open_context = dbenv.OpenContext(context_specification)
             open_context.Initialize()
             for field, fld in self.fields.items():
-                attributes = dbe.APIFieldAttributes()
+                attributes = dptapi.APIFieldAttributes()
                 if fld[FLT]:
                     attributes.SetFloatFlag()
                 if fld[INV]:
@@ -1225,17 +1217,21 @@ class DPTFile:
 
         for field, fld in self.fields.items():
             if fld[ONM]:
-                self.pyappend[field] = dbe.pyAppendDouble
+                self.pyappend[field] = dptapi.pyAppendDouble
             elif fld[ORD]:
-                self.pyappend[field] = dbe.pyAppendStdString
+                self.pyappend[field] = dptapi.pyAppendStdString
+
+        # For compatibility with other database engines.
+        # There are still several 'self._dbe' references within this module
+        # which could be 'dptapi' instead without causing problems.
+        self._dbe = dptapi
 
         # Open the file for normal use.
-        self._dbe = dbe
         self.open_existing_file(dbenv)
 
         # Permanent instances for efficient file updates.
-        self.fieldvalue = dbe.APIFieldValue()
-        self._putrecordcopy = dbe.APIStoreRecordTemplate()
+        self.fieldvalue = dptapi.APIFieldValue()
+        self._putrecordcopy = dptapi.APIStoreRecordTemplate()
 
     def open_existing_file(self, dbenv):
         """Allocate file and open a context if the file exists."""

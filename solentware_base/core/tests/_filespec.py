@@ -299,7 +299,7 @@ try:
                 d, f = os.path.split(self.database_file)
                 if f == os.path.basename(d):
                     os.rmdir(d)
-            except:
+            except (FileNotFoundError, OSError):
                 pass
             return True
 
@@ -341,7 +341,7 @@ try:
                 d, f = os.path.split(self.database_file)
                 if f == os.path.basename(d):
                     os.rmdir(d)
-            except:
+            except (FileNotFoundError, OSError):
                 pass
             return True
 
@@ -395,7 +395,7 @@ try:
                 d, f = os.path.split(self.database_file)
                 if f == os.path.basename(d):
                     os.rmdir(d)
-            except:
+            except (FileNotFoundError, OSError):
                 pass
             return True
 
@@ -450,7 +450,7 @@ try:
                 d, f = os.path.split(self.database_file)
                 if f == os.path.basename(d):
                     os.rmdir(d)
-            except:
+            except (FileNotFoundError, OSError):
                 pass
             return True
 
@@ -500,7 +500,7 @@ try:
                     os.remove(n)
             try:
                 os.rmdir(self.home_directory)
-            except:
+            except (FileNotFoundError, OSError):
                 pass
             return True
 

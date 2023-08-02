@@ -11,8 +11,7 @@ format defined in Appendix 2 of the DBA Guide is used.
 import os
 
 from .core import _dpt
-from .core.constants import DPT_SYS_FOLDER
-from .core.archivedu import Archivedu
+from .core.constants import DPT_SYSFL_FOLDER
 
 
 class DptfastloadDatabaseError(Exception):
@@ -21,7 +20,7 @@ class DptfastloadDatabaseError(Exception):
 
 # This class may end up similar enough to dptdu_database.dptdu_database to
 # become a subclass, or perhaps the other way round.
-class Database(Archivedu, _dpt.Database):
+class Database(_dpt.Database):
     """Bulk insert to DPT database in folder using specification.
 
     Support DPT fastload updates.
@@ -38,9 +37,7 @@ class Database(Archivedu, _dpt.Database):
         if folder:
             folder = os.path.abspath(folder)
             if sysfolder is None:
-                sysfolder = os.path.join(
-                    folder, DPT_SYS_FOLDER, DPT_SYS_FOLDER
-                )
+                sysfolder = os.path.join(folder, DPT_SYSFL_FOLDER)
         super().__init__(
             specification, folder=folder, sysfolder=sysfolder, **kargs
         )
@@ -77,14 +74,14 @@ class Database(Archivedu, _dpt.Database):
                 self.dbenv.Commit()
 
     # Same as dptdu_database version except for exception class name.
-    def delete_instance(self, file, instance):
+    def delete_instance(self, dbset, instance):
         """Delete an instance is not available in fastload mode."""
         raise DptfastloadDatabaseError(
             "delete_instance not available in fastload mode"
         )
 
     # Same as dptdu_database version except for exception class name.
-    def edit_instance(self, file, instance):
+    def edit_instance(self, dbset, instance):
         """Edit an instance is not available in fastload mode."""
         raise DptfastloadDatabaseError(
             "edit_instance not available in fastload mode"

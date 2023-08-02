@@ -2546,14 +2546,22 @@ class CursorSecondary(Cursor):
             value, SegmentSize.db_segment_size
         )
 
-        # Define lambdas to handle presence or absence of partial key
-        low = lambda jkey, recordkey: jkey < recordkey
-        if not self.get_partial():
-            high = lambda jkey, recordkey: jkey > recordkey
-        else:
-            high = lambda jkey, partial: not jkey.startswith(partial)
+        # Define functions to handle presence or absence of partial key.
 
-        # Get position of record relative to start point
+        def low(jkey, recordkey):
+            return jkey < recordkey
+
+        if not self.get_partial():
+
+            def high(jkey, recordkey):
+                return jkey > recordkey
+
+        else:
+
+            def high(jkey, partial):
+                return not jkey.startswith(partial)
+
+        # Get position of record relative to start point.
         position = 0
         if not self.get_partial():
             j = tcl_tk_call((self._cursor, "get", "-first"))

@@ -12,15 +12,14 @@ but adding lots of new records will be a lot slower.
 import os
 
 from .core import _dpt
-from .core.constants import DPT_SYS_FOLDER
-from .core.archivedu import Archivedu
+from .core.constants import DPT_SYSDU_FOLDER
 
 
 class DptduDatabaseError(Exception):
     """Exception for Database class."""
 
 
-class Database(Archivedu, _dpt.Database):
+class Database(_dpt.Database):
     """Bulk insert to DPT database in folder using specification.
 
     Support DPT single-step deferred updates.
@@ -31,33 +30,15 @@ class Database(Archivedu, _dpt.Database):
 
     """
 
-    # Deferred updates are done without transactions so this attribute
-    # should be False always.
-    # This and it's property, and methods archive and delete_archive are
-    # duplicated in the _databasedu.Database hierarchy: enough for a
-    # shared superclass for default backup stuff.
-    _take_backup_before_deferred_update = True
-
     def __init__(self, specification, folder=None, sysfolder=None, **kargs):
         """Create DPT single-step deferred update environment."""
         if folder:
             folder = os.path.abspath(folder)
             if sysfolder is None:
-                sysfolder = os.path.join(
-                    folder, DPT_SYS_FOLDER, DPT_SYS_FOLDER
-                )
+                sysfolder = os.path.join(folder, DPT_SYSDU_FOLDER)
         super().__init__(
             specification, folder=folder, sysfolder=sysfolder, **kargs
         )
-
-    @property
-    def take_backup_before_deferred_update(self):
-        """Return True if temporary backups should protect deferred update.
-
-        It is expected the archive and delete_archive methods will do this.
-
-        """
-        return self._take_backup_before_deferred_update
 
     # Set default parameters for single-step deferred update use.
     def create_default_parms(self):
@@ -83,13 +64,13 @@ class Database(Archivedu, _dpt.Database):
             if self.dbenv.UpdateIsInProgress():
                 self.dbenv.Commit()
 
-    def delete_instance(self, file, instance):
+    def delete_instance(self, dbset, instance):
         """Delete an instance is not available in deferred update mode."""
         raise DptduDatabaseError(
             "delete_instance not available in deferred update mode"
         )
 
-    def edit_instance(self, file, instance):
+    def edit_instance(self, dbset, instance):
         """Edit an instance is not available in deferred update mode."""
         raise DptduDatabaseError(
             "edit_instance not available in deferred update mode"

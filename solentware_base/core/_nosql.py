@@ -2033,12 +2033,20 @@ class CursorSecondary(Cursor):
             value, SegmentSize.db_segment_size
         )
 
-        # Define lambdas to handle presence or absence of partial key.
-        low = lambda rk, recordkey: rk < recordkey
+        # Define functions to handle presence or absence of partial key.
+
+        def low(jkey, recordkey):
+            return jkey < recordkey
+
         if not self.get_partial():
-            high = lambda rk, recordkey: rk > recordkey
+
+            def high(jkey, recordkey):
+                return jkey > recordkey
+
         else:
-            high = lambda rk, partial: not rk.startswith(partial)
+
+            def high(jkey, partial):
+                return not jkey.startswith(partial)
 
         # Get position of record relative to start point.
         position = 0
@@ -2083,7 +2091,7 @@ class CursorSecondary(Cursor):
         db = self._dbset
 
         # Start at first or last record whichever is likely closer to position
-        # and define lambdas to handle presence or absence of partial key.
+        # and define functions to handle presence or absence of partial key.
         if not self.get_partial():
             get_partial = self.get_partial
         else:
@@ -2091,15 +2099,28 @@ class CursorSecondary(Cursor):
         if position < 0:
             step = self._cursor.prev
             if not self.get_partial():
-                start = lambda partial: self._cursor.last()
+
+                def start(partial):
+                    del partial
+                    return self._cursor.last()
+
             else:
-                start = lambda partial: self._last_partial(partial)
+
+                def start(partial):
+                    return self._last_partial(partial)
+
         else:
             step = self._cursor.next
             if not self.get_partial():
-                start = lambda partial: self._cursor.first()
+
+                def start(partial):
+                    del partial
+                    return self._cursor.first()
+
             else:
-                start = lambda partial: self._first_partial(partial)
+
+                def start(partial):
+                    return self._first_partial(partial)
 
         # Get record at position relative to start point
         # r2 named for the way this is done in ._sqlite module.

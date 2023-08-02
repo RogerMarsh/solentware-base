@@ -377,6 +377,7 @@ class Database:
 
     def increase_database_record_capacity(self, **kwargs):
         """Do nothing, present for compatibility with DPT."""
+        del kwargs
 
 
 class ExistenceBitmapControl:

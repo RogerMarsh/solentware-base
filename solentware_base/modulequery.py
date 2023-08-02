@@ -52,6 +52,24 @@ is configured in the installed db.
 import sys
 import os
 
+# Without the conditional imports below this import would have been placed
+# as the final import, except for the 'wrong-import-position' report by
+# pylint and the 'E402' report by pycodestyle.
+from .core.constants import (
+    FILE,
+    BERKELEYDB_MODULE,
+    BSDDB3_MODULE,
+    SQLITE3_MODULE,
+    APSW_MODULE,
+    DPT_MODULE,
+    UNQLITE_MODULE,
+    VEDIS_MODULE,
+    GNU_MODULE,
+    NDBM_MODULE,
+    DB_TCL_MODULE,
+    LMDB_MODULE,
+)
+
 _deny_sqlite3 = bool(
     sys.version_info.major < 3
     or (sys.version_info.major == 3 and sys.version_info.minor < 6)
@@ -129,23 +147,6 @@ if _allow("allow_tcl") or _allow("allow_tkinter") or _allow("-t"):
         db_tcl = None
 else:
     db_tcl = None
-
-# Linters may say this import is in the wrong place.
-# This appears to follow from the option to not allow some imports.
-from .core.constants import (
-    FILE,
-    BERKELEYDB_MODULE,
-    BSDDB3_MODULE,
-    SQLITE3_MODULE,
-    APSW_MODULE,
-    DPT_MODULE,
-    UNQLITE_MODULE,
-    VEDIS_MODULE,
-    GNU_MODULE,
-    NDBM_MODULE,
-    DB_TCL_MODULE,
-    LMDB_MODULE,
-)
 
 if _deny_sqlite3:
     if sys.platform == "win32":

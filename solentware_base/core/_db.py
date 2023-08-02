@@ -86,6 +86,7 @@ class Database(_database.Database):
         **soak
     ):
         """Initialize data structures."""
+        del soak
         if folder is not None:
             try:
                 path = os.path.abspath(folder)
@@ -528,6 +529,7 @@ class Database(_database.Database):
         all the DB objects were created in the context of the DBEnv object.
 
         """
+        del files
         self._dbe = None
         for file, specification in self.specification.items():
             if file in self.table:
@@ -586,6 +588,7 @@ class Database(_database.Database):
 
         oldvalue is ignored in _sqlite version of replace() method.
         """
+        del oldvalue
         assert file in self.specification
         self.table[file][0].put(key, newvalue.encode(), txn=self.dbtxn)
 
@@ -594,6 +597,7 @@ class Database(_database.Database):
 
         value is ignored in _db version of delete() method.
         """
+        del value
         assert file in self.specification
         try:
             self.table[file][0].delete(key, txn=self.dbtxn)
@@ -704,6 +708,7 @@ class Database(_database.Database):
         note_freed_record_number_segment.  A successful record deletion
         passes this test.
         """
+        del record_number_in_segment
         try:
             high_segment = divmod(high_record[0], SegmentSize.db_segment_size)[
                 0
@@ -1783,6 +1788,7 @@ class Cursor(_cursor.Cursor):
 
     def __init__(self, dbset, keyrange=None, transaction=None, **kargs):
         """Define a cursor on the underlying database engine dbset."""
+        del keyrange, kargs
         super().__init__(dbset)
         self._transaction = transaction
         self._cursor = dbset.cursor(txn=transaction)
@@ -2040,14 +2046,22 @@ class CursorSecondary(Cursor):
             value, SegmentSize.db_segment_size
         )
 
-        # Define lambdas to handle presence or absence of partial key
-        low = lambda jkey, recordkey: jkey < recordkey
-        if not self.get_partial():
-            high = lambda jkey, recordkey: jkey > recordkey
-        else:
-            high = lambda jkey, partial: not jkey.startswith(partial)
+        # Define functions to handle presence or absence of partial key.
 
-        # Get position of record relative to start point
+        def low(jkey, recordkey):
+            return jkey < recordkey
+
+        if not self.get_partial():
+
+            def high(jkey, recordkey):
+                return jkey > recordkey
+
+        else:
+
+            def high(jkey, partial):
+                return not jkey.startswith(partial)
+
+        # Get position of record relative to start point.
         position = 0
         if not self.get_partial():
             j = self._cursor.first()
@@ -2086,7 +2100,7 @@ class CursorSecondary(Cursor):
             return None
 
         # Start at first or last record whichever is likely closer to position
-        # and define lambdas to handle presence or absence of partial key.
+        # and define functions to handle presence or absence of partial key.
         if not self.get_partial():
             get_partial = self.get_partial
         else:
@@ -2094,15 +2108,28 @@ class CursorSecondary(Cursor):
         if position < 0:
             step = self._cursor.prev
             if not self.get_partial():
-                start = lambda partial: self._cursor.last()
+
+                def start(partial):
+                    del partial
+                    return self._cursor.last()
+
             else:
-                start = lambda partial: self._last_partial(partial)
+
+                def start(partial):
+                    return self._last_partial(partial)
+
         else:
             step = self._cursor.next
             if not self.get_partial():
-                start = lambda partial: self._cursor.first()
+
+                def start(partial):
+                    del partial
+                    return self._cursor.first()
+
             else:
-                start = lambda partial: self._first_partial(partial)
+
+                def start(partial):
+                    return self._first_partial(partial)
 
         # Get record at position relative to start point.
         count = 0
@@ -2401,6 +2428,7 @@ class RecordsetCursor(_RecordsetCursor):
         kargs absorbs arguments relevant to other database engines.
 
         """
+        del kargs
         super().__init__(recordset)
         self._transaction = transaction
         self._database = database

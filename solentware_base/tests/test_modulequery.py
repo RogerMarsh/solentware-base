@@ -2,7 +2,7 @@
 # Copyright 2019 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""do_deferred_updates tests"""
+"""modulequery tests"""
 
 import unittest
 import sys

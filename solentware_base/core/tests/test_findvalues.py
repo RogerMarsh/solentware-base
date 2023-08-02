@@ -25,6 +25,8 @@ from ._filespec import (
     SampleNameValue,
     SampleNameRecord,
 )
+from .. import wherevalues
+from .. import findvalues
 
 # Use the first database engine found in order:
 # DPT, berkeleydb, bsddb3, apsw, sqlite3.
@@ -44,9 +46,6 @@ except ImportError:
                 from ._filespec import Sqlite3apswDatabase as DatabaseEngine
             except ImportError:
                 from ._filespec import Sqlite3Database as DatabaseEngine
-
-from .. import wherevalues
-from .. import findvalues
 
 
 class FindValuesTC(unittest.TestCase):

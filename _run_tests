@@ -17,7 +17,6 @@ python$1 -m solentware_base.tests.test_berkeleydb_database
 python$1 -m solentware_base.tests.test_berkeleydbdu_database
 python$1 -m solentware_base.tests.test_bsddb3_database
 python$1 -m solentware_base.tests.test_bsddb3du_database
-python$1 -m solentware_base.tests.test_do_deferred_updates
 python$1 -m solentware_base.tests.test_gnu_database
 python$1 -m solentware_base.tests.test_gnudu_database
 python$1 -m solentware_base.tests.test_lmdb_database
