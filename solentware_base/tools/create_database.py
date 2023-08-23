@@ -247,7 +247,16 @@ class CreateDatabase:
         """
         engine = self.engine_list[int(self.database.get())]
         engine_database_class = self.engines[engine]
-        ssb = int(self.segmentsizebytes.get())
+
+        # ssb was not validated if database engine is dptapi because the
+        # value is ignored.
+        ssb = None
+        try:
+            ssb = int(self.segmentsizebytes.get())
+        except ValueError:
+            if dptapi is not engine:
+                raise
+
         if ssb == SEGMENT_SIZE_BYTES_FOR_TESTS:
             ssb = None
         path = self.directory.get()
