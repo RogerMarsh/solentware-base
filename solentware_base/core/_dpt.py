@@ -154,7 +154,7 @@ class Database(_database.Database):
         if sysfolder is None:
             sysfolder = os.path.join(self.home_directory, DPT_SYS_FOLDER)
         if sysprint is None:
-            sysprint = os.path.join(sysfolder, "sysprint.txt")
+            sysprint = "CONSOLE"
         if parms is None:
             parms = os.path.join(sysfolder, "parms.ini")
         if msgctl is None:
