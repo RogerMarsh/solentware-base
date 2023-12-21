@@ -138,6 +138,13 @@ class Find:
         """Return RecordList of all existing records."""
         return self._db.recordlist_ebm(self._dbset)
 
+    # _RecordSetBase.first() incorrectly returned (None, key) before
+    # version 5.2 but was changed to return (key, value) along with
+    # similar methods.
+    # Here get_record() is changed to fit the correct behaviour of
+    # segment.first().  Alternatively call segment.first_record_number()
+    # which returns key, or segment.recordset.first() which behaves
+    # like pre-5.2 segment.first().
     def get_record(self, recordset):
         """Yield each record from recordet."""
         # Support a single pass through recordset for index evaluation on data.
@@ -145,10 +152,8 @@ class Find:
         for segment in recordset.rs_segments.values():
             j = segment.first()
             while j:
-                instance.load_record(
-                    self._db.get_primary_record(self._dbset, j[1])
-                )
-                yield j[1], instance.value
+                instance.load_record(j)
+                yield j[0], instance.value
                 j = segment.next()
 
     def non_index_condition(self, obj, record_number, record):

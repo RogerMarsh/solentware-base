@@ -93,7 +93,7 @@ class FindTC(unittest.TestCase):
             r = rs.next()
             if not r:
                 break
-            rns.add(r[1])
+            rns.add(r[0])
         self.assertEqual(rns, recnums)
 
     def _wcni(self, finder, method, recnums, **kw):
@@ -108,15 +108,15 @@ class FindTC(unittest.TestCase):
             r = rsall.next()
             if r is None:
                 break
-            nr.load_record(finder._db.get_primary_record(finder._dbset, r[1]))
-            method(wc, r[1], nr)
+            nr.load_record(finder._db.get_primary_record(finder._dbset, r[0]))
+            method(wc, r[0], nr)
         rs = wc.result.answer
         rns = set()
         while rs:
             r = rs.next()
             if not r:
                 break
-            rns.add(r[1])
+            rns.add(r[0])
         self.assertEqual(rns, recnums)
 
     def _wcop(self, finder, method, recnums):
@@ -137,7 +137,7 @@ class FindTC(unittest.TestCase):
             r = rs.next()
             if not r:
                 break
-            rns.add(r[1])
+            rns.add(r[0])
         self.assertEqual(rns, recnums)
 
     def _wcopres(self, finder, method, recnums):
@@ -161,7 +161,7 @@ class FindTC(unittest.TestCase):
             r = rs.next()
             if not r:
                 break
-            rns.add(r[1])
+            rns.add(r[0])
         self.assertEqual(rns, recnums)
 
     def test____assumptions(self):

@@ -6,6 +6,7 @@
 
 Customise the Archivedu class for DPT
 """
+# Temporarely comment-out stuff which does Fast Unload backup.
 
 import os
 
@@ -29,6 +30,9 @@ class ArchiveduDPT(Archivedu):
 
     def archive(self, name=None):
         """Write a backup of database file called name."""
+        # Have to open database to do Fast Unload rather than, say, zip.
+        # Not doing anything yet, so parms.ini settings do not matter.
+        self.open_database(files=(name,))
         if name not in self.table:
             raise ArchiveduDPTError(
                 str(name).join(
@@ -51,6 +55,8 @@ class ArchiveduDPT(Archivedu):
             with open(".".join((outputdir, "grd")), "wb"):
                 pass
             break
+        # Close the database.
+        self.close_database()
 
     def delete_archive(self, name=None):
         """Delete a backup of database file called name."""
@@ -63,20 +69,21 @@ class ArchiveduDPT(Archivedu):
         outputdir = os.path.join(
             self.home_directory, self.import_backup_directory
         )
-        expected_files = set(self._get_zip_archive_names_for_name(name))
-        if set(os.listdir(outputdir)) != expected_files:
-            raise ArchiveduDPTError(
-                str(name).join(
-                    ("Import backups for file '", "' are not those expected")
-                )
-            )
+        expected_files = []
+        #expected_files = set(self._get_zip_archive_names_for_name(name))
+        #if set(os.listdir(outputdir)) != expected_files:
+        #    raise ArchiveduDPTError(
+        #        str(name).join(
+        #            ("Import backups for file '", "' are not those expected")
+        #        )
+        #    )
         try:
             os.remove(".".join((outputdir, "grd")))
         except FileNotFoundError:
             pass
         for file in expected_files:
             os.remove(os.path.join(outputdir, file))
-        os.rmdir(outputdir)
+        #os.rmdir(outputdir)
 
     def _archive_bz2(self, name):
         """Raise an ArchiveduDPTbz2 exception."""

@@ -45,6 +45,8 @@ from .constants import (
     UAE,
     SPT,
     DPT_PATTERN_CHARS,
+    PRIMARY,
+    FIELDS,
 )
 
 from .segmentsize import SegmentSize
@@ -137,6 +139,20 @@ class Database(_database.Database):
             raise DatabaseError(msg) from exc
         if not isinstance(specification, filespec.FileSpec):
             specification = filespec.FileSpec(**specification)
+
+        # Copy the FileSpec workaround from chesstab commit 94104994...
+        # dated Fri 23 Jun 2023 to allow Fast Load (which currently
+        # forces all field names to upper case).
+        for file in specification.values():
+            file[PRIMARY] = file[PRIMARY].upper()
+            file[SECONDARY] = {
+                key: key.upper() if value is None else value.upper()
+                for key, value in file[SECONDARY].items()
+            }
+            file[FIELDS] = {
+                key.upper(): value for key, value in file[FIELDS].items()
+            }
+
         self._validate_segment_size_bytes(self.segment_size_bytes)
         self.home_directory = path
         self.database_file = None
@@ -405,6 +421,18 @@ class Database(_database.Database):
                 )
         return sizes
 
+    def get_database_table_sizes(self, files=None):
+        """Return Table B and D page sizes and usage for files."""
+        if files is None:
+            files = set()
+        sizes = {}
+        viewer_resetter = self.dbenv.Core().GetViewerResetter()
+        for file, table in self.table.items():
+            if files and file not in files:
+                continue
+            sizes[file] = table.get_file_table_sizes(viewer_resetter)
+        return sizes
+
     def get_database_increase(self, files=None):
         """Return required file increases for file names in files."""
         if files is None:
@@ -417,6 +445,15 @@ class Database(_database.Database):
                     self.dbenv, sizing_record_counts=files[file_]
                 )
         return increases
+
+    def get_database_pages_for_record_counts(self, files=None):
+        """Return pages needed for record counts in files."""
+        if files is None:
+            files = {}
+        counts = {}
+        for key, value in files.items():
+            counts[key] = self.table[key].get_pages_for_record_counts(value)
+        return counts
 
     def delete_instance(self, dbset, instance):
         """Override, delete instance from dbset.
@@ -600,13 +637,18 @@ class Database(_database.Database):
 
     # Cursor instance is created here because there are no other calls to that
     # method.
-    def database_cursor(self, file, field, keyrange=None):
+    def database_cursor(self, file, field, keyrange=None, recordset=None):
         """Create and return a cursor on APIOpenContext() for (file, field).
 
         keyrange is an addition in DPT. It may yet be removed.
 
         """
-        return Cursor(self.table[file], fieldname=field, keyrange=keyrange)
+        return Cursor(
+            self.table[file],
+            fieldname=field,
+            keyrange=keyrange,
+            recordset=recordset,
+        )
 
     def repair_cursor(self, oldcursor, file, field):
         """Override, return new cursor with fresh recordset.
@@ -1462,6 +1504,18 @@ class DPTFile:
             )
         return None
 
+    def get_file_table_sizes(self, viewer_resetter):
+        """Get current values of Table B and D sizes and usage.
+
+        FILE_PARAMETER_LIST has the required parameters, plus a few.
+
+        """
+        view_as_int = viewer_resetter.ViewAsInt
+        parameter = {}
+        for name in FILE_PARAMETER_LIST:
+            parameter[name] = view_as_int(name, self.opencontext)
+        return parameter
+
     def get_file_parameters(self, dbserv):
         """Get current values of selected file parameters."""
         viewer_resetter = dbserv.Core().GetViewerResetter()
@@ -1475,6 +1529,14 @@ class DPTFile:
         for name in (dptapi.FIFLAGS_FULL_TABLEB, dptapi.FIFLAGS_FULL_TABLED):
             parameter[name] = bool(parameter["FIFLAGS"] & name)
         return parameter
+
+    def get_pages_for_record_counts(self, counts=(0, 0)):
+        """Return Table B and Table D pages needed for record counts."""
+        brecppg = self.filedesc[BRECPPG]
+        return (
+            counts[0] // brecppg,
+            (counts[1] * self.btod_factor) // brecppg,
+        )
 
     def get_extents(self):
         """Get current extents for file."""

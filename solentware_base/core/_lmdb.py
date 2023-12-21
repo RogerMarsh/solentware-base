@@ -34,6 +34,7 @@ from .recordset import (
     RecordsetSegmentList,
     RecordsetCursor as _RecordsetCursor,
     RecordList,
+    FoundSet,
 )
 
 
@@ -1697,13 +1698,17 @@ class Database(_database.Database):
                         ),
                     )
 
-    def database_cursor(self, file, field, keyrange=None):
+    def database_cursor(self, file, field, keyrange=None, recordset=None):
         """Return a cursor on Symas LMMD sub-database for (file, field).
 
         keyrange is an addition for DPT. It may yet be removed.
+        recordset must be an instance of RecordList or FoundSet, or None.
 
         """
         assert file in self.specification
+        if recordset is not None:
+            assert isinstance(recordset, (RecordList, FoundSet))
+            return recordset
         if file == field:
             return CursorPrimary(
                 self.table[file][0],

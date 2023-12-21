@@ -775,7 +775,9 @@ class Database_06_subclass_methods(unittest.TestCase):
             def file_records_under(self, file, field, recordset, key):
                 pass
 
-            def database_cursor(self, file, field, keyrange=None):
+            def database_cursor(
+                self, file, field, keyrange=None, recordset=None
+            ):
                 pass
 
             def create_recordset_cursor(self, recordset):

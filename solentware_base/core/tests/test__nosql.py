@@ -2240,12 +2240,12 @@ class Database_database_create_cursors(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    r"database_cursor\(\) takes from 3 to 4 ",
-                    "positional arguments but 5 were given",
+                    r"database_cursor\(\) takes from 3 to 5 ",
+                    "positional arguments but 6 were given",
                 )
             ),
             self.database.database_cursor,
-            *(None, None, None, None),
+            *(None, None, None, None, None),
         )
         self.assertRaisesRegex(
             TypeError,
@@ -2283,6 +2283,13 @@ class Database_database_create_cursors(_NoSQLOpen):
         rs = d.recordlist_key("file1", "field1", key="ba_o")
         self.assertIsInstance(
             d.create_recordset_cursor(rs), recordset.RecordsetCursor
+        )
+
+    def test_06_database_cursor_recordset(self):
+        rs = recordset.RecordList(self.database, "field1")
+        self.assertIsInstance(
+            self.database.database_cursor("file1", "file1", recordset=rs),
+            recordset._RecordSetBase,
         )
 
 

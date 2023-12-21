@@ -50,7 +50,7 @@ class Database(_databasedu.Database):
         self.value_segments = {}  # was values in secondarydu.Secondary
         self._int_to_bytes = None
 
-    def database_cursor(self, file, field, keyrange=None):
+    def database_cursor(self, file, field, keyrange=None, recordset=None):
         """Not implemented for deferred update."""
         raise DatabaseError("database_cursor not implemented")
 

@@ -127,6 +127,8 @@ class ConstantsFunctions(unittest.TestCase):
         ae(constants.DPT_SYS_FOLDER, "dptsys")
         ae(constants.DPT_SYSDU_FOLDER, "dptsysdu")
         ae(constants.DPT_SYSFL_FOLDER, "dptsysfl")
+        ae(constants.DPT_SYSFUL_FOLDER, "dptsysful")
+        ae(constants.DPT_SYSCOPY_FOLDER, "dptsyscopy")
         ae(constants.TAPEA, "TAPEA")
         ae(constants.TAPEN, "TAPEN")
         ae(constants.DEFER, "defer")
@@ -181,7 +183,7 @@ class ConstantsFunctions(unittest.TestCase):
         ae(constants.DEFAULT_MAP_BLOCKS, 1)
         ae(constants.LMDB_MODULE, "lmdb")
         cc = [d for d in dir(constants) if not d.endswith("__")]
-        ae(len(cc), 104)
+        ae(len(cc), 106)
         ae(
             sorted(cc),
             sorted(
@@ -243,6 +245,8 @@ class ConstantsFunctions(unittest.TestCase):
                     "DPT_SYS_FOLDER",
                     "DPT_SYSDU_FOLDER",
                     "DPT_SYSFL_FOLDER",
+                    "DPT_SYSFUL_FOLDER",
+                    "DPT_SYSCOPY_FOLDER",
                     "TAPEA",
                     "TAPEN",
                     "DEFER",

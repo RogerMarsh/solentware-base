@@ -379,6 +379,11 @@ class Database:
         """Do nothing, present for compatibility with DPT."""
         del kwargs
 
+    def get_database_table_sizes(self, **kwargs):
+        """Return empty dict, present for compatibility with DPT."""
+        del kwargs
+        return {}
+
 
 class ExistenceBitmapControl:
     """Base class for managing existence bitmap of file in database.

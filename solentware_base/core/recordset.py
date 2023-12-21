@@ -1412,29 +1412,73 @@ class _RecordSetBase:
         """Insert segment into recordset maintaining segment number order."""
         self.recordset.insort_left_nodup(segment)
 
+    # Before solentware_base 5.2 wrongly returned self.recordset.first()
     def first(self):
         """Position at first record in recordset and return record."""
-        return self.recordset.first()
+        return self._get_record(self.recordset.first())
 
+    # Before solentware_base 5.2 wrongly returned self.recordset.last()
     def last(self):
         """Position at last record in recordset and return record."""
-        return self.recordset.last()
+        return self._get_record(self.recordset.last())
 
+    # Before solentware_base 5.2 wrongly returned self.recordset.next()
     def next(self):
         """Position at next record in recordset and return record."""
-        return self.recordset.next()
+        return self._get_record(self.recordset.next())
 
+    # Before solentware_base 5.2 wrongly returned self.recordset.prev()
     def prev(self):
         """Position at previous record in recordset and return record."""
-        return self.recordset.prev()
+        return self._get_record(self.recordset.prev())
 
+    # Before solentware_base 5.2 wrongly returned self.recordset.current()
     def current(self):
         """Return current record."""
-        return self.recordset.current()
+        return self._get_record(self.recordset.current())
 
+    # Before solentware_base 5.2 wrongly returned self.recordset.setat(record)
     def setat(self, record):
         """Position at record and return record."""
-        return self.recordset.setat(record)
+        return self._get_record(self.recordset.setat(record))
+
+    def _get_record(self, reference):
+        """Return record for reference from RecordList instance."""
+        if reference is None:
+            return None
+        return self.recordset.dbhome.get_primary_record(
+            self.recordset.dbset, reference[1]
+        )
+
+    def first_record_number(self):
+        """Position at first record in recordset and return record number."""
+        return self._get_record_number(self.recordset.first())
+
+    def last_record_number(self):
+        """Position at last record in recordset and return record number."""
+        return self._get_record_number(self.recordset.last())
+
+    def next_record_number(self):
+        """Position at next record in recordset and return record number."""
+        return self._get_record_number(self.recordset.next())
+
+    def prev_record_number(self):
+        """Position at prior record in recordset and return record number."""
+        return self._get_record_number(self.recordset.prev())
+
+    def current_record_number(self):
+        """Return current record number."""
+        return self._get_record_number(self.recordset.current())
+
+    def setat_record_number(self, record):
+        """Position at record and return record number."""
+        return self._get_record_number(self.recordset.setat(record))
+
+    def _get_record_number(self, reference):
+        """Return record number for reference from RecordList instance."""
+        if reference is None:
+            return None
+        return reference[1]
 
     def __or__(self, other):
         """Return new record set with both self and other records."""
@@ -1478,7 +1522,6 @@ class _RecordSetBase:
         return self.recordset.create_recordset_cursor()
 
 
-# To be renamed RecordList.
 # __init__ may follow _DPTRecordList example eventually.
 class RecordList(_RecordSetBase):
     """Wrapper for _Recordset compatible with _dpt._DPTRecordList.

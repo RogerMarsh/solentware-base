@@ -25,20 +25,30 @@ class Cursor:
     specific to the database engine.  Subclasses may also provide methods with
     names matching those of the bsddb interface (typically first and so forth).
 
-    For bsddb3 (Berkeley DB) dbset will be a DB() object,
+    For lmdb (Symas LMDB) dbset will be a core._lmdb.DataStore() object.
+
+    For berkeleydb and bsddb3 (Berkeley DB) dbset will be a DB() object,
 
     For apsw and sqlite3 (SQLite) dbset will be a Connection() object.
 
-    For dptdb (DPT) dbset will be a wrapper which creates a RecordSetCursor()
-    or DirectValueCursor(), for records and indicies, on an OpenContext()
-    object.
+    For dptdb (DPT) dbset will be a core._dpt.DPTFile() object which creates
+    a RecordSetCursor() or DirectValueCursor(), for records and indicies, on
+    an OpenContext() object.
 
     (A version of the DPT interface is planned where dbset will be an
     OpenContext() object.)
 
-    The DB() object implies the file and field from the database specification
-    in a FileSpec() object, but the other kinds of dbset require field, or file
-    and field, to be supplied to the relevant subclass of this class.
+    For tkinter (Tcl interface to Berkeley DB via tkinter) dbset will be
+    a str() object (the generated name of the Tcl command to access the
+    Berkeley DB database).
+
+    For unqlite (UnQlite) dbset will be an unqlite.UnQlite() object.
+
+    For vedis (Vedis) dbset will be a vedis.Vedis() object.
+
+    For dbm.gnu (GNU DBM) dbset will be a gnu_module.Gnu() object.
+
+    For dbm.ndbm (NDBM) dbset will be a ndbm_module.Ndbm() object.
 
     """
 

@@ -43,6 +43,7 @@ from .recordset import (
     RecordsetSegmentList,
     RecordsetCursor as _RecordsetCursor,
     RecordList,
+    FoundSet,
 )
 
 
@@ -1927,13 +1928,17 @@ class Database(_database.Database):
         finally:
             cursor.close()
 
-    def database_cursor(self, file, field, keyrange=None):
+    def database_cursor(self, file, field, keyrange=None, recordset=None):
         """Create and return a cursor on SQLite Connection() for (file, field).
 
         keyrange is an addition for DPT. It may yet be removed.
+        recordset must be an instance of RecordList or FoundSet, or None.
 
         """
         assert file in self.specification
+        if recordset is not None:
+            assert isinstance(recordset, (RecordList, FoundSet))
+            return recordset
         if file == field:
             return CursorPrimary(
                 self.dbenv,

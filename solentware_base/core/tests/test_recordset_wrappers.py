@@ -256,6 +256,91 @@ class _RecordSetBase(unittest.TestCase):
             TypeError,
             "".join(
                 (
+                    r"_get_record\(\) missing 1 required positional ",
+                    "argument: 'reference'",
+                )
+            ),
+            self.rsb1._get_record,
+        )
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"first_record_number\(\) takes 1 positional argument ",
+                    "but 2 were given",
+                )
+            ),
+            self.rsb1.first_record_number,
+            *(None,),
+        )
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"last_record_number\(\) takes 1 positional argument ",
+                    "but 2 were given",
+                )
+            ),
+            self.rsb1.last_record_number,
+            *(None,),
+        )
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"next_record_number\(\) takes 1 positional argument ",
+                    "but 2 were given",
+                )
+            ),
+            self.rsb1.next_record_number,
+            *(None,),
+        )
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"prev_record_number\(\) takes 1 positional argument ",
+                    "but 2 were given",
+                )
+            ),
+            self.rsb1.prev_record_number,
+            *(None,),
+        )
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"current_record_number\(\) takes 1 positional argument ",
+                    "but 2 were given",
+                )
+            ),
+            self.rsb1.current_record_number,
+            *(None,),
+        )
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"setat_record_number\(\) missing 1 required positional ",
+                    "argument: 'record'",
+                )
+            ),
+            self.rsb1.setat_record_number,
+        )
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"_get_record_number\(\) missing 1 required positional ",
+                    "argument: 'reference'",
+                )
+            ),
+            self.rsb1._get_record_number,
+        )
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
                     r"__or__\(\) missing 1 required positional argument: ",
                     "'other'",
                 )
@@ -413,6 +498,35 @@ class _RecordSetBase(unittest.TestCase):
             *("a",),
         )
         self.assertEqual(self.rsb1.setat(2), None)
+
+    def test_first_record_number(self):
+        self.assertEqual(self.rsb1.first_record_number(), None)
+
+    def test_last_record_number(self):
+        self.assertEqual(self.rsb1.last_record_number(), None)
+
+    def test_next_record_number(self):
+        self.assertEqual(self.rsb1.next_record_number(), None)
+
+    def test_prev_record_number(self):
+        self.assertEqual(self.rsb1.prev_record_number(), None)
+
+    def test_current_record_number(self):
+        self.assertEqual(self.rsb1.current_record_number(), None)
+
+    def test_setat_record_number(self):
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"unsupported operand type\(s\) for divmod\(\): 'str' ",
+                    "and 'int'",
+                )
+            ),
+            self.rsb1.setat_record_number,
+            *("a",),
+        )
+        self.assertEqual(self.rsb1.setat_record_number(2), None)
 
     def test___or__(self):
         rsb2 = recordset._RecordSetBase(self.d, "file1")

@@ -54,6 +54,7 @@ from .recordset import (
     RecordsetSegmentList,
     RecordsetCursor as _RecordsetCursor,
     RecordList,
+    FoundSet,
 )
 
 # DBenv parameter maxlocks may need setting on OpenBSD.
@@ -1171,18 +1172,7 @@ class Database(_database.Database):
                         if self.dbtxn:
                             command.extend(["-txn", self.dbtxn])
                         command.extend(
-                            [
-                                key,
-                                b"".join(
-                                    (
-                                        value[:4],
-                                        b"\x00\x02",
-                                        segment_key.to_bytes(
-                                            4, byteorder="big"
-                                        ),
-                                    )
-                                ),
-                            ]
+                            [segment_key, seg.tobytes()]
                         )
                         tcl_tk_call(tuple(command))
                         tcl_tk_call((cursor, "del"))
@@ -2096,13 +2086,17 @@ class Database(_database.Database):
         finally:
             tcl_tk_call((cursor, "close"))
 
-    def database_cursor(self, file, field, keyrange=None):
+    def database_cursor(self, file, field, keyrange=None, recordset=None):
         """Create and return a cursor on DB() for (file, field).
 
         keyrange is an addition for DPT. It may yet be removed.
+        recordset must be an instance of RecordList or FoundSet, or None.
 
         """
         assert file in self.specification
+        if recordset is not None:
+            assert isinstance(recordset, (RecordList, FoundSet))
+            return recordset
         if file == field:
             return CursorPrimary(
                 self.table[file][0],
