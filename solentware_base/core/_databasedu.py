@@ -126,7 +126,6 @@ class Database(_database.Database):
         if values is None:
             value_segments[key] = [record_number]
         elif isinstance(values, list):
-
             # A (value, record_number) can be given many times.
             # Ensure a record_number appears in the list once only.
             if values[-1] != record_number:
@@ -159,7 +158,6 @@ class Database(_database.Database):
         for k in segvalues:
             value = segvalues[k]
             if isinstance(value, list):
-
                 # A single record is presented as an integer: the
                 # database engine will decide the transformation.
                 if len(value) == 1:

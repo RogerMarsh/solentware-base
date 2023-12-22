@@ -669,7 +669,6 @@ class Database(_database.Database):
 
             lfrns = ebmc.read_exists_segment(segment_number, self.dbtxn)
             if lfrns is None:
-
                 # Segment does not exist now.
                 ebmc.freed_record_number_pages.remove(segment_number)
                 continue
@@ -715,7 +714,6 @@ class Database(_database.Database):
                 0
             ]
         except TypeError:
-
             # Implies attempt to delete record from empty database.
             # The delete method will have raised an exception if appropriate.
             return
@@ -838,7 +836,6 @@ class Database(_database.Database):
             while record:
                 record_key, value = record
                 if record_key != key:
-
                     # No index entry for key.
                     cursor.put(
                         key,
@@ -857,7 +854,6 @@ class Database(_database.Database):
                     record = cursor.next_dup()
                     continue
                 if segment_number > segment:
-
                     # No index entry for key in this segment.
                     cursor.put(
                         key,
@@ -1013,7 +1009,6 @@ class Database(_database.Database):
             while record:
                 record_key, value = record
                 if record_key != key:
-
                     # Assume that multiple requests to delete an index value
                     # have been made for a record.  The segment_put method uses
                     # sets to avoid adding multiple entries.  Consider using
@@ -1367,7 +1362,6 @@ class Database(_database.Database):
         try:
             record = cursor.first()
             while record:
-
                 # The keys in self.ebm_control[file].ebm_table are always
                 # 'segment + 1' because automatically allocated RECNO keys
                 # start at 1 in an empty table and segment numbers start at 0.
@@ -1553,7 +1547,6 @@ class Database(_database.Database):
             txn=self.dbtxn
         )
         try:
-
             # Delete segment records.
             record = cursor.set_range(key)
             while record:

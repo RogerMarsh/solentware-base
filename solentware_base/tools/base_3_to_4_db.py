@@ -114,7 +114,6 @@ class Base_3_to_4_db(base_3_to_4.Base_3_to_4):
         v4p = self.database_path_v4
         v3p = self.database_path_v3
         for k3fm, v3fm in self.v3filemap.items():
-
             # Data tables.
             dbedb3 = dbe.DB()
             dbedb3.open(
@@ -286,7 +285,6 @@ class Base_3_to_4_db(base_3_to_4.Base_3_to_4):
         # Delete files containing version 3 tables.
         # Use DB.remove() to be sure the file is a Berkeley DB database.
         for v3fm in self.v3filemap.values():
-
             # Data tables.
             dbe.DB().remove(os.path.join(v3p, v3fm[0]))
 
@@ -383,9 +381,7 @@ class Base_3_to_4_db(base_3_to_4.Base_3_to_4):
                     (primary, V3_LIST_SEGMENT_SUFFIX)
                 ),
             )
-            segmentmap[
-                k,
-            ] = name
+            segmentmap[k,] = name
             segments.add(name)
             fnt = (
                 primary,
@@ -400,18 +396,14 @@ class Base_3_to_4_db(base_3_to_4.Base_3_to_4):
                 ),
                 {},
             )
-            filemap[
-                k,
-            ] = fnt
+            filemap[k,] = fnt
             files.update(fnt[:-1])
         for k, value in filemap.items():
             if len(k) == 1:
                 v3filemap[k] = value
         for k, value in filemap.items():
             if len(k) != 1:
-                v3filemap[k[0],][
-                    -1
-                ][k[1]] = value
+                v3filemap[k[0],][-1][k[1]] = value
 
     def _generate_v4_names(self):
         super()._generate_v4_names()
@@ -421,7 +413,5 @@ class Base_3_to_4_db(base_3_to_4.Base_3_to_4):
             name = constants.SUBFILE_DELIMITER.join(
                 (k, constants.SEGMENT_SUFFIX)
             )
-            segmentmap[
-                k,
-            ] = name
+            segmentmap[k,] = name
             segments.add(name)

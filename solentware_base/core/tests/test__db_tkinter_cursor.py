@@ -142,7 +142,6 @@ class Cursor_db(_DB):
         self.assertIsInstance(cursor._cursor, str)
 
     def test_03_close(self):
-
         # Superclass of _db_tkinter.Cursor defines close().
         # Confirm self.database.table['file1'][0] object has close() method.
         cursor = _db_tkinter.Cursor(

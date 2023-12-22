@@ -137,7 +137,6 @@ class _DataGenerator:
 
 
 if __name__ == "__main__":
-
     dg = _DataGenerator()
     dg.fields()  # Create a database with these fields.
     for i in dg.records():

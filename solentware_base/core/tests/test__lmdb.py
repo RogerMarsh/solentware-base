@@ -2473,7 +2473,7 @@ class Database_database_cursor(_DBOpen):
         self.assertIsInstance(
             d.database_cursor("file1", "field1"), _lmdb.CursorSecondary
         )
-        rs  = recordset.RecordList(d, "field1")
+        rs = recordset.RecordList(d, "field1")
         self.assertIsInstance(
             d.database_cursor("file1", "field1", recordset=rs),
             recordset._RecordSetBase,

@@ -94,16 +94,12 @@ class Base_3_to_4:
         tables.add(constants.CONTROL_FILE)
         for k, value in self.filespec.items():
             primary = value[constants.PRIMARY]
-            tablemap[
-                k,
-            ] = primary
+            tablemap[k,] = primary
             tables.add(primary)
             name = constants.SUBFILE_DELIMITER.join(
                 (primary, V3_EXISTENCE_BITMAP_SUFFIX)
             )
-            existmap[
-                k,
-            ] = name
+            existmap[k,] = name
             exists.add(name)
 
     def _generate_v4_names(self):
@@ -118,14 +114,10 @@ class Base_3_to_4:
                 name = constants.SUBFILE_DELIMITER.join((k, key))
                 tablemap[k, key] = name
                 tables.add(name)
-            tablemap[
-                k,
-            ] = k
+            tablemap[k,] = k
             tables.add(k)
             name = constants.SUBFILE_DELIMITER.join(
                 (k, constants.EXISTENCE_BITMAP_SUFFIX)
             )
-            existmap[
-                k,
-            ] = name
+            existmap[k,] = name
             exists.add(name)

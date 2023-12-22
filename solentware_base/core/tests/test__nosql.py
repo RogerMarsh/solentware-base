@@ -83,7 +83,6 @@ class _NoSQL(unittest.TestCase):
     # initial value in tearDown().
 
     def setUp(self):
-
         # UnQLite and Vedis are sufficiently different that the open_database()
         # call arguments have to be set differently for these engines.
         if dbe_module is unqlite:
@@ -563,7 +562,6 @@ class Database_do_database_task(unittest.TestCase):
     # _NoSQL does this, but Database_do_database_task is not based on it.
 
     def setUp(self):
-
         # UnQLite and Vedis are sufficiently different that the open_database()
         # call arguments have to be set diferrently for these engines.
         if dbe_module is unqlite:

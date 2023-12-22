@@ -900,7 +900,6 @@ class Cursor:
 
 
 class _Node:
-
     # The valid values of node[NODE_TYPE]
     ROOT = 1
     SOLO_ROOT = 2

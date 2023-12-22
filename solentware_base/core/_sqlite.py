@@ -461,7 +461,6 @@ class Database(_database.Database):
         assert file in self.specification
         cursor = self.dbenv.cursor()
         try:
-
             # The update version is original and may be correct if comment in
             # put has correct assessment of situation.  The original's where
             # clause is wrong and should be same as new version.
@@ -575,7 +574,6 @@ class Database(_database.Database):
 
             lfrns = ebmc.read_exists_segment(segment_number, self.dbenv)
             if lfrns is None:
-
                 # Segment does not exist now.
                 ebmc.freed_record_number_pages.remove(segment_number)
                 continue
@@ -583,7 +581,6 @@ class Database(_database.Database):
             try:
                 first_zero_bit = lfrns.index(False, 0 if segment_number else 1)
             except ValueError:
-
                 # No longer any record numbers available for re-use in segment.
                 statement = " ".join(
                     (
@@ -626,7 +623,6 @@ class Database(_database.Database):
                 0
             ]
         except TypeError:
-
             # Implies attempt to delete record from empty database.
             # The delete method will have raised an exception if appropriate.
             return
@@ -1456,7 +1452,6 @@ class Database(_database.Database):
         cursor = self.dbenv.cursor()
         try:
             for row in cursor.execute(statement, values):
-
                 # The keys in self.ebm_control[file].ebm_table are always
                 # 'segment + 1' because automatically allocated
                 # 'integer primary key's start at 1 in an empty table and the

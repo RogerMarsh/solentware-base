@@ -471,7 +471,6 @@ class _SQLiteOpen(_SQLite):
 
 
 class DatabaseTransactions(_SQLiteOpen):
-
     # apsw exception is apsw.SQLError
     # sqlite3 exception is sqlite3.OperationalError
     def test_01(self):

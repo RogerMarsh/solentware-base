@@ -257,7 +257,6 @@ def modules_for_existing_databases(folder, filespec):
                 connection = module.Connection(filepath)
                 cursor = connection.cursor()
                 try:
-
                     # Various websites quote this pragma as a practical
                     # way to determine if a file is a sqlite3 database.
                     cursor.execute("pragma schema_version")
@@ -412,7 +411,6 @@ def modules_for_existing_databases(folder, filespec):
                     dbo["something"]
                     dbm[name] = module
                 except OSError as exc:
-
                     # At 0.7.1 should not do exact match because repeating
                     # the dbo['key'] gives repeated error text.
                     # Or perhaps it should since a repeat is not expected!
@@ -433,7 +431,6 @@ def modules_for_existing_databases(folder, filespec):
                     dbo["something"]
                     dbm[name] = module
                 except module.UnQLiteError as exc:
-
                     # At 0.7.1 should not do exact match because repeating
                     # the dbo['key'] gives repeated error text.
                     # Or perhaps it should since a repeat is not expected!
@@ -455,7 +452,6 @@ def modules_for_existing_databases(folder, filespec):
                         dbo["something"]
                         dbm[name] = module
                     except module.error as exc:
-
                         # At 0.7.1 should not do exact match because repeating
                         # the dbo['key'] gives repeated error text.
                         # Or perhaps it should since a repeat is not expected!
@@ -482,7 +478,6 @@ def modules_for_existing_databases(folder, filespec):
                     dbo["something"]
                     dbm[name] = module
                 except module.error as exc:
-
                     # At 0.7.1 should not do exact match because repeating
                     # the dbo['key'] gives repeated error text.
                     # Or perhaps it should since a repeat is not expected!

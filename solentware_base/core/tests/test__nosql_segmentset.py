@@ -58,7 +58,6 @@ if gnu_module:
 
 class _NoSQL(unittest.TestCase):
     def setUp(self):
-
         # UnQLite and Vedis are sufficiently different that the open_database()
         # call arguments have to be set differently for these engines.
         if dbe_module is unqlite:

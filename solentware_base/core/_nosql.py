@@ -365,7 +365,6 @@ class Database(_database.Database):
             elif rsk is not None and rssbk is None:
                 raise DatabaseError("No segment size recorded in database")
         else:
-
             # A memory database
             # Set branching factor close to minimum value, 4, assuming a value
             # less than 100 is the default, if segment_size_bytes is None.
@@ -626,7 +625,6 @@ class Database(_database.Database):
 
             lfrns = ebmc.read_exists_segment(segment_number, self.dbenv)
             if lfrns is None:
-
                 # Segment does not exist now.
                 ebmc.freed_record_number_pages.remove(segment_number)
                 self.dbenv[ebmc.ebm_freed] = repr(
@@ -637,7 +635,6 @@ class Database(_database.Database):
             try:
                 first_zero_bit = lfrns.index(False, 0)
             except ValueError:
-
                 # No longer any record numbers available for re-use in segment.
                 ebmc.freed_record_number_pages.remove(segment_number)
                 self.dbenv[ebmc.ebm_freed] = repr(
@@ -674,7 +671,6 @@ class Database(_database.Database):
                 0
             ]
         except TypeError:
-
             # Implies attempt to delete record from empty database.
             # The delete method will have raised an exception if appropriate.
             return

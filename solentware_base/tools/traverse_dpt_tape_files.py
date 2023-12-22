@@ -286,7 +286,6 @@ def traverse_tape_directory(directory):
 
 
 if __name__ == "__main__":
-
     tape_directory = tkinter.filedialog.askdirectory(
         title="Open TAPE file directory",
         initialdir="~",

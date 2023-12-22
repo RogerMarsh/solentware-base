@@ -31,7 +31,6 @@ db4_dump -k -p -s games [file] > output
 """
 
 if __name__ == "__main__":
-
     import os
     import binascii
 

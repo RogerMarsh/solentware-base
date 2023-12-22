@@ -27,7 +27,6 @@ from .. import _nosql
 
 class Tree(unittest.TestCase):
     def setUp(self):
-
         # UnQLite and Vedis are sufficiently different that the open_database()
         # call arguments have to be set diferrently for these engines.
         if dbe_module is unqlite:

@@ -216,7 +216,6 @@ class SqliteTableNameUpgrade:
 
 
 if __name__ == "__main__":
-
     app = SqliteTableNameUpgrade(filespec.FileSpec())
     if app.root:
         app.root.mainloop()

@@ -553,7 +553,6 @@ class _DBOpen(_DB):
 
 
 class DatabaseTransactions(_DBOpen):
-
     # Second start_transaction does nothing.
     def test_01(self):
         self.database.start_transaction()
@@ -1761,7 +1760,7 @@ class Database_make_recordset(_DBOpen):
         self.assertIsInstance(
             d.database_cursor("file1", "field1"), _db_tkinter.CursorSecondary
         )
-        rs  = recordset.RecordList(d, "field1")
+        rs = recordset.RecordList(d, "field1")
         self.assertIsInstance(
             d.database_cursor("file1", "field1", recordset=rs),
             recordset._RecordSetBase,

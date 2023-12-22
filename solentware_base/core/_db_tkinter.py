@@ -861,7 +861,6 @@ class Database(_database.Database):
 
             lfrns = ebmc.read_exists_segment(segment_number, self.dbtxn)
             if lfrns is None:
-
                 # Segment does not exist now.
                 ebmc.freed_record_number_pages.remove(segment_number)
                 continue
@@ -915,7 +914,6 @@ class Database(_database.Database):
                 0
             ]
         except TypeError:
-
             # Implies attempt to delete record from empty database.
             # The delete method will have raised an exception if appropriate.
             return
@@ -1071,7 +1069,6 @@ class Database(_database.Database):
             while record:
                 record_key, value = record[0]
                 if record_key != key:
-
                     # No index entry for key.
                     command = (
                         cursor,
@@ -1093,7 +1090,6 @@ class Database(_database.Database):
                     record = tcl_tk_call((cursor, "get", "-nextdup"))
                     continue
                 if segment_number > segment:
-
                     # No index entry for key in this segment.
                     command = (
                         cursor,
@@ -1171,9 +1167,7 @@ class Database(_database.Database):
                         ]
                         if self.dbtxn:
                             command.extend(["-txn", self.dbtxn])
-                        command.extend(
-                            [segment_key, seg.tobytes()]
-                        )
+                        command.extend([segment_key, seg.tobytes()])
                         tcl_tk_call(tuple(command))
                         tcl_tk_call((cursor, "del"))
                         command = (
@@ -1298,7 +1292,6 @@ class Database(_database.Database):
             while record:
                 record_key, value = record[0]
                 if record_key != key:
-
                     # Assume that multiple requests to delete an index value
                     # have been made for a record.  The segment_put method uses
                     # sets to avoid adding multiple entries.  Consider using
@@ -1963,7 +1956,6 @@ class Database(_database.Database):
             command.extend(["-txn", self.dbtxn])
         cursor = tcl_tk_call(tuple(command))
         try:
-
             # Delete segment records.
             record = tcl_tk_call((cursor, "get", "-set_range", key))
             while record:

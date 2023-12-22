@@ -102,12 +102,8 @@ class Base_3_to_4_sqlite(base_3_to_4.Base_3_to_4):
                 sql.append(
                     " ".join(("alter table", value, "rename to", vname))
                 )
-            old = v3t[
-                k[0],
-            ]
-            new = v4t[
-                k[0],
-            ]
+            old = v3t[k[0],]
+            new = v4t[k[0],]
             if len(k) > 1:
                 if old.lower() != new.lower():
                     sql.append(
@@ -254,9 +250,7 @@ class Base_3_to_4_sqlite(base_3_to_4.Base_3_to_4):
                 indexmap[k, lowf] = item
                 indicies.add(item)
             name = "".join((constants.SEGMENTPREFIX, primary))
-            segmentmap[
-                k,
-            ] = name
+            segmentmap[k,] = name
             segments.add(name)
 
     def _generate_v4_names(self):
@@ -279,7 +273,5 @@ class Base_3_to_4_sqlite(base_3_to_4.Base_3_to_4):
             name = constants.SUBFILE_DELIMITER.join(
                 (k, constants.SEGMENT_SUFFIX)
             )
-            segmentmap[
-                k,
-            ] = name
+            segmentmap[k,] = name
             segments.add(name)

@@ -243,7 +243,6 @@ def _fix_database(table, txn=None):
 
 
 if __name__ == "__main__":
-
     berkeleydb_du_splice_fix(
         os.path.join(
             "~",

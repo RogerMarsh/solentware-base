@@ -2369,7 +2369,6 @@ class _CursorDPT:
         # permanent reference for recordset, if not None, kept for use by
         # foundset_all_records and similar methods.
         if self.nonorderedfield:
-
             # A record set cursor.
             if recordset:
                 self._foundset = recordset
@@ -2490,7 +2489,6 @@ class _CursorDPT:
             self._new_value_context()
             self._last_by_value()
         else:
-
             # No more records on record set cursor.
             self._last()
 
@@ -2542,7 +2540,6 @@ class _CursorDPT:
             self._new_value_context()
             self._first_by_value()
         else:
-
             # No more records on record set cursor.
             self._first()
 

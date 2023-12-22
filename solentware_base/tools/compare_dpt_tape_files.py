@@ -266,7 +266,6 @@ def compare_tape_directories(directory1, directory2):
 
 
 if __name__ == "__main__":
-
     first_directory = tkinter.filedialog.askdirectory(
         title="Open First TAPE file directory",
         initialdir="~",

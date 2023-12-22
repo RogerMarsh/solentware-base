@@ -150,7 +150,6 @@ class Database(_databasedu.Database):
 
                 # Get high existing segment for value.
                 if not cursor_high.set(k):
-
                     # No segments for this index value.
                     # self._path_marker.add('p1')
                     continue
@@ -162,7 +161,6 @@ class Database(_databasedu.Database):
                     # self._path_marker.add('p2b')
                     segref = cursor_high.prev()[1]
                 if segment != int.from_bytes(segref[:4], byteorder="big"):
-
                     # No records exist in high segment for this index
                     # value.
                     # self._path_marker.add('p3')

@@ -27,7 +27,6 @@ try:
     SINGLEBIT = Bitarray("1")
 
 except ImportError:
-
     from ._bytebit import Bitarray
 
     SINGLEBIT = True

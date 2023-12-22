@@ -532,7 +532,6 @@ class FileSpec(dict):
                 )
                 raise FileSpecError(msg)
             try:
-
                 # At Python26+ need to convert unicode to str for DPT.
                 fname = str(
                     os.path.join(

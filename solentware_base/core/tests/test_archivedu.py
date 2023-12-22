@@ -52,7 +52,6 @@ class _Archivedu(unittest.TestCase):
 
 
 class _D(archivedu.Archivedu, _databasedu.Database):
-
     specification = filespec.FileSpec(**{_FILE1: {_FIELD1}, _FILE2: {_FIELD2}})
     home_directory = _DBNAME
     database_file = os.path.join(home_directory, _DBNAME)
@@ -71,7 +70,6 @@ class Archivedu(_Archivedu):
 class Archivedu_fpd(_Archivedu):
     def setUp(self):
         class _Df(_D):
-
             _file_per_database = True
 
         super().setUp()
@@ -85,7 +83,6 @@ class Archivedu_fpd(_Archivedu):
 class Archivedu_fpd_backup(_Archivedu):
     def setUp(self):
         class _Dfb(_D):
-
             _take_backup_before_deferred_update = True
             _file_per_database = True
 
@@ -114,7 +111,6 @@ class Archivedu_fpd_backup(_Archivedu):
 class Archivedu_backup(_Archivedu):
     def setUp(self):
         class _Db(_D):
-
             _take_backup_before_deferred_update = True
 
         super().setUp()

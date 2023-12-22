@@ -70,8 +70,8 @@ class ArchiveduDPT(Archivedu):
             self.home_directory, self.import_backup_directory
         )
         expected_files = []
-        #expected_files = set(self._get_zip_archive_names_for_name(name))
-        #if set(os.listdir(outputdir)) != expected_files:
+        # expected_files = set(self._get_zip_archive_names_for_name(name))
+        # if set(os.listdir(outputdir)) != expected_files:
         #    raise ArchiveduDPTError(
         #        str(name).join(
         #            ("Import backups for file '", "' are not those expected")
@@ -83,7 +83,7 @@ class ArchiveduDPT(Archivedu):
             pass
         for file in expected_files:
             os.remove(os.path.join(outputdir, file))
-        #os.rmdir(outputdir)
+        # os.rmdir(outputdir)
 
     def _archive_bz2(self, name):
         """Raise an ArchiveduDPTbz2 exception."""

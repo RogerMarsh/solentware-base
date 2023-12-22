@@ -139,7 +139,6 @@ class Cursor_cursor(_DB):
         )
 
     def test_03_close_01(self):
-
         # Superclass of _lmdb.Cursor defines close().
         # Confirm self.database.table['file1'][0] object has close() method.
         self.cursor.close()

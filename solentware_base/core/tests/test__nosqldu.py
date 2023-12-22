@@ -62,7 +62,6 @@ if gnu_module:
 
 class _NoSQLdu(unittest.TestCase):
     def setUp(self):
-
         # UnQLite and Vedis are sufficiently different that the open_database()
         # call arguments have to be set differently for these engines.
         if dbe_module is unqlite:
@@ -393,7 +392,6 @@ class Database_methods(_NoSQLOpen):
 
     # This test has to be done in a non-memory database.
     def xtest_08_set_defer_update_03(self):
-
         # Simulate normal use: the insert is not part of the deferred update.
         self.database.close_database()
         D = _nosql.Database(

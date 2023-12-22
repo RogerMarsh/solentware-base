@@ -120,7 +120,6 @@ class Cursor_db(_DB):
         )
 
     def test_03_close(self):
-
         # Superclass of _db.Cursor defines close().
         # Confirm self.database.table['file1'][0] object has close() method.
         cursor = _db.Cursor(self.database.table["file1"][0])

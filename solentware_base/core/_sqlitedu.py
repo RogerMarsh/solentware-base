@@ -224,7 +224,6 @@ class Database(_databasedu.Database):
         # table and merges into the main table later.
         tablename = self.table[SUBFILE_DELIMITER.join((file, field))][-1]
         if self.high_segment[file] == segment or not self.first_chunk[file]:
-
             # select (index value, segment number, record count, key reference)
             # statement for (index value, segment number).  Execution returns
             # None if no splicing needed.

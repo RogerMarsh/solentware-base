@@ -31,7 +31,6 @@ db4_dump -s games_Black [file] > output
 """
 
 if __name__ == "__main__":
-
     import os
     import binascii
 

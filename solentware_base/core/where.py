@@ -436,7 +436,6 @@ class Where:
         """Expect 'num', 'alpha', or condition, after fieldname or 'not'."""
         token_lower = token.lower()
         if token_lower == IS:
-
             # Rather than a separate state in _set_not_num_alpha_condition
             # for the token_lower == NOT case because 'is' is never
             # preceded by 'not'.
@@ -629,7 +628,6 @@ class Where:
         """Expect keyword to interpret previous token as field or value."""
         token_lower = token.lower()
         if token_lower == NOT:
-
             # '... or not f not like b and ...' or similar might be happening
             # so treat existing 'not' as phrase not.
             self._deferred_not_phrase()
@@ -655,7 +653,6 @@ class Where:
             self._value_boolean(token_lower)
             return self._set_field_leftp_condition_value
         if token_lower == IS:
-
             # Rather than a separate state in _set_not_num_alpha_condition
             # for the token_lower == NOT case because 'is' is never
             # preceded by 'not'.
@@ -698,7 +695,6 @@ class Where:
             self._boolean_left_parenthesis(token)
             return self._set_field_not_leftp
         if token_lower == IS:
-
             # Rather than a separate state in _set_not_num_alpha_condition
             # for the token_lower == NOT case because 'is' is never
             # preceded by 'not'.

@@ -133,7 +133,6 @@ class Database:
             self.delete(dbset, oldkey, instance.srvalue)
             key = self.put(dbset, newkey, instance.newrecord.srvalue)
             if key is not None:
-
                 # put was append to record number database and
                 # returned the new primary key. Adjust record key
                 # for secondary updates.
@@ -223,7 +222,6 @@ class Database:
         putkey = instance.key.pack()
         instance.set_packed_value_and_indexes()
         if putkey is None:
-
             # reuse record number if possible
             putkey = self.get_lowest_freed_record_number(dbset)
             if putkey is not None:
@@ -231,7 +229,6 @@ class Database:
 
         key = self.put(dbset, putkey, instance.srvalue)
         if key is not None:
-
             # put was append to record number database and
             # returned the new primary key. Adjust record key
             # for secondary updates.

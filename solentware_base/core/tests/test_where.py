@@ -197,7 +197,6 @@ class WhereTC(unittest.TestCase):
 
 
 class Where_MethodsTC(unittest.TestCase):
-
     phrase_attr = frozenset(
         (
             "field",
@@ -4997,7 +4996,6 @@ class Where_parse_parenthesis_phrasesTC(unittest.TestCase):
 
 class Where_validateTC(unittest.TestCase):
     def setUp(self):
-
         self.processors = Processors(
             {"f"}, {"f1", "f2", "f3", "f4", "f5", "f6"}, []
         )
@@ -7307,7 +7305,6 @@ class WhereClause_evaluate_index_condition_nodeTC(unittest.TestCase):
     # constraint is set by this method.
 
     def setUp(self):
-
         self.processors = Processors(
             {"f"},
             {"f1", "f2", "f3", "f4", "f5", "f6"},
@@ -7854,7 +7851,6 @@ class WhereClause_evaluate_index_condition_nodeTC(unittest.TestCase):
 
 class WhereClause_set_non_index_node_constraintTC(unittest.TestCase):
     def setUp(self):
-
         self.processors = Processors(
             {"f"},
             {"f1", "f2", "f3", "f4", "f5", "f6"},
@@ -8210,7 +8206,6 @@ class WhereClause_set_non_index_node_constraintTC(unittest.TestCase):
 
 class Where_evaluate_non_index_conditionsTC(unittest.TestCase):
     def setUp(self):
-
         self.processors = Processors(
             {"f"},
             {"f1", "f2", "f3", "f4", "f5", "f6"},
@@ -8405,7 +8400,6 @@ class Where_evaluate_non_index_conditionsTC(unittest.TestCase):
 
 class WhereClause_evaluate_node_resultTC(unittest.TestCase):
     def setUp(self):
-
         self.processors = Processors(
             {"f"},
             {"f1", "f2", "f3", "f4", "f5", "f6"},
@@ -8578,7 +8572,6 @@ class WhereClause_evaluate_node_resultTC(unittest.TestCase):
         )
 
     def test_01_index_field_condition_not_indexed_02(self):
-
         # A query of this structure is known to not work, but the similar query
         # with 'f3 ge x' instead of 'f3 like x' does work.
         # See test_06_index_field_condition_and_or_and_03()
@@ -8630,7 +8623,6 @@ class WhereClause_evaluate_node_resultTC(unittest.TestCase):
 
 class Where_evaluateTC(unittest.TestCase):
     def setUp(self):
-
         self.processors = Processors(
             {"f"},
             {"f1", "f2", "f3", "f4", "f5", "f6"},
@@ -9664,7 +9656,6 @@ class Where_evaluateTC(unittest.TestCase):
 
 class Processors:
     def __init__(self, non_indexed_fields, indexed_fields, records):
-
         # Emulate the database interface available in real cases to do field
         # defined for file check in condition() method.  The Database.exists()
         # method is called.
@@ -9748,7 +9739,6 @@ class Processors:
         obj.result = obj.left.result
 
     def answer(self, obj):
-
         # Currently I think the 'not's must be applied to the 'up' node only.
         obj.up.result = obj.result
         self.not_condition(obj.up)
@@ -10004,7 +9994,6 @@ class Constraints(Processors):
 
 class Database:
     def __init__(self, dbset):
-
         # Set a dictionary of field names in file named dbset.
         self.dbset = dbset
 

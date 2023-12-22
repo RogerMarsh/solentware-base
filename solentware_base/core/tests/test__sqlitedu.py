@@ -290,7 +290,6 @@ class Database_methods(_SQLiteOpen):
         self.assertEqual(self.database.first_chunk["file1"], True)
 
     def test_08_set_defer_update_03(self):
-
         # Simulate normal use: the insert is not part of the deferred update.
         self.database.start_transaction()
         cursor = self.database.dbenv.cursor()
