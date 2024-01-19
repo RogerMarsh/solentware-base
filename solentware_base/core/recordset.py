@@ -1169,6 +1169,16 @@ class _Recordset:
         """Create and return a cursor for this recordset."""
         return self._dbhome.create_recordset_cursor(self)
 
+    def reset_current_segment(self):
+        """Set self._current_segment to None.
+
+        This allows an initial next() or prev() call to be treated as a
+        first() or last() call when a RecordList or FoundSet instance is
+        returned as the cursor by a database_cursor() call.
+
+        """
+        self._current_segment = None
+
 
 class RecordsetCursor(cursor.Cursor):
     """Provide a bsddb3 style cursor for a recordset of arbitrary records.
