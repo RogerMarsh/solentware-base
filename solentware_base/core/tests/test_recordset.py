@@ -429,6 +429,17 @@ class _Recordset(unittest.TestCase):
             self.rs.create_recordset_cursor,
             *(None,),
         )
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"reset_current_segment\(\) takes 1 positional ",
+                    "argument but 2 were given",
+                )
+            ),
+            self.rs.reset_current_segment,
+            *(None,),
+        )
 
     def test___init__01(self):
         s = recordset._Recordset(self.d, "")
@@ -1036,6 +1047,9 @@ class _Recordset(unittest.TestCase):
 
     def test_create_recordset_cursor(self):
         self.assertIsInstance(self.rs.create_recordset_cursor(), self.RC)
+
+    def test_reset_current_segment(self):
+        self.assertEqual(self.rs.reset_current_segment(), None)
 
 
 if __name__ == "__main__":

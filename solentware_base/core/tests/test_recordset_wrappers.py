@@ -566,6 +566,13 @@ class RecordList(unittest.TestCase):
 
         self.DB = DB
 
+        class EBM:
+            def __init__(self):
+                self.record_number_in_ebm = True
+
+            def is_record_number_in_record_set(self, *a):
+                return self.record_number_in_ebm
+
         class RC:
             pass
 
@@ -579,6 +586,7 @@ class RecordList(unittest.TestCase):
                 # bitwise operator tests, __or__ and so forth, to test cases
                 # where more than one 'D' object exists.
                 db = DB()
+                self.ebm = EBM()
                 self.d = {"file1": db, "file2": db}
 
             # Planned to become 'def get_table(self, file)'.
@@ -592,6 +600,9 @@ class RecordList(unittest.TestCase):
 
             def create_recordset_cursor(self, rs):
                 return RC()
+
+            def recordlist_ebm(self, *a):
+                return self.ebm
 
         self.D = D
         self.d = D()
@@ -641,9 +652,17 @@ class RecordList(unittest.TestCase):
         self.assertEqual(self.rsb1.clear_recordset(), None)
 
     def test_place_record_number(self):
+        self.assertEqual(self.d.ebm.is_record_number_in_record_set(), True)
+        self.assertEqual(self.rsb1.place_record_number(10), None)
+        self.d.ebm.record_number_in_ebm = False
+        self.assertEqual(self.d.ebm.is_record_number_in_record_set(), False)
         self.assertEqual(self.rsb1.place_record_number(10), None)
 
     def test_remove_record_number(self):
+        self.assertEqual(self.d.ebm.is_record_number_in_record_set(), True)
+        self.assertEqual(self.rsb1.remove_record_number(20), None)
+        self.d.ebm.record_number_in_ebm = False
+        self.assertEqual(self.d.ebm.is_record_number_in_record_set(), False)
         self.assertEqual(self.rsb1.remove_record_number(20), None)
 
     def test_remove_recordset(self):

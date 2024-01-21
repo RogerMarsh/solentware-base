@@ -2393,7 +2393,7 @@ class _CursorDPT:
         if self.dvcursor:
             self.dptdb.CloseDirectValueCursor(self.dvcursor)
         if self._foundset:
-            if self._rscursor:
+            if self._foundset.recordset and self._rscursor:
                 self._foundset.recordset.CloseCursor(self._rscursor)
             # if self._delete_foundset_on_close_cursor:
             #    self.dptdb.DestroyRecordSet(self._foundset)
@@ -3024,6 +3024,12 @@ class _DPTRecordSet:
         """Return count of records in the record set."""
         return self.recordset.Count()
 
+    def reset_current_segment(self):
+        """Do nothing.
+
+        Method exists for compatibility with other database engines.
+        """
+
 
 # Attempt to cope with absence of & ^ | &= ^= |= operators in dptapi interface
 # to DPT recordlist objects via APIRecordList class.
@@ -3086,13 +3092,29 @@ class _DPTRecordList(_DPTRecordSet):
         """Remove all records from self.recordset."""
         self.recordset.Clear()
 
+    # DPT User Language constructs suggest an exception may be appropriate
+    # if the found set is empty.
     def place_record_number(self, record_number):
         """Place record record_number on self, a _DPTRecordList."""
-        self.recordset.Place(record_number)
+        foundset = _DPTFoundSet(
+            self._context,
+            self._context.FindRecords(
+                dptapi.APIFindSpecification(dptapi.FD_SINGLEREC, record_number)
+            ),
+        )
+        self.recordset.Place(foundset.recordset)
 
+    # DPT User Language constructs suggest an exception may be appropriate
+    # if the found set is empty.
     def remove_record_number(self, record_number):
         """Remove record record_number on self, a _DPTRecordList."""
-        self.recordset.Remove(record_number)
+        foundset = _DPTFoundSet(
+            self._context,
+            self._context.FindRecords(
+                dptapi.APIFindSpecification(dptapi.FD_SINGLEREC, record_number)
+            ),
+        )
+        self.recordset.Remove(foundset.recordset)
 
     def remove_recordset(self, recordset):
         """Remove other's records from recordset using Remove method.

@@ -1564,13 +1564,21 @@ class RecordList(_RecordSetBase):
         """Remove all records from recordset."""
         self.recordset.clear_recordset()
 
+    # An exception may be appropriate if record not in EBM.
     def place_record_number(self, record_number):
         """Place record record_number on self, a RecordList."""
-        self.recordset.place_record_number(record_number)
+        if self.recordset.dbhome.recordlist_ebm(
+            self.recordset.dbset
+        ).is_record_number_in_record_set(record_number):
+            self.recordset.place_record_number(record_number)
 
+    # An exception may be appropriate if record not in EBM.
     def remove_record_number(self, record_number):
         """Remove record record_number on self, a RecordList."""
-        self.recordset.remove_record_number(record_number)
+        if self.recordset.dbhome.recordlist_ebm(
+            self.recordset.dbset
+        ).is_record_number_in_record_set(record_number):
+            self.recordset.remove_record_number(record_number)
 
     def remove_recordset(self, recordset):
         """Remove other's records from recordset using '|=' and '^=' operators.
