@@ -5,6 +5,7 @@
 """_database tests"""
 
 import unittest
+import random
 
 from .. import _database
 from .. import find
@@ -16,6 +17,10 @@ from ..segmentsize import SegmentSize
 from .. import record
 from .. import _db
 from .. import _sqlite
+
+
+def random_kwarg():
+    return chr(int(random.random() * 10) + 97) * int(1 + random.random() * 10)
 
 
 class Database_01(unittest.TestCase):
@@ -36,7 +41,7 @@ class Database_01(unittest.TestCase):
             "".join(
                 (
                     r"delete_instance\(\) missing 2 required ",
-                    "positional arguments: 'dbset' and 'instance'",
+                    "positional arguments: 'dbset' and 'instance'$",
                 )
             ),
             self.database.delete_instance,
@@ -46,7 +51,7 @@ class Database_01(unittest.TestCase):
             "".join(
                 (
                     r"edit_instance\(\) missing 2 required ",
-                    "positional arguments: 'dbset' and 'instance'",
+                    "positional arguments: 'dbset' and 'instance'$",
                 )
             ),
             self.database.edit_instance,
@@ -56,7 +61,7 @@ class Database_01(unittest.TestCase):
             "".join(
                 (
                     r"put_instance\(\) missing 2 required ",
-                    "positional arguments: 'dbset' and 'instance'",
+                    "positional arguments: 'dbset' and 'instance'$",
                 )
             ),
             self.database.put_instance,
@@ -66,7 +71,7 @@ class Database_01(unittest.TestCase):
             "".join(
                 (
                     r"record_finder\(\) takes from 2 to 3 ",
-                    "positional arguments but 4 were given",
+                    "positional arguments but 4 were given$",
                 )
             ),
             self.database.record_finder,
@@ -77,7 +82,7 @@ class Database_01(unittest.TestCase):
             "".join(
                 (
                     r"record_selector\(\) missing 1 required ",
-                    "positional argument: 'statement'",
+                    "positional argument: 'statement'$",
                 )
             ),
             self.database.record_selector,
@@ -87,7 +92,7 @@ class Database_01(unittest.TestCase):
             "".join(
                 (
                     r"values_finder\(\) missing 1 required ",
-                    "positional argument: 'dbset'",
+                    "positional argument: 'dbset'$",
                 )
             ),
             self.database.values_finder,
@@ -97,7 +102,7 @@ class Database_01(unittest.TestCase):
             "".join(
                 (
                     r"values_selector\(\) missing 1 required ",
-                    "positional argument: 'statement'",
+                    "positional argument: 'statement'$",
                 )
             ),
             self.database.values_selector,
@@ -108,7 +113,7 @@ class Database_01(unittest.TestCase):
                 (
                     r"make_segment\(\) missing 4 required ",
                     "positional arguments: 'key', 'segment_number', ",
-                    "'record_count', and 'records'",
+                    "'record_count', and 'records'$",
                 )
             ),
             self.database.make_segment,
@@ -118,7 +123,7 @@ class Database_01(unittest.TestCase):
             "".join(
                 (
                     r"set_segment_size\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.database.set_segment_size,
@@ -129,7 +134,7 @@ class Database_01(unittest.TestCase):
             "".join(
                 (
                     r"exists\(\) missing 2 required positional arguments: ",
-                    "'file' and 'field'",
+                    "'file' and 'field'$",
                 )
             ),
             self.database.exists,
@@ -139,7 +144,7 @@ class Database_01(unittest.TestCase):
             "".join(
                 (
                     r"is_primary\(\) missing 2 required ",
-                    "positional arguments: 'file' and 'field'",
+                    "positional arguments: 'file' and 'field'$",
                 )
             ),
             self.database.is_primary,
@@ -149,7 +154,7 @@ class Database_01(unittest.TestCase):
             "".join(
                 (
                     r"is_recno\(\) missing 2 required positional arguments: ",
-                    "'file' and 'field'",
+                    "'file' and 'field'$",
                 )
             ),
             self.database.is_recno,
@@ -159,7 +164,7 @@ class Database_01(unittest.TestCase):
             "".join(
                 (
                     r"repair_cursor\(\) missing 1 required ",
-                    "positional argument: 'oldcursor'",
+                    "positional argument: 'oldcursor'$",
                 )
             ),
             self.database.repair_cursor,
@@ -169,7 +174,7 @@ class Database_01(unittest.TestCase):
             "".join(
                 (
                     r"allocate_and_open_contexts\(\) takes from 1 to 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.database.allocate_and_open_contexts,
@@ -180,7 +185,7 @@ class Database_01(unittest.TestCase):
             "".join(
                 (
                     r"allocate_and_open_contexts\(\) got an unexpected ",
-                    "keyword argument 'xxx'",
+                    "keyword argument 'xxx'$",
                 )
             ),
             self.database.allocate_and_open_contexts,
@@ -191,7 +196,7 @@ class Database_01(unittest.TestCase):
             "".join(
                 (
                     r"open_database_contexts\(\) takes from 1 to 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.database.open_database_contexts,
@@ -202,11 +207,86 @@ class Database_01(unittest.TestCase):
             "".join(
                 (
                     r"open_database_contexts\(\) got an unexpected keyword ",
-                    "argument 'xxx'",
+                    "argument 'xxx'$",
                 )
             ),
             self.database.open_database_contexts,
             **dict(xxx=None),
+        )
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"start_read_only_transaction\(\) takes 1 positional ",
+                    "argument but 2 were given$",
+                )
+            ),
+            self.database.start_read_only_transaction,
+            *(None,),
+        )
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"end_read_only_transaction\(\) takes 1 positional ",
+                    "argument but 2 were given$",
+                )
+            ),
+            self.database.end_read_only_transaction,
+            *(None,),
+        )
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"increase_database_record_capacity\(\) takes 1 ",
+                    "positional argument but 2 were given$",
+                )
+            ),
+            self.database.increase_database_record_capacity,
+            *(None,),
+        )
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"get_database_table_sizes\(\) takes 1 positional ",
+                    "argument but 2 were given$",
+                )
+            ),
+            self.database.get_database_table_sizes,
+            *(None,),
+        )
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"close_datasourcecursor_recordset\(\) missing 1 ",
+                    "required positional argument: 'datasourcecursor'$",
+                )
+            ),
+            self.database.close_datasourcecursor_recordset,
+        )
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"set_datasourcecursor_recordset\(\) missing 2 ",
+                    "required positional arguments: 'datasourcecursor' ",
+                    "and 'recordset'$",
+                )
+            ),
+            self.database.set_datasourcecursor_recordset,
+        )
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"get_datasourcecursor_recordset_cursor\(\) missing 1 ",
+                    "required positional argument: 'dsc'$",
+                )
+            ),
+            self.database.get_datasourcecursor_recordset_cursor,
         )
 
     def test_record_finder(self):
@@ -284,6 +364,36 @@ class Database_01(unittest.TestCase):
     def test_open_database_contexts_02(self):
         self.assertEqual(
             self.database.open_database_contexts(files=("a",)), None
+        )
+
+    def test_start_read_only_transaction_01(self):
+        self.assertEqual(self.database.start_read_only_transaction(), None)
+
+    def test_end_read_only_transaction_01(self):
+        self.assertEqual(self.database.end_read_only_transaction(), None)
+
+    # Version for DPT expects particular kwargs.
+    def test_increase_database_record_capacity_01(self):
+        self.assertEqual(
+            self.database.increase_database_record_capacity(
+                **{random_kwarg(): ""}
+            ),
+            None,
+        )
+
+    # Version for DPT expects particular kwargs.
+    def test_get_database_table_sizes_01(self):
+        self.assertEqual(
+            self.database.get_database_table_sizes(
+                **{random_kwarg(): ""}
+            ),
+            {},
+        )
+
+    # Version for DPT expects a DataSourceCursor instance.
+    def test_close_datasourcecursor_recordset_01(self):
+        self.assertEqual(
+            self.database.close_datasourcecursor_recordset("dsc"), None
         )
 
 
@@ -842,6 +952,126 @@ class Database_06_subclass_methods(unittest.TestCase):
         )
 
 
+class Database_07_datasourcecursor(unittest.TestCase):
+    def setUp(self):
+        class C:
+            pass
+
+        self.c = C
+
+        class D(_database.Database):
+            def create_recordset_cursor(self, rset):
+                return C()
+            def recordlist_nil(self, dbset):
+                return RS()
+
+        database = D()
+        self.database = database
+
+        class RL:
+            def __init__(self):
+                self.dbidentity = id(database)
+            def close(self):
+                pass
+
+        rl = RL()
+        self.rl = rl
+
+        class RS:
+            def __init__(self):
+                self.dbidentity = id(database)
+                self.dbhome = database
+                self.recordset = rl
+
+        rs = RS()
+        self.rs = rs
+        self.rs1 = RS()
+
+        class DSC:
+            def __init__(self):
+                self.dbhome = database
+                self.recordset = rs
+                self.dbidentity = id(database)
+                self.dbset = "file"
+
+        self.dsc = DSC()
+
+    def tearDown(self):
+        self.database = None
+
+    def test_01_set_datasourcecursor_recordset_01(self):
+        self.dsc.dbhome = None
+        self.assertRaisesRegex(
+            _database.DataSourceCursorError,
+            "".join("DataSource is not for this database$"),
+            self.database.set_datasourcecursor_recordset,
+            *(self.dsc, self.rs1),
+        )
+
+    def test_01_set_datasourcecursor_recordset_02(self):
+        self.database.set_datasourcecursor_recordset(self.dsc, self.rs1)
+
+    def test_01_set_datasourcecursor_recordset_03(self):
+        self.dsc.recordset.dbidentity = None
+        self.assertRaisesRegex(
+            _database.DataSourceCursorError,
+            "".join(
+                "New and existing Recordsets are for different databases$"
+            ),
+            self.database.set_datasourcecursor_recordset,
+            *(self.dsc, self.rs1),
+        )
+
+    def test_01_set_datasourcecursor_recordset_04(self):
+        self.dsc.recordset = None
+        self.database.set_datasourcecursor_recordset(self.dsc, self.rs1)
+
+    def test_01_set_datasourcecursor_recordset_05(self):
+        self.dsc.recordset = None
+        self.dsc.dbidentity = None
+        self.assertRaisesRegex(
+            _database.DataSourceCursorError,
+            "".join(
+                "New Recordset and DataSource are for different databases$"
+            ),
+            self.database.set_datasourcecursor_recordset,
+            *(self.dsc, self.rs1),
+        )
+
+    def test_02_get_datasourcecursor_recordset_cursor_01(self):
+        self.dsc.dbhome = None
+        self.assertRaisesRegex(
+            _database.DataSourceCursorError,
+            "".join("DataSource is not for this database"),
+            self.database.get_datasourcecursor_recordset_cursor,
+            *(self.dsc,),
+        )
+
+    def test_02_get_datasourcecursor_recordset_cursor_02(self):
+        self.assertIsInstance(
+            self.database.get_datasourcecursor_recordset_cursor(self.dsc),
+            self.c,
+        )
+
+    def test_02_get_datasourcecursor_recordset_cursor_03(self):
+        self.dsc.dbidentity = None
+        self.assertRaisesRegex(
+            _database.DataSourceCursorError,
+            "".join(
+                "Recordset and DataSource are for different databases$"
+            ),
+            self.database.get_datasourcecursor_recordset_cursor,
+            *(self.dsc,),
+        )
+
+    def test_02_get_datasourcecursor_recordset_cursor_04(self):
+        self.dsc.recordset = None
+        self.assertIsInstance(
+            self.database.get_datasourcecursor_recordset_cursor(self.dsc),
+            self.c,
+        )
+
+
 class ExistenceBitmapControl(unittest.TestCase):
     def setUp(self):
         class D(_database.Database):
@@ -859,7 +1089,7 @@ class ExistenceBitmapControl(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) missing 2 required positional arguments: ",
-                    "'file' and 'database'",
+                    "'file' and 'database'$",
                 )
             ),
             _database.ExistenceBitmapControl,
@@ -889,4 +1119,5 @@ if __name__ == "__main__":
     runner().run(loader(Database_05_put_instance_02))
     runner().run(loader(Database_05_put_instance_03))
     runner().run(loader(Database_06_subclass_methods))
+    runner().run(loader(Database_07_datasourcecursor))
     runner().run(loader(ExistenceBitmapControl))

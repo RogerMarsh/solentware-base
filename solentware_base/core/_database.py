@@ -24,6 +24,10 @@ from .recordset import (
 )
 
 
+class DataSourceCursorError(Exception):
+    """Exception for database-specific DataSourceCursor setting."""
+
+
 # The Database class was added to the ignored-classes list of pylint.conf for
 # solentware_base at a time when all the no-member errors (E1101) referred
 # to it or one of it's subclasses with the same name in another module.
@@ -380,6 +384,71 @@ class Database:
         """Return empty dict, present for compatibility with DPT."""
         del kwargs
         return {}
+
+    def close_datasourcecursor_recordset(self, datasourcecursor):
+        """Do nothing.  Override if necessary.
+
+        Present for compatibility with DPT database engine.
+        """
+        del datasourcecursor
+
+    def set_datasourcecursor_recordset(self, datasourcecursor, recordset):
+        """Validate and set recordset as datasourcecursor's recordset.
+
+        The recordset and datasourcecursor must be associated with the same
+        database identity and be the identity of self.
+
+        This method exists because in DPT these checks are implied when the
+        recordset and cursor are created, and both objects are details of
+        the implementation.
+        """
+        if datasourcecursor.dbhome is not self:
+            raise DataSourceCursorError(
+                "DataSource is not for this database"
+            )
+        if datasourcecursor.recordset:
+            if (
+                datasourcecursor.recordset.dbidentity
+                == recordset.recordset.dbidentity
+            ):
+                datasourcecursor.recordset.recordset.close()
+                datasourcecursor.recordset = recordset
+            else:
+                raise DataSourceCursorError(
+                    "New and existing Recordsets are for different databases"
+                )
+        elif datasourcecursor.dbidentity == recordset.recordset.dbidentity:
+            datasourcecursor.recordset = recordset
+        else:
+            raise DataSourceCursorError(
+                "New Recordset and DataSource are for different databases"
+            )
+
+    def get_datasourcecursor_recordset_cursor(self, dsc):
+        """Create and return cursor on dsc's recordset.
+
+        dsc not datasourcecursor to shorten argument name.
+
+        """
+        if dsc.dbhome is not self:
+            raise DataSourceCursorError(
+                "DataSource is not for this database"
+            )
+        if dsc.recordset:
+            if dsc.dbidentity == dsc.recordset.recordset.dbidentity:
+                cursor = dsc.recordset.dbhome.create_recordset_cursor(
+                    dsc.recordset.recordset
+                )
+            else:
+                raise DataSourceCursorError(
+                    "Recordset and DataSource are for different databases"
+                )
+        else:
+            dsc.recordset = dsc.dbhome.recordlist_nil(dsc.dbset)
+            cursor = dsc.recordset.dbhome.create_recordset_cursor(
+                dsc.recordset.recordset
+            )
+        return cursor
 
 
 class ExistenceBitmapControl:

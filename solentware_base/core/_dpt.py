@@ -688,6 +688,37 @@ class Database(_database.Database):
             self.table[dbset], self.table[dbset].primary, recordset=recordset
         )
 
+    def close_datasourcecursor_recordset(self, dsc):
+        """Override, destroy the APIRecordSet which implements recordset."""
+        if dsc.recordset is not None:
+            try:
+                del self.table[dsc.dbset]._sources[dsc]
+            except:
+                pass
+            # self.table[self.dbset].get_database(
+            #    ).DestroyRecordSet(dsc.recordset)
+            dsc.recordset = None
+
+    def set_datasourcecursor_recordset(self, datasourcecursor, recordset):
+        """Override, and set recordset as datasourcecursor's recordset."""
+        datasourcecursor.recordset = recordset
+
+    def get_datasourcecursor_recordset_cursor(self, dsc):
+        """Override, return cursor on this datasource's recordset.
+
+        dsc not datasourcecursor to shorten argument name.
+
+        """
+        if dsc.recordset:
+            cursor = self.create_recordset_cursor(
+                dsc.dbset, dsc.dbname, dsc.recordset
+            )
+        else:
+            cursor = self.create_recordset_cursor(
+                dsc.dbset, dsc.dbname, self.recordlist_nil(dsc.dbset)
+            )
+        return cursor
+
     def do_database_task(
         self,
         taskmethod,
