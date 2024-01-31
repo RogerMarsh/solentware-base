@@ -30,7 +30,7 @@ class RecordsetSegmentList(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) missing 2 required positional arguments: ",
-                    "'segment_number' and 'key'",
+                    "'segment_number' and 'key'$",
                 )
             ),
             recordset.RecordsetSegmentList,
@@ -38,7 +38,7 @@ class RecordsetSegmentList(unittest.TestCase):
         self.assertRaisesRegex(
             TypeError,
             "".join(
-                (r"__init__\(\) got an unexpected keyword argument 'xxxxx'",)
+                (r"__init__\(\) got an unexpected keyword argument 'xxxxx'$",)
             ),
             recordset.RecordsetSegmentList,
             *(None, None),
@@ -46,7 +46,7 @@ class RecordsetSegmentList(unittest.TestCase):
         )
         self.assertRaisesRegex(
             TypeError,
-            "".join(("object of type 'NoneType' has no len()",)),
+            "".join((r"object of type 'NoneType' has no len\(\)$",)),
             recordset.RecordsetSegmentList,
             *(None, None),
             **dict(records=None),
@@ -65,7 +65,7 @@ class RecordsetSegmentList(unittest.TestCase):
             "".join(
                 (
                     r"count_records\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsl.count_records,
@@ -76,7 +76,7 @@ class RecordsetSegmentList(unittest.TestCase):
             "".join(
                 (
                     r"current\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsl.current,
@@ -87,7 +87,7 @@ class RecordsetSegmentList(unittest.TestCase):
             "".join(
                 (
                     r"first\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsl.first,
@@ -99,7 +99,7 @@ class RecordsetSegmentList(unittest.TestCase):
                 (
                     r"get_position_of_record_number\(\) missing 1 required ",
                     "positional argument: ",
-                    "'recnum'",
+                    "'recnum'$",
                 )
             ),
             self.rsl.get_position_of_record_number,
@@ -109,7 +109,7 @@ class RecordsetSegmentList(unittest.TestCase):
             "".join(
                 (
                     r"get_record_number_at_position\(\) takes 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.rsl.get_record_number_at_position,
@@ -120,7 +120,7 @@ class RecordsetSegmentList(unittest.TestCase):
             "".join(
                 (
                     r"last\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsl.last,
@@ -131,7 +131,7 @@ class RecordsetSegmentList(unittest.TestCase):
             "".join(
                 (
                     r"next\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsl.next,
@@ -142,7 +142,7 @@ class RecordsetSegmentList(unittest.TestCase):
             "".join(
                 (
                     r"prev\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsl.prev,
@@ -153,7 +153,7 @@ class RecordsetSegmentList(unittest.TestCase):
             "".join(
                 (
                     r"setat\(\) missing 1 required ",
-                    "positional argument: 'record'",
+                    "positional argument: 'record'$",
                 )
             ),
             self.rsl.setat,
@@ -163,7 +163,7 @@ class RecordsetSegmentList(unittest.TestCase):
             "".join(
                 (
                     r"_empty_segment\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsl._empty_segment,
@@ -174,7 +174,7 @@ class RecordsetSegmentList(unittest.TestCase):
             "".join(
                 (
                     r"__deepcopy__\(\) missing 1 required ",
-                    "positional argument: 'memo'",
+                    "positional argument: 'memo'$",
                 )
             ),
             self.rsl.__deepcopy__,
@@ -184,7 +184,7 @@ class RecordsetSegmentList(unittest.TestCase):
             "".join(
                 (
                     r"__contains__\(\) missing 1 required ",
-                    "positional argument: 'relative_record_number'",
+                    "positional argument: 'relative_record_number'$",
                 )
             ),
             self.rsl.__contains__,
@@ -194,7 +194,7 @@ class RecordsetSegmentList(unittest.TestCase):
             "".join(
                 (
                     r"normalize\(\) takes from 1 to 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.rsl.normalize,
@@ -205,7 +205,7 @@ class RecordsetSegmentList(unittest.TestCase):
             "".join(
                 (
                     r"promote\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsl.promote,
@@ -216,7 +216,7 @@ class RecordsetSegmentList(unittest.TestCase):
             "".join(
                 (
                     r"__or__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.rsl.__or__,
@@ -226,7 +226,7 @@ class RecordsetSegmentList(unittest.TestCase):
             "".join(
                 (
                     r"__and__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.rsl.__and__,
@@ -236,7 +236,7 @@ class RecordsetSegmentList(unittest.TestCase):
             "".join(
                 (
                     r"__xor__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.rsl.__xor__,
@@ -246,7 +246,7 @@ class RecordsetSegmentList(unittest.TestCase):
             "".join(
                 (
                     r"tobytes\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsl.tobytes,
@@ -278,7 +278,7 @@ class RecordsetSegmentList(unittest.TestCase):
         self.rsl.current_position_in_segment = 5
         self.assertRaisesRegex(
             IndexError,
-            "".join(("list index out of range",)),
+            "".join(("list index out of range$",)),
             self.rsl.current,
         )
 
@@ -299,7 +299,7 @@ class RecordsetSegmentList(unittest.TestCase):
         self.assertRaisesRegex(
             TypeError,
             "".join(
-                (r"unsupported operand type\(s\) for \+: 'int' and 'str'",)
+                (r"unsupported operand type\(s\) for \+: 'int' and 'str'$",)
             ),
             self.rsl.first,
         )
@@ -341,7 +341,7 @@ class RecordsetSegmentList(unittest.TestCase):
         self.assertRaisesRegex(
             TypeError,
             "".join(
-                (r"unsupported operand type\(s\) for \+: 'int' and 'str'",)
+                (r"unsupported operand type\(s\) for \+: 'int' and 'str'$",)
             ),
             self.rsl.last,
         )
@@ -432,7 +432,7 @@ class RecordsetSegmentList(unittest.TestCase):
         self.assertRaisesRegex(
             recordset.RecordsetError,
             "".join(
-                ("Attempt to 'or' segments with different segment numbers",)
+                ("Attempt to 'or' segments with different segment numbers$",)
             ),
             self.rsl.__or__,
             *(s3,),
@@ -457,7 +457,7 @@ class RecordsetSegmentList(unittest.TestCase):
         self.assertRaisesRegex(
             recordset.RecordsetError,
             "".join(
-                ("Attempt to 'and' segments with different segment numbers",)
+                ("Attempt to 'and' segments with different segment numbers$",)
             ),
             self.rsl.__and__,
             *(s3,),
@@ -482,7 +482,7 @@ class RecordsetSegmentList(unittest.TestCase):
         self.assertRaisesRegex(
             recordset.RecordsetError,
             "".join(
-                ("Attempt to 'xor' segments with different segment numbers",)
+                ("Attempt to 'xor' segments with different segment numbers$",)
             ),
             self.rsl.__xor__,
             *(s3,),

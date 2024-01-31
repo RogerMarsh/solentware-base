@@ -438,7 +438,7 @@ class Where_MethodsTC(unittest.TestCase):
         w.node.left.condition = "present"
         self.assertRaisesRegex(
             where.WhereError,
-            "PRESENT phrase followed by value phrase",
+            "PRESENT phrase followed by value phrase$",
             w._copy_pre_value,
         )
 
@@ -448,7 +448,7 @@ class Where_MethodsTC(unittest.TestCase):
         w.node.left.condition = "from", "to"
         self.assertRaisesRegex(
             where.WhereError,
-            "FROM-TO phrase followed by value phrase",
+            "FROM-TO phrase followed by value phrase$",
             w._copy_pre_value,
         )
 
@@ -458,7 +458,7 @@ class Where_MethodsTC(unittest.TestCase):
         w.node.left.condition = "from", "below"
         self.assertRaisesRegex(
             where.WhereError,
-            "FROM-BELOW phrase followed by value phrase",
+            "FROM-BELOW phrase followed by value phrase$",
             w._copy_pre_value,
         )
 
@@ -468,7 +468,7 @@ class Where_MethodsTC(unittest.TestCase):
         w.node.left.condition = "above", "to"
         self.assertRaisesRegex(
             where.WhereError,
-            "ABOVE-TO phrase followed by value phrase",
+            "ABOVE-TO phrase followed by value phrase$",
             w._copy_pre_value,
         )
 
@@ -478,7 +478,7 @@ class Where_MethodsTC(unittest.TestCase):
         w.node.left.condition = "above", "below"
         self.assertRaisesRegex(
             where.WhereError,
-            "ABOVE-BELOW phrase followed by value phrase",
+            "ABOVE-BELOW phrase followed by value phrase$",
             w._copy_pre_value,
         )
 
@@ -531,7 +531,7 @@ class Where_MethodsTC(unittest.TestCase):
         w = self.w
         self.assertRaisesRegex(
             where.WhereError,
-            "No unmatched left-parentheses",
+            "No unmatched left-parentheses$",
             w._set_rightp,
             *(")",)
         )
@@ -5100,7 +5100,7 @@ class Where_validateTC(unittest.TestCase):
     def test_01_field_not_in_file(self):
         # self.assertRaisesRegex(
         #    AssertionError,
-        #    "Lists differ: \['g'\] != \[\]",
+        #    "Lists differ: \['g'\] != \[\]$",
         #    self._ocn,
         #    *(('g eq v', None, None)))
         # self._ocn('g eq v', None, None)
@@ -7456,7 +7456,7 @@ class WhereClause_evaluate_index_condition_nodeTC(unittest.TestCase):
     def test_01_field_not_in_file(self):
         # self.assertRaisesRegex(
         #    AssertionError,
-        #    "Lists differ: \['g'\] != \[\]",
+        #    "Lists differ: \['g'\] != \[\]$",
         #    self._eicn,
         #    *('g eq v', None, None, None))
         result = where.WhereResult()

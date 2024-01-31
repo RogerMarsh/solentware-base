@@ -20,7 +20,7 @@ class SqliteDatabase(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) missing 1 required positional argument: ",
-                    "'specification'",
+                    "'specification'$",
                 )
             ),
             sqlite3_database.Database,

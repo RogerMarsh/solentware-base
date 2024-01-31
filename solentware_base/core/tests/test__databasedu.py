@@ -115,7 +115,7 @@ class Database_put_instance_02(_Database_put_instance):
     def test_put_instance(self):
         self.assertRaisesRegex(
             _databasedu.DatabaseduError,
-            "".join(("Cannot reuse record number in deferred update",)),
+            "".join((r"Cannot reuse record number in deferred update\.$",)),
             self.database.put_instance,
             *("file1", self.instance),
         )
@@ -279,7 +279,7 @@ class Database__prepare_segment_record_list(unittest.TestCase):
         database._vsff()["field"] = 10
         self.assertRaisesRegex(
             AttributeError,
-            "".join((r"'int' object has no attribute 'count'",)),
+            "".join((r"'int' object has no attribute 'count'$",)),
             database._prepare_segment_record_list,
             *("file", "field"),
         )

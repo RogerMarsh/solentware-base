@@ -2,7 +2,7 @@
 # Copyright 2023 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""_db_tkinter cursor tests"""
+"""_db_tkinter cursor tests."""
 
 import unittest
 
@@ -40,16 +40,17 @@ class Cursor_db_exception_in___del__(_DB):
     # It does not happen in non-tkinter modules and the class structure is
     # not going to be adjusted to cope.
     # In __del__ get:
-    # AttributeError: 'Cursor' object has no attribute '_engine_'
-    # but the test is passed before that.
-    # So put that test in a separate class for tkinter tests.
+    # AttributeError: 'Cursor' object has no attribute '_cursor'
+    # but the test is passed before that because the assertRaisesRegex
+    # does not fail first, as it does if only four 'None's are passed as
+    # arguments when a TclError 'invalid command name ""' is raised.
     def test_01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
                 (
                     r"__init__\(\) takes from 2 to 5 positional arguments ",
-                    "but 6 were given",
+                    "but 6 were given$",
                 )
             ),
             _db_tkinter.Cursor,
@@ -65,7 +66,7 @@ class Cursor_db(_DB):
         #    "".join(
         #        (
         #            r"__init__\(\) takes from 2 to 5 positional arguments ",
-        #            "but 6 were given",
+        #            "but 6 were given$",
         #        )
         #    ),
         #    _db_tkinter.Cursor,
@@ -80,7 +81,7 @@ class Cursor_db(_DB):
         self.assertRaisesRegex(
             TypeError,
             "".join(
-                (r"close\(\) takes 1 positional argument but 2 were given",)
+                (r"close\(\) takes 1 positional argument but 2 were given$",)
             ),
             cursor.close,
             *(None,),
@@ -91,7 +92,7 @@ class Cursor_db(_DB):
             "".join(
                 (
                     r"get_converted_partial\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             cursor.get_converted_partial,
@@ -102,7 +103,7 @@ class Cursor_db(_DB):
             "".join(
                 (
                     r"get_partial_with_wildcard\(\) takes 1 ",
-                    "positional argument but 2 were given",
+                    "positional argument but 2 were given$",
                 )
             ),
             cursor.get_partial_with_wildcard,
@@ -113,7 +114,7 @@ class Cursor_db(_DB):
             "".join(
                 (
                     r"get_converted_partial_with_wildcard\(\) takes 1 ",
-                    "positional argument but 2 were given",
+                    "positional argument but 2 were given$",
                 )
             ),
             cursor.get_converted_partial_with_wildcard,
@@ -124,7 +125,7 @@ class Cursor_db(_DB):
             "".join(
                 (
                     r"refresh_recordset\(\) takes from 1 to 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             cursor.refresh_recordset,
@@ -163,7 +164,7 @@ class Cursor_db(_DB):
         )
         self.assertRaisesRegex(
             _db_tkinter.DatabaseError,
-            "get_partial_with_wildcard not implemented",
+            "get_partial_with_wildcard not implemented$",
             cursor.get_partial_with_wildcard,
         )
 
@@ -173,7 +174,7 @@ class Cursor_db(_DB):
         )
         self.assertRaisesRegex(
             AttributeError,
-            "'NoneType' object has no attribute 'encode'",
+            "'NoneType' object has no attribute 'encode'$",
             cursor.get_converted_partial_with_wildcard,
         )
         cursor._partial = "part"
@@ -193,10 +194,10 @@ class Cursor_primary_exception_in___del__(_DB):
     # It does not happen in non-tkinter modules and the class structure is
     # not going to be adjusted to cope.
     # In __del__ get:
-    # AttributeError: 'CursorPrimary' object has no attribute '_engine_'
-    # but the test is passed before that.
-    # So put that test in a separate class for tkinter tests and remove
-    # references to self._cursor including creation.
+    # AttributeError: 'Cursor' object has no attribute '_cursor'
+    # but the test is passed before that because the assertRaisesRegex
+    # does not fail first, as it does if only two 'None's are passed as
+    # arguments when a TclError 'invalid command name ""' is raised.
     def setUp(self):
         super().setUp()
 
@@ -209,7 +210,7 @@ class Cursor_primary_exception_in___del__(_DB):
             "".join(
                 (
                     r"__init__\(\) takes from 2 to 3 positional arguments ",
-                    "but 4 were given",
+                    "but 4 were given$",
                 )
             ),
             _db_tkinter.CursorPrimary,
@@ -237,7 +238,7 @@ class Cursor_primary(_DB):
         #    "".join(
         #        (
         #            r"__init__\(\) takes from 2 to 3 positional arguments ",
-        #            "but 4 were given",
+        #            "but 4 were given$",
         #        )
         #    ),
         #    _db_tkinter.CursorPrimary,
@@ -248,7 +249,7 @@ class Cursor_primary(_DB):
             "".join(
                 (
                     r"count_records\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.cursor.count_records,
@@ -259,7 +260,7 @@ class Cursor_primary(_DB):
             "".join(
                 (
                     r"first\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.cursor.first,
@@ -270,7 +271,7 @@ class Cursor_primary(_DB):
             "".join(
                 (
                     r"get_position_of_record\(\) takes from 1 to 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.cursor.get_position_of_record,
@@ -281,7 +282,7 @@ class Cursor_primary(_DB):
             "".join(
                 (
                     r"get_record_at_position\(\) takes from 1 to 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.cursor.get_record_at_position,
@@ -292,7 +293,7 @@ class Cursor_primary(_DB):
             "".join(
                 (
                     r"last\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.cursor.last,
@@ -303,7 +304,7 @@ class Cursor_primary(_DB):
             "".join(
                 (
                     r"nearest\(\) missing 1 required ",
-                    "positional argument: 'key'",
+                    "positional argument: 'key'$",
                 )
             ),
             self.cursor.nearest,
@@ -313,7 +314,7 @@ class Cursor_primary(_DB):
             "".join(
                 (
                     r"next\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.cursor.next,
@@ -324,7 +325,7 @@ class Cursor_primary(_DB):
             "".join(
                 (
                     r"prev\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.cursor.prev,
@@ -335,7 +336,7 @@ class Cursor_primary(_DB):
             "".join(
                 (
                     r"setat\(\) missing 1 required ",
-                    "positional argument: 'record'",
+                    "positional argument: 'record'$",
                 )
             ),
             self.cursor.setat,
@@ -345,7 +346,7 @@ class Cursor_primary(_DB):
             "".join(
                 (
                     r"refresh_recordset\(\) takes from 1 to 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.cursor.refresh_recordset,
@@ -533,9 +534,11 @@ class Cursor_secondary_exception_in___del__(_DB):
     # In __del__ get:
     # AttributeError: 'CursorSecondary' object has no attribute '_engine_'
     # but the test is passed before that.
-    # So put that test in a separate class for tkinter tests and remove
-    # references to self._cursor including creation.  All the redundant
-    # record setup is kept for consistency.
+    # AttributeError: 'Cursor' object has no attribute '_cursor'
+    # but the test is passed before that because the assertRaisesRegex
+    # does not fail first, as it does if only two 'None's are passed as
+    # arguments when a TclError 'invalid command name ""' is raised.
+    # All the redundant record setup is kept for consistency.
     def setUp(self):
         super().setUp()
         segments = (
@@ -678,7 +681,7 @@ class Cursor_secondary_exception_in___del__(_DB):
             "".join(
                 (
                     r"__init__\(\) takes from 2 to 3 positional arguments ",
-                    "but 4 were given",
+                    "but 4 were given$",
                 )
             ),
             _db_tkinter.CursorSecondary,
@@ -837,7 +840,7 @@ class Cursor_secondary(_DB):
         #    "".join(
         #        (
         #            r"__init__\(\) takes from 2 to 3 positional arguments ",
-        #            "but 4 were given",
+        #            "but 4 were given$",
         #        )
         #    ),
         #    _db_tkinter.CursorSecondary,
@@ -848,7 +851,7 @@ class Cursor_secondary(_DB):
             "".join(
                 (
                     r"count_records\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.cursor.count_records,
@@ -859,7 +862,7 @@ class Cursor_secondary(_DB):
             "".join(
                 (
                     r"first\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.cursor.first,
@@ -870,7 +873,7 @@ class Cursor_secondary(_DB):
             "".join(
                 (
                     r"get_position_of_record\(\) takes from 1 to 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.cursor.get_position_of_record,
@@ -881,7 +884,7 @@ class Cursor_secondary(_DB):
             "".join(
                 (
                     r"get_record_at_position\(\) takes from 1 to 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.cursor.get_record_at_position,
@@ -892,7 +895,7 @@ class Cursor_secondary(_DB):
             "".join(
                 (
                     r"last\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.cursor.last,
@@ -903,7 +906,7 @@ class Cursor_secondary(_DB):
             "".join(
                 (
                     r"nearest\(\) missing 1 required ",
-                    "positional argument: 'key'",
+                    "positional argument: 'key'$",
                 )
             ),
             self.cursor.nearest,
@@ -913,7 +916,7 @@ class Cursor_secondary(_DB):
             "".join(
                 (
                     r"next\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.cursor.next,
@@ -924,7 +927,7 @@ class Cursor_secondary(_DB):
             "".join(
                 (
                     r"prev\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.cursor.prev,
@@ -935,7 +938,7 @@ class Cursor_secondary(_DB):
             "".join(
                 (
                     r"setat\(\) missing 1 required ",
-                    "positional argument: 'record'",
+                    "positional argument: 'record'$",
                 )
             ),
             self.cursor.setat,
@@ -945,7 +948,7 @@ class Cursor_secondary(_DB):
             "".join(
                 (
                     r"set_partial_key\(\) missing 1 required ",
-                    "positional argument: 'partial'",
+                    "positional argument: 'partial'$",
                 )
             ),
             self.cursor.set_partial_key,
@@ -956,7 +959,7 @@ class Cursor_secondary(_DB):
                 (
                     r"_get_segment\(\) missing 3 required ",
                     "positional arguments: 'key', 'segment_number', ",
-                    "and 'reference'",
+                    "and 'reference'$",
                 )
             ),
             self.cursor._get_segment,
@@ -966,7 +969,7 @@ class Cursor_secondary(_DB):
             "".join(
                 (
                     r"set_current_segment\(\) missing 2 required ",
-                    "positional arguments: 'key' and 'reference'",
+                    "positional arguments: 'key' and 'reference'$",
                 )
             ),
             self.cursor.set_current_segment,
@@ -976,7 +979,7 @@ class Cursor_secondary(_DB):
             "".join(
                 (
                     r"refresh_recordset\(\) takes from 1 to 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.cursor.refresh_recordset,

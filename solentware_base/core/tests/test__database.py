@@ -384,9 +384,7 @@ class Database_01(unittest.TestCase):
     # Version for DPT expects particular kwargs.
     def test_get_database_table_sizes_01(self):
         self.assertEqual(
-            self.database.get_database_table_sizes(
-                **{random_kwarg(): ""}
-            ),
+            self.database.get_database_table_sizes(**{random_kwarg(): ""}),
             {},
         )
 
@@ -962,6 +960,7 @@ class Database_07_datasourcecursor(unittest.TestCase):
         class D(_database.Database):
             def create_recordset_cursor(self, rset):
                 return C()
+
             def recordlist_nil(self, dbset):
                 return RS()
 
@@ -971,6 +970,7 @@ class Database_07_datasourcecursor(unittest.TestCase):
         class RL:
             def __init__(self):
                 self.dbidentity = id(database)
+
             def close(self):
                 pass
 
@@ -1057,9 +1057,7 @@ class Database_07_datasourcecursor(unittest.TestCase):
         self.dsc.dbidentity = None
         self.assertRaisesRegex(
             _database.DataSourceCursorError,
-            "".join(
-                "Recordset and DataSource are for different databases$"
-            ),
+            "".join("Recordset and DataSource are for different databases$"),
             self.database.get_datasourcecursor_recordset_cursor,
             *(self.dsc,),
         )

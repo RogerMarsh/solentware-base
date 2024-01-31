@@ -54,7 +54,7 @@ class Tree___init__(Tree):
             "".join(
                 (
                     r"__init__\(\) takes 4 positional arguments ",
-                    "but 5 were given",
+                    "but 5 were given$",
                 )
             ),
             tree.Tree,
@@ -64,7 +64,7 @@ class Tree___init__(Tree):
     def test_02___init__(self):
         self.assertRaisesRegex(
             AttributeError,
-            "'NoneType' object has no attribute 'table'",
+            "'NoneType' object has no attribute 'table'$",
             tree.Tree,
             *(None, None, None),
         )
@@ -72,7 +72,7 @@ class Tree___init__(Tree):
     def test_03___init__(self):
         self.assertRaisesRegex(
             KeyError,
-            "_",
+            "'_'$",
             tree.Tree,
             *("", "", self.database),
         )
@@ -270,7 +270,7 @@ class Tree_insert_branching_5(Tree_file1_field1):
             "".join(
                 (
                     r"insert\(\) takes 2 positional arguments ",
-                    "but 3 were given",
+                    "but 3 were given$",
                 )
             ),
             self.tree.insert,
@@ -283,7 +283,7 @@ class Tree_insert_branching_5(Tree_file1_field1):
             "".join(
                 (
                     r"insert\(\) missing 1 required positional argument: ",
-                    "'key'",
+                    "'key'$",
                 )
             ),
             self.tree.insert,
@@ -777,7 +777,7 @@ class Tree_delete_branching_5(Tree_file1_field1):
             "".join(
                 (
                     r"delete\(\) takes 2 positional arguments ",
-                    "but 3 were given",
+                    "but 3 were given$",
                 )
             ),
             self.tree.delete,
@@ -790,7 +790,7 @@ class Tree_delete_branching_5(Tree_file1_field1):
             "".join(
                 (
                     r"delete\(\) missing 1 required positional argument: ",
-                    "'key'",
+                    "'key'$",
                 )
             ),
             self.tree.delete,
@@ -800,7 +800,7 @@ class Tree_delete_branching_5(Tree_file1_field1):
         self.database.dbenv["1_1_0_key"] = repr(None)
         self.assertRaisesRegex(
             tree.TreeError,
-            "Cannot delete 'key' because it refers to records",
+            "Cannot delete 'key' because it refers to records$",
             self.tree.delete,
             *("key",),
         )
@@ -1424,7 +1424,7 @@ class Tree_locate(Tree_file1_field1):
             "".join(
                 (
                     r"locate\(\) takes 2 positional arguments ",
-                    "but 3 were given",
+                    "but 3 were given$",
                 )
             ),
             self.tree.locate,
@@ -1437,7 +1437,7 @@ class Tree_locate(Tree_file1_field1):
             "".join(
                 (
                     r"locate\(\) missing 1 required positional argument: ",
-                    "'key'",
+                    "'key'$",
                 )
             ),
             self.tree.locate,
@@ -1465,7 +1465,7 @@ class Tree_search(Tree_file1_field1):
             "".join(
                 (
                     r"search\(\) takes 2 positional arguments ",
-                    "but 3 were given",
+                    "but 3 were given$",
                 )
             ),
             self.tree.search,
@@ -1478,7 +1478,7 @@ class Tree_search(Tree_file1_field1):
             "".join(
                 (
                     r"search\(\) missing 1 required positional argument: ",
-                    "'key'",
+                    "'key'$",
                 )
             ),
             self.tree.search,
@@ -1503,7 +1503,7 @@ class Tree__split_solo_root(Tree__splitters):
             "".join(
                 (
                     r"_split_solo_root\(\) takes 4 positional arguments ",
-                    "but 5 were given",
+                    "but 5 were given$",
                 )
             ),
             self.tree._split_solo_root,
@@ -1516,7 +1516,7 @@ class Tree__split_solo_root(Tree__splitters):
             "".join(
                 (
                     r"_split_solo_root\(\) missing 3 required positional ",
-                    "arguments: 'key', 'nodepath', and 'insertion_point'",
+                    "arguments: 'key', 'nodepath', and 'insertion_point'$",
                 )
             ),
             self.tree._split_solo_root,
@@ -1556,7 +1556,7 @@ class Tree__split_leaf(Tree__splitters):
             "".join(
                 (
                     r"_split_leaf\(\) takes 4 positional arguments ",
-                    "but 5 were given",
+                    "but 5 were given$",
                 )
             ),
             self.tree._split_leaf,
@@ -1569,7 +1569,7 @@ class Tree__split_leaf(Tree__splitters):
             "".join(
                 (
                     r"_split_leaf\(\) missing 3 required positional ",
-                    "arguments: 'key', 'nodepath', and 'insertion_point'",
+                    "arguments: 'key', 'nodepath', and 'insertion_point'$",
                 )
             ),
             self.tree._split_leaf,
@@ -1603,7 +1603,7 @@ class Tree__split_root(Tree__splitters):
             "".join(
                 (
                     r"_split_root\(\) takes 3 positional arguments ",
-                    "but 4 were given",
+                    "but 4 were given$",
                 )
             ),
             self.tree._split_root,
@@ -1616,7 +1616,7 @@ class Tree__split_root(Tree__splitters):
             "".join(
                 (
                     r"_split_root\(\) missing 2 required positional ",
-                    "arguments: 'nodepath' and 'splitter'",
+                    "arguments: 'nodepath' and 'splitter'$",
                 )
             ),
             self.tree._split_root,
@@ -1660,7 +1660,7 @@ class Tree__split_branch(Tree__splitters):
             "".join(
                 (
                     r"_split_branch\(\) takes 3 positional arguments ",
-                    "but 4 were given",
+                    "but 4 were given$",
                 )
             ),
             self.tree._split_branch,
@@ -1673,7 +1673,7 @@ class Tree__split_branch(Tree__splitters):
             "".join(
                 (
                     r"_split_branch\(\) missing 2 required positional ",
-                    "arguments: 'nodepath' and 'splitter'",
+                    "arguments: 'nodepath' and 'splitter'$",
                 )
             ),
             self.tree._split_branch,
@@ -1711,7 +1711,7 @@ class Tree__read_root(Tree__splitters):
             "".join(
                 (
                     r"read_root\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.tree.read_root,
@@ -1732,7 +1732,7 @@ class Tree__write_root(Tree__splitters):
             "".join(
                 (
                     r"_write_root\(\) takes 2 positional arguments ",
-                    "but 3 were given",
+                    "but 3 were given$",
                 )
             ),
             self.tree._write_root,
@@ -1745,7 +1745,7 @@ class Tree__write_root(Tree__splitters):
             "".join(
                 (
                     r"_write_root\(\) missing 1 required positional ",
-                    "argument: 'nodedata'",
+                    "argument: 'nodedata'$",
                 )
             ),
             self.tree._write_root,
@@ -1764,7 +1764,7 @@ class Tree__read_node(Tree__splitters):
             "".join(
                 (
                     r"read_node\(\) takes 2 positional arguments ",
-                    "but 3 were given",
+                    "but 3 were given$",
                 )
             ),
             self.tree.read_node,
@@ -1777,7 +1777,7 @@ class Tree__read_node(Tree__splitters):
             "".join(
                 (
                     r"read_node\(\) missing 1 required positional ",
-                    "argument: 'node_number'",
+                    "argument: 'node_number'$",
                 )
             ),
             self.tree.read_node,
@@ -1801,7 +1801,7 @@ class Tree__write_node(Tree__splitters):
             "".join(
                 (
                     r"_write_node\(\) takes 2 positional arguments ",
-                    "but 3 were given",
+                    "but 3 were given$",
                 )
             ),
             self.tree._write_node,
@@ -1814,7 +1814,7 @@ class Tree__write_node(Tree__splitters):
             "".join(
                 (
                     r"_write_node\(\) missing 1 required positional ",
-                    "argument: 'nodedata'",
+                    "argument: 'nodedata'$",
                 )
             ),
             self.tree._write_node,
@@ -1833,7 +1833,7 @@ class Tree__delete_root(Tree__splitters):
             "".join(
                 (
                     r"_delete_root\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.tree._delete_root,
@@ -1857,7 +1857,7 @@ class Tree__delete_node(Tree__splitters):
             "".join(
                 (
                     r"_delete_node\(\) takes 2 positional arguments ",
-                    "but 3 were given",
+                    "but 3 were given$",
                 )
             ),
             self.tree._delete_node,
@@ -1870,7 +1870,7 @@ class Tree__delete_node(Tree__splitters):
             "".join(
                 (
                     r"_delete_node\(\) missing 1 required positional ",
-                    "argument: 'node_number'",
+                    "argument: 'node_number'$",
                 )
             ),
             self.tree._delete_node,
@@ -1900,7 +1900,7 @@ class Tree__write_modified_nodes(Tree__splitters):
             "".join(
                 (
                     r"_write_modified_nodes\(\) takes 2 positional ",
-                    "arguments but 3 were given",
+                    "arguments but 3 were given$",
                 )
             ),
             self.tree._write_modified_nodes,
@@ -1913,7 +1913,7 @@ class Tree__write_modified_nodes(Tree__splitters):
             "".join(
                 (
                     r"_write_modified_nodes\(\) missing 1 required ",
-                    "positional argument: 'nodes'",
+                    "positional argument: 'nodes'$",
                 )
             ),
             self.tree._write_modified_nodes,
@@ -2048,7 +2048,7 @@ class Tree__splitter_node_for_key(Tree__splitters):
             "".join(
                 (
                     r"_splitter_node_for_key\(\) takes 3 positional ",
-                    "arguments but 4 were given",
+                    "arguments but 4 were given$",
                 )
             ),
             self.tree._splitter_node_for_key,
@@ -2061,7 +2061,7 @@ class Tree__splitter_node_for_key(Tree__splitters):
             "".join(
                 (
                     r"_splitter_node_for_key\(\) missing 2 required ",
-                    "positional arguments: 'nodepath' and 'key'",
+                    "positional arguments: 'nodepath' and 'key'$",
                 )
             ),
             self.tree._splitter_node_for_key,
@@ -2070,7 +2070,7 @@ class Tree__splitter_node_for_key(Tree__splitters):
     def test_03__splitter_node_for_key__empty_nodepath(self):
         self.assertRaisesRegex(
             tree.TreeError,
-            "Key expected but not found in root or branch node",
+            "Key expected but not found in root or branch node$",
             self.tree._splitter_node_for_key,
             *([], None),
         )
@@ -2078,7 +2078,7 @@ class Tree__splitter_node_for_key(Tree__splitters):
     def test_04__splitter_node_for_key__key_not_in_nodepath(self):
         self.assertRaisesRegex(
             tree.TreeError,
-            "Key expected but not found in root or branch node",
+            "Key expected but not found in root or branch node$",
             self.tree._splitter_node_for_key,
             *(self.nodepath, ""),
         )
@@ -2098,7 +2098,7 @@ class Tree__splitter_node_for_key(Tree__splitters):
         self.nodepath[0].node[tree._Node.KEYS] = []
         self.assertRaisesRegex(
             tree.TreeError,
-            "Key expected but not found in root or branch node",
+            "Key expected but not found in root or branch node$",
             self.tree._splitter_node_for_key,
             *(self.nodepath, "k2"),
         )
@@ -2120,7 +2120,7 @@ class Tree__replace_splitter_in_branch_or_root(Tree__splitters):
             "".join(
                 (
                     r"_replace_splitter_in_branch_or_root\(\) takes 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.tree._replace_splitter_in_branch_or_root,
@@ -2133,7 +2133,7 @@ class Tree__replace_splitter_in_branch_or_root(Tree__splitters):
             "".join(
                 (
                     r"_replace_splitter_in_branch_or_root\(\) missing 1 ",
-                    "required positional argument: 'nodepath'",
+                    "required positional argument: 'nodepath'$",
                 )
             ),
             self.tree._replace_splitter_in_branch_or_root,
@@ -2163,7 +2163,7 @@ class Tree__merge_leaf(Tree__splitters):
             "".join(
                 (
                     r"_merge_leaf\(\) takes 4 positional ",
-                    "arguments but 5 were given",
+                    "arguments but 5 were given$",
                 )
             ),
             self.tree._merge_leaf,
@@ -2176,7 +2176,7 @@ class Tree__merge_leaf(Tree__splitters):
             "".join(
                 (
                     r"_merge_leaf\(\) missing 3 required positional ",
-                    "arguments: 'key', 'nodepath', and 'deletion_point'",
+                    "arguments: 'key', 'nodepath', and 'deletion_point'$",
                 )
             ),
             self.tree._merge_leaf,
@@ -2193,7 +2193,7 @@ class Tree__merge_branch(Tree__splitters):
             "".join(
                 (
                     r"_merge_branch\(\) takes 2 positional ",
-                    "arguments but 3 were given",
+                    "arguments but 3 were given$",
                 )
             ),
             self.tree._merge_branch,
@@ -2206,7 +2206,7 @@ class Tree__merge_branch(Tree__splitters):
             "".join(
                 (
                     r"_merge_branch\(\) missing 1 required ",
-                    "positional argument: 'nodepath'",
+                    "positional argument: 'nodepath'$",
                 )
             ),
             self.tree._merge_branch,
@@ -2220,7 +2220,7 @@ class Cursor___init__(Tree_file1_field1):
             "".join(
                 (
                     r"__init__\(\) takes 2 positional ",
-                    "arguments but 3 were given",
+                    "arguments but 3 were given$",
                 )
             ),
             tree.Cursor,
@@ -2233,7 +2233,7 @@ class Cursor___init__(Tree_file1_field1):
             "".join(
                 (
                     r"__init__\(\) missing 1 required positional argument: ",
-                    "'tree'",
+                    "'tree'$",
                 )
             ),
             tree.Cursor,
@@ -2267,7 +2267,7 @@ class Cursor_methods_empty_database(Tree_file1_field1):
             "".join(
                 (
                     r"first\(\) takes 1 positional ",
-                    "argument but 2 were given",
+                    "argument but 2 were given$",
                 )
             ),
             self.cursor.first,
@@ -2280,7 +2280,7 @@ class Cursor_methods_empty_database(Tree_file1_field1):
             "".join(
                 (
                     r"get_position_of_key\(\) takes from 1 to 2 positional ",
-                    "arguments but 3 were given",
+                    "arguments but 3 were given$",
                 )
             ),
             self.cursor.get_position_of_key,
@@ -2293,7 +2293,7 @@ class Cursor_methods_empty_database(Tree_file1_field1):
             "".join(
                 (
                     r"get_key_at_position\(\) takes from 1 to 2 positional ",
-                    "arguments but 3 were given",
+                    "arguments but 3 were given$",
                 )
             ),
             self.cursor.get_key_at_position,
@@ -2306,7 +2306,7 @@ class Cursor_methods_empty_database(Tree_file1_field1):
             "".join(
                 (
                     r"last\(\) takes 1 positional ",
-                    "argument but 2 were given",
+                    "argument but 2 were given$",
                 )
             ),
             self.cursor.last,
@@ -2319,7 +2319,7 @@ class Cursor_methods_empty_database(Tree_file1_field1):
             "".join(
                 (
                     r"nearest\(\) takes 2 positional ",
-                    "arguments but 3 were given",
+                    "arguments but 3 were given$",
                 )
             ),
             self.cursor.nearest,
@@ -2332,7 +2332,7 @@ class Cursor_methods_empty_database(Tree_file1_field1):
             "".join(
                 (
                     r"next\(\) takes 1 positional ",
-                    "argument but 2 were given",
+                    "argument but 2 were given$",
                 )
             ),
             self.cursor.next,
@@ -2345,7 +2345,7 @@ class Cursor_methods_empty_database(Tree_file1_field1):
             "".join(
                 (
                     r"prev\(\) takes 1 positional ",
-                    "argument but 2 were given",
+                    "argument but 2 were given$",
                 )
             ),
             self.cursor.prev,
@@ -2358,7 +2358,7 @@ class Cursor_methods_empty_database(Tree_file1_field1):
             "".join(
                 (
                     r"setat\(\) takes 2 positional ",
-                    "arguments but 3 were given",
+                    "arguments but 3 were given$",
                 )
             ),
             self.cursor.setat,
@@ -2679,7 +2679,7 @@ class _Node___init__(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) takes from 3 to 7 positional arguments ",
-                    "but 8 were given",
+                    "but 8 were given$",
                 )
             ),
             tree._Node,
@@ -2692,7 +2692,7 @@ class _Node___init__(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) missing 2 required positional arguments: ",
-                    "'number' and 'type_'",
+                    "'number' and 'type_'$",
                 )
             ),
             tree._Node,
@@ -2711,7 +2711,7 @@ class _Node___len__(unittest.TestCase):
     def test_01___len___default_arguments(self):
         self.assertRaisesRegex(
             TypeError,
-            "object of type 'NoneType' has no len()",
+            r"object of type 'NoneType' has no len\(\)$",
             len,
             tree._Node(None, None),
         )
@@ -2728,7 +2728,7 @@ class _Node_insert_into_branch_or_root(unittest.TestCase):
             "".join(
                 (
                     r"insert_into_branch_or_root\(\) missing 2 required ",
-                    "positional arguments: 'key' and 'node_number'",
+                    "positional arguments: 'key' and 'node_number'$",
                 )
             ),
             n.insert_into_branch_or_root,

@@ -403,9 +403,7 @@ class Database:
         the implementation.
         """
         if datasourcecursor.dbhome is not self:
-            raise DataSourceCursorError(
-                "DataSource is not for this database"
-            )
+            raise DataSourceCursorError("DataSource is not for this database")
         if datasourcecursor.recordset:
             if (
                 datasourcecursor.recordset.dbidentity
@@ -431,9 +429,7 @@ class Database:
 
         """
         if dsc.dbhome is not self:
-            raise DataSourceCursorError(
-                "DataSource is not for this database"
-            )
+            raise DataSourceCursorError("DataSource is not for this database")
         if dsc.recordset:
             if dsc.dbidentity == dsc.recordset.recordset.dbidentity:
                 cursor = dsc.recordset.dbhome.create_recordset_cursor(

@@ -473,7 +473,7 @@ class FindTC(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) missing 2 required positional arguments: ",
-                    "'db' and 'dbset'",
+                    "'db' and 'dbset'$",
                 )
             ),
             find.Find,

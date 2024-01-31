@@ -20,7 +20,7 @@ class UnqliteDatabase(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) missing 1 required positional argument: ",
-                    "'specification'",
+                    "'specification'$",
                 )
             ),
             unqlite_database.Database,

@@ -143,7 +143,7 @@ class Database___init__(_NoSQL):
             "".join(
                 (
                     r"__init__\(\) takes from 2 to 5 positional arguments ",
-                    "but 6 were given",
+                    "but 6 were given$",
                 )
             ),
             self._D,
@@ -159,7 +159,7 @@ class Database___init__(_NoSQL):
                 (
                     t,
                     r" argument after \*\* must be a mapping, ",
-                    "not NoneType",
+                    "not NoneType$",
                 )
             ),
             self._D,
@@ -171,7 +171,7 @@ class Database___init__(_NoSQL):
     def test_03(self):
         self.assertRaisesRegex(
             _nosql.DatabaseError,
-            "".join(("Database folder name {} is not valid",)),
+            "".join(("Database folder name {} is not valid$",)),
             self._D,
             *({},),
             **dict(folder={}),
@@ -258,7 +258,7 @@ class Database_transaction_methods(_NoSQL):
             "".join(
                 (
                     r"start_transaction\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.database.start_transaction,
@@ -269,7 +269,7 @@ class Database_transaction_methods(_NoSQL):
             "".join(
                 (
                     r"backout\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.database.backout,
@@ -280,7 +280,7 @@ class Database_transaction_methods(_NoSQL):
             "".join(
                 (
                     r"commit\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.database.commit,
@@ -300,20 +300,20 @@ class DatabaseInstance(_NoSQL):
             "".join(
                 (
                     r"_validate_segment_size_bytes\(\) missing 1 required ",
-                    "positional argument: 'segment_size_bytes'",
+                    "positional argument: 'segment_size_bytes'$",
                 )
             ),
             self.database._validate_segment_size_bytes,
         )
         self.assertRaisesRegex(
             _nosql.DatabaseError,
-            "".join(("Database segment size must be an int",)),
+            "".join(("Database segment size must be an int$",)),
             self.database._validate_segment_size_bytes,
             *("a",),
         )
         self.assertRaisesRegex(
             _nosql.DatabaseError,
-            "".join(("Database segment size must be more than 0",)),
+            "".join(("Database segment size must be more than 0$",)),
             self.database._validate_segment_size_bytes,
             *(0,),
         )
@@ -328,7 +328,7 @@ class DatabaseInstance(_NoSQL):
             "".join(
                 (
                     r"encode_record_number\(\) missing 1 required ",
-                    "positional argument: 'key'",
+                    "positional argument: 'key'$",
                 )
             ),
             self.database.encode_record_number,
@@ -341,7 +341,7 @@ class DatabaseInstance(_NoSQL):
             "".join(
                 (
                     r"decode_record_number\(\) missing 1 required ",
-                    "positional argument: 'skey'",
+                    "positional argument: 'skey'$",
                 )
             ),
             self.database.decode_record_number,
@@ -354,7 +354,7 @@ class DatabaseInstance(_NoSQL):
             "".join(
                 (
                     r"encode_record_selector\(\) missing 1 required ",
-                    "positional argument: 'key'",
+                    "positional argument: 'key'$",
                 )
             ),
             self.database.encode_record_selector,
@@ -367,7 +367,7 @@ class DatabaseInstance(_NoSQL):
             "".join(
                 (
                     r"recordlist_nil\(\) takes from 2 to 3 ",
-                    "positional arguments but 4 were given",
+                    "positional arguments but 4 were given$",
                 )
             ),
             self.database.recordlist_nil,
@@ -391,7 +391,7 @@ class Database_open_database(_NoSQL):
             "".join(
                 (
                     r"open_database\(\) takes from 4 to 5 ",
-                    "positional arguments but 6 were given",
+                    "positional arguments but 6 were given$",
                 )
             ),
             self.database.open_database,
@@ -402,7 +402,7 @@ class Database_open_database(_NoSQL):
             "".join(
                 (
                     r"close_database\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.database.close_database,
@@ -413,7 +413,7 @@ class Database_open_database(_NoSQL):
             "".join(
                 (
                     r"close_database_contexts\(\) takes from 1 to 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.database.close_database_contexts,
@@ -684,7 +684,7 @@ class Database_put_replace_delete(_NoSQLOpen):
             "".join(
                 (
                     r"put\(\) missing 3 required positional arguments: ",
-                    "'file', 'key', and 'value'",
+                    "'file', 'key', and 'value'$",
                 )
             ),
             self.database.put,
@@ -694,7 +694,7 @@ class Database_put_replace_delete(_NoSQLOpen):
             "".join(
                 (
                     r"replace\(\) missing 4 required positional arguments: ",
-                    "'file', 'key', 'oldvalue', and 'newvalue'",
+                    "'file', 'key', 'oldvalue', and 'newvalue'$",
                 )
             ),
             self.database.replace,
@@ -704,7 +704,7 @@ class Database_put_replace_delete(_NoSQLOpen):
             "".join(
                 (
                     r"delete\(\) missing 3 required positional arguments: ",
-                    "'file', 'key', and 'value'",
+                    "'file', 'key', and 'value'$",
                 )
             ),
             self.database.delete,
@@ -811,7 +811,7 @@ class Database_methods(_NoSQLOpen):
             "".join(
                 (
                     r"get_primary_record\(\) missing 2 required positional ",
-                    "arguments: 'file' and 'key'",
+                    "arguments: 'file' and 'key'$",
                 )
             ),
             self.database.get_primary_record,
@@ -821,7 +821,7 @@ class Database_methods(_NoSQLOpen):
             "".join(
                 (
                     r"remove_record_from_ebm\(\) missing 2 required ",
-                    "positional arguments: 'file' and 'deletekey'",
+                    "positional arguments: 'file' and 'deletekey'$",
                 )
             ),
             self.database.remove_record_from_ebm,
@@ -831,7 +831,7 @@ class Database_methods(_NoSQLOpen):
             "".join(
                 (
                     r"add_record_to_ebm\(\) missing 2 required ",
-                    "positional arguments: 'file' and 'putkey'",
+                    "positional arguments: 'file' and 'putkey'$",
                 )
             ),
             self.database.add_record_to_ebm,
@@ -841,7 +841,7 @@ class Database_methods(_NoSQLOpen):
             "".join(
                 (
                     r"get_high_record\(\) missing 1 required ",
-                    "positional argument: 'file'",
+                    "positional argument: 'file'$",
                 )
             ),
             self.database.get_high_record,
@@ -851,7 +851,7 @@ class Database_methods(_NoSQLOpen):
             "".join(
                 (
                     r"recordlist_record_number\(\) takes from 2 to 4 ",
-                    "positional arguments but 5 were given",
+                    "positional arguments but 5 were given$",
                 )
             ),
             self.database.recordlist_record_number,
@@ -862,7 +862,7 @@ class Database_methods(_NoSQLOpen):
             "".join(
                 (
                     r"recordlist_record_number_range\(\) takes from 2 to 5 ",
-                    "positional arguments but 6 were given",
+                    "positional arguments but 6 were given$",
                 )
             ),
             self.database.recordlist_record_number_range,
@@ -873,7 +873,7 @@ class Database_methods(_NoSQLOpen):
             "".join(
                 (
                     r"recordlist_ebm\(\) takes from 2 to 3 ",
-                    "positional arguments but 4 were given",
+                    "positional arguments but 4 were given$",
                 )
             ),
             self.database.recordlist_ebm,
@@ -884,7 +884,7 @@ class Database_methods(_NoSQLOpen):
             "".join(
                 (
                     r"get_table_connection\(\) missing 1 required ",
-                    "positional argument: 'file'",
+                    "positional argument: 'file'$",
                 )
             ),
             self.database.get_table_connection,
@@ -905,7 +905,7 @@ class Database_methods(_NoSQLOpen):
     def test_05_remove_record_from_ebm(self):
         self.assertRaisesRegex(
             _nosql.DatabaseError,
-            "Existence bit map for segment does not exist",
+            "Existence bit map for segment does not exist$",
             self.database.remove_record_from_ebm,
             *("file1", 2),
         )
@@ -1098,7 +1098,7 @@ class Database_find_values__empty(_NoSQLOpen):
             "".join(
                 (
                     r"find_values\(\) missing 2 required ",
-                    "positional arguments: 'valuespec' and 'file'",
+                    "positional arguments: 'valuespec' and 'file'$",
                 )
             ),
             self.database.find_values,
@@ -1248,7 +1248,7 @@ class Database_add_record_to_field_value(_NoSQLOpen):
                 (
                     r"add_record_to_field_value\(\) missing 5 required ",
                     "positional arguments: 'file', 'field', 'key', ",
-                    "'segment', and 'record_number'",
+                    "'segment', and 'record_number'$",
                 )
             ),
             self.database.add_record_to_field_value,
@@ -1408,7 +1408,7 @@ class Database_remove_record_from_field_value(_NoSQLOpen):
                 (
                     r"remove_record_from_field_value\(\) missing 5 required ",
                     "positional arguments: 'file', 'field', 'key', ",
-                    "'segment', and 'record_number'",
+                    "'segment', and 'record_number'$",
                 )
             ),
             self.database.remove_record_from_field_value,
@@ -1558,7 +1558,7 @@ class Database_populate_segment(_NoSQLOpen):
                 (
                     r"populate_segment\(\) missing 3 required ",
                     "positional arguments: ",
-                    "'segment_number', 'segment_reference', and 'file'",
+                    "'segment_number', 'segment_reference', and 'file'$",
                 )
             ),
             self.database.populate_segment,
@@ -1674,7 +1674,7 @@ class Database_make_recordset(_NoSQLOpenPopulated):
             "".join(
                 (
                     r"recordlist_key_like\(\) takes from 3 to 5 ",
-                    "positional arguments but 6 were given",
+                    "positional arguments but 6 were given$",
                 )
             ),
             self.database.recordlist_key_like,
@@ -1685,7 +1685,7 @@ class Database_make_recordset(_NoSQLOpenPopulated):
             "".join(
                 (
                     r"recordlist_key\(\) takes from 3 to 5 ",
-                    "positional arguments but 6 were given",
+                    "positional arguments but 6 were given$",
                 )
             ),
             self.database.recordlist_key,
@@ -1696,7 +1696,7 @@ class Database_make_recordset(_NoSQLOpenPopulated):
             "".join(
                 (
                     r"recordlist_key_startswith\(\) takes from 3 to 5 ",
-                    "positional arguments but 6 were given",
+                    "positional arguments but 6 were given$",
                 )
             ),
             self.database.recordlist_key_startswith,
@@ -1707,7 +1707,7 @@ class Database_make_recordset(_NoSQLOpenPopulated):
             "".join(
                 (
                     r"recordlist_key_range\(\) takes from 3 to 8 ",
-                    "positional arguments but 9 were given",
+                    "positional arguments but 9 were given$",
                 )
             ),
             self.database.recordlist_key_range,
@@ -1718,7 +1718,7 @@ class Database_make_recordset(_NoSQLOpenPopulated):
             "".join(
                 (
                     r"recordlist_all\(\) takes from 3 to 4 ",
-                    "positional arguments but 5 were given",
+                    "positional arguments but 5 were given$",
                 )
             ),
             self.database.recordlist_all,
@@ -1729,7 +1729,7 @@ class Database_make_recordset(_NoSQLOpenPopulated):
             "".join(
                 (
                     r"recordlist_nil\(\) takes from 2 to 3 ",
-                    "positional arguments but 4 were given",
+                    "positional arguments but 4 were given$",
                 )
             ),
             self.database.recordlist_nil,
@@ -1739,7 +1739,7 @@ class Database_make_recordset(_NoSQLOpenPopulated):
     def test_02_make_recordset_key_like(self):
         self.assertRaisesRegex(
             _nosql.DatabaseError,
-            "'field2' field in 'file2' file is not ordered",
+            "'field2' field in 'file2' file is not ordered$",
             self.database.recordlist_key_like,
             *("file2", "field2"),
         )
@@ -1809,7 +1809,7 @@ class Database_make_recordset(_NoSQLOpenPopulated):
     def test_13_make_recordset_key_startswith(self):
         self.assertRaisesRegex(
             _nosql.DatabaseError,
-            "'field2' field in 'file2' file is not ordered",
+            "'field2' field in 'file2' file is not ordered$",
             self.database.recordlist_key_startswith,
             *("file2", "field2"),
         )
@@ -1853,7 +1853,7 @@ class Database_make_recordset(_NoSQLOpenPopulated):
     def test_19_make_recordset_key_range(self):
         self.assertRaisesRegex(
             _nosql.DatabaseError,
-            "'field2' field in 'file2' file is not ordered",
+            "'field2' field in 'file2' file is not ordered$",
             self.database.recordlist_key_range,
             *("file2", "field2"),
         )
@@ -1971,7 +1971,7 @@ class Database_make_recordset(_NoSQLOpenPopulated):
     def test_34_make_recordset_all(self):
         self.assertRaisesRegex(
             _nosql.DatabaseError,
-            "'field2' field in 'file2' file is not ordered",
+            "'field2' field in 'file2' file is not ordered$",
             self.database.recordlist_all,
             *("file2", "field2"),
         )
@@ -1996,7 +1996,7 @@ class Database_file_unfile_records(_NoSQLOpenPopulated):
             "".join(
                 (
                     r"unfile_records_under\(\) missing 3 required ",
-                    "positional arguments: 'file', 'field', and 'key'",
+                    "positional arguments: 'file', 'field', and 'key'$",
                 )
             ),
             self.database.unfile_records_under,
@@ -2006,7 +2006,7 @@ class Database_file_unfile_records(_NoSQLOpenPopulated):
             "".join(
                 (
                     r"file_records_under\(\) missing 4 required positional ",
-                    "arguments: 'file', 'field', 'recordset', and 'key'",
+                    "arguments: 'file', 'field', 'recordset', and 'key'$",
                 )
             ),
             self.database.file_records_under,
@@ -2239,7 +2239,7 @@ class Database_database_create_cursors(_NoSQLOpen):
             "".join(
                 (
                     r"database_cursor\(\) takes from 3 to 5 ",
-                    "positional arguments but 6 were given",
+                    "positional arguments but 6 were given$",
                 )
             ),
             self.database.database_cursor,
@@ -2250,7 +2250,7 @@ class Database_database_create_cursors(_NoSQLOpen):
             "".join(
                 (
                     r"create_recordset_cursor\(\) missing 1 ",
-                    "required positional argument: 'recordset'",
+                    "required positional argument: 'recordset'$",
                 )
             ),
             self.database.create_recordset_cursor,
@@ -2271,7 +2271,7 @@ class Database_database_create_cursors(_NoSQLOpen):
     def test_04_database_cursor_secondary_hash(self):
         self.assertRaisesRegex(
             _nosql.DatabaseError,
-            "'field2' field in 'file2' file is not ordered",
+            "'field2' field in 'file2' file is not ordered$",
             self.database.database_cursor,
             *("file2", "field2"),
         )
@@ -2310,7 +2310,7 @@ class Database_freed_record_number(_NoSQLOpen):
             "".join(
                 (
                     r"get_lowest_freed_record_number\(\) missing 1 required ",
-                    "positional argument: 'dbset'",
+                    "positional argument: 'dbset'$",
                 )
             ),
             self.database.get_lowest_freed_record_number,
@@ -2321,7 +2321,7 @@ class Database_freed_record_number(_NoSQLOpen):
                 (
                     r"note_freed_record_number_segment\(\) missing 4 ",
                     "required positional arguments: 'dbset', 'segment', ",
-                    "'record_number_in_segment', and 'high_record'",
+                    "'record_number_in_segment', and 'high_record'$",
                 )
             ),
             self.database.note_freed_record_number_segment,
@@ -2528,7 +2528,7 @@ class RecordsetCursor(_NoSQLOpen):
             "".join(
                 (
                     r"__init__\(\) missing 2 required ",
-                    "positional arguments: 'recordset' and 'engine'",
+                    "positional arguments: 'recordset' and 'engine'$",
                 )
             ),
             _nosql.RecordsetCursor,
@@ -2538,7 +2538,7 @@ class RecordsetCursor(_NoSQLOpen):
             "".join(
                 (
                     r"_get_record\(\) missing 1 required ",
-                    "positional argument: 'record_number'",
+                    "positional argument: 'record_number'$",
                 )
             ),
             _nosql.RecordsetCursor(None, None)._get_record,
@@ -2575,7 +2575,7 @@ class ExistenceBitmapControl(_NoSQLOpen):
             "".join(
                 (
                     r"read_exists_segment\(\) missing 2 required ",
-                    "positional arguments: 'segment_number' and 'dbenv'",
+                    "positional arguments: 'segment_number' and 'dbenv'$",
                 )
             ),
             self.database.ebm_control["file1"].read_exists_segment,
@@ -2585,7 +2585,7 @@ class ExistenceBitmapControl(_NoSQLOpen):
             "".join(
                 (
                     r"get_ebm_segment\(\) missing 2 required ",
-                    "positional arguments: 'key' and 'dbenv'",
+                    "positional arguments: 'key' and 'dbenv'$",
                 )
             ),
             self.database.ebm_control["file1"].get_ebm_segment,
@@ -2595,7 +2595,7 @@ class ExistenceBitmapControl(_NoSQLOpen):
             "".join(
                 (
                     r"delete_ebm_segment\(\) missing 2 required ",
-                    "positional arguments: 'key' and 'dbenv'",
+                    "positional arguments: 'key' and 'dbenv'$",
                 )
             ),
             self.database.ebm_control["file1"].delete_ebm_segment,
@@ -2605,7 +2605,7 @@ class ExistenceBitmapControl(_NoSQLOpen):
             "".join(
                 (
                     r"put_ebm_segment\(\) missing 3 required ",
-                    "positional arguments: 'key', 'value', and 'dbenv'",
+                    "positional arguments: 'key', 'value', and 'dbenv'$",
                 )
             ),
             self.database.ebm_control["file1"].put_ebm_segment,
@@ -2615,7 +2615,7 @@ class ExistenceBitmapControl(_NoSQLOpen):
             "".join(
                 (
                     r"append_ebm_segment\(\) missing 2 required ",
-                    "positional arguments: 'value' and 'dbenv'",
+                    "positional arguments: 'value' and 'dbenv'$",
                 )
             ),
             self.database.ebm_control["file1"].append_ebm_segment,

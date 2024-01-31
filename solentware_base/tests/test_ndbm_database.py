@@ -25,7 +25,7 @@ class NdbmDatabase(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) missing 1 required positional argument: ",
-                    "'specification'",
+                    "'specification'$",
                 )
             ),
             ndbm_database.Database,
@@ -38,7 +38,7 @@ class NdbmDatabase(unittest.TestCase):
     def test_01_open_database_01(self):
         self.assertRaisesRegex(
             ndbm_module.NdbmError,
-            "Memory-only databases not supported by dbm.ndbm",
+            "Memory-only databases not supported by dbm.ndbm$",
             ndbm_database.Database({}).open_database,
         )
 

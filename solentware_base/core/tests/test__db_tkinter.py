@@ -52,7 +52,7 @@ class Database___init__(_DB):
             "".join(
                 (
                     r"__init__\(\) takes from 2 to 7 positional arguments ",
-                    "but 8 were given",
+                    "but 8 were given$",
                 )
             ),
             self._D,
@@ -67,7 +67,7 @@ class Database___init__(_DB):
                 (
                     t,
                     r" argument after \*\* must be a mapping, ",
-                    "not NoneType",
+                    "not NoneType$",
                 )
             ),
             self._D,
@@ -79,7 +79,7 @@ class Database___init__(_DB):
     def test_03(self):
         self.assertRaisesRegex(
             _db_tkinter.DatabaseError,
-            "".join(("Database folder name {} is not valid",)),
+            "".join(("Database folder name {} is not valid$",)),
             self._D,
             *({},),
             **dict(folder={}),
@@ -88,7 +88,7 @@ class Database___init__(_DB):
     def test_04(self):
         self.assertRaisesRegex(
             _db_tkinter.DatabaseError,
-            "".join(("Database environment must be a dictionary",)),
+            "".join(("Database environment must be a dictionary$",)),
             self._D,
             *({},),
             **dict(environment=[]),
@@ -144,7 +144,7 @@ class Database_transaction_methods(_DB):
         self.assertEqual(self.database.dbenv, None)
         self.assertRaisesRegex(
             _db_tkinter.DatabaseError,
-            "No environment for start transaction",
+            "No environment for start transaction$",
             self.database.start_transaction,
         )
 
@@ -162,7 +162,7 @@ class Database_transaction_methods(_DB):
             "".join(
                 (
                     r"start_transaction\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.database.start_transaction,
@@ -173,7 +173,7 @@ class Database_transaction_methods(_DB):
             "".join(
                 (
                     r"backout\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.database.backout,
@@ -184,7 +184,7 @@ class Database_transaction_methods(_DB):
             "".join(
                 (
                     r"commit\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.database.commit,
@@ -204,20 +204,20 @@ class DatabaseInstance(_DB):
             "".join(
                 (
                     r"_validate_segment_size_bytes\(\) missing 1 required ",
-                    "positional argument: 'segment_size_bytes'",
+                    "positional argument: 'segment_size_bytes'$",
                 )
             ),
             self.database._validate_segment_size_bytes,
         )
         self.assertRaisesRegex(
             _db_tkinter.DatabaseError,
-            "".join(("Database segment size must be an int",)),
+            "".join(("Database segment size must be an int$",)),
             self.database._validate_segment_size_bytes,
             *("a",),
         )
         self.assertRaisesRegex(
             _db_tkinter.DatabaseError,
-            "".join(("Database segment size must be more than 0",)),
+            "".join(("Database segment size must be more than 0$",)),
             self.database._validate_segment_size_bytes,
             *(0,),
         )
@@ -232,7 +232,7 @@ class DatabaseInstance(_DB):
             "".join(
                 (
                     r"environment_flags\(\) missing 1 required ",
-                    "positional argument: 'dbe'",
+                    "positional argument: 'dbe'$",
                 )
             ),
             self.database.environment_flags,
@@ -249,7 +249,7 @@ class DatabaseInstance(_DB):
             "".join(
                 (
                     r"encode_record_number\(\) missing 1 required ",
-                    "positional argument: 'key'",
+                    "positional argument: 'key'$",
                 )
             ),
             self.database.encode_record_number,
@@ -262,7 +262,7 @@ class DatabaseInstance(_DB):
             "".join(
                 (
                     r"decode_record_number\(\) missing 1 required ",
-                    "positional argument: 'skey'",
+                    "positional argument: 'skey'$",
                 )
             ),
             self.database.decode_record_number,
@@ -275,7 +275,7 @@ class DatabaseInstance(_DB):
             "".join(
                 (
                     r"encode_record_selector\(\) missing 1 required ",
-                    "positional argument: 'key'",
+                    "positional argument: 'key'$",
                 )
             ),
             self.database.encode_record_selector,
@@ -288,7 +288,7 @@ class DatabaseInstance(_DB):
             "".join(
                 (
                     r"recordlist_nil\(\) takes from 2 to 3 ",
-                    "positional arguments but 4 were given",
+                    "positional arguments but 4 were given$",
                 )
             ),
             self.database.recordlist_nil,
@@ -308,7 +308,7 @@ class Database_open_database(_DB):
             "".join(
                 (
                     r"open_database\(\) takes from 2 to 3 ",
-                    "positional arguments but 4 were given",
+                    "positional arguments but 4 were given$",
                 )
             ),
             self.database.open_database,
@@ -319,7 +319,7 @@ class Database_open_database(_DB):
             "".join(
                 (
                     r"close_database\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.database.close_database,
@@ -330,7 +330,7 @@ class Database_open_database(_DB):
             "".join(
                 (
                     r"close_database_contexts\(\) takes from 1 to 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.database.close_database_contexts,
@@ -452,7 +452,7 @@ class Database_open_database(_DB):
         d = self.database
         self.assertRaisesRegex(
             KeyError,
-            "'file1'",
+            "'file1'$",
             d.is_database_file_active,
             *("file1",),
         )
@@ -582,7 +582,7 @@ class Database_put_replace_delete(_DBOpen):
             "".join(
                 (
                     r"put\(\) missing 3 required positional arguments: ",
-                    "'file', 'key', and 'value'",
+                    "'file', 'key', and 'value'$",
                 )
             ),
             self.database.put,
@@ -592,7 +592,7 @@ class Database_put_replace_delete(_DBOpen):
             "".join(
                 (
                     r"replace\(\) missing 4 required positional arguments: ",
-                    "'file', 'key', 'oldvalue', and 'newvalue'",
+                    "'file', 'key', 'oldvalue', and 'newvalue'$",
                 )
             ),
             self.database.replace,
@@ -602,7 +602,7 @@ class Database_put_replace_delete(_DBOpen):
             "".join(
                 (
                     r"delete\(\) missing 3 required positional arguments: ",
-                    "'file', 'key', and 'value'",
+                    "'file', 'key', and 'value'$",
                 )
             ),
             self.database.delete,
@@ -640,7 +640,7 @@ class Database_methods(_DBOpen):
             "".join(
                 (
                     r"get_primary_record\(\) missing 2 required positional ",
-                    "arguments: 'file' and 'key'",
+                    "arguments: 'file' and 'key'$",
                 )
             ),
             self.database.get_primary_record,
@@ -650,7 +650,7 @@ class Database_methods(_DBOpen):
             "".join(
                 (
                     r"remove_record_from_ebm\(\) missing 2 required ",
-                    "positional arguments: 'file' and 'deletekey'",
+                    "positional arguments: 'file' and 'deletekey'$",
                 )
             ),
             self.database.remove_record_from_ebm,
@@ -660,7 +660,7 @@ class Database_methods(_DBOpen):
             "".join(
                 (
                     r"add_record_to_ebm\(\) missing 2 required ",
-                    "positional arguments: 'file' and 'putkey'",
+                    "positional arguments: 'file' and 'putkey'$",
                 )
             ),
             self.database.add_record_to_ebm,
@@ -670,7 +670,7 @@ class Database_methods(_DBOpen):
             "".join(
                 (
                     r"get_high_record\(\) missing 1 required ",
-                    "positional argument: 'file'",
+                    "positional argument: 'file'$",
                 )
             ),
             self.database.get_high_record,
@@ -680,7 +680,7 @@ class Database_methods(_DBOpen):
             "".join(
                 (
                     r"recordlist_record_number\(\) takes from 2 to 4 ",
-                    "positional arguments but 5 were given",
+                    "positional arguments but 5 were given$",
                 )
             ),
             self.database.recordlist_record_number,
@@ -691,7 +691,7 @@ class Database_methods(_DBOpen):
             "".join(
                 (
                     r"recordlist_record_number_range\(\) takes from 2 to 5 ",
-                    "positional arguments but 6 were given",
+                    "positional arguments but 6 were given$",
                 )
             ),
             self.database.recordlist_record_number_range,
@@ -702,7 +702,7 @@ class Database_methods(_DBOpen):
             "".join(
                 (
                     r"recordlist_ebm\(\) takes from 2 to 3 ",
-                    "positional arguments but 4 were given",
+                    "positional arguments but 4 were given$",
                 )
             ),
             self.database.recordlist_ebm,
@@ -713,7 +713,7 @@ class Database_methods(_DBOpen):
             "".join(
                 (
                     r"get_table_connection\(\) missing 1 required positional ",
-                    "argument: 'file'",
+                    "argument: 'file'$",
                 )
             ),
             self.database.get_table_connection,
@@ -734,7 +734,7 @@ class Database_methods(_DBOpen):
     def test_05_remove_record_from_ebm(self):
         self.assertRaisesRegex(
             _db_tkinter.DatabaseError,
-            "Existence bit map for segment does not exist",
+            "Existence bit map for segment does not exist$",
             self.database.remove_record_from_ebm,
             *("file1", 2),
         )
@@ -934,7 +934,7 @@ class Database_find_values(_DBOpen):
             "".join(
                 (
                     r"find_values\(\) missing 2 required ",
-                    "positional arguments: 'valuespec' and 'file'",
+                    "positional arguments: 'valuespec' and 'file'$",
                 )
             ),
             self.database.find_values,
@@ -1192,7 +1192,7 @@ class Database_make_recordset(_DBOpen):
                 (
                     r"add_record_to_field_value\(\) missing 5 required ",
                     "positional arguments: 'file', 'field', 'key', ",
-                    "'segment', and 'record_number'",
+                    "'segment', and 'record_number'$",
                 )
             ),
             self.database.add_record_to_field_value,
@@ -1203,7 +1203,7 @@ class Database_make_recordset(_DBOpen):
                 (
                     r"remove_record_from_field_value\(\) missing 5 required ",
                     "positional arguments: 'file', 'field', 'key', ",
-                    "'segment', and 'record_number'",
+                    "'segment', and 'record_number'$",
                 )
             ),
             self.database.remove_record_from_field_value,
@@ -1213,7 +1213,7 @@ class Database_make_recordset(_DBOpen):
             "".join(
                 (
                     r"populate_segment\(\) missing 2 required ",
-                    "positional arguments: 'segment_reference' and 'file'",
+                    "positional arguments: 'segment_reference' and 'file'$",
                 )
             ),
             self.database.populate_segment,
@@ -1223,7 +1223,7 @@ class Database_make_recordset(_DBOpen):
             "".join(
                 (
                     r"recordlist_key_like\(\) takes from 3 to 5 ",
-                    "positional arguments but 6 were given",
+                    "positional arguments but 6 were given$",
                 )
             ),
             self.database.recordlist_key_like,
@@ -1234,7 +1234,7 @@ class Database_make_recordset(_DBOpen):
             "".join(
                 (
                     r"recordlist_key\(\) takes from 3 to 5 ",
-                    "positional arguments but 6 were given",
+                    "positional arguments but 6 were given$",
                 )
             ),
             self.database.recordlist_key,
@@ -1245,7 +1245,7 @@ class Database_make_recordset(_DBOpen):
             "".join(
                 (
                     r"recordlist_key_startswith\(\) takes from 3 to 5 ",
-                    "positional arguments but 6 were given",
+                    "positional arguments but 6 were given$",
                 )
             ),
             self.database.recordlist_key_startswith,
@@ -1256,7 +1256,7 @@ class Database_make_recordset(_DBOpen):
             "".join(
                 (
                     r"recordlist_key_range\(\) takes from 3 to 8 ",
-                    "positional arguments but 9 were given",
+                    "positional arguments but 9 were given$",
                 )
             ),
             self.database.recordlist_key_range,
@@ -1267,7 +1267,7 @@ class Database_make_recordset(_DBOpen):
             "".join(
                 (
                     r"recordlist_all\(\) takes from 3 to 4 ",
-                    "positional arguments but 5 were given",
+                    "positional arguments but 5 were given$",
                 )
             ),
             self.database.recordlist_all,
@@ -1278,7 +1278,7 @@ class Database_make_recordset(_DBOpen):
             "".join(
                 (
                     r"unfile_records_under\(\) missing 3 required ",
-                    "positional arguments: 'file', 'field', and 'key'",
+                    "positional arguments: 'file', 'field', and 'key'$",
                 )
             ),
             self.database.unfile_records_under,
@@ -1288,7 +1288,7 @@ class Database_make_recordset(_DBOpen):
             "".join(
                 (
                     r"file_records_under\(\) missing 4 required positional ",
-                    "arguments: 'file', 'field', 'recordset', and 'key'",
+                    "arguments: 'file', 'field', 'recordset', and 'key'$",
                 )
             ),
             self.database.file_records_under,
@@ -1687,7 +1687,7 @@ class Database_make_recordset(_DBOpen):
         #    r"".join(
         #        (
         #            r"(?:\(-30995, 'BDB0066 |\(-30997, ')",
-        #            r"DB_KEYEMPTY: Non-existent key/data pair'\)",
+        #            r"DB_KEYEMPTY: Non-existent key/data pair'\)$",
         #        )
         #    ),
         #    # "\(-30995, 'BDB0066 DB_KEYEMPTY: Non-existent key/data pair'\)",
@@ -1703,6 +1703,9 @@ class Database_make_recordset(_DBOpen):
     # Changed back after rebuild at end of March 2020.
     # When doing some testing on OpenBSD in September 2020 see that BDB1002
     # is omitted from the exception text.
+    # The '\ndb get:invalid argument' is appended extra in tcl interface via
+    # tkinter compared with berkeleydb interface: caused a bit of confusion
+    # when appending '$' so the regular expression means str.endswith(...).
     def test_56__get_segment_record_numbers(self):
         self.assertIsInstance(
             self.database._get_segment_record_numbers("file1", 7), Bitarray
@@ -1712,7 +1715,7 @@ class Database_make_recordset(_DBOpen):
         )
         self.assertRaisesRegex(
             dbe_module.TclError,
-            r".*: illegal record number of 0",
+            r".*: illegal record number of 0\ndb get:invalid argument$",
             # "\(22, 'Invalid argument -- \
             # BDB1002 illegal record number of 0'\)",
             # "\(22, 'Invalid argument -- illegal record number of 0'\)",
@@ -1721,7 +1724,7 @@ class Database_make_recordset(_DBOpen):
         )
         self.assertRaisesRegex(
             TypeError,
-            r"object of type 'NoneType' has no len\(\)",
+            r"object of type 'NoneType' has no len\(\)$",
             self.database._get_segment_record_numbers,
             *("file1", 10),
         )
@@ -1814,7 +1817,7 @@ class Database_freed_record_number(_DBOpen):
             "".join(
                 (
                     r"get_lowest_freed_record_number\(\) missing 1 required ",
-                    "positional argument: 'dbset'",
+                    "positional argument: 'dbset'$",
                 )
             ),
             self.database.get_lowest_freed_record_number,
@@ -1825,7 +1828,7 @@ class Database_freed_record_number(_DBOpen):
                 (
                     r"note_freed_record_number_segment\(\) missing 4 ",
                     "required positional arguments: 'dbset', 'segment', ",
-                    "'record_number_in_segment', and 'high_record'",
+                    "'record_number_in_segment', and 'high_record'$",
                 )
             ),
             self.database.note_freed_record_number_segment,
@@ -2123,7 +2126,7 @@ class RecordsetCursor(_DBOpen):
             "".join(
                 (
                     r"__init__\(\) missing 1 required ",
-                    "positional argument: 'recordset'",
+                    "positional argument: 'recordset'$",
                 )
             ),
             _db_tkinter.RecordsetCursor,
@@ -2133,7 +2136,7 @@ class RecordsetCursor(_DBOpen):
             "".join(
                 (
                     r"_get_record\(\) missing 1 required ",
-                    "positional argument: 'record_number'",
+                    "positional argument: 'record_number'$",
                 )
             ),
             _db_tkinter.RecordsetCursor(None, None)._get_record,

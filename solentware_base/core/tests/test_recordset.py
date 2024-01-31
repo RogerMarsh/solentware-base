@@ -68,7 +68,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) missing 2 required positional arguments: ",
-                    "'dbhome' and 'dbset'",
+                    "'dbhome' and 'dbset'$",
                 )
             ),
             recordset._Recordset,
@@ -76,7 +76,7 @@ class _Recordset(unittest.TestCase):
         self.assertRaisesRegex(
             TypeError,
             "".join(
-                (r"__init__\(\) got an unexpected keyword argument 'xxxxx'",)
+                (r"__init__\(\) got an unexpected keyword argument 'xxxxx'$",)
             ),
             recordset._Recordset,
             *(None, None),
@@ -118,7 +118,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"close\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rs.close,
@@ -129,7 +129,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"clear_recordset\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rs.clear_recordset,
@@ -140,7 +140,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"__len__\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rs.__len__,
@@ -152,7 +152,7 @@ class _Recordset(unittest.TestCase):
                 (
                     r"__getitem__\(\) missing 1 required ",
                     "positional argument: ",
-                    "'segment'",
+                    "'segment'$",
                 )
             ),
             self.rs.__getitem__,
@@ -163,7 +163,7 @@ class _Recordset(unittest.TestCase):
                 (
                     r"__setitem__\(\) missing 2 required ",
                     "positional arguments: ",
-                    "'segment' and 'record_numbers'",
+                    "'segment' and 'record_numbers'$",
                 )
             ),
             self.rs.__setitem__,
@@ -174,7 +174,7 @@ class _Recordset(unittest.TestCase):
                 (
                     r"__delitem__\(\) missing 1 required ",
                     "positional argument: ",
-                    "'segment'",
+                    "'segment'$",
                 )
             ),
             self.rs.__delitem__,
@@ -185,7 +185,7 @@ class _Recordset(unittest.TestCase):
                 (
                     r"__contains__\(\) missing 1 required ",
                     "positional argument: ",
-                    "'segment'",
+                    "'segment'$",
                 )
             ),
             self.rs.__contains__,
@@ -195,7 +195,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"count_records\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rs.count_records,
@@ -206,7 +206,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"get_position_of_record_number\(\) missing 1 required ",
-                    "positional argument: 'recnum'",
+                    "positional argument: 'recnum'$",
                 )
             ),
             self.rs.get_position_of_record_number,
@@ -216,7 +216,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"get_record_number_at_position\(\) missing 1 required ",
-                    "positional argument: 'position'",
+                    "positional argument: 'position'$",
                 )
             ),
             self.rs.get_record_number_at_position,
@@ -226,7 +226,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"insort_left_nodup\(\) missing 1 required ",
-                    "positional argument: 'segment'",
+                    "positional argument: 'segment'$",
                 )
             ),
             self.rs.insort_left_nodup,
@@ -236,7 +236,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"first\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rs.first,
@@ -247,7 +247,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"last\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rs.last,
@@ -258,7 +258,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"next\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rs.next,
@@ -269,7 +269,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"prev\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rs.prev,
@@ -280,7 +280,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"current\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rs.current,
@@ -291,7 +291,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"setat\(\) missing 1 required ",
-                    "positional argument: 'record'",
+                    "positional argument: 'record'$",
                 )
             ),
             self.rs.setat,
@@ -301,7 +301,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"__or__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.rs.__or__,
@@ -311,7 +311,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"__ior__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.rs.__ior__,
@@ -321,7 +321,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"__and__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.rs.__and__,
@@ -331,7 +331,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"__iand__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.rs.__iand__,
@@ -341,7 +341,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"__xor__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.rs.__xor__,
@@ -351,7 +351,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"__ixor__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.rs.__ixor__,
@@ -361,7 +361,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"normalize\(\) takes from 1 to 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.rs.normalize,
@@ -372,7 +372,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"is_record_number_in_record_set\(\) missing 1 required ",
-                    "positional argument: 'record_number'",
+                    "positional argument: 'record_number'$",
                 )
             ),
             self.rs.is_record_number_in_record_set,
@@ -382,7 +382,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"_empty__recordset\(\) takes 0 positional arguments ",
-                    "but 1 was given",
+                    "but 1 was given$",
                 )
             ),
             recordset._empty__recordset,
@@ -393,7 +393,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"__deepcopy__\(\) missing 1 required ",
-                    "positional argument: 'memo'",
+                    "positional argument: 'memo'$",
                 )
             ),
             self.rs.__deepcopy__,
@@ -403,7 +403,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"place_record_number\(\) missing 1 required ",
-                    "positional argument: 'record_number'",
+                    "positional argument: 'record_number'$",
                 )
             ),
             self.rs.place_record_number,
@@ -413,7 +413,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"remove_record_number\(\) missing 1 required ",
-                    "positional argument: 'record_number'",
+                    "positional argument: 'record_number'$",
                 )
             ),
             self.rs.remove_record_number,
@@ -423,7 +423,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"create_recordset_cursor\(\) takes 1 positional ",
-                    "argument but 2 were given",
+                    "argument but 2 were given$",
                 )
             ),
             self.rs.create_recordset_cursor,
@@ -434,7 +434,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"reset_current_segment\(\) takes 1 positional ",
-                    "argument but 2 were given",
+                    "argument but 2 were given$",
                 )
             ),
             self.rs.reset_current_segment,
@@ -475,7 +475,7 @@ class _Recordset(unittest.TestCase):
     def test___getitem__(self):
         self.assertRaisesRegex(
             KeyError,
-            "".join(("0",)),
+            "".join(("0$",)),
             self.rs.__getitem__,
             *(0,),
         )
@@ -489,7 +489,7 @@ class _Recordset(unittest.TestCase):
     def test___delitem___01(self):
         self.assertRaisesRegex(
             KeyError,
-            "".join(("0",)),
+            "".join(("0$",)),
             self.rs.__delitem__,
             *(0,),
         )
@@ -548,7 +548,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"unsupported operand type\(s\) for divmod\(\): ",
-                    "'str' and 'int'",
+                    "'str' and 'int'$",
                 )
             ),
             self.rs.get_position_of_record_number,
@@ -693,7 +693,7 @@ class _Recordset(unittest.TestCase):
             "".join(
                 (
                     r"unsupported operand type\(s\) for divmod\(\): 'str' ",
-                    "and 'int'",
+                    "and 'int'$",
                 )
             ),
             self.rs.setat,
@@ -717,13 +717,13 @@ class _Recordset(unittest.TestCase):
         rsd = recordset._Recordset(d, "file1")
         self.assertRaisesRegex(
             recordset.RecordsetError,
-            "".join(("Attempt to 'or' record sets for different databases",)),
+            "".join(("Attempt to 'or' record sets for different databases$",)),
             self.rs.__or__,
             *(rsd,),
         )
         self.assertRaisesRegex(
             recordset.RecordsetError,
-            "".join(("Attempt to 'or' record sets for different tables",)),
+            "".join(("Attempt to 'or' record sets for different tables$",)),
             self.rs.__or__,
             *(rs2,),
         )
@@ -761,13 +761,15 @@ class _Recordset(unittest.TestCase):
         rsd = recordset._Recordset(d, "file1")
         self.assertRaisesRegex(
             recordset.RecordsetError,
-            "".join(("Attempt to 'ior' record sets for different databases",)),
+            "".join(
+                ("Attempt to 'ior' record sets for different databases$",)
+            ),
             self.rs.__ior__,
             *(rsd,),
         )
         self.assertRaisesRegex(
             recordset.RecordsetError,
-            "".join(("Attempt to 'ior' record sets for different tables",)),
+            "".join(("Attempt to 'ior' record sets for different tables$",)),
             self.rs.__ior__,
             *(rs2,),
         )
@@ -799,13 +801,15 @@ class _Recordset(unittest.TestCase):
         rsd = recordset._Recordset(d, "file1")
         self.assertRaisesRegex(
             recordset.RecordsetError,
-            "".join(("Attempt to 'and' record sets for different databases",)),
+            "".join(
+                ("Attempt to 'and' record sets for different databases$",)
+            ),
             self.rs.__and__,
             *(rsd,),
         )
         self.assertRaisesRegex(
             recordset.RecordsetError,
-            "".join(("Attempt to 'and' record sets for different tables",)),
+            "".join(("Attempt to 'and' record sets for different tables$",)),
             self.rs.__and__,
             *(rs2,),
         )
@@ -844,14 +848,14 @@ class _Recordset(unittest.TestCase):
         self.assertRaisesRegex(
             recordset.RecordsetError,
             "".join(
-                ("Attempt to 'iand' record sets for different databases",)
+                ("Attempt to 'iand' record sets for different databases$",)
             ),
             self.rs.__iand__,
             *(rsd,),
         )
         self.assertRaisesRegex(
             recordset.RecordsetError,
-            "".join(("Attempt to 'iand' record sets for different tables",)),
+            "".join(("Attempt to 'iand' record sets for different tables$",)),
             self.rs.__iand__,
             *(rs2,),
         )
@@ -883,13 +887,15 @@ class _Recordset(unittest.TestCase):
         rsd = recordset._Recordset(d, "file1")
         self.assertRaisesRegex(
             recordset.RecordsetError,
-            "".join(("Attempt to 'xor' record sets for different databases",)),
+            "".join(
+                ("Attempt to 'xor' record sets for different databases$",)
+            ),
             self.rs.__xor__,
             *(rsd,),
         )
         self.assertRaisesRegex(
             recordset.RecordsetError,
-            "".join(("Attempt to 'xor' record sets for different tables",)),
+            "".join(("Attempt to 'xor' record sets for different tables$",)),
             self.rs.__xor__,
             *(rs2,),
         )
@@ -928,14 +934,14 @@ class _Recordset(unittest.TestCase):
         self.assertRaisesRegex(
             recordset.RecordsetError,
             "".join(
-                ("Attempt to 'ixor' record sets for different databases",)
+                ("Attempt to 'ixor' record sets for different databases$",)
             ),
             self.rs.__ixor__,
             *(rsd,),
         )
         self.assertRaisesRegex(
             recordset.RecordsetError,
-            "".join(("Attempt to 'ixor' record sets for different tables",)),
+            "".join(("Attempt to 'ixor' record sets for different tables$",)),
             self.rs.__ixor__,
             *(rs2,),
         )

@@ -591,7 +591,7 @@ if __name__ == "__main__":
                     (
                         r"\[Errno 2] No such file or directory: '",
                         os.path.expanduser(os.path.join("~", HOME)),
-                        r"'",
+                        r"'$",
                     )
                 ),
                 os.listdir,

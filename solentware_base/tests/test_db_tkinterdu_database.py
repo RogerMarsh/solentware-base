@@ -20,7 +20,7 @@ class DbTkinterduDatabase(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) missing 1 required positional argument: ",
-                    "'specification'",
+                    "'specification'$",
                 )
             ),
             db_tkinterdu_database.Database,

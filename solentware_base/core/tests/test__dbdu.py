@@ -54,7 +54,7 @@ class Database___init__(_DBdu):
             "".join(
                 (
                     r"__init__\(\) takes from 2 to 7 positional arguments ",
-                    "but 8 were given",
+                    "but 8 were given$",
                 )
             ),
             self._D,
@@ -69,7 +69,7 @@ class Database___init__(_DBdu):
                 (
                     t,
                     r" argument after \*\* must be a mapping, ",
-                    "not NoneType",
+                    "not NoneType$",
                 )
             ),
             self._D,
@@ -81,7 +81,7 @@ class Database___init__(_DBdu):
     def test_03(self):
         self.assertRaisesRegex(
             _db.DatabaseError,
-            "".join(("Database folder name {} is not valid",)),
+            "".join(("Database folder name {} is not valid$",)),
             self._D,
             *({},),
             **dict(folder={}),
@@ -143,7 +143,7 @@ class Database_transaction_methods(_DBdu):
         self.assertEqual(self.database.dbenv, None)
         self.assertRaisesRegex(
             AttributeError,
-            r"'NoneType' object has no attribute 'txn_begin'",
+            r"'NoneType' object has no attribute 'txn_begin'$",
             self.database.start_transaction,
         )
         self.assertEqual(self.database.dbtxn, None)
@@ -171,7 +171,7 @@ class Database_transaction_methods(_DBdu):
             "".join(
                 (
                     r"start_transaction\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.database.start_transaction,
@@ -182,7 +182,7 @@ class Database_transaction_methods(_DBdu):
             "".join(
                 (
                     r"environment_flags\(\) missing 1 required ",
-                    "positional argument: 'dbe'",
+                    "positional argument: 'dbe'$",
                 )
             ),
             self.database.environment_flags,
@@ -192,7 +192,7 @@ class Database_transaction_methods(_DBdu):
             "".join(
                 (
                     r"checkpoint_before_close_dbenv\(\) takes 1 positional ",
-                    "argument but 2 were given",
+                    "argument but 2 were given$",
                 )
             ),
             self.database.checkpoint_before_close_dbenv,
@@ -240,13 +240,8 @@ class _DBOpen(_DBdu):
 class Database_methods(_DBOpen):
     def test_01(self):
         self.assertRaisesRegex(
-            TypeError,
-            "".join(
-                (
-                    r"database_cursor\(\) takes from 3 to 4 ",
-                    "positional arguments but 5 were given",
-                )
-            ),
+            _dbdu.DatabaseError,
+            "database_cursor not implemented$",
             self.database.database_cursor,
             *(None, None, None, None),
         )
@@ -255,7 +250,7 @@ class Database_methods(_DBOpen):
             "".join(
                 (
                     r"unset_defer_update\(\) takes 1 ",
-                    "positional argument but 2 were given",
+                    "positional argument but 2 were given$",
                 )
             ),
             self.database.unset_defer_update,
@@ -266,7 +261,7 @@ class Database_methods(_DBOpen):
             "".join(
                 (
                     r"write_existence_bit_map\(\) missing 2 required ",
-                    "positional arguments: 'file' and 'segment'",
+                    "positional arguments: 'file' and 'segment'$",
                 )
             ),
             self.database.write_existence_bit_map,
@@ -276,7 +271,7 @@ class Database_methods(_DBOpen):
             "".join(
                 (
                     r"new_deferred_root\(\) missing 2 required ",
-                    "positional arguments: 'file' and 'field'",
+                    "positional arguments: 'file' and 'field'$",
                 )
             ),
             self.database.new_deferred_root,
@@ -286,7 +281,7 @@ class Database_methods(_DBOpen):
             "".join(
                 (
                     r"set_defer_update\(\) takes 1 ",
-                    "positional argument but 2 were given",
+                    "positional argument but 2 were given$",
                 )
             ),
             self.database.set_defer_update,
@@ -297,7 +292,7 @@ class Database_methods(_DBOpen):
             "".join(
                 (
                     r"get_ebm_segment\(\) takes 3 ",
-                    "positional arguments but 4 were given",
+                    "positional arguments but 4 were given$",
                 )
             ),
             self.database.get_ebm_segment,
@@ -307,7 +302,7 @@ class Database_methods(_DBOpen):
     def test_02_database_cursor(self):
         self.assertRaisesRegex(
             _dbdu.DatabaseError,
-            "database_cursor not implemented",
+            "database_cursor not implemented$",
             self.database.database_cursor,
             *(None, None),
         )
@@ -370,7 +365,7 @@ class Database_do_final_segment_deferred_updates(_DBOpen):
             "".join(
                 (
                     r"do_final_segment_deferred_updates\(\) takes 1 ",
-                    "positional argument but 2 were given",
+                    "positional argument but 2 were given$",
                 )
             ),
             database.do_final_segment_deferred_updates,
@@ -401,7 +396,7 @@ class Database_do_final_segment_deferred_updates(_DBOpen):
         )
         self.assertRaisesRegex(
             TypeError,
-            "'NoneType' object is not subscriptable",
+            "'NoneType' object is not subscriptable$",
             self.database.do_final_segment_deferred_updates,
         )
 
@@ -833,7 +828,7 @@ class Database_sort_and_write(_DBOpen):
             "".join(
                 (
                     r"sort_and_write\(\) missing 3 required ",
-                    "positional arguments: 'file', 'field', and 'segment'",
+                    "positional arguments: 'file', 'field', and 'segment'$",
                 )
             ),
             database.sort_and_write,
@@ -842,7 +837,7 @@ class Database_sort_and_write(_DBOpen):
     def test_02(self):
         self.assertRaisesRegex(
             KeyError,
-            "'file1'",
+            "'file1'$",
             self.database.sort_and_write,
             *("file1", "nofield", None),
         )
@@ -856,7 +851,7 @@ class Database_sort_and_write(_DBOpen):
         self.database.value_segments["file1"] = {"field1": None}
         self.assertRaisesRegex(
             TypeError,
-            "'NoneType' object is not iterable",
+            "'NoneType' object is not iterable$",
             self.database.sort_and_write,
             *("file1", "field1", None),
         )
@@ -865,7 +860,7 @@ class Database_sort_and_write(_DBOpen):
         self.database.value_segments["file1"] = {"field1": {}}
         self.assertRaisesRegex(
             KeyError,
-            "'file1'",
+            "'file1'$",
             self.database.sort_and_write,
             *("file1", "field1", None),
         )
@@ -876,7 +871,7 @@ class Database_sort_and_write(_DBOpen):
         self.database.initial_high_segment["file1"] = 4
         self.assertRaisesRegex(
             KeyError,
-            "'file1'",
+            "'file1'$",
             self.database.sort_and_write,
             *("file1", "field1", 4),
         )
@@ -1033,7 +1028,7 @@ class Database_merge(_DBOpen):
             "".join(
                 (
                     r"merge\(\) missing 2 required ",
-                    "positional arguments: 'file' and 'field'",
+                    "positional arguments: 'file' and 'field'$",
                 )
             ),
             database.merge,

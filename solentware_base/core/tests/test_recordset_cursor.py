@@ -62,7 +62,7 @@ class RecordsetCursor(unittest.TestCase):
             "".join(
                 (
                     r"close\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsc.close,
@@ -73,7 +73,7 @@ class RecordsetCursor(unittest.TestCase):
             "".join(
                 (
                     r"count_records\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsc.count_records,
@@ -84,7 +84,7 @@ class RecordsetCursor(unittest.TestCase):
             "".join(
                 (
                     r"database_cursor_exists\(\) takes 1 positional ",
-                    "argument but 2 were given",
+                    "argument but 2 were given$",
                 )
             ),
             self.rsc.database_cursor_exists,
@@ -95,7 +95,7 @@ class RecordsetCursor(unittest.TestCase):
             "".join(
                 (
                     r"first\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsc.first,
@@ -106,7 +106,7 @@ class RecordsetCursor(unittest.TestCase):
             "".join(
                 (
                     r"get_position_of_record\(\) takes from 1 to 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.rsc.get_position_of_record,
@@ -117,7 +117,7 @@ class RecordsetCursor(unittest.TestCase):
             "".join(
                 (
                     r"get_record_at_position\(\) takes from 1 to 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.rsc.get_record_at_position,
@@ -128,7 +128,7 @@ class RecordsetCursor(unittest.TestCase):
             "".join(
                 (
                     r"last\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsc.last,
@@ -139,7 +139,7 @@ class RecordsetCursor(unittest.TestCase):
             "".join(
                 (
                     r"nearest\(\) takes 2 positional arguments ",
-                    "but 3 were given",
+                    "but 3 were given$",
                 )
             ),
             self.rsc.nearest,
@@ -150,7 +150,7 @@ class RecordsetCursor(unittest.TestCase):
             "".join(
                 (
                     r"next\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsc.next,
@@ -161,7 +161,7 @@ class RecordsetCursor(unittest.TestCase):
             "".join(
                 (
                     r"prev\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsc.prev,
@@ -172,7 +172,7 @@ class RecordsetCursor(unittest.TestCase):
             "".join(
                 (
                     r"setat\(\) takes 2 positional arguments ",
-                    "but 3 were given",
+                    "but 3 were given$",
                 )
             ),
             self.rsc.setat,
@@ -183,7 +183,7 @@ class RecordsetCursor(unittest.TestCase):
             "".join(
                 (
                     r"_get_record\(\) missing 1 required positional ",
-                    "argument: 'record_number'",
+                    "argument: 'record_number'$",
                 )
             ),
             self.rsc._get_record,
@@ -193,7 +193,7 @@ class RecordsetCursor(unittest.TestCase):
             "".join(
                 (
                     r"_get_record\(\) takes from 2 to 3 positional ",
-                    "arguments but 4 were given",
+                    "arguments but 4 were given$",
                 )
             ),
             self.rsc._get_record,
@@ -204,7 +204,7 @@ class RecordsetCursor(unittest.TestCase):
             "".join(
                 (
                     r"refresh_recordset\(\) takes from 1 to 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.rsc.refresh_recordset,

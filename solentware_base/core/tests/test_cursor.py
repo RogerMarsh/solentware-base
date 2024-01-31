@@ -33,7 +33,7 @@ class Cursor(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) missing 1 required positional argument: ",
-                    "'dbset'",
+                    "'dbset'$",
                 )
             ),
             cursor.Cursor,
@@ -50,7 +50,7 @@ class Cursor(unittest.TestCase):
     def test_count_records_01(self):
         self.assertRaisesRegex(
             cursor.CursorError,
-            "count_records not implemented",
+            "count_records not implemented$",
             cursor.Cursor(self.d).count_records,
         )
 
@@ -60,35 +60,35 @@ class Cursor(unittest.TestCase):
     def test_first_01(self):
         self.assertRaisesRegex(
             cursor.CursorError,
-            "first not implemented",
+            "first not implemented$",
             cursor.Cursor(self.d).first,
         )
 
     def test_get_position_of_record_01(self):
         self.assertRaisesRegex(
             cursor.CursorError,
-            "get_position_of_record not implemented",
+            "get_position_of_record not implemented$",
             cursor.Cursor(self.d).get_position_of_record,
         )
 
     def test_get_record_at_position_01(self):
         self.assertRaisesRegex(
             cursor.CursorError,
-            "get_record_at_position not implemented",
+            "get_record_at_position not implemented$",
             cursor.Cursor(self.d).get_record_at_position,
         )
 
     def test_last_01(self):
         self.assertRaisesRegex(
             cursor.CursorError,
-            "last not implemented",
+            "last not implemented$",
             cursor.Cursor(self.d).last,
         )
 
     def test_nearest_01(self):
         self.assertRaisesRegex(
             cursor.CursorError,
-            "nearest not implemented",
+            "nearest not implemented$",
             cursor.Cursor(self.d).nearest,
             *(None,)
         )
@@ -96,28 +96,28 @@ class Cursor(unittest.TestCase):
     def test_next_01(self):
         self.assertRaisesRegex(
             cursor.CursorError,
-            "next not implemented",
+            "next not implemented$",
             cursor.Cursor(self.d).next,
         )
 
     def test_prev_01(self):
         self.assertRaisesRegex(
             cursor.CursorError,
-            "prev not implemented",
+            "prev not implemented$",
             cursor.Cursor(self.d).prev,
         )
 
     def test_refresh_recordset_01(self):
         self.assertRaisesRegex(
             cursor.CursorError,
-            "refresh_recordset not implemented",
+            "refresh_recordset not implemented$",
             cursor.Cursor(self.d).refresh_recordset,
         )
 
     def test_setat_01(self):
         self.assertRaisesRegex(
             cursor.CursorError,
-            "setat not implemented",
+            "setat not implemented$",
             cursor.Cursor(self.d).setat,
             *(None,)
         )
@@ -135,21 +135,21 @@ class Cursor(unittest.TestCase):
     def test_get_converted_partial_01(self):
         self.assertRaisesRegex(
             cursor.CursorError,
-            "get_converted_partial not implemented",
+            "get_converted_partial not implemented$",
             cursor.Cursor(self.d).get_converted_partial,
         )
 
     def test_get_partial_with_wildcard_01(self):
         self.assertRaisesRegex(
             cursor.CursorError,
-            "get_partial_with_wildcard not implemented",
+            "get_partial_with_wildcard not implemented$",
             cursor.Cursor(self.d).get_partial_with_wildcard,
         )
 
     def test_get_converted_partial_with_wildcard_01(self):
         self.assertRaisesRegex(
             cursor.CursorError,
-            "get_converted_partial_with_wildcard not implemented",
+            "get_converted_partial_with_wildcard not implemented$",
             cursor.Cursor(self.d).get_converted_partial_with_wildcard,
         )
 

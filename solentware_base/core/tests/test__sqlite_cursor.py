@@ -2,7 +2,7 @@
 # Copyright 2012 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""_sqlite cursor tests"""
+"""_sqlite cursor tests."""
 
 import unittest
 
@@ -45,7 +45,7 @@ class Cursor_sqlite(_SQLite):
             "".join(
                 (
                     r"__init__\(\) takes from 2 to 5 positional arguments ",
-                    "but 6 were given",
+                    "but 6 were given$",
                 )
             ),
             _sqlite.Cursor,
@@ -55,7 +55,7 @@ class Cursor_sqlite(_SQLite):
         self.assertRaisesRegex(
             TypeError,
             "".join(
-                (r"close\(\) takes 1 positional argument but 2 were given",)
+                (r"close\(\) takes 1 positional argument but 2 were given$",)
             ),
             cursor.close,
             *(None,),
@@ -65,7 +65,7 @@ class Cursor_sqlite(_SQLite):
             "".join(
                 (
                     r"get_converted_partial\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             cursor.get_converted_partial,
@@ -76,7 +76,7 @@ class Cursor_sqlite(_SQLite):
             "".join(
                 (
                     r"get_partial_with_wildcard\(\) takes 1 ",
-                    "positional argument but 2 were given",
+                    "positional argument but 2 were given$",
                 )
             ),
             cursor.get_partial_with_wildcard,
@@ -87,7 +87,7 @@ class Cursor_sqlite(_SQLite):
             "".join(
                 (
                     r"get_converted_partial_with_wildcard\(\) takes 1 "
-                    "positional argument but 2 were given",
+                    "positional argument but 2 were given$",
                 )
             ),
             cursor.get_converted_partial_with_wildcard,
@@ -98,7 +98,7 @@ class Cursor_sqlite(_SQLite):
             "".join(
                 (
                     r"refresh_recordset\(\) takes from 1 to 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             cursor.refresh_recordset,
@@ -124,7 +124,7 @@ class Cursor_sqlite(_SQLite):
         cursor = _sqlite.Cursor(self.database.dbenv)
         self.assertRaisesRegex(
             _sqlite.DatabaseError,
-            "get_partial_with_wildcard not implemented",
+            "get_partial_with_wildcard not implemented$",
             cursor.get_partial_with_wildcard,
         )
 
@@ -132,7 +132,7 @@ class Cursor_sqlite(_SQLite):
         cursor = _sqlite.Cursor(self.database.dbenv)
         self.assertRaisesRegex(
             TypeError,
-            "sequence item 0: expected str instance, NoneType found",
+            "sequence item 0: expected str instance, NoneType found$",
             cursor.get_converted_partial_with_wildcard,
         )
         cursor._partial = "part"
@@ -163,7 +163,7 @@ class Cursor_primary(_SQLite):
             "".join(
                 (
                     r"__init__\(\) takes from 2 to 3 positional arguments ",
-                    "but 4 were given",
+                    "but 4 were given$",
                 )
             ),
             _sqlite.CursorPrimary,
@@ -174,7 +174,7 @@ class Cursor_primary(_SQLite):
             "".join(
                 (
                     r"count_records\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.cursor.count_records,
@@ -185,7 +185,7 @@ class Cursor_primary(_SQLite):
             "".join(
                 (
                     r"first\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.cursor.first,
@@ -196,7 +196,7 @@ class Cursor_primary(_SQLite):
             "".join(
                 (
                     r"get_position_of_record\(\) takes from 1 to 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.cursor.get_position_of_record,
@@ -207,7 +207,7 @@ class Cursor_primary(_SQLite):
             "".join(
                 (
                     r"get_record_at_position\(\) takes from 1 to 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.cursor.get_record_at_position,
@@ -218,7 +218,7 @@ class Cursor_primary(_SQLite):
             "".join(
                 (
                     r"last\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.cursor.last,
@@ -229,7 +229,7 @@ class Cursor_primary(_SQLite):
             "".join(
                 (
                     r"nearest\(\) missing 1 required ",
-                    "positional argument: 'key'",
+                    "positional argument: 'key'$",
                 )
             ),
             self.cursor.nearest,
@@ -239,7 +239,7 @@ class Cursor_primary(_SQLite):
             "".join(
                 (
                     r"next\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.cursor.next,
@@ -250,7 +250,7 @@ class Cursor_primary(_SQLite):
             "".join(
                 (
                     r"prev\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.cursor.prev,
@@ -261,7 +261,7 @@ class Cursor_primary(_SQLite):
             "".join(
                 (
                     r"setat\(\) missing 1 required ",
-                    "positional argument: 'record'",
+                    "positional argument: 'record'$",
                 )
             ),
             self.cursor.setat,
@@ -271,7 +271,7 @@ class Cursor_primary(_SQLite):
             "".join(
                 (
                     r"refresh_recordset\(\) takes from 1 to 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.cursor.refresh_recordset,
@@ -595,7 +595,7 @@ class Cursor_secondary(_SQLite):
             "".join(
                 (
                     r"__init__\(\) takes from 2 to 4 positional arguments ",
-                    "but 5 were given",
+                    "but 5 were given$",
                 )
             ),
             _sqlite.CursorSecondary,
@@ -606,7 +606,7 @@ class Cursor_secondary(_SQLite):
             "".join(
                 (
                     r"get_segment_records\(\) missing 1 required ",
-                    "positional argument: 'rownumber'",
+                    "positional argument: 'rownumber'$",
                 )
             ),
             self.cursor.get_segment_records,
@@ -616,7 +616,7 @@ class Cursor_secondary(_SQLite):
             "".join(
                 (
                     r"count_records\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.cursor.count_records,
@@ -627,7 +627,7 @@ class Cursor_secondary(_SQLite):
             "".join(
                 (
                     r"first\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.cursor.first,
@@ -638,7 +638,7 @@ class Cursor_secondary(_SQLite):
             "".join(
                 (
                     r"get_position_of_record\(\) takes from 1 to 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.cursor.get_position_of_record,
@@ -649,7 +649,7 @@ class Cursor_secondary(_SQLite):
             "".join(
                 (
                     r"get_record_at_position\(\) takes from 1 to 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.cursor.get_record_at_position,
@@ -660,7 +660,7 @@ class Cursor_secondary(_SQLite):
             "".join(
                 (
                     r"last\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.cursor.last,
@@ -671,7 +671,7 @@ class Cursor_secondary(_SQLite):
             "".join(
                 (
                     r"nearest\(\) missing 1 required ",
-                    "positional argument: 'key'",
+                    "positional argument: 'key'$",
                 )
             ),
             self.cursor.nearest,
@@ -681,7 +681,7 @@ class Cursor_secondary(_SQLite):
             "".join(
                 (
                     r"next\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.cursor.next,
@@ -692,7 +692,7 @@ class Cursor_secondary(_SQLite):
             "".join(
                 (
                     r"prev\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.cursor.prev,
@@ -703,7 +703,7 @@ class Cursor_secondary(_SQLite):
             "".join(
                 (
                     r"setat\(\) missing 1 required ",
-                    "positional argument: 'record'",
+                    "positional argument: 'record'$",
                 )
             ),
             self.cursor.setat,
@@ -713,7 +713,7 @@ class Cursor_secondary(_SQLite):
             "".join(
                 (
                     r"set_partial_key\(\) missing 1 required ",
-                    "positional argument: 'partial'",
+                    "positional argument: 'partial'$",
                 )
             ),
             self.cursor.set_partial_key,
@@ -724,7 +724,7 @@ class Cursor_secondary(_SQLite):
                 (
                     r"_get_segment\(\) missing 4 required ",
                     "positional arguments: 'key', 'segment_number', 'count', ",
-                    "and 'record_number'",
+                    "and 'record_number'$",
                 )
             ),
             self.cursor._get_segment,
@@ -734,7 +734,7 @@ class Cursor_secondary(_SQLite):
             "".join(
                 (
                     r"set_current_segment\(\) missing 1 required ",
-                    "positional argument: 'segment_reference'",
+                    "positional argument: 'segment_reference'$",
                 )
             ),
             self.cursor.set_current_segment,
@@ -744,7 +744,7 @@ class Cursor_secondary(_SQLite):
             "".join(
                 (
                     r"refresh_recordset\(\) takes from 1 to 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.cursor.refresh_recordset,
@@ -758,7 +758,7 @@ class Cursor_secondary(_SQLite):
     def test_03_get_segment_records_01(self):
         self.assertRaisesRegex(
             _sqlite.DatabaseError,
-            "Segment record 0 missing in 'file1__segment'",
+            "Segment record 0 missing in 'file1__segment'$",
             self.cursor.get_segment_records,
             *(0,),
         )

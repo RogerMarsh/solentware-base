@@ -226,7 +226,7 @@ class FileSpec_05(unittest.TestCase):
     def test___init__01(self):
         self.assertRaisesRegex(
             filespec.FileSpecError,
-            "dpt_default_records must be a dict",
+            "dpt_default_records must be a dict$",
             filespec.FileSpec,
             **dict(dpt_records=200)
         )
@@ -238,7 +238,7 @@ class FileSpec_05(unittest.TestCase):
                 (
                     "number of records must be a positive integer for item ",
                     "a",
-                    " in filespec.",
+                    r" in filespec\.$",
                 )
             ),
             filespec.FileSpec,
@@ -268,7 +268,7 @@ class FileSpec_05(unittest.TestCase):
                 (
                     "number of records must be a positive integer for item ",
                     "a",
-                    " in filespec.",
+                    r" in filespec\.$",
                 )
             ),
             filespec.FileSpec,
@@ -301,7 +301,7 @@ class FileSpec_05(unittest.TestCase):
                     "' cannot be same as ",
                     "primary name '",
                     "a",
-                    "' in filespec.",
+                    r"' in filespec\.$",
                 )
             ),
             filespec.FileSpec,
@@ -318,7 +318,7 @@ class FileSpec_05(unittest.TestCase):
                     "' cannot be same as ",
                     "primary name '",
                     "a",
-                    "' in filespec.",
+                    r"' in filespec\.$",
                 )
             ),
             filespec.FileSpec,
@@ -336,7 +336,7 @@ class FileSpec_06(unittest.TestCase):
     def test___init__01_branching_factor(self):
         self.assertRaisesRegex(
             filespec.FileSpecError,
-            "branching_factor for field B in file a is wrong type",
+            "branching_factor for field B in file a is wrong type$",
             filespec.FileSpec,
             **dict(
                 a={

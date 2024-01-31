@@ -124,7 +124,7 @@ class Database___init__(_NoSQLdu):
             "".join(
                 (
                     r"__init__\(\) takes from 2 to 5 positional arguments ",
-                    "but 6 were given",
+                    "but 6 were given$",
                 )
             ),
             self._D,
@@ -140,7 +140,7 @@ class Database___init__(_NoSQLdu):
                 (
                     t,
                     r" argument after \*\* must be a mapping, ",
-                    "not NoneType",
+                    "not NoneType$",
                 )
             ),
             self._D,
@@ -152,7 +152,7 @@ class Database___init__(_NoSQLdu):
     def test_03(self):
         self.assertRaisesRegex(
             _nosql.DatabaseError,
-            "".join(("Database folder name {} is not valid",)),
+            "".join(("Database folder name {} is not valid$",)),
             self._D,
             *({},),
             **dict(folder={}),
@@ -246,13 +246,8 @@ class _NoSQLOpen(_NoSQLdu):
 class Database_methods(_NoSQLOpen):
     def test_01(self):
         self.assertRaisesRegex(
-            TypeError,
-            "".join(
-                (
-                    r"database_cursor\(\) takes from 3 to 4 ",
-                    "positional arguments but 5 were given",
-                )
-            ),
+            _nosqldu.DatabaseError,
+            "database_cursor not implemented$",
             self.database.database_cursor,
             *(None, None, None, None),
         )
@@ -261,7 +256,7 @@ class Database_methods(_NoSQLOpen):
             "".join(
                 (
                     r"start_transaction\(\) takes 1 ",
-                    "positional argument but 2 were given",
+                    "positional argument but 2 were given$",
                 )
             ),
             self.database.start_transaction,
@@ -272,7 +267,7 @@ class Database_methods(_NoSQLOpen):
             "".join(
                 (
                     r"backout\(\) takes 1 ",
-                    "positional argument but 2 were given",
+                    "positional argument but 2 were given$",
                 )
             ),
             self.database.backout,
@@ -283,7 +278,7 @@ class Database_methods(_NoSQLOpen):
             "".join(
                 (
                     r"commit\(\) takes 1 ",
-                    "positional argument but 2 were given",
+                    "positional argument but 2 were given$",
                 )
             ),
             self.database.commit,
@@ -294,7 +289,7 @@ class Database_methods(_NoSQLOpen):
             "".join(
                 (
                     r"set_defer_update\(\) takes 1 ",
-                    "positional argument but 2 were given",
+                    "positional argument but 2 were given$",
                 )
             ),
             self.database.set_defer_update,
@@ -305,7 +300,7 @@ class Database_methods(_NoSQLOpen):
             "".join(
                 (
                     r"unset_defer_update\(\) takes 1 ",
-                    "positional argument but 2 were given",
+                    "positional argument but 2 were given$",
                 )
             ),
             self.database.unset_defer_update,
@@ -316,7 +311,7 @@ class Database_methods(_NoSQLOpen):
             "".join(
                 (
                     r"write_existence_bit_map\(\) missing 2 required ",
-                    "positional arguments: 'file' and 'segment'",
+                    "positional arguments: 'file' and 'segment'$",
                 )
             ),
             self.database.write_existence_bit_map,
@@ -326,7 +321,7 @@ class Database_methods(_NoSQLOpen):
             "".join(
                 (
                     r"new_deferred_root\(\) missing 2 required ",
-                    "positional arguments: 'file' and 'field'",
+                    "positional arguments: 'file' and 'field'$",
                 )
             ),
             self.database.new_deferred_root,
@@ -336,7 +331,7 @@ class Database_methods(_NoSQLOpen):
             "".join(
                 (
                     r"get_ebm_segment\(\) missing 2 required ",
-                    "positional arguments: 'ebm_control' and 'key'",
+                    "positional arguments: 'ebm_control' and 'key'$",
                 )
             ),
             self.database.get_ebm_segment,
@@ -345,7 +340,7 @@ class Database_methods(_NoSQLOpen):
     def test_02_database_cursor(self):
         self.assertRaisesRegex(
             _nosqldu.DatabaseError,
-            "database_cursor not implemented",
+            "database_cursor not implemented$",
             self.database.database_cursor,
             *(None, None),
         )
@@ -430,7 +425,7 @@ class Database_do_final_segment_deferred_updates(_NoSQLOpen):
             "".join(
                 (
                     r"do_final_segment_deferred_updates\(\) takes 1 ",
-                    "positional argument but 2 were given",
+                    "positional argument but 2 were given$",
                 )
             ),
             database.do_final_segment_deferred_updates,
@@ -461,7 +456,7 @@ class Database_do_final_segment_deferred_updates(_NoSQLOpen):
         )
         self.assertRaisesRegex(
             TypeError,
-            "'NoneType' object is not subscriptable",
+            "'NoneType' object is not subscriptable$",
             self.database.do_final_segment_deferred_updates,
         )
 
@@ -513,7 +508,7 @@ class Database_sort_and_write(_NoSQLOpen):
             "".join(
                 (
                     r"sort_and_write\(\) missing 3 required ",
-                    "positional arguments: 'file', 'field', and 'segment'",
+                    "positional arguments: 'file', 'field', and 'segment'$",
                 )
             ),
             database.sort_and_write,
@@ -522,7 +517,7 @@ class Database_sort_and_write(_NoSQLOpen):
     def test_02(self):
         self.assertRaisesRegex(
             KeyError,
-            "'file1'",
+            "'file1'$",
             self.database.sort_and_write,
             *("file1", "nofield", None),
         )
@@ -536,7 +531,7 @@ class Database_sort_and_write(_NoSQLOpen):
         self.database.value_segments["file1"] = {"field1": None}
         self.assertRaisesRegex(
             KeyError,
-            "'file1'",
+            "'file1'$",
             self.database.sort_and_write,
             *("file1", "field1", None),
         )
@@ -545,7 +540,7 @@ class Database_sort_and_write(_NoSQLOpen):
         self.database.high_segment["file1"] = None
         self.assertRaisesRegex(
             AttributeError,
-            "'NoneType' object has no attribute 'items'",
+            "'NoneType' object has no attribute 'items'$",
             self.database.sort_and_write,
             *("file1", "field1", None),
         )
@@ -554,7 +549,7 @@ class Database_sort_and_write(_NoSQLOpen):
         self.database.value_segments["file1"] = {"field1": {}}
         self.assertRaisesRegex(
             KeyError,
-            "'file1'",
+            "'file1'$",
             self.database.sort_and_write,
             *("file1", "field1", None),
         )
@@ -566,7 +561,7 @@ class Database_sort_and_write(_NoSQLOpen):
         self.database.initial_high_segment["file1"] = 4
         self.assertRaisesRegex(
             KeyError,
-            "'file1'",
+            "'file1'$",
             self.database.sort_and_write,
             *("file1", "field1", 4),
         )
@@ -661,7 +656,7 @@ class Database_merge(_NoSQLOpen):
             "".join(
                 (
                     r"merge\(\) missing 2 required ",
-                    "positional arguments: 'file' and 'field'",
+                    "positional arguments: 'file' and 'field'$",
                 )
             ),
             database.merge,

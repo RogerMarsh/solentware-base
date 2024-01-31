@@ -36,7 +36,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) missing 2 required positional arguments: ",
-                    "'segment_number' and 'key'",
+                    "'segment_number' and 'key'$",
                 )
             ),
             recordset.RecordsetSegmentBitarray,
@@ -44,7 +44,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
         self.assertRaisesRegex(
             TypeError,
             "".join(
-                (r"__init__\(\) got an unexpected keyword argument 'xxxxx'",)
+                (r"__init__\(\) got an unexpected keyword argument 'xxxxx'$",)
             ),
             recordset.RecordsetSegmentBitarray,
             *(None, None),
@@ -56,7 +56,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
             "|".join(
                 (
                     "'bool' object is not iterable",
-                    "can't extend bytearray with bool",
+                    "can't extend bytearray with bool$",
                 )
             ),
             recordset.RecordsetSegmentBitarray,
@@ -78,7 +78,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
             "".join(
                 (
                     r"count_records\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsi.count_records,
@@ -89,7 +89,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
             "".join(
                 (
                     r"current\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsi.current,
@@ -100,7 +100,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
             "".join(
                 (
                     r"first\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsi.first,
@@ -112,7 +112,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
                 (
                     r"get_position_of_record_number\(\) missing 1 required ",
                     "positional argument: ",
-                    "'recnum'",
+                    "'recnum'$",
                 )
             ),
             self.rsi.get_position_of_record_number,
@@ -122,7 +122,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
             "".join(
                 (
                     r"get_record_number_at_position\(\) takes 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.rsi.get_record_number_at_position,
@@ -133,7 +133,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
             "".join(
                 (
                     r"last\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsi.last,
@@ -144,7 +144,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
             "".join(
                 (
                     r"next\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsi.next,
@@ -155,7 +155,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
             "".join(
                 (
                     r"prev\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsi.prev,
@@ -166,7 +166,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
             "".join(
                 (
                     r"setat\(\) missing 1 required positional ",
-                    "argument: 'record'",
+                    "argument: 'record'$",
                 )
             ),
             self.rsi.setat,
@@ -176,7 +176,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
             "".join(
                 (
                     r"_empty_segment\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsi._empty_segment,
@@ -187,7 +187,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
             "".join(
                 (
                     r"__deepcopy__\(\) missing 1 required positional ",
-                    "argument: 'memo'",
+                    "argument: 'memo'$",
                 )
             ),
             self.rsi.__deepcopy__,
@@ -197,7 +197,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
             "".join(
                 (
                     r"__contains__\(\) missing 1 required positional ",
-                    "argument: 'relative_record_number'",
+                    "argument: 'relative_record_number'$",
                 )
             ),
             self.rsi.__contains__,
@@ -207,7 +207,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
             "".join(
                 (
                     r"normalize\(\) takes from 1 to 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.rsi.normalize,
@@ -218,7 +218,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
             "".join(
                 (
                     r"promote\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsi.promote,
@@ -229,7 +229,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
             "".join(
                 (
                     r"__or__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.rsi.__or__,
@@ -239,7 +239,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
             "".join(
                 (
                     r"__and__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.rsi.__and__,
@@ -249,7 +249,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
             "".join(
                 (
                     r"__xor__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.rsi.__xor__,
@@ -259,7 +259,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
             "".join(
                 (
                     r"tobytes\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsi.tobytes,
@@ -305,7 +305,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
         self.assertRaisesRegex(
             TypeError,
             "".join(
-                (r"unsupported operand type\(s\) for \+: 'int' and 'str'",)
+                (r"unsupported operand type\(s\) for \+: 'int' and 'str'$",)
             ),
             self.rsi.first,
         )
@@ -357,7 +357,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
         self.assertRaisesRegex(
             TypeError,
             "".join(
-                (r"unsupported operand type\(s\) for \+: 'int' and 'str'",)
+                (r"unsupported operand type\(s\) for \+: 'int' and 'str'$",)
             ),
             self.rsi.last,
         )
@@ -478,7 +478,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
         self.assertRaisesRegex(
             recordset.RecordsetError,
             "".join(
-                ("Attempt to 'or' segments with different segment numbers",)
+                ("Attempt to 'or' segments with different segment numbers$",)
             ),
             self.rsi.__or__,
             *(s3,),
@@ -517,7 +517,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
         self.assertRaisesRegex(
             recordset.RecordsetError,
             "".join(
-                ("Attempt to 'and' segments with different segment numbers",)
+                ("Attempt to 'and' segments with different segment numbers$",)
             ),
             self.rsi.__and__,
             *(s3,),
@@ -558,7 +558,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
         self.assertRaisesRegex(
             recordset.RecordsetError,
             "".join(
-                ("Attempt to 'xor' segments with different segment numbers",)
+                ("Attempt to 'xor' segments with different segment numbers$",)
             ),
             self.rsi.__xor__,
             *(s3,),
@@ -577,7 +577,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
             "".join(
                 (
                     "'RecordsetSegmentBitarray' segment is not the one for ",
-                    "this 'key'",
+                    "this 'key'$",
                 )
             ),
             self.rsi.__setitem__,

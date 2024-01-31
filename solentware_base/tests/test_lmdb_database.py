@@ -21,7 +21,7 @@ class LmdbDatabase(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) missing 1 required positional argument: ",
-                    "'specification'",
+                    "'specification'$",
                 )
             ),
             lmdb_database.Database,
@@ -38,7 +38,7 @@ class LmdbDatabase(unittest.TestCase):
             "".join(
                 (
                     r"mkdir: path should be string, bytes or os.PathLike, ",
-                    "not NoneType",
+                    "not NoneType$",
                 )
             ),
             database.open_database,

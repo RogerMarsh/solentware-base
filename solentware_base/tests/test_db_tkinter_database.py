@@ -32,7 +32,7 @@ class DbTkinterDatabase(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) missing 1 required positional argument: ",
-                    "'specification'",
+                    "'specification'$",
                 )
             ),
             db_tkinter_database.Database,

@@ -29,7 +29,7 @@ class BerkeleydbDatabase(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) missing 1 required positional argument: ",
-                    "'specification'",
+                    "'specification'$",
                 )
             ),
             berkeleydb_database.Database,

@@ -28,7 +28,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) missing 2 required positional arguments: ",
-                    "'segment_number' and 'key'",
+                    "'segment_number' and 'key'$",
                 )
             ),
             recordset.RecordsetSegmentInt,
@@ -36,7 +36,7 @@ class RecordsetSegmentInt(unittest.TestCase):
         self.assertRaisesRegex(
             TypeError,
             "".join(
-                (r"__init__\(\) got an unexpected keyword argument 'xxxxx'",)
+                (r"__init__\(\) got an unexpected keyword argument 'xxxxx'$",)
             ),
             recordset.RecordsetSegmentInt,
             *(None, None),
@@ -48,8 +48,8 @@ class RecordsetSegmentInt(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    "(cannot convert 'NoneType' object to bytes)|",
-                    "('NoneType' object is not iterable)",
+                    "(cannot convert 'NoneType' object to bytes)$|",
+                    "('NoneType' object is not iterable)$",
                 )
             ),
             recordset.RecordsetSegmentInt,
@@ -71,7 +71,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             "".join(
                 (
                     r"count_records\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsi.count_records,
@@ -82,7 +82,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             "".join(
                 (
                     r"current\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsi.current,
@@ -93,7 +93,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             "".join(
                 (
                     r"first\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsi.first,
@@ -105,7 +105,7 @@ class RecordsetSegmentInt(unittest.TestCase):
                 (
                     r"get_position_of_record_number\(\) missing 1 required ",
                     "positional argument: ",
-                    "'recnum'",
+                    "'recnum'$",
                 )
             ),
             self.rsi.get_position_of_record_number,
@@ -115,7 +115,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             "".join(
                 (
                     r"get_record_number_at_position\(\) takes 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.rsi.get_record_number_at_position,
@@ -126,7 +126,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             "".join(
                 (
                     r"last\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsi.last,
@@ -137,7 +137,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             "".join(
                 (
                     r"next\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsi.next,
@@ -148,7 +148,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             "".join(
                 (
                     r"prev\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsi.prev,
@@ -159,7 +159,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             "".join(
                 (
                     r"setat\(\) missing 1 required positional ",
-                    "argument: 'record'",
+                    "argument: 'record'$",
                 )
             ),
             self.rsi.setat,
@@ -169,7 +169,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             "".join(
                 (
                     r"_empty_segment\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsi._empty_segment,
@@ -180,7 +180,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             "".join(
                 (
                     r"__deepcopy__\(\) missing 1 required ",
-                    "positional argument: 'memo'",
+                    "positional argument: 'memo'$",
                 )
             ),
             self.rsi.__deepcopy__,
@@ -190,7 +190,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             "".join(
                 (
                     r"__contains__\(\) missing 1 required positional ",
-                    "argument: 'relative_record_number'",
+                    "argument: 'relative_record_number'$",
                 )
             ),
             self.rsi.__contains__,
@@ -200,7 +200,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             "".join(
                 (
                     r"normalize\(\) takes from 1 to 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.rsi.normalize,
@@ -211,7 +211,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             "".join(
                 (
                     r"promote\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsi.promote,
@@ -222,7 +222,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             "".join(
                 (
                     r"__or__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.rsi.__or__,
@@ -232,7 +232,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             "".join(
                 (
                     r"__and__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.rsi.__and__,
@@ -242,7 +242,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             "".join(
                 (
                     r"__xor__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.rsi.__xor__,
@@ -252,7 +252,7 @@ class RecordsetSegmentInt(unittest.TestCase):
             "".join(
                 (
                     r"tobytes\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsi.tobytes,
@@ -366,7 +366,7 @@ class RecordsetSegmentInt(unittest.TestCase):
         self.assertRaisesRegex(
             recordset.RecordsetError,
             "".join(
-                ("Attempt to 'or' segments with different segment numbers",)
+                ("Attempt to 'or' segments with different segment numbers$",)
             ),
             self.rsi.__or__,
             *(s3,),
@@ -384,7 +384,7 @@ class RecordsetSegmentInt(unittest.TestCase):
         self.assertRaisesRegex(
             recordset.RecordsetError,
             "".join(
-                ("Attempt to 'and' segments with different segment numbers",)
+                ("Attempt to 'and' segments with different segment numbers$",)
             ),
             self.rsi.__and__,
             *(s3,),
@@ -402,7 +402,7 @@ class RecordsetSegmentInt(unittest.TestCase):
         self.assertRaisesRegex(
             recordset.RecordsetError,
             "".join(
-                ("Attempt to 'xor' segments with different segment numbers",)
+                ("Attempt to 'xor' segments with different segment numbers$",)
             ),
             self.rsi.__xor__,
             *(s3,),

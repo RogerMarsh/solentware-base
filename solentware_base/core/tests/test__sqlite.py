@@ -49,7 +49,7 @@ class Database___init__(_SQLite):
             "".join(
                 (
                     r"__init__\(\) takes from 2 to 5 positional arguments ",
-                    "but 6 were given",
+                    "but 6 were given$",
                 )
             ),
             self._D,
@@ -65,7 +65,7 @@ class Database___init__(_SQLite):
                 (
                     t,
                     r" argument after \*\* must be a mapping, ",
-                    "not NoneType",
+                    "not NoneType$",
                 )
             ),
             self._D,
@@ -77,7 +77,7 @@ class Database___init__(_SQLite):
     def test_03(self):
         self.assertRaisesRegex(
             _sqlite.DatabaseError,
-            "".join(("Database folder name {} is not valid",)),
+            "".join(("Database folder name {} is not valid$",)),
             self._D,
             *({},),
             **dict(folder={}),
@@ -144,7 +144,7 @@ class Database_transaction_methods(_SQLite):
             "".join(
                 (
                     r"start_transaction\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.database.start_transaction,
@@ -155,7 +155,7 @@ class Database_transaction_methods(_SQLite):
             "".join(
                 (
                     r"backout\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.database.backout,
@@ -166,7 +166,7 @@ class Database_transaction_methods(_SQLite):
             "".join(
                 (
                     r"commit\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.database.commit,
@@ -186,20 +186,20 @@ class DatabaseInstance(_SQLite):
             "".join(
                 (
                     r"_validate_segment_size_bytes\(\) missing 1 required ",
-                    "positional argument: 'segment_size_bytes'",
+                    "positional argument: 'segment_size_bytes'$",
                 )
             ),
             self.database._validate_segment_size_bytes,
         )
         self.assertRaisesRegex(
             _sqlite.DatabaseError,
-            "".join(("Database segment size must be an int",)),
+            "".join(("Database segment size must be an int$",)),
             self.database._validate_segment_size_bytes,
             *("a",),
         )
         self.assertRaisesRegex(
             _sqlite.DatabaseError,
-            "".join(("Database segment size must be more than 0",)),
+            "".join(("Database segment size must be more than 0$",)),
             self.database._validate_segment_size_bytes,
             *(0,),
         )
@@ -214,7 +214,7 @@ class DatabaseInstance(_SQLite):
             "".join(
                 (
                     r"encode_record_number\(\) missing 1 required ",
-                    "positional argument: 'key'",
+                    "positional argument: 'key'$",
                 )
             ),
             self.database.encode_record_number,
@@ -227,7 +227,7 @@ class DatabaseInstance(_SQLite):
             "".join(
                 (
                     r"decode_record_number\(\) missing 1 required ",
-                    "positional argument: 'skey'",
+                    "positional argument: 'skey'$",
                 )
             ),
             self.database.decode_record_number,
@@ -240,7 +240,7 @@ class DatabaseInstance(_SQLite):
             "".join(
                 (
                     r"encode_record_selector\(\) missing 1 required ",
-                    "positional argument: 'key'",
+                    "positional argument: 'key'$",
                 )
             ),
             self.database.encode_record_selector,
@@ -253,7 +253,7 @@ class DatabaseInstance(_SQLite):
             "".join(
                 (
                     r"recordlist_nil\(\) takes from 2 to 3 ",
-                    "positional arguments but 4 were given",
+                    "positional arguments but 4 were given$",
                 )
             ),
             self.database.recordlist_nil,
@@ -273,7 +273,7 @@ class Database_open_database(_SQLite):
             "".join(
                 (
                     r"open_database\(\) takes from 2 to 3 ",
-                    "positional arguments but 4 were given",
+                    "positional arguments but 4 were given$",
                 )
             ),
             self.database.open_database,
@@ -284,7 +284,7 @@ class Database_open_database(_SQLite):
             "".join(
                 (
                     r"close_database\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.database.close_database,
@@ -295,7 +295,7 @@ class Database_open_database(_SQLite):
             "".join(
                 (
                     r"close_database_contexts\(\) takes from 1 to 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.database.close_database_contexts,
@@ -477,7 +477,7 @@ class DatabaseTransactions(_SQLiteOpen):
         self.database.start_transaction()
         self.assertRaisesRegex(
             Exception,
-            "cannot start a transaction within a transaction",
+            "cannot start a transaction within a transaction$",
             self.database.start_transaction,
         )
 
@@ -494,7 +494,7 @@ class DatabaseTransactions(_SQLiteOpen):
     def test_04(self):
         self.assertRaisesRegex(
             Exception,
-            "cannot rollback - no transaction is active",
+            "cannot rollback - no transaction is active$",
             self.database.backout,
         )
 
@@ -503,7 +503,7 @@ class DatabaseTransactions(_SQLiteOpen):
     def test_05(self):
         self.assertRaisesRegex(
             Exception,
-            "cannot commit - no transaction is active",
+            "cannot commit - no transaction is active$",
             self.database.commit,
         )
 
@@ -515,7 +515,7 @@ class Database_put_replace_delete(_SQLiteOpen):
             "".join(
                 (
                     r"put\(\) missing 3 required positional arguments: ",
-                    "'file', 'key', and 'value'",
+                    "'file', 'key', and 'value'$",
                 )
             ),
             self.database.put,
@@ -525,7 +525,7 @@ class Database_put_replace_delete(_SQLiteOpen):
             "".join(
                 (
                     r"replace\(\) missing 4 required positional arguments: ",
-                    "'file', 'key', 'oldvalue', and 'newvalue'",
+                    "'file', 'key', 'oldvalue', and 'newvalue'$",
                 )
             ),
             self.database.replace,
@@ -535,7 +535,7 @@ class Database_put_replace_delete(_SQLiteOpen):
             "".join(
                 (
                     r"delete\(\) missing 3 required positional arguments: ",
-                    "'file', 'key', and 'value'",
+                    "'file', 'key', and 'value'$",
                 )
             ),
             self.database.delete,
@@ -573,7 +573,7 @@ class Database_methods(_SQLiteOpen):
             "".join(
                 (
                     r"get_primary_record\(\) missing 2 required positional ",
-                    "arguments: 'file' and 'key'",
+                    "arguments: 'file' and 'key'$",
                 )
             ),
             self.database.get_primary_record,
@@ -583,7 +583,7 @@ class Database_methods(_SQLiteOpen):
             "".join(
                 (
                     r"remove_record_from_ebm\(\) missing 2 required ",
-                    "positional arguments: 'file' and 'deletekey'",
+                    "positional arguments: 'file' and 'deletekey'$",
                 )
             ),
             self.database.remove_record_from_ebm,
@@ -593,7 +593,7 @@ class Database_methods(_SQLiteOpen):
             "".join(
                 (
                     r"add_record_to_ebm\(\) missing 2 required ",
-                    "positional arguments: 'file' and 'putkey'",
+                    "positional arguments: 'file' and 'putkey'$",
                 )
             ),
             self.database.add_record_to_ebm,
@@ -603,7 +603,7 @@ class Database_methods(_SQLiteOpen):
             "".join(
                 (
                     r"get_high_record\(\) missing 1 required ",
-                    "positional argument: 'file'",
+                    "positional argument: 'file'$",
                 )
             ),
             self.database.get_high_record,
@@ -613,7 +613,7 @@ class Database_methods(_SQLiteOpen):
             "".join(
                 (
                     r"get_segment_records\(\) missing 2 required ",
-                    "positional arguments: 'rownumber' and 'file'",
+                    "positional arguments: 'rownumber' and 'file'$",
                 )
             ),
             self.database.get_segment_records,
@@ -623,7 +623,7 @@ class Database_methods(_SQLiteOpen):
             "".join(
                 (
                     r"set_segment_records\(\) missing 2 required ",
-                    "positional arguments: 'values' and 'file'",
+                    "positional arguments: 'values' and 'file'$",
                 )
             ),
             self.database.set_segment_records,
@@ -633,7 +633,7 @@ class Database_methods(_SQLiteOpen):
             "".join(
                 (
                     r"delete_segment_records\(\) missing 2 required ",
-                    "positional arguments: 'values' and 'file'",
+                    "positional arguments: 'values' and 'file'$",
                 )
             ),
             self.database.delete_segment_records,
@@ -643,7 +643,7 @@ class Database_methods(_SQLiteOpen):
             "".join(
                 (
                     r"insert_segment_records\(\) missing 2 required ",
-                    "positional arguments: 'values' and 'file'",
+                    "positional arguments: 'values' and 'file'$",
                 )
             ),
             self.database.insert_segment_records,
@@ -653,7 +653,7 @@ class Database_methods(_SQLiteOpen):
             "".join(
                 (
                     r"recordlist_record_number\(\) takes from 2 to 4 ",
-                    "positional arguments but 5 were given",
+                    "positional arguments but 5 were given$",
                 )
             ),
             self.database.recordlist_record_number,
@@ -664,7 +664,7 @@ class Database_methods(_SQLiteOpen):
             "".join(
                 (
                     r"recordlist_record_number_range\(\) takes from 2 to 5 ",
-                    "positional arguments but 6 were given",
+                    "positional arguments but 6 were given$",
                 )
             ),
             self.database.recordlist_record_number_range,
@@ -675,7 +675,7 @@ class Database_methods(_SQLiteOpen):
             "".join(
                 (
                     r"recordlist_ebm\(\) takes from 2 to 3 ",
-                    "positional arguments but 4 were given",
+                    "positional arguments but 4 were given$",
                 )
             ),
             self.database.recordlist_ebm,
@@ -686,7 +686,7 @@ class Database_methods(_SQLiteOpen):
             "".join(
                 (
                     r"get_table_connection\(\) missing 1 required ",
-                    "positional argument: 'file'",
+                    "positional argument: 'file'$",
                 )
             ),
             self.database.get_table_connection,
@@ -707,7 +707,7 @@ class Database_methods(_SQLiteOpen):
     def test_05_remove_record_from_ebm(self):
         self.assertRaisesRegex(
             _sqlite.DatabaseError,
-            "Existence bit map for segment does not exist",
+            "Existence bit map for segment does not exist$",
             self.database.remove_record_from_ebm,
             *("file1", 2),
         )
@@ -733,7 +733,7 @@ class Database_methods(_SQLiteOpen):
         self.database.insert_segment_records((12,), "file1")
         self.assertRaisesRegex(
             _sqlite.DatabaseError,
-            "Segment record 2 missing in 'file1'",
+            "Segment record 2 missing in 'file1'$",
             self.database.get_segment_records,
             *(2, "file1"),
         )
@@ -971,7 +971,7 @@ class Database_find_values(_SQLiteOpen):
             "".join(
                 (
                     r"find_values\(\) missing 2 required ",
-                    "positional arguments: 'valuespec' and 'file'",
+                    "positional arguments: 'valuespec' and 'file'$",
                 )
             ),
             self.database.find_values,
@@ -1168,7 +1168,7 @@ class Database_make_recordset(_SQLiteOpen):
                 (
                     r"add_record_to_field_value\(\) missing 5 required ",
                     "positional arguments: 'file', 'field', 'key', ",
-                    "'segment', and 'record_number'",
+                    "'segment', and 'record_number'$",
                 )
             ),
             self.database.add_record_to_field_value,
@@ -1179,7 +1179,7 @@ class Database_make_recordset(_SQLiteOpen):
                 (
                     r"remove_record_from_field_value\(\) missing 5 required ",
                     "positional arguments: 'file', 'field', 'key', ",
-                    "'segment', and 'record_number'",
+                    "'segment', and 'record_number'$",
                 )
             ),
             self.database.remove_record_from_field_value,
@@ -1189,7 +1189,7 @@ class Database_make_recordset(_SQLiteOpen):
             "".join(
                 (
                     r"populate_segment\(\) missing 2 required ",
-                    "positional arguments: 'segment_reference' and 'file'",
+                    "positional arguments: 'segment_reference' and 'file'$",
                 )
             ),
             self.database.populate_segment,
@@ -1199,7 +1199,7 @@ class Database_make_recordset(_SQLiteOpen):
             "".join(
                 (
                     r"recordlist_key_like\(\) takes from 3 to 5 ",
-                    "positional arguments but 6 were given",
+                    "positional arguments but 6 were given$",
                 )
             ),
             self.database.recordlist_key_like,
@@ -1210,7 +1210,7 @@ class Database_make_recordset(_SQLiteOpen):
             "".join(
                 (
                     r"recordlist_key\(\) takes from 3 to 5 ",
-                    "positional arguments but 6 were given",
+                    "positional arguments but 6 were given$",
                 )
             ),
             self.database.recordlist_key,
@@ -1221,7 +1221,7 @@ class Database_make_recordset(_SQLiteOpen):
             "".join(
                 (
                     r"recordlist_key_startswith\(\) takes from 3 to 5 ",
-                    "positional arguments but 6 were given",
+                    "positional arguments but 6 were given$",
                 )
             ),
             self.database.recordlist_key_startswith,
@@ -1232,7 +1232,7 @@ class Database_make_recordset(_SQLiteOpen):
             "".join(
                 (
                     r"recordlist_key_range\(\) takes from 3 to 8 ",
-                    "positional arguments but 9 were given",
+                    "positional arguments but 9 were given$",
                 )
             ),
             self.database.recordlist_key_range,
@@ -1243,7 +1243,7 @@ class Database_make_recordset(_SQLiteOpen):
             "".join(
                 (
                     r"recordlist_all\(\) takes from 3 to 4 ",
-                    "positional arguments but 5 were given",
+                    "positional arguments but 5 were given$",
                 )
             ),
             self.database.recordlist_all,
@@ -1254,7 +1254,7 @@ class Database_make_recordset(_SQLiteOpen):
             "".join(
                 (
                     r"unfile_records_under\(\) missing 3 required ",
-                    "positional arguments: 'file', 'field', and 'key'",
+                    "positional arguments: 'file', 'field', and 'key'$",
                 )
             ),
             self.database.unfile_records_under,
@@ -1264,7 +1264,7 @@ class Database_make_recordset(_SQLiteOpen):
             "".join(
                 (
                     r"file_records_under\(\) missing 4 required positional ",
-                    "arguments: 'file', 'field', 'recordset', and 'key'",
+                    "arguments: 'file', 'field', 'recordset', and 'key'$",
                 )
             ),
             self.database.file_records_under,
@@ -1673,7 +1673,7 @@ class Database_freed_record_number(_SQLiteOpen):
             "".join(
                 (
                     r"get_lowest_freed_record_number\(\) missing 1 required ",
-                    "positional argument: 'dbset'",
+                    "positional argument: 'dbset'$",
                 )
             ),
             self.database.get_lowest_freed_record_number,
@@ -1684,7 +1684,7 @@ class Database_freed_record_number(_SQLiteOpen):
                 (
                     r"note_freed_record_number_segment\(\) missing 4 ",
                     "required positional arguments: 'dbset', 'segment', ",
-                    "'record_number_in_segment', and 'high_record'",
+                    "'record_number_in_segment', and 'high_record'$",
                 )
             ),
             self.database.note_freed_record_number_segment,
@@ -1932,7 +1932,7 @@ class RecordsetCursor(_SQLiteOpen):
             "".join(
                 (
                     r"__init__\(\) missing 2 required ",
-                    "positional arguments: 'recordset' and 'engine'",
+                    "positional arguments: 'recordset' and 'engine'$",
                 )
             ),
             _sqlite.RecordsetCursor,
@@ -1942,7 +1942,7 @@ class RecordsetCursor(_SQLiteOpen):
             "".join(
                 (
                     r"_get_record\(\) missing 1 required ",
-                    "positional argument: 'record_number'",
+                    "positional argument: 'record_number'$",
                 )
             ),
             _sqlite.RecordsetCursor(None, None)._get_record,
@@ -1979,7 +1979,7 @@ class ExistenceBitmapControl(_SQLiteOpen):
             "".join(
                 (
                     r"read_exists_segment\(\) missing 2 required ",
-                    "positional arguments: 'segment_number' and 'dbenv'",
+                    "positional arguments: 'segment_number' and 'dbenv'$",
                 )
             ),
             self.database.ebm_control["file1"].read_exists_segment,
@@ -1989,7 +1989,7 @@ class ExistenceBitmapControl(_SQLiteOpen):
             "".join(
                 (
                     r"get_ebm_segment\(\) missing 2 required ",
-                    "positional arguments: 'key' and 'dbenv'",
+                    "positional arguments: 'key' and 'dbenv'$",
                 )
             ),
             self.database.ebm_control["file1"].get_ebm_segment,
@@ -1999,7 +1999,7 @@ class ExistenceBitmapControl(_SQLiteOpen):
             "".join(
                 (
                     r"delete_ebm_segment\(\) missing 2 required ",
-                    "positional arguments: 'key' and 'dbenv'",
+                    "positional arguments: 'key' and 'dbenv'$",
                 )
             ),
             self.database.ebm_control["file1"].delete_ebm_segment,
@@ -2009,7 +2009,7 @@ class ExistenceBitmapControl(_SQLiteOpen):
             "".join(
                 (
                     r"put_ebm_segment\(\) missing 3 required ",
-                    "positional arguments: 'key', 'value', and 'dbenv'",
+                    "positional arguments: 'key', 'value', and 'dbenv'$",
                 )
             ),
             self.database.ebm_control["file1"].put_ebm_segment,
@@ -2019,7 +2019,7 @@ class ExistenceBitmapControl(_SQLiteOpen):
             "".join(
                 (
                     r"append_ebm_segment\(\) missing 2 required ",
-                    "positional arguments: 'value' and 'dbenv'",
+                    "positional arguments: 'value' and 'dbenv'$",
                 )
             ),
             self.database.ebm_control["file1"].append_ebm_segment,

@@ -60,7 +60,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) missing 2 required positional arguments: ",
-                    "'dbhome' and 'dbset'",
+                    "'dbhome' and 'dbset'$",
                 )
             ),
             recordset._RecordSetBase,
@@ -68,7 +68,7 @@ class _RecordSetBase(unittest.TestCase):
         self.assertRaisesRegex(
             TypeError,
             "".join(
-                (r"__init__\(\) got an unexpected keyword argument 'xxxxx'",)
+                (r"__init__\(\) got an unexpected keyword argument 'xxxxx'$",)
             ),
             recordset._RecordSetBase,
             *(None, None),
@@ -97,7 +97,7 @@ class _RecordSetBase(unittest.TestCase):
                 (
                     r"__setitem__\(\) missing 2 required ",
                     "positional arguments: ",
-                    "'key' and 'value'",
+                    "'key' and 'value'$",
                 )
             ),
             self.rsb1.__setitem__,
@@ -108,7 +108,7 @@ class _RecordSetBase(unittest.TestCase):
                 (
                     r"__getitem__\(\) missing 1 required ",
                     "positional argument: ",
-                    "'key'",
+                    "'key'$",
                 )
             ),
             self.rsb1.__getitem__,
@@ -119,7 +119,7 @@ class _RecordSetBase(unittest.TestCase):
                 (
                     r"__delitem__\(\) missing 1 required ",
                     "positional argument: ",
-                    "'segment'",
+                    "'segment'$",
                 )
             ),
             self.rsb1.__delitem__,
@@ -130,7 +130,7 @@ class _RecordSetBase(unittest.TestCase):
                 (
                     r"__contains__\(\) missing 1 required ",
                     "positional argument: ",
-                    "'segment'",
+                    "'segment'$",
                 )
             ),
             self.rsb1.__contains__,
@@ -140,7 +140,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"__len__\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsb1.__len__,
@@ -151,7 +151,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"close\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsb1.close,
@@ -162,7 +162,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"get_position_of_record_number\(\) missing 1 required ",
-                    "positional argument: 'recnum'",
+                    "positional argument: 'recnum'$",
                 )
             ),
             self.rsb1.get_position_of_record_number,
@@ -172,7 +172,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"get_record_number_at_position\(\) missing 1 required ",
-                    "positional argument: 'position'",
+                    "positional argument: 'position'$",
                 )
             ),
             self.rsb1.get_record_number_at_position,
@@ -182,7 +182,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"insort_left_nodup\(\) missing 1 required ",
-                    "positional argument: 'segment'",
+                    "positional argument: 'segment'$",
                 )
             ),
             self.rsb1.insort_left_nodup,
@@ -192,7 +192,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"first\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsb1.first,
@@ -203,7 +203,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"last\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsb1.last,
@@ -214,7 +214,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"next\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsb1.next,
@@ -225,7 +225,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"prev\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsb1.prev,
@@ -236,7 +236,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"current\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsb1.current,
@@ -247,7 +247,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"setat\(\) missing 1 required positional ",
-                    "argument: 'record'",
+                    "argument: 'record'$",
                 )
             ),
             self.rsb1.setat,
@@ -257,7 +257,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"_get_record\(\) missing 1 required positional ",
-                    "argument: 'reference'",
+                    "argument: 'reference'$",
                 )
             ),
             self.rsb1._get_record,
@@ -267,7 +267,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"first_record_number\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsb1.first_record_number,
@@ -278,7 +278,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"last_record_number\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsb1.last_record_number,
@@ -289,7 +289,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"next_record_number\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsb1.next_record_number,
@@ -300,7 +300,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"prev_record_number\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsb1.prev_record_number,
@@ -311,7 +311,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"current_record_number\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.rsb1.current_record_number,
@@ -322,7 +322,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"setat_record_number\(\) missing 1 required positional ",
-                    "argument: 'record'",
+                    "argument: 'record'$",
                 )
             ),
             self.rsb1.setat_record_number,
@@ -332,7 +332,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"_get_record_number\(\) missing 1 required positional ",
-                    "argument: 'reference'",
+                    "argument: 'reference'$",
                 )
             ),
             self.rsb1._get_record_number,
@@ -342,7 +342,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"__or__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.rsb1.__or__,
@@ -352,7 +352,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"__and__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.rsb1.__and__,
@@ -362,7 +362,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"__xor__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.rsb1.__xor__,
@@ -372,7 +372,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"normalize\(\) takes from 1 to 2 ",
-                    "positional arguments but 3 were given",
+                    "positional arguments but 3 were given$",
                 )
             ),
             self.rsb1.normalize,
@@ -383,7 +383,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"is_record_number_in_record_set\(\) missing 1 required ",
-                    "positional argument: 'record_number'",
+                    "positional argument: 'record_number'$",
                 )
             ),
             self.rsb1.is_record_number_in_record_set,
@@ -393,7 +393,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"create_recordset_cursor\(\) takes 1 positional ",
-                    "argument but 2 were given",
+                    "argument but 2 were given$",
                 )
             ),
             self.rsb1.create_recordset_cursor,
@@ -410,7 +410,7 @@ class _RecordSetBase(unittest.TestCase):
     def test___getitem__(self):
         self.assertRaisesRegex(
             KeyError,
-            "".join(("0",)),
+            "".join(("0$",)),
             self.rsb1.__getitem__,
             *(0,),
         )
@@ -418,7 +418,7 @@ class _RecordSetBase(unittest.TestCase):
     def test___delitem__(self):
         self.assertRaisesRegex(
             KeyError,
-            "".join(("0",)),
+            "".join(("0$",)),
             self.rsb1.__delitem__,
             *(0,),
         )
@@ -441,7 +441,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"unsupported operand type\(s\) for divmod\(\): ",
-                    "'str' and 'int'",
+                    "'str' and 'int'$",
                 )
             ),
             self.rsb1.get_position_of_record_number,
@@ -491,7 +491,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"unsupported operand type\(s\) for divmod\(\): 'str' ",
-                    "and 'int'",
+                    "and 'int'$",
                 )
             ),
             self.rsb1.setat,
@@ -520,7 +520,7 @@ class _RecordSetBase(unittest.TestCase):
             "".join(
                 (
                     r"unsupported operand type\(s\) for divmod\(\): 'str' ",
-                    "and 'int'",
+                    "and 'int'$",
                 )
             ),
             self.rsb1.setat_record_number,
@@ -618,7 +618,7 @@ class RecordList(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) missing 2 required positional arguments: ",
-                    "'dbhome' and 'dbset'",
+                    "'dbhome' and 'dbset'$",
                 )
             ),
             recordset.RecordList,
@@ -688,7 +688,7 @@ class FoundSet(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) missing 2 required positional arguments: ",
-                    "'dbhome' and 'dbset'",
+                    "'dbhome' and 'dbset'$",
                 )
             ),
             recordset.FoundSet,

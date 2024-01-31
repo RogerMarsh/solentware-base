@@ -51,7 +51,7 @@ class Database___init__(_SQLitedu):
             "".join(
                 (
                     r"__init__\(\) takes from 2 to 5 positional arguments ",
-                    "but 6 were given",
+                    "but 6 were given$",
                 )
             ),
             self._D,
@@ -67,7 +67,7 @@ class Database___init__(_SQLitedu):
                 (
                     t,
                     r" argument after \*\* must be a mapping, ",
-                    "not NoneType",
+                    "not NoneType$",
                 )
             ),
             self._D,
@@ -79,7 +79,7 @@ class Database___init__(_SQLitedu):
     def test_03(self):
         self.assertRaisesRegex(
             _sqlite.DatabaseError,
-            "".join(("Database folder name {} is not valid",)),
+            "".join(("Database folder name {} is not valid$",)),
             self._D,
             *({},),
             **dict(folder={}),
@@ -169,13 +169,8 @@ class _SQLiteOpen(_SQLitedu):
 class Database_methods(_SQLiteOpen):
     def test_01(self):
         self.assertRaisesRegex(
-            TypeError,
-            "".join(
-                (
-                    r"database_cursor\(\) takes from 3 to 4 ",
-                    "positional arguments but 5 were given",
-                )
-            ),
+            _sqlitedu.DatabaseError,
+            "database_cursor not implemented$",
             self.database.database_cursor,
             *(None, None, None, None),
         )
@@ -184,7 +179,7 @@ class Database_methods(_SQLiteOpen):
             "".join(
                 (
                     r"unset_defer_update\(\) takes 1 ",
-                    "positional argument but 2 were given",
+                    "positional argument but 2 were given$",
                 )
             ),
             self.database.unset_defer_update,
@@ -195,7 +190,7 @@ class Database_methods(_SQLiteOpen):
             "".join(
                 (
                     r"write_existence_bit_map\(\) missing 2 required ",
-                    "positional arguments: 'file' and 'segment'",
+                    "positional arguments: 'file' and 'segment'$",
                 )
             ),
             self.database.write_existence_bit_map,
@@ -205,7 +200,7 @@ class Database_methods(_SQLiteOpen):
             "".join(
                 (
                     r"new_deferred_root\(\) missing 2 required ",
-                    "positional arguments: 'file' and 'field'",
+                    "positional arguments: 'file' and 'field'$",
                 )
             ),
             self.database.new_deferred_root,
@@ -215,7 +210,7 @@ class Database_methods(_SQLiteOpen):
             "".join(
                 (
                     r"set_defer_update\(\) takes 1 ",
-                    "positional argument but 2 were given",
+                    "positional argument but 2 were given$",
                 )
             ),
             self.database.set_defer_update,
@@ -225,7 +220,7 @@ class Database_methods(_SQLiteOpen):
     def test_02_database_cursor(self):
         self.assertRaisesRegex(
             _sqlitedu.DatabaseError,
-            "database_cursor not implemented",
+            "database_cursor not implemented$",
             self.database.database_cursor,
             *(None, None),
         )
@@ -323,7 +318,7 @@ class Database__rows(_SQLitedu):
             "".join(
                 (
                     r"_rows\(\) missing 2 required ",
-                    "positional arguments: 'segvalues' and 'segment'",
+                    "positional arguments: 'segvalues' and 'segment'$",
                 )
             ),
             database._rows,
@@ -350,7 +345,7 @@ class Database_do_final_segment_deferred_updates(_SQLiteOpen):
             "".join(
                 (
                     r"do_final_segment_deferred_updates\(\) takes 1 ",
-                    "positional argument but 2 were given",
+                    "positional argument but 2 were given$",
                 )
             ),
             database.do_final_segment_deferred_updates,
@@ -387,7 +382,7 @@ class Database_do_final_segment_deferred_updates(_SQLiteOpen):
         )
         self.assertRaisesRegex(
             TypeError,
-            "'NoneType' object is not subscriptable",
+            "'NoneType' object is not subscriptable$",
             self.database.do_final_segment_deferred_updates,
         )
 
@@ -449,7 +444,7 @@ class Database_sort_and_write(_SQLiteOpen):
             "".join(
                 (
                     r"sort_and_write\(\) missing 3 required ",
-                    "positional arguments: 'file', 'field', and 'segment'",
+                    "positional arguments: 'file', 'field', and 'segment'$",
                 )
             ),
             database.sort_and_write,
@@ -458,7 +453,7 @@ class Database_sort_and_write(_SQLiteOpen):
     def test_02(self):
         self.assertRaisesRegex(
             KeyError,
-            "'file1'",
+            "'file1'$",
             self.database.sort_and_write,
             *("file1", "nofield", None),
         )
@@ -472,7 +467,7 @@ class Database_sort_and_write(_SQLiteOpen):
         self.database.value_segments["file1"] = {"field1": None}
         self.assertRaisesRegex(
             TypeError,
-            "'NoneType' object is not iterable",
+            "'NoneType' object is not iterable$",
             self.database.sort_and_write,
             *("file1", "field1", None),
         )
@@ -481,7 +476,7 @@ class Database_sort_and_write(_SQLiteOpen):
         self.database.value_segments["file1"] = {"field1": {}}
         self.assertRaisesRegex(
             KeyError,
-            "'file1'",
+            "'file1'$",
             self.database.sort_and_write,
             *("file1", "field1", None),
         )
@@ -492,7 +487,7 @@ class Database_sort_and_write(_SQLiteOpen):
         self.database.initial_high_segment["file1"] = 4
         self.assertRaisesRegex(
             KeyError,
-            "'file1'",
+            "'file1'$",
             self.database.sort_and_write,
             *("file1", "field1", 4),
         )
@@ -689,7 +684,7 @@ class Database_merge(_SQLiteOpen):
             "".join(
                 (
                     r"merge\(\) missing 2 required ",
-                    "positional arguments: 'file' and 'field'",
+                    "positional arguments: 'file' and 'field'$",
                 )
             ),
             database.merge,

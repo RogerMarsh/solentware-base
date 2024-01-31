@@ -25,7 +25,7 @@ class _Comparison(unittest.TestCase):
             "".join(
                 (
                     r"__eq__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.comparison.__eq__,
@@ -35,7 +35,7 @@ class _Comparison(unittest.TestCase):
             "".join(
                 (
                     r"__ge__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.comparison.__ge__,
@@ -45,7 +45,7 @@ class _Comparison(unittest.TestCase):
             "".join(
                 (
                     r"__gt__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.comparison.__gt__,
@@ -55,7 +55,7 @@ class _Comparison(unittest.TestCase):
             "".join(
                 (
                     r"__le__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.comparison.__le__,
@@ -65,7 +65,7 @@ class _Comparison(unittest.TestCase):
             "".join(
                 (
                     r"__lt__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.comparison.__lt__,
@@ -75,7 +75,7 @@ class _Comparison(unittest.TestCase):
             "".join(
                 (
                     r"__ne__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.comparison.__ne__,
@@ -396,9 +396,9 @@ class Key(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                     "|",
-                    r"Key\(\) takes no arguments",
+                    r"Key\(\) takes no arguments$",
                 )
             ),
             record.Key,
@@ -409,7 +409,7 @@ class Key(unittest.TestCase):
             "".join(
                 (
                     r"load\(\) missing 1 required positional argument: ",
-                    "'key'",
+                    "'key'$",
                 )
             ),
             self.key.load,
@@ -419,7 +419,7 @@ class Key(unittest.TestCase):
             "".join(
                 (
                     r"pack\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.key.pack,
@@ -455,9 +455,9 @@ class KeyData(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                     "|",
-                    r"Key\(\) takes no arguments",
+                    r"Key\(\) takes no arguments$",
                 )
             ),
             record.Key,
@@ -468,7 +468,7 @@ class KeyData(unittest.TestCase):
             "".join(
                 (
                     r"load\(\) missing 1 required positional argument: ",
-                    "'key'",
+                    "'key'$",
                 )
             ),
             self.key.load,
@@ -478,7 +478,7 @@ class KeyData(unittest.TestCase):
             "".join(
                 (
                     r"pack\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.key.pack,
@@ -538,9 +538,9 @@ class Value(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                     "|",
-                    r"Value\(\) takes no arguments",
+                    r"Value\(\) takes no arguments$",
                 )
             ),
             record.Value,
@@ -551,7 +551,7 @@ class Value(unittest.TestCase):
             "".join(
                 (
                     r"empty\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.value.empty,
@@ -562,7 +562,7 @@ class Value(unittest.TestCase):
             "".join(
                 (
                     r"load\(\) missing 1 required positional argument: ",
-                    "'value'",
+                    "'value'$",
                 )
             ),
             self.value.load,
@@ -572,7 +572,7 @@ class Value(unittest.TestCase):
             "".join(
                 (
                     r"pack\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.value.pack,
@@ -583,7 +583,7 @@ class Value(unittest.TestCase):
             "".join(
                 (
                     r"pack_value\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.value.pack_value,
@@ -594,7 +594,7 @@ class Value(unittest.TestCase):
             "".join(
                 (
                     r"get_field_value\(\) takes from 2 to 3 ",
-                    "positional arguments but 4 were given",
+                    "positional arguments but 4 were given$",
                 )
             ),
             self.value.get_field_value,
@@ -605,7 +605,7 @@ class Value(unittest.TestCase):
             "".join(
                 (
                     r"get_field_values\(\) takes 2 positional arguments ",
-                    "but 3 were given",
+                    "but 3 were given$",
                 )
             ),
             self.value.get_field_values,
@@ -661,7 +661,7 @@ class ValueData(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             record.ValueData,
@@ -672,7 +672,7 @@ class ValueData(unittest.TestCase):
             "".join(
                 (
                     r"empty\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.value.empty,
@@ -683,7 +683,7 @@ class ValueData(unittest.TestCase):
             "".join(
                 (
                     r"load\(\) missing 1 required positional argument: ",
-                    "'value'",
+                    "'value'$",
                 )
             ),
             self.value.load,
@@ -693,7 +693,7 @@ class ValueData(unittest.TestCase):
             "".join(
                 (
                     r"pack_value\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.value.pack_value,
@@ -744,7 +744,7 @@ class ValueList(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             record.ValueList,
@@ -755,7 +755,7 @@ class ValueList(unittest.TestCase):
             "".join(
                 (
                     r"load\(\) missing 1 required positional argument: ",
-                    "'value'",
+                    "'value'$",
                 )
             ),
             self.value.load,
@@ -765,7 +765,7 @@ class ValueList(unittest.TestCase):
             "".join(
                 (
                     r"pack_value\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.value.pack_value,
@@ -776,7 +776,7 @@ class ValueList(unittest.TestCase):
             "".join(
                 (
                     r"_empty\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.value._empty,
@@ -787,7 +787,7 @@ class ValueList(unittest.TestCase):
             "".join(
                 (
                     r"get_field_value\(\) takes from 2 to 3 ",
-                    "positional arguments but 4 were given",
+                    "positional arguments but 4 were given$",
                 )
             ),
             self.value.get_field_value,
@@ -798,7 +798,7 @@ class ValueList(unittest.TestCase):
             "".join(
                 (
                     r"get_field_values\(\) takes 2 positional arguments ",
-                    "but 3 were given",
+                    "but 3 were given$",
                 )
             ),
             self.value.get_field_values,
@@ -857,7 +857,7 @@ class ValueText(unittest.TestCase):
             "".join(
                 (
                     r"load\(\) missing 1 required positional argument: ",
-                    "'value'",
+                    "'value'$",
                 )
             ),
             self.value.load,
@@ -867,7 +867,7 @@ class ValueText(unittest.TestCase):
             "".join(
                 (
                     r"pack_value\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.value.pack_value,
@@ -938,7 +938,7 @@ class Record(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) takes from 1 to 3 positional arguments ",
-                    "but 4 were given",
+                    "but 4 were given$",
                 )
             ),
             record.Record,
@@ -949,7 +949,7 @@ class Record(unittest.TestCase):
             "".join(
                 (
                     r"__eq__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.record.__eq__,
@@ -959,7 +959,7 @@ class Record(unittest.TestCase):
             "".join(
                 (
                     r"__ge__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.record.__ge__,
@@ -969,7 +969,7 @@ class Record(unittest.TestCase):
             "".join(
                 (
                     r"__gt__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.record.__gt__,
@@ -979,7 +979,7 @@ class Record(unittest.TestCase):
             "".join(
                 (
                     r"__le__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.record.__le__,
@@ -989,7 +989,7 @@ class Record(unittest.TestCase):
             "".join(
                 (
                     r"__lt__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.record.__lt__,
@@ -999,7 +999,7 @@ class Record(unittest.TestCase):
             "".join(
                 (
                     r"__ne__\(\) missing 1 required positional argument: ",
-                    "'other'",
+                    "'other'$",
                 )
             ),
             self.record.__ne__,
@@ -1009,7 +1009,7 @@ class Record(unittest.TestCase):
             "".join(
                 (
                     r"clone\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.record.clone,
@@ -1020,7 +1020,7 @@ class Record(unittest.TestCase):
             "".join(
                 (
                     r"delete_record\(\) missing 2 required ",
-                    "positional arguments: 'database' and 'dbset'",
+                    "positional arguments: 'database' and 'dbset'$",
                 )
             ),
             self.record.delete_record,
@@ -1031,7 +1031,7 @@ class Record(unittest.TestCase):
                 (
                     r"edit_record\(\) missing 4 required positional ",
                     "arguments: ",
-                    "'database', 'dbset', 'dbname', and 'newrecord'",
+                    "'database', 'dbset', 'dbname', and 'newrecord'$",
                 )
             ),
             self.record.edit_record,
@@ -1041,7 +1041,7 @@ class Record(unittest.TestCase):
             "".join(
                 (
                     r"empty\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.record.empty,
@@ -1052,7 +1052,7 @@ class Record(unittest.TestCase):
             "".join(
                 (
                     r"get_primary_key_from_index_record\(\) ",
-                    "takes 1 positional argument but 2 were given",
+                    "takes 1 positional argument but 2 were given$",
                 )
             ),
             self.record.get_primary_key_from_index_record,
@@ -1063,7 +1063,7 @@ class Record(unittest.TestCase):
             "".join(
                 (
                     r"get_keys\(\) takes from 1 to 3 positional arguments ",
-                    "but 4 were given",
+                    "but 4 were given$",
                 )
             ),
             self.record.get_keys,
@@ -1075,7 +1075,7 @@ class Record(unittest.TestCase):
                 (
                     r"load_instance\(\) missing 4 required positional ",
                     "arguments: ",
-                    "'database', 'dbset', 'dbname', and 'record'",
+                    "'database', 'dbset', 'dbname', and 'record'$",
                 )
             ),
             self.record.load_instance,
@@ -1085,7 +1085,7 @@ class Record(unittest.TestCase):
             "".join(
                 (
                     r"load_key\(\) missing 1 required positional argument: ",
-                    "'key'",
+                    "'key'$",
                 )
             ),
             self.record.load_key,
@@ -1095,7 +1095,7 @@ class Record(unittest.TestCase):
             "".join(
                 (
                     r"load_record\(\) missing 1 required ",
-                    "positional argument: 'record'",
+                    "positional argument: 'record'$",
                 )
             ),
             self.record.load_record,
@@ -1105,7 +1105,7 @@ class Record(unittest.TestCase):
             "".join(
                 (
                     r"load_value\(\) missing 1 required ",
-                    "positional argument: 'value'",
+                    "positional argument: 'value'$",
                 )
             ),
             self.record.load_value,
@@ -1115,7 +1115,7 @@ class Record(unittest.TestCase):
             "".join(
                 (
                     r"set_packed_value_and_indexes\(\) takes 1 positional ",
-                    "argument but 2 were given",
+                    "argument but 2 were given$",
                 )
             ),
             self.record.set_packed_value_and_indexes,
@@ -1126,7 +1126,7 @@ class Record(unittest.TestCase):
             "".join(
                 (
                     r"put_record\(\) missing 2 required ",
-                    "positional arguments: 'database' and 'dbset'",
+                    "positional arguments: 'database' and 'dbset'$",
                 )
             ),
             self.record.put_record,
@@ -1136,7 +1136,7 @@ class Record(unittest.TestCase):
             "".join(
                 (
                     r"set_database\(\) missing 1 required ",
-                    "positional argument: 'database'",
+                    "positional argument: 'database'$",
                 )
             ),
             self.record.set_database,
@@ -1146,7 +1146,7 @@ class Record(unittest.TestCase):
             "".join(
                 (
                     r"packed_key\(\) takes 1 positional ",
-                    "argument but 2 were given",
+                    "argument but 2 were given$",
                 )
             ),
             self.record.packed_key,
@@ -1157,7 +1157,7 @@ class Record(unittest.TestCase):
             "".join(
                 (
                     r"packed_value\(\) takes 1 positional ",
-                    "argument but 2 were given",
+                    "argument but 2 were given$",
                 )
             ),
             self.record.packed_value,
@@ -1168,7 +1168,7 @@ class Record(unittest.TestCase):
             "".join(
                 (
                     r"get_srvalue\(\) takes 1 positional ",
-                    "argument but 2 were given",
+                    "argument but 2 were given$",
                 )
             ),
             self.record.get_srvalue,
@@ -1179,7 +1179,7 @@ class Record(unittest.TestCase):
             "".join(
                 (
                     r"get_field_value\(\) missing 1 required ",
-                    "positional argument: 'fieldname'",
+                    "positional argument: 'fieldname'$",
                 )
             ),
             self.record.get_field_value,
@@ -1189,7 +1189,7 @@ class Record(unittest.TestCase):
             "".join(
                 (
                     r"get_field_value\(\) takes from 2 to 3 positional ",
-                    "arguments but 4 were given",
+                    "arguments but 4 were given$",
                 )
             ),
             self.record.get_field_value,
@@ -1200,7 +1200,7 @@ class Record(unittest.TestCase):
             "".join(
                 (
                     r"get_field_values\(\) missing 1 required ",
-                    "positional argument: 'fieldname'",
+                    "positional argument: 'fieldname'$",
                 )
             ),
             self.record.get_field_values,
@@ -1483,7 +1483,7 @@ class RecorddBaseIII(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) takes from 1 to 3 positional arguments ",
-                    "but 4 were given",
+                    "but 4 were given$",
                 )
             ),
             record.RecorddBaseIII,
@@ -1494,7 +1494,7 @@ class RecorddBaseIII(unittest.TestCase):
             "".join(
                 (
                     r"packed_value\(\) takes 1 positional ",
-                    "argument but 2 were given",
+                    "argument but 2 were given$",
                 )
             ),
             self.record.packed_value,
@@ -1505,7 +1505,7 @@ class RecorddBaseIII(unittest.TestCase):
             "".join(
                 (
                     r"get_srvalue\(\) takes 1 positional ",
-                    "argument but 2 were given",
+                    "argument but 2 were given$",
                 )
             ),
             self.record.get_srvalue,
@@ -1547,7 +1547,7 @@ class RecordText(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) takes from 1 to 3 positional arguments ",
-                    "but 4 were given",
+                    "but 4 were given$",
                 )
             ),
             record.RecordText,
@@ -1558,7 +1558,7 @@ class RecordText(unittest.TestCase):
             "".join(
                 (
                     r"packed_value\(\) takes 1 positional ",
-                    "argument but 2 were given",
+                    "argument but 2 were given$",
                 )
             ),
             self.record.packed_value,
@@ -1569,7 +1569,7 @@ class RecordText(unittest.TestCase):
             "".join(
                 (
                     r"get_srvalue\(\) takes 1 positional ",
-                    "argument but 2 were given",
+                    "argument but 2 were given$",
                 )
             ),
             self.record.get_srvalue,

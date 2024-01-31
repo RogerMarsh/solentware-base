@@ -29,7 +29,7 @@ class Bsddb3Database(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) missing 1 required positional argument: ",
-                    "'specification'",
+                    "'specification'$",
                 )
             ),
             bsddb3_database.Database,

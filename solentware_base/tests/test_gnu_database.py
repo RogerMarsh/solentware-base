@@ -25,7 +25,7 @@ class GnuDatabase(unittest.TestCase):
             "".join(
                 (
                     r"__init__\(\) missing 1 required positional argument: ",
-                    "'specification'",
+                    "'specification'$",
                 )
             ),
             gnu_database.Database,
@@ -38,7 +38,7 @@ class GnuDatabase(unittest.TestCase):
     def test_open_database_01(self):
         self.assertRaisesRegex(
             gnu_module.GnuError,
-            "Memory-only databases not supported by dbm.gnu",
+            "Memory-only databases not supported by dbm.gnu$",
             gnu_database.Database({}).open_database,
         )
 

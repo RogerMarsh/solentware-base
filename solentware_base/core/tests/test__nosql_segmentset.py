@@ -161,7 +161,7 @@ class SegmentsetCursor(_NoSQL):
             "".join(
                 (
                     r"__init__\(\) takes 5 positional arguments ",
-                    "but 6 were given",
+                    "but 6 were given$",
                 )
             ),
             _nosql.SegmentsetCursor,
@@ -172,7 +172,7 @@ class SegmentsetCursor(_NoSQL):
             "".join(
                 (
                     r"close\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.segmentset.close,
@@ -183,7 +183,7 @@ class SegmentsetCursor(_NoSQL):
             "".join(
                 (
                     r"first\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.segmentset.first,
@@ -194,7 +194,7 @@ class SegmentsetCursor(_NoSQL):
             "".join(
                 (
                     r"last\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.segmentset.last,
@@ -205,7 +205,7 @@ class SegmentsetCursor(_NoSQL):
             "".join(
                 (
                     r"next\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.segmentset.next,
@@ -216,7 +216,7 @@ class SegmentsetCursor(_NoSQL):
             "".join(
                 (
                     r"prev\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.segmentset.prev,
@@ -227,7 +227,7 @@ class SegmentsetCursor(_NoSQL):
             "".join(
                 (
                     r"get_current_segment\(\) takes 1 positional argument ",
-                    "but 2 were given",
+                    "but 2 were given$",
                 )
             ),
             self.segmentset.get_current_segment,
@@ -238,7 +238,7 @@ class SegmentsetCursor(_NoSQL):
             "".join(
                 (
                     r"setat\(\) missing 1 required ",
-                    "positional argument: 'segment_number'",
+                    "positional argument: 'segment_number'$",
                 )
             ),
             self.segmentset.setat,
