@@ -14,11 +14,40 @@ from bisect import bisect_left
 
 from .bytebit import Bitarray, SINGLEBIT
 from .segmentsize import SegmentSize
-from . import cursor
+from . import recordsetbasecursor
 
 
 class RecordsetError(Exception):
     """Exception for classes in recordset module."""
+
+
+class Location:
+    """Segment and record number location with recordset.
+
+    _Recordset class defines a default location cursor which is passed to
+    all segment instances within the recordset.
+
+    RecordsetSegmentInt, RecordsetSegmentBitarray, and RecordsetSegmentList
+    define a default location cursor if one is not passed by the _Recordset
+    instance.
+
+    The current_position_in_segment and current_segment attributes replace
+    similar attributes in the segment specific classes and _Recordset.
+
+    Independent Location instances can be passed to the navigation methods
+    allowing for multiple cursors on a recordset.
+
+    """
+
+    def __init__(self):
+        """Initialise cursor."""
+        self.current_segment = None
+        self.current_position_in_segment = None
+
+    def clear(self):
+        """Reset cursor to initial values."""
+        self.current_segment = None
+        self.current_position_in_segment = None
 
 
 class RecordsetSegmentInt:
@@ -39,15 +68,16 @@ class RecordsetSegmentInt:
         self.record_number = int.from_bytes(records, byteorder="big")
         self.index_key = key
         self.segment_number = segment_number
-        self.current_position_in_segment = None
+        self.location = Location()
 
     def count_records(self):
         """Return record count in segment."""
         return 1
 
-    def current(self):
-        """Return current record in segment."""
-        if self.current_position_in_segment is not None:
+    def current(self, location=None):
+        """Return current record in segment with location as cursor."""
+        location = location or self.location
+        if location.current_position_in_segment is not None:
             return (
                 self.index_key,
                 self.record_number
@@ -55,10 +85,11 @@ class RecordsetSegmentInt:
             )
         return None
 
-    def first(self):
-        """Return first record in segment."""
-        if self.current_position_in_segment is None:
-            self.current_position_in_segment = 0
+    def first(self, location=None):
+        """Return first record in segment with location as cursor."""
+        location = location or self.location
+        if location.current_position_in_segment is None:
+            location.current_position_in_segment = 0
         return (
             self.index_key,
             self.record_number
@@ -77,35 +108,39 @@ class RecordsetSegmentInt:
             )
         return None
 
-    def last(self):
-        """Return last record in segment."""
-        if self.current_position_in_segment is None:
-            self.current_position_in_segment = 0
+    def last(self, location=None):
+        """Return last record in segment with location as cursor."""
+        location = location or self.location
+        if location.current_position_in_segment is None:
+            location.current_position_in_segment = 0
         return (
             self.index_key,
             self.record_number
             + (self.segment_number * SegmentSize.db_segment_size),
         )
 
-    def next(self):
-        """Return next record in segment."""
-        if self.current_position_in_segment is None:
+    def next(self, location=None):
+        """Return next record in segment with location as cursor."""
+        location = location or self.location
+        if location.current_position_in_segment is None:
             return self.first()
         return None
 
-    def prev(self):
-        """Return previous record in segment."""
-        if self.current_position_in_segment is None:
+    def prev(self, location=None):
+        """Return previous record in segment with location as cursor."""
+        location = location or self.location
+        if location.current_position_in_segment is None:
             return self.last()
         return None
 
-    def setat(self, record):
-        """Return current record after positioning cursor at record."""
+    def setat(self, record, location=None):
+        """Return current record after positioning location at record."""
+        location = location or self.location
         if record == (
             self.record_number
             + (self.segment_number * SegmentSize.db_segment_size)
         ):
-            self.current_position_in_segment = 0
+            location.current_position_in_segment = 0
             return (self.index_key, record)
         return None
 
@@ -130,7 +165,7 @@ class RecordsetSegmentInt:
         segment.index_key = self.index_key
         segment.segment_number = self.segment_number
         # the copy forgets the current position in segment
-        segment.current_position_in_segment = None
+        segment.location = Location()
         return segment
 
     def __contains__(self, relative_record_number):
@@ -151,7 +186,7 @@ class RecordsetSegmentInt:
         segment = RecordsetSegmentBitarray(
             self.segment_number,
             self.index_key,
-            SegmentSize.empty_bitarray_bytes,
+            records=SegmentSize.empty_bitarray_bytes,
         )
         segment.bitarray[self.record_number] = True
         return segment
@@ -214,30 +249,32 @@ class RecordsetSegmentBitarray:
         self.bitarray.frombytes(records)
         self.index_key = key
         self.segment_number = segment_number
-        self.current_position_in_segment = None
+        self.location = Location()
         self._reversed = None
 
     def count_records(self):
         """Return record count in segment."""
         return self.bitarray.count()
 
-    def current(self):
-        """Return current record in segment."""
-        if self.current_position_in_segment is not None:
+    def current(self, location=None):
+        """Return current record in segment with location as cursor."""
+        location = location or self.location
+        if location.current_position_in_segment is not None:
             return (
                 self.index_key,
-                self.current_position_in_segment
+                location.current_position_in_segment
                 + (self.segment_number * SegmentSize.db_segment_size),
             )
         return None
 
-    def first(self):
-        """Return first record in segment."""
+    def first(self, location=None):
+        """Return first record in segment with location as cursor."""
+        location = location or self.location
         try:
-            self.current_position_in_segment = self.bitarray.index(True, 0)
+            location.current_position_in_segment = self.bitarray.index(True, 0)
             return (
                 self.index_key,
-                self.current_position_in_segment
+                location.current_position_in_segment
                 + (self.segment_number * SegmentSize.db_segment_size),
             )
         except ValueError:
@@ -260,74 +297,79 @@ class RecordsetSegmentBitarray:
         except IndexError:
             return None
 
-    def last(self):
-        """Return last record in segment."""
+    def last(self, location=None):
+        """Return last record in segment with location as cursor."""
+        location = location or self.location
         if self._reversed is None:
             self._reversed = self.bitarray.copy()
             self._reversed.reverse()
         try:
             rcpis = self._reversed.index(True, 0)
-            self.current_position_in_segment = (
+            location.current_position_in_segment = (
                 SegmentSize.db_segment_size - rcpis - 1
             )
             return (
                 self.index_key,
-                self.current_position_in_segment
+                location.current_position_in_segment
                 + (self.segment_number * SegmentSize.db_segment_size),
             )
         except ValueError:
             return None
 
-    def next(self):
-        """Return next record in segment."""
-        if self.current_position_in_segment is None:
+    def next(self, location=None):
+        """Return next record in segment with location as cursor."""
+        location = location or self.location
+        if location.current_position_in_segment is None:
             return self.first()
         try:
-            self.current_position_in_segment = self.bitarray.index(
+            location.current_position_in_segment = self.bitarray.index(
                 True,
-                self.current_position_in_segment + 1,
+                location.current_position_in_segment + 1,
                 SegmentSize.db_segment_size - 1,
             )
             return (
                 self.index_key,
-                self.current_position_in_segment
+                location.current_position_in_segment
                 + (self.segment_number * SegmentSize.db_segment_size),
             )
         except ValueError:
             return None
 
-    def prev(self):
-        """Return previous record in segment."""
-        if self.current_position_in_segment is None:
+    def prev(self, location=None):
+        """Return previous record in segment with location as cursor."""
+        location = location or self.location
+        if location.current_position_in_segment is None:
             return self.last()
         if self._reversed is None:
             self._reversed = self.bitarray.copy()
             self._reversed.reverse()
         try:
             rcpis = (
-                SegmentSize.db_segment_size - self.current_position_in_segment
+                SegmentSize.db_segment_size
+                - location.current_position_in_segment
             )
             rcpis = self._reversed.index(
                 True, rcpis, SegmentSize.db_segment_size - 1
             )
-            self.current_position_in_segment = (
+            location.current_position_in_segment = (
                 SegmentSize.db_segment_size - rcpis - 1
             )
             return (
                 self.index_key,
-                self.current_position_in_segment
+                location.current_position_in_segment
                 + (self.segment_number * SegmentSize.db_segment_size),
             )
         except ValueError:
             return None
 
-    def setat(self, record):
-        """Return current record after positioning cursor at record."""
+    def setat(self, record, location=None):
+        """Return current record after positioning location at record."""
+        location = location or self.location
         segment, record_in_segment = divmod(
             record, SegmentSize.db_segment_size
         )
         if self.bitarray[record_in_segment] and self.segment_number == segment:
-            self.current_position_in_segment = record_in_segment
+            location.current_position_in_segment = record_in_segment
             return (self.index_key, record)
         return None
 
@@ -388,7 +430,7 @@ class RecordsetSegmentBitarray:
         segment.index_key = self.index_key
         segment.segment_number = self.segment_number
         # the copy forgets the current position in segment
-        segment.current_position_in_segment = None
+        segment.location = Location()
         # the copy makes its own reverse when needed
         # the original may be wrong when copy used in boolean operations
         segment._reversed = None
@@ -505,29 +547,31 @@ class RecordsetSegmentList:
             )
         self.index_key = key
         self.segment_number = segment_number
-        self.current_position_in_segment = None
+        self.location = Location()
 
     def count_records(self):
         """Return record count in segment."""
         return len(self.list)
 
-    def current(self):
-        """Return current record in segment."""
-        if self.current_position_in_segment is not None:
+    def current(self, location=None):
+        """Return current record in segment with location as cursor."""
+        location = location or self.location
+        if location.current_position_in_segment is not None:
             return (
                 self.index_key,
-                self.list[self.current_position_in_segment]
+                self.list[location.current_position_in_segment]
                 + (self.segment_number * SegmentSize.db_segment_size),
             )
         return None
 
-    def first(self):
-        """Return first record in segment."""
+    def first(self, location=None):
+        """Return first record in segment with location as cursor."""
+        location = location or self.location
         try:
-            self.current_position_in_segment = 0
+            location.current_position_in_segment = 0
             return (
                 self.index_key,
-                self.list[self.current_position_in_segment]
+                self.list[location.current_position_in_segment]
                 + (self.segment_number * SegmentSize.db_segment_size),
             )
         except TypeError:
@@ -551,13 +595,14 @@ class RecordsetSegmentList:
         except IndexError:
             return None
 
-    def last(self):
-        """Return last record in segment."""
+    def last(self, location=None):
+        """Return last record in segment with location as cursor."""
+        location = location or self.location
         try:
-            self.current_position_in_segment = len(self.list) - 1
+            location.current_position_in_segment = len(self.list) - 1
             return (
                 self.index_key,
-                self.list[self.current_position_in_segment]
+                self.list[location.current_position_in_segment]
                 + (self.segment_number * SegmentSize.db_segment_size),
             )
         except TypeError:
@@ -565,40 +610,43 @@ class RecordsetSegmentList:
                 return None
             raise
 
-    def next(self):
-        """Return next record in segment."""
-        if self.current_position_in_segment is None:
+    def next(self, location=None):
+        """Return next record in segment with location as cursor."""
+        location = location or self.location
+        if location.current_position_in_segment is None:
             return self.first()
-        self.current_position_in_segment += 1
-        if self.current_position_in_segment < len(self.list):
+        location.current_position_in_segment += 1
+        if location.current_position_in_segment < len(self.list):
             return (
                 self.index_key,
-                self.list[self.current_position_in_segment]
+                self.list[location.current_position_in_segment]
                 + (self.segment_number * SegmentSize.db_segment_size),
             )
-        self.current_position_in_segment = len(self.list) - 1
+        location.current_position_in_segment = len(self.list) - 1
         return None
 
-    def prev(self):
-        """Return previous record in segment."""
-        if self.current_position_in_segment is None:
+    def prev(self, location=None):
+        """Return previous record in segment with location as cursor."""
+        location = location or self.location
+        if location.current_position_in_segment is None:
             return self.last()
-        self.current_position_in_segment -= 1
-        if self.current_position_in_segment < 0:
-            self.current_position_in_segment = 0
+        location.current_position_in_segment -= 1
+        if location.current_position_in_segment < 0:
+            location.current_position_in_segment = 0
             return None
         return (
             self.index_key,
-            self.list[self.current_position_in_segment]
+            self.list[location.current_position_in_segment]
             + (self.segment_number * SegmentSize.db_segment_size),
         )
 
-    def setat(self, record):
-        """Return current record after positioning cursor at record."""
+    def setat(self, record, location=None):
+        """Return current record after positioning location at record."""
+        location = location or self.location
         segment, record_number = divmod(record, SegmentSize.db_segment_size)
         if self.segment_number == segment:
             try:
-                self.current_position_in_segment = self.list.index(
+                location.current_position_in_segment = self.list.index(
                     record_number
                 )
                 return (self.index_key, record)
@@ -657,7 +705,7 @@ class RecordsetSegmentList:
         segment = RecordsetSegmentBitarray(
             self.segment_number,
             self.index_key,
-            SegmentSize.empty_bitarray_bytes,
+            records=SegmentSize.empty_bitarray_bytes,
         )
         for k in self.list:
             segment.bitarray[k] = True
@@ -708,7 +756,7 @@ class RecordsetSegmentList:
         segment.index_key = self.index_key
         segment.segment_number = self.segment_number
         # the copy forgets the current position in segment
-        segment.current_position_in_segment = None
+        segment.location = Location()
         return segment
 
     def tobytes(self):
@@ -744,7 +792,7 @@ class _Recordset:
         self._rs_segments = {}
         self.record_cache = {}
         self.record_deque = deque(maxlen=max(1, cache_size))
-        self._current_segment = None
+        self.location = Location()
         self._sorted_segnums = []
         # self._clientcursors = {}
         if dbhome.exists(dbset, dbset):
@@ -784,7 +832,7 @@ class _Recordset:
         self._rs_segments.clear()
         self.record_cache.clear()
         self.record_deque.clear()
-        self._current_segment = None
+        self.location.clear()
         self._sorted_segnums.clear()
 
     @property
@@ -832,11 +880,15 @@ class _Recordset:
         if i != len(self._sorted_segnums):
             if self._sorted_segnums[i] == segment:
                 del self._sorted_segnums[i]
-                if self._current_segment is not None:
-                    if self._current_segment >= len(self._sorted_segnums):
-                        self._current_segment = len(self._sorted_segnums) - 1
-                        if self._current_segment < 0:
-                            self._current_segment = None
+                if self.location.current_segment is not None:
+                    if self.location.current_segment >= len(
+                        self._sorted_segnums
+                    ):
+                        self.location.current_segment = (
+                            len(self._sorted_segnums) - 1
+                        )
+                        if self.location.current_segment < 0:
+                            self.location.current_segment = None
 
     def __contains__(self, segment):
         """Return True if segment is in self, else False."""
@@ -893,80 +945,86 @@ class _Recordset:
                 return
         self._sorted_segnums.insert(i, segment)
 
-    def first(self):
-        """Return first record in recordset."""
+    def first(self, location=None):
+        """Return first record in recordset with location as cursor."""
+        location = location or self.location
         try:
             i = self._sorted_segnums[0]
         except IndexError:
             return None
         try:
-            self._current_segment = 0
-            return self._rs_segments[i].first()
+            location.current_segment = 0
+            return self._rs_segments[i].first(location=location)
         except ValueError:
             return None
 
-    def last(self):
-        """Return last record in recordset."""
+    def last(self, location=None):
+        """Return last record in recordset with location as cursor."""
+        location = location or self.location
         try:
             i = self._sorted_segnums[-1]
         except IndexError:
             return None
         try:
-            self._current_segment = len(self._rs_segments) - 1
-            return self._rs_segments[i].last()
+            location.current_segment = len(self._rs_segments) - 1
+            return self._rs_segments[i].last(location=location)
         except ValueError:
             return None
 
-    def next(self):
-        """Return next record in recordset."""
-        if self._current_segment is None:
-            return self.first()
+    def next(self, location=None):
+        """Return next record in recordset with location as cursor."""
+        location = location or self.location
+        if location.current_segment is None:
+            return self.first(location=location)
         j = self._rs_segments[
-            self._sorted_segnums[self._current_segment]
-        ].next()
+            self._sorted_segnums[location.current_segment]
+        ].next(location=location)
         if j is not None:
             return j
-        if self._current_segment + 1 == len(self._sorted_segnums):
+        if location.current_segment + 1 == len(self._sorted_segnums):
             return None
-        self._current_segment += 1
+        location.current_segment += 1
         return self._rs_segments[
-            self._sorted_segnums[self._current_segment]
-        ].first()
+            self._sorted_segnums[location.current_segment]
+        ].first(location=location)
 
-    def prev(self):
-        """Return previous record in recordset."""
-        if self._current_segment is None:
-            return self.last()
+    def prev(self, location=None):
+        """Return previous record in recordset with location as cursor."""
+        location = location or self.location
+        if location.current_segment is None:
+            return self.last(location=location)
         j = self._rs_segments[
-            self._sorted_segnums[self._current_segment]
-        ].prev()
+            self._sorted_segnums[location.current_segment]
+        ].prev(location=location)
         if j is not None:
             return j
-        if self._current_segment == 0:
+        if location.current_segment == 0:
             return None
-        self._current_segment -= 1
+        location.current_segment -= 1
         return self._rs_segments[
-            self._sorted_segnums[self._current_segment]
-        ].last()
+            self._sorted_segnums[location.current_segment]
+        ].last(location=location)
 
-    def current(self):
-        """Return current record in recordset."""
-        if self._current_segment is None:
+    def current(self, location=None):
+        """Return current record in recordset with location as cursor."""
+        location = location or self.location
+        if location.current_segment is None:
             return None
         return self._rs_segments[
-            self._sorted_segnums[self._current_segment]
-        ].current()
+            self._sorted_segnums[location.current_segment]
+        ].current(location=location)
 
-    def setat(self, record):
-        """Return current record after positioning cursor at record."""
+    def setat(self, record, location=None):
+        """Return current record after positioning location at record."""
+        location = location or self.location
         # segment, record_number = divmod(record, SegmentSize.db_segment_size)
         segment = divmod(record, SegmentSize.db_segment_size)[0]
         if segment not in self:
             return None
-        j = self._rs_segments[segment].setat(record)
+        j = self._rs_segments[segment].setat(record, location=location)
         if j is None:
             return None
-        self._current_segment = self._sorted_segnums.index(segment)
+        location.current_segment = self._sorted_segnums.index(segment)
         return j
 
     def __or__(self, other):
@@ -1133,7 +1191,7 @@ class _Recordset:
         recordset._dbset = self._dbset
         recordset._database = self._database
         # the copy forgets the current position in recordset
-        recordset._current_segment = None
+        recordset.location = Location()
         # the copy forgets the current recordset cursors
         # recordset._clientcursors = dict()
         # the copy forgets the current recordset cache
@@ -1165,169 +1223,12 @@ class _Recordset:
         self[segment][(segment, offset)] = False
         # self[segment] = self[segment].normalize()
 
-    def create_recordset_cursor(self):
+    def create_recordsetbase_cursor(self, internalcursor=False):
         """Create and return a cursor for this recordset."""
-        return self._dbhome.create_recordset_cursor(self)
-
-    def reset_current_segment(self):
-        """Set self._current_segment to None.
-
-        This allows an initial next() or prev() call to be treated as a
-        first() or last() call when a RecordList or FoundSet instance is
-        returned as the cursor by a database_cursor() call.
-
-        """
-        self._current_segment = None
-
-
-class RecordsetCursor(cursor.Cursor):
-    """Provide a bsddb3 style cursor for a recordset of arbitrary records.
-
-    The cursor does not support partial keys because the records in the
-    recordset do not have an implied order (apart from the accidential order
-    of existence on the database).
-
-    """
-
-    @property
-    def recordset(self):
-        """Return recordset."""
-        return self._dbset
-
-    def close(self):
-        """Delete record set cursor."""
-        # try:
-        #    del self._dbset._clientcursors[self]
-        # except:
-        #    pass
-        # self._dbset = None
-        super().close()
-
-    def count_records(self):
-        """Return record count or None."""
-        try:
-            return self._dbset.count_records()
-        except TypeError:
-            return None
-        except AttributeError:
-            return None
-
-    def database_cursor_exists(self):
-        """Return True if self.records is not None and False otherwise.
-
-        Simulates existence test for a database cursor.
-
-        """
-        # The cursor methods are defined in this class and operate on
-        # self.records if it is a list so do that test here as well.
-        return self._dbset is not None
-
-    def first(self):
-        """Return first record."""
-        if len(self._dbset):
-            try:
-                # return self._dbset.get_record(self._dbset.first()[1])
-                return self._get_record(self._dbset.first()[1])
-            except TypeError:
-                return None
-        return None
-
-    def get_position_of_record(self, record=None):
-        """Return position of record in file or 0 (zero)."""
-        try:
-            return self._dbset.get_position_of_record_number(record[0])
-        except ValueError:
-            return 0
-        except TypeError:
-            return 0
-
-    def get_record_at_position(self, position=None):
-        """Return record for positionth record in file or None."""
-        try:
-            return self._get_record(
-                self._dbset.get_record_number_at_position(position)
-            )
-        except IndexError:
-            return None
-        except TypeError:
-            if position is None:
-                return None
-            raise
-
-    def last(self):
-        """Return last record."""
-        if len(self._dbset):
-            try:
-                return self._get_record(self._dbset.last()[1])
-            except TypeError:
-                return None
-        return None
-
-    def nearest(self, key):
-        """Return nearest record. An absent record has no nearest record.
-
-        Perhaps get_record_at_position() is the method to use.
-
-        The recordset is created with arbitrary criteria.  The selected records
-        are displayed in record number order for consistency.  Assumption is
-        that all records on the recordset are equally near the requested record
-        if it is not in the recordset itself, so whatever is already displayed
-        is as near as any other records that might be chosen.
-
-        """
-        if len(self._dbset):
-            try:
-                return self._get_record(self._dbset.setat(key)[1])
-            except TypeError:
-                return None
-        return None
-
-    def next(self):
-        """Return next record."""
-        if len(self._dbset):
-            try:
-                return self._get_record(self._dbset.next()[1])
-            except TypeError:
-                return None
-        return None
-
-    def prev(self):
-        """Return previous record."""
-        if len(self._dbset):
-            try:
-                return self._get_record(self._dbset.prev()[1])
-            except TypeError:
-                return None
-        return None
-
-    def setat(self, record):
-        """Return record after positioning cursor at record."""
-        if len(self._dbset):
-            try:
-                return self._get_record(self._dbset.setat(record[0])[1])
-            except TypeError:
-                return None
-        return None
-
-    def _get_record(self, record_number, use_cache=False):
-        """Raise exception.  Must be implemented in a subclass."""
-        raise RecordsetError("_get_record must be implemented in a subclass")
-
-    # Should this method be in solentware_misc datagrid module, or perhaps in
-    # .record module?
-    # Is referesh_recordset an appropriate name?
-    def refresh_recordset(self, instance=None):
-        """Refresh records for datagrid access after database update.
-
-        The bitmap for the record set may not match the existence bitmap.
-
-        """
-        if instance is None:
-            return
-        if self.recordset.is_record_number_in_record_set(instance.key.recno):
-            if instance.newrecord is not None:
-                raise RecordsetError("refresh_recordset not implemented")
-            self.recordset.remove_record_number(instance.key.recno)
+        location = None
+        if not internalcursor:
+            location = Location()
+        return recordsetbasecursor.RecordSetBaseCursor(self, location=location)
 
 
 # __init__ may follow _DPTRecordSet example eventually.
@@ -1410,85 +1311,9 @@ class _RecordSetBase:
         self.recordset.close()
         self.recordset = None
 
-    def get_position_of_record_number(self, recnum):
-        """Return position of record number in recordset."""
-        return self.recordset.get_position_of_record_number(recnum)
-
-    def get_record_number_at_position(self, position):
-        """Return record number of record at position in recordset."""
-        return self.recordset.get_record_number_at_position(position)
-
     def insort_left_nodup(self, segment):
         """Insert segment into recordset maintaining segment number order."""
         self.recordset.insort_left_nodup(segment)
-
-    # Before solentware_base 5.2 wrongly returned self.recordset.first()
-    def first(self):
-        """Position at first record in recordset and return record."""
-        return self._get_record(self.recordset.first())
-
-    # Before solentware_base 5.2 wrongly returned self.recordset.last()
-    def last(self):
-        """Position at last record in recordset and return record."""
-        return self._get_record(self.recordset.last())
-
-    # Before solentware_base 5.2 wrongly returned self.recordset.next()
-    def next(self):
-        """Position at next record in recordset and return record."""
-        return self._get_record(self.recordset.next())
-
-    # Before solentware_base 5.2 wrongly returned self.recordset.prev()
-    def prev(self):
-        """Position at previous record in recordset and return record."""
-        return self._get_record(self.recordset.prev())
-
-    # Before solentware_base 5.2 wrongly returned self.recordset.current()
-    def current(self):
-        """Return current record."""
-        return self._get_record(self.recordset.current())
-
-    # Before solentware_base 5.2 wrongly returned self.recordset.setat(record)
-    def setat(self, record):
-        """Position at record and return record."""
-        return self._get_record(self.recordset.setat(record))
-
-    def _get_record(self, reference):
-        """Return record for reference from RecordList instance."""
-        if reference is None:
-            return None
-        return self.recordset.dbhome.get_primary_record(
-            self.recordset.dbset, reference[1]
-        )
-
-    def first_record_number(self):
-        """Position at first record in recordset and return record number."""
-        return self._get_record_number(self.recordset.first())
-
-    def last_record_number(self):
-        """Position at last record in recordset and return record number."""
-        return self._get_record_number(self.recordset.last())
-
-    def next_record_number(self):
-        """Position at next record in recordset and return record number."""
-        return self._get_record_number(self.recordset.next())
-
-    def prev_record_number(self):
-        """Position at prior record in recordset and return record number."""
-        return self._get_record_number(self.recordset.prev())
-
-    def current_record_number(self):
-        """Return current record number."""
-        return self._get_record_number(self.recordset.current())
-
-    def setat_record_number(self, record):
-        """Position at record and return record number."""
-        return self._get_record_number(self.recordset.setat(record))
-
-    def _get_record_number(self, reference):
-        """Return record number for reference from RecordList instance."""
-        if reference is None:
-            return None
-        return reference[1]
 
     def __or__(self, other):
         """Return new record set with both self and other records."""
@@ -1527,9 +1352,11 @@ class _RecordSetBase:
         """Return True if record_number is in recordset."""
         return self.recordset.is_record_number_in_record_set(record_number)
 
-    def create_recordset_cursor(self):
+    def create_recordsetbase_cursor(self, internalcursor=False):
         """Create a recordset cursor and return it."""
-        return self.recordset.create_recordset_cursor()
+        return self.recordset.create_recordsetbase_cursor(
+            internalcursor=internalcursor
+        )
 
 
 # __init__ may follow _DPTRecordList example eventually.

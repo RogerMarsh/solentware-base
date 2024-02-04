@@ -48,13 +48,14 @@ from .segmentsize import SegmentSize
 # Did not bother about this until pylint with default settings gave
 # warnings.
 from . import cursor as _cursor
+from . import recordsetcursor
 from .recordset import (
     RecordsetSegmentBitarray,
     RecordsetSegmentInt,
     RecordsetSegmentList,
-    RecordsetCursor as _RecordsetCursor,
     RecordList,
     FoundSet,
+    Location,
 )
 
 
@@ -1491,7 +1492,7 @@ class Database(_database.Database):
         assert file in self.specification
         if recordset is not None:
             assert isinstance(recordset, (RecordList, FoundSet))
-            return recordset
+            return recordset.create_recordsetbase_cursor(internalcursor=True)
         if file == field:
             return CursorPrimary(self, file=file, keyrange=keyrange)
         fieldkey = SUBFILE_DELIMITER.join((file, field))
@@ -1754,9 +1755,12 @@ class CursorPrimary(Cursor):
                 seg = _empty_recordset_segment_bitarray()
                 seg.bitarray = bitarray
                 seg.segment_number = segment_number
-                seg.current_position_in_segment = position - count - bacount
+                seg.location = Location()
+                seg.location.current_position_in_segment = (
+                    position - count - bacount
+                )
                 k = seg.get_record_number_at_position(
-                    seg.current_position_in_segment
+                    seg.location.current_position_in_segment
                 )
                 if k is not None:
                     return self._get_record(seg, (None, k))
@@ -1774,9 +1778,12 @@ class CursorPrimary(Cursor):
                 seg = _empty_recordset_segment_bitarray()
                 seg.bitarray = bitarray
                 seg.segment_number = segment_number
-                seg.current_position_in_segment = position - count + bacount
+                seg.location = Location()
+                seg.location.current_position_in_segment = (
+                    position - count + bacount
+                )
                 k = seg.get_record_number_at_position(
-                    seg.current_position_in_segment
+                    seg.location.current_position_in_segment
                 )
                 if k is not None:
                     return self._get_record(seg, (None, k))
@@ -1813,7 +1820,7 @@ class CursorPrimary(Cursor):
                     seg,
                     (None, i * SegmentSize.db_segment_size + record_number),
                 )
-            seg.current_position_in_segment = record_number
+            seg.location.current_position_in_segment = record_number
             record_number = seg.next()
             if record_number is not None:
                 return self._get_record(seg, (None, record_number[-1]))
@@ -1837,13 +1844,13 @@ class CursorPrimary(Cursor):
             bisect_left(ebm.table_ebm_segments, segment_number) :
         ]:
             seg = RecordsetSegmentBitarray(i, None, ebm.get_ebm_segment(i, db))
-            seg.current_position_in_segment = record_number
+            seg.location.current_position_in_segment = record_number
             if record_number in seg:
                 return self._get_record(
                     seg,
                     (None, i * SegmentSize.db_segment_size + record_number),
                 )
-            seg.current_position_in_segment = record_number
+            # seg.location.current_position_in_segment = record_number
             record_number = seg.next()
             if record_number is not None:
                 return self._get_record(seg, (None, record_number[-1]))
@@ -1869,13 +1876,13 @@ class CursorPrimary(Cursor):
             ]
         ):
             seg = RecordsetSegmentBitarray(i, None, ebm.get_ebm_segment(i, db))
-            seg.current_position_in_segment = record_number
+            seg.location.current_position_in_segment = record_number
             if record_number in seg:
                 return self._get_record(
                     seg,
                     (None, i * SegmentSize.db_segment_size + record_number),
                 )
-            seg.current_position_in_segment = record_number
+            # seg.location.current_position_in_segment = record_number
             record_number = seg.prev()
             if record_number is not None:
                 return self._get_record(seg, (None, record_number[-1]))
@@ -1905,7 +1912,7 @@ class CursorPrimary(Cursor):
                 ebm.get_ebm_segment(segment_number, self._dbset),
             )
             if record_number in seg:
-                seg.current_position_in_segment = record_number
+                seg.location.current_position_in_segment = record_number
                 return self._get_record(
                     seg,
                     (
@@ -1932,7 +1939,10 @@ class CursorPrimary(Cursor):
         (
             self.current_segment_number,
             self._current_record_number_in_segment,
-        ) = (segment.segment_number, segment.current_position_in_segment)
+        ) = (
+            segment.segment_number,
+            segment.location.current_position_in_segment,
+        )
         return (ref[-1], data)
 
 
@@ -2280,7 +2290,7 @@ class CursorSecondary(Cursor):
         # in each case.
         # I think I forget the record position is based at 1 not 0 when writing
         # this code.
-        segment.current_position_in_segment = (
+        segment.location.current_position_in_segment = (
             segment.get_position_of_record_number(record_number)
         )  # - 1)
         return record
@@ -2481,7 +2491,7 @@ class CursorSecondary(Cursor):
                 return record
 
 
-class RecordsetCursor(_RecordsetCursor):
+class RecordsetCursor(recordsetcursor.RecordsetCursor):
     """Add _get_record method to RecordsetCursor.
 
     RecordsetCursor is imported from recordset as _RecordsetCursor to

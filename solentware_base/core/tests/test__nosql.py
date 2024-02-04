@@ -48,6 +48,8 @@ from .. import _nosql
 from .. import tree
 from .. import filespec
 from .. import recordset
+from .. import recordsetcursor
+from .. import recordsetbasecursor
 from ..segmentsize import SegmentSize
 from ..wherevalues import ValuesClause
 
@@ -2280,14 +2282,14 @@ class Database_database_create_cursors(_NoSQLOpen):
         d = self.database
         rs = d.recordlist_key("file1", "field1", key="ba_o")
         self.assertIsInstance(
-            d.create_recordset_cursor(rs), recordset.RecordsetCursor
+            d.create_recordset_cursor(rs), recordsetcursor.RecordsetCursor
         )
 
     def test_06_database_cursor_recordset(self):
         rs = recordset.RecordList(self.database, "field1")
         self.assertIsInstance(
             self.database.database_cursor("file1", "file1", recordset=rs),
-            recordset._RecordSetBase,
+            recordsetbasecursor.RecordSetBaseCursor,
         )
 
 

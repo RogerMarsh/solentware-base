@@ -3055,12 +3055,6 @@ class _DPTRecordSet:
         """Return count of records in the record set."""
         return self.recordset.Count()
 
-    def reset_current_segment(self):
-        """Do nothing.
-
-        Method exists for compatibility with other database engines.
-        """
-
 
 # Attempt to cope with absence of & ^ | &= ^= |= operators in dptapi interface
 # to DPT recordlist objects via APIRecordList class.

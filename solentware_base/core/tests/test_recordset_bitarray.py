@@ -68,8 +68,8 @@ class RecordsetSegmentBitarray(unittest.TestCase):
             [
                 "_reversed",
                 "bitarray",
-                "current_position_in_segment",
                 "index_key",
+                "location",
                 "segment_number",
             ],
         )
@@ -88,23 +88,23 @@ class RecordsetSegmentBitarray(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    r"current\(\) takes 1 positional argument ",
-                    "but 2 were given$",
+                    r"current\(\) takes from 1 to 2 positional arguments ",
+                    "but 3 were given$",
                 )
             ),
             self.rsi.current,
-            *(None,),
+            *(None, None),
         )
         self.assertRaisesRegex(
             TypeError,
             "".join(
                 (
-                    r"first\(\) takes 1 positional argument ",
-                    "but 2 were given$",
+                    r"first\(\) takes from 1 to 2 positional arguments ",
+                    "but 3 were given$",
                 )
             ),
             self.rsi.first,
-            *(None,),
+            *(None, None),
         )
         self.assertRaisesRegex(
             TypeError,
@@ -132,34 +132,34 @@ class RecordsetSegmentBitarray(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    r"last\(\) takes 1 positional argument ",
-                    "but 2 were given$",
+                    r"last\(\) takes from 1 to 2 positional arguments ",
+                    "but 3 were given$",
                 )
             ),
             self.rsi.last,
-            *(None,),
+            *(None, None),
         )
         self.assertRaisesRegex(
             TypeError,
             "".join(
                 (
-                    r"next\(\) takes 1 positional argument ",
-                    "but 2 were given$",
+                    r"next\(\) takes from 1 to 2 positional arguments ",
+                    "but 3 were given$",
                 )
             ),
             self.rsi.next,
-            *(None,),
+            *(None, None),
         )
         self.assertRaisesRegex(
             TypeError,
             "".join(
                 (
-                    r"prev\(\) takes 1 positional argument ",
-                    "but 2 were given$",
+                    r"prev\(\) takes from 1 to 2 positional arguments ",
+                    "but 3 were given$",
                 )
             ),
             self.rsi.prev,
-            *(None,),
+            *(None, None),
         )
         self.assertRaisesRegex(
             TypeError,
@@ -271,7 +271,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
         self.assertEqual(s.bitarray.bitarray_bytes, self.sbytes)
         self.assertEqual(s.index_key, "key")
         self.assertEqual(s.segment_number, 2)
-        self.assertEqual(s.current_position_in_segment, None)
+        self.assertEqual(s.location.current_position_in_segment, None)
         self.assertEqual(s._reversed, None)
 
     def test_segment_number(self):
@@ -284,20 +284,20 @@ class RecordsetSegmentBitarray(unittest.TestCase):
         self.assertEqual(self.rsi.current(), None)
 
     def test_current_02(self):
-        self.rsi.current_position_in_segment = 1
+        self.rsi.location.current_position_in_segment = 1
         self.assertEqual(self.rsi.current(), ("key", 257))
 
     def test_current_03(self):
         # Different to RecordsetSegmentInt?
-        self.rsi.current_position_in_segment = 200
+        self.rsi.location.current_position_in_segment = 200
         self.assertEqual(self.rsi.current(), ("key", 456))
 
     def test_first_01(self):
         self.assertEqual(self.rsi.first(), ("key", 263))
-        self.assertEqual(self.rsi.current_position_in_segment, 7)
+        self.assertEqual(self.rsi.location.current_position_in_segment, 7)
 
     def test_first_02(self):
-        self.rsi.current_position_in_segment = 2
+        self.rsi.location.current_position_in_segment = 2
         self.assertEqual(self.rsi.first(), ("key", 263))
 
     def test_first_03(self):
@@ -346,7 +346,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
 
     def test_last_01(self):
         self.assertEqual(self.rsi.last(), ("key", 279))
-        self.assertEqual(self.rsi.current_position_in_segment, 23)
+        self.assertEqual(self.rsi.location.current_position_in_segment, 23)
 
     def test_last_02(self):
         self.rsi.current_position_in_segment = 2
@@ -364,7 +364,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
 
     def test_next(self):
         self.assertEqual(self.rsi.next(), ("key", 263))
-        self.assertEqual(self.rsi.current_position_in_segment, 7)
+        self.assertEqual(self.rsi.location.current_position_in_segment, 7)
         self.assertEqual(self.rsi.next(), ("key", 272))
         self.assertEqual(self.rsi.next(), ("key", 273))
         for i in range(5):
@@ -374,7 +374,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
 
     def test_prev(self):
         self.assertEqual(self.rsi.prev(), ("key", 279))
-        self.assertEqual(self.rsi.current_position_in_segment, 23)
+        self.assertEqual(self.rsi.location.current_position_in_segment, 23)
         self.assertEqual(self.rsi.prev(), ("key", 278))
         self.assertEqual(self.rsi.prev(), ("key", 277))
         for i in range(5):
@@ -384,7 +384,7 @@ class RecordsetSegmentBitarray(unittest.TestCase):
 
     def test_setat_01(self):
         self.assertEqual(self.rsi.setat(263), ("key", 263))
-        self.assertEqual(self.rsi.current_position_in_segment, 7)
+        self.assertEqual(self.rsi.location.current_position_in_segment, 7)
 
     def test_setat_02(self):
         self.assertEqual(self.rsi.setat(68000), None)

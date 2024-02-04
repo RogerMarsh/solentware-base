@@ -28,11 +28,11 @@ from . import _database
 from .bytebit import Bitarray, SINGLEBIT
 from .segmentsize import SegmentSize
 from . import cursor as _cursor
+from . import recordsetcursor
 from .recordset import (
     RecordsetSegmentBitarray,
     RecordsetSegmentInt,
     RecordsetSegmentList,
-    RecordsetCursor as _RecordsetCursor,
     RecordList,
     FoundSet,
 )
@@ -1447,7 +1447,7 @@ class Database(_database.Database):
     def populate_recordset_segment(self, recordset, reference):
         """Populate recordset with segment in reference.
 
-        The segement from reference is added to an existing segment in
+        The segment from reference is added to an existing segment in
         recordset if there is one, or becomes recordset's segment for
         that segment number if not.
         """
@@ -1702,7 +1702,7 @@ class Database(_database.Database):
         assert file in self.specification
         if recordset is not None:
             assert isinstance(recordset, (RecordList, FoundSet))
-            return recordset
+            return recordset.create_recordsetbase_cursor(internalcursor=True)
         if file == field:
             return CursorPrimary(
                 self.table[file][0],
@@ -2658,7 +2658,7 @@ class CursorSecondary(Cursor):
         return record[1]
 
 
-class RecordsetCursor(_RecordsetCursor):
+class RecordsetCursor(recordsetcursor.RecordsetCursor):
     """Add _get_record method and tranasction support to RecordsetCursor."""
 
     def __init__(self, recordset, transaction=None, database=None, **kargs):

@@ -54,9 +54,9 @@ class RecordsetSegmentList(unittest.TestCase):
         self.assertEqual(
             sorted(self.rsl.__dict__.keys()),
             [
-                "current_position_in_segment",
                 "index_key",
                 "list",
+                "location",
                 "segment_number",
             ],
         )
@@ -75,23 +75,23 @@ class RecordsetSegmentList(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    r"current\(\) takes 1 positional argument ",
-                    "but 2 were given$",
+                    r"current\(\) takes from 1 to 2 positional arguments ",
+                    "but 3 were given$",
                 )
             ),
             self.rsl.current,
-            *(None,),
+            *(None, None),
         )
         self.assertRaisesRegex(
             TypeError,
             "".join(
                 (
-                    r"first\(\) takes 1 positional argument ",
-                    "but 2 were given$",
+                    r"first\(\) takes from 1 to 2 positional arguments ",
+                    "but 3 were given$",
                 )
             ),
             self.rsl.first,
-            *(None,),
+            *(None, None),
         )
         self.assertRaisesRegex(
             TypeError,
@@ -119,34 +119,34 @@ class RecordsetSegmentList(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    r"last\(\) takes 1 positional argument ",
-                    "but 2 were given$",
+                    r"last\(\) takes from 1 to 2 positional arguments ",
+                    "but 3 were given$",
                 )
             ),
             self.rsl.last,
-            *(None,),
+            *(None, None),
         )
         self.assertRaisesRegex(
             TypeError,
             "".join(
                 (
-                    r"next\(\) takes 1 positional argument ",
-                    "but 2 were given$",
+                    r"next\(\) takes from 1 to 2 positional arguments ",
+                    "but 3 were given$",
                 )
             ),
             self.rsl.next,
-            *(None,),
+            *(None, None),
         )
         self.assertRaisesRegex(
             TypeError,
             "".join(
                 (
-                    r"prev\(\) takes 1 positional argument ",
-                    "but 2 were given$",
+                    r"prev\(\) takes from 1 to 2 positional arguments ",
+                    "but 3 were given$",
                 )
             ),
             self.rsl.prev,
-            *(None,),
+            *(None, None),
         )
         self.assertRaisesRegex(
             TypeError,
@@ -258,7 +258,7 @@ class RecordsetSegmentList(unittest.TestCase):
         self.assertEqual(s.list, [65, 66, 67])
         self.assertEqual(s.index_key, "key")
         self.assertEqual(s.segment_number, 2)
-        self.assertEqual(s.current_position_in_segment, None)
+        self.assertEqual(s.location.current_position_in_segment, None)
 
     def test_segment_number(self):
         self.assertEqual(self.rsl.segment_number, 2)
@@ -270,12 +270,12 @@ class RecordsetSegmentList(unittest.TestCase):
         self.assertEqual(self.rsl.current(), None)
 
     def test_current_02(self):
-        self.rsl.current_position_in_segment = 1
+        self.rsl.location.current_position_in_segment = 1
         self.assertEqual(self.rsl.current(), ("key", 322))
 
     def test_current_03(self):
         # Different to RecordsetSegmentInt?
-        self.rsl.current_position_in_segment = 5
+        self.rsl.location.current_position_in_segment = 5
         self.assertRaisesRegex(
             IndexError,
             "".join(("list index out of range$",)),
@@ -284,10 +284,10 @@ class RecordsetSegmentList(unittest.TestCase):
 
     def test_first_01(self):
         self.assertEqual(self.rsl.first(), ("key", 321))
-        self.assertEqual(self.rsl.current_position_in_segment, 0)
+        self.assertEqual(self.rsl.location.current_position_in_segment, 0)
 
     def test_first_02(self):
-        self.rsl.current_position_in_segment = 2
+        self.rsl.location.current_position_in_segment = 2
         self.assertEqual(self.rsl.first(), ("key", 321))
 
     def test_first_03(self):
@@ -326,10 +326,10 @@ class RecordsetSegmentList(unittest.TestCase):
 
     def test_last_01(self):
         self.assertEqual(self.rsl.last(), ("key", 323))
-        self.assertEqual(self.rsl.current_position_in_segment, 2)
+        self.assertEqual(self.rsl.location.current_position_in_segment, 2)
 
     def test_last_02(self):
-        self.rsl.current_position_in_segment = 2
+        self.rsl.location.current_position_in_segment = 2
         self.assertEqual(self.rsl.last(), ("key", 323))
 
     def test_last_03(self):
@@ -348,21 +348,21 @@ class RecordsetSegmentList(unittest.TestCase):
 
     def test_next(self):
         self.assertEqual(self.rsl.next(), ("key", 321))
-        self.assertEqual(self.rsl.current_position_in_segment, 0)
+        self.assertEqual(self.rsl.location.current_position_in_segment, 0)
         self.assertEqual(self.rsl.next(), ("key", 322))
         self.assertEqual(self.rsl.next(), ("key", 323))
         self.assertEqual(self.rsl.next(), None)
 
     def test_prev(self):
         self.assertEqual(self.rsl.prev(), ("key", 323))
-        self.assertEqual(self.rsl.current_position_in_segment, 2)
+        self.assertEqual(self.rsl.location.current_position_in_segment, 2)
         self.assertEqual(self.rsl.prev(), ("key", 322))
         self.assertEqual(self.rsl.prev(), ("key", 321))
         self.assertEqual(self.rsl.prev(), None)
 
     def test_setat_01(self):
         self.assertEqual(self.rsl.setat(321), ("key", 321))
-        self.assertEqual(self.rsl.current_position_in_segment, 0)
+        self.assertEqual(self.rsl.location.current_position_in_segment, 0)
 
     def test_setat_02(self):
         self.assertEqual(self.rsl.setat(320), None)

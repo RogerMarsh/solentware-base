@@ -19,6 +19,8 @@ except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
 from .. import _sqlite
 from .. import filespec
 from .. import recordset
+from .. import recordsetcursor
+from .. import recordsetbasecursor
 from ..segmentsize import SegmentSize
 from ..wherevalues import ValuesClause
 
@@ -1633,7 +1635,7 @@ class Database_make_recordset(_SQLiteOpen):
         d = self.database
         rs = self.database.recordlist_key("file1", "field1", key=b"ba_o")
         self.assertIsInstance(
-            d.create_recordset_cursor(rs), recordset.RecordsetCursor
+            d.create_recordset_cursor(rs), recordsetcursor.RecordsetCursor
         )
 
 

@@ -10,6 +10,7 @@ import sys
 
 from .. import recordset
 from ..segmentsize import SegmentSize
+from .. import recordsetbasecursor
 
 
 class _Recordset(unittest.TestCase):
@@ -46,7 +47,7 @@ class _Recordset(unittest.TestCase):
             def exists(self, file, field):
                 return bool(self.get_table_connection(file))
 
-            def create_recordset_cursor(self, rs):
+            def create_recordsetbase_cursor(self, rs):
                 return RC()
 
         self.D = D
@@ -103,12 +104,12 @@ class _Recordset(unittest.TestCase):
         self.assertEqual(
             sorted(self.rs.__dict__.keys()),
             [
-                "_current_segment",
                 "_database",
                 "_dbhome",
                 "_dbset",
                 "_rs_segments",
                 "_sorted_segnums",
+                "location",
                 "record_cache",
                 "record_deque",
             ],
@@ -235,56 +236,56 @@ class _Recordset(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    r"first\(\) takes 1 positional argument ",
-                    "but 2 were given$",
+                    r"first\(\) takes from 1 to 2 positional arguments ",
+                    "but 3 were given$",
                 )
             ),
             self.rs.first,
-            *(None,),
+            *(None, None),
         )
         self.assertRaisesRegex(
             TypeError,
             "".join(
                 (
-                    r"last\(\) takes 1 positional argument ",
-                    "but 2 were given$",
+                    r"last\(\) takes from 1 to 2 positional arguments ",
+                    "but 3 were given$",
                 )
             ),
             self.rs.last,
-            *(None,),
+            *(None, None),
         )
         self.assertRaisesRegex(
             TypeError,
             "".join(
                 (
-                    r"next\(\) takes 1 positional argument ",
-                    "but 2 were given$",
+                    r"next\(\) takes from 1 to 2 positional arguments ",
+                    "but 3 were given$",
                 )
             ),
             self.rs.next,
-            *(None,),
+            *(None, None),
         )
         self.assertRaisesRegex(
             TypeError,
             "".join(
                 (
-                    r"prev\(\) takes 1 positional argument ",
-                    "but 2 were given$",
+                    r"prev\(\) takes from 1 to 2 positional arguments ",
+                    "but 3 were given$",
                 )
             ),
             self.rs.prev,
-            *(None,),
+            *(None, None),
         )
         self.assertRaisesRegex(
             TypeError,
             "".join(
                 (
-                    r"current\(\) takes 1 positional argument ",
-                    "but 2 were given$",
+                    r"current\(\) takes from 1 to 2 positional arguments ",
+                    "but 3 were given$",
                 )
             ),
             self.rs.current,
-            *(None,),
+            *(None, None),
         )
         self.assertRaisesRegex(
             TypeError,
@@ -422,23 +423,12 @@ class _Recordset(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    r"create_recordset_cursor\(\) takes 1 positional ",
-                    "argument but 2 were given$",
+                    r"create_recordsetbase_cursor\(\) takes from 1 to 2 ",
+                    "positional arguments but 3 were given$",
                 )
             ),
-            self.rs.create_recordset_cursor,
-            *(None,),
-        )
-        self.assertRaisesRegex(
-            TypeError,
-            "".join(
-                (
-                    r"reset_current_segment\(\) takes 1 positional ",
-                    "argument but 2 were given$",
-                )
-            ),
-            self.rs.reset_current_segment,
-            *(None,),
+            self.rs.create_recordsetbase_cursor,
+            *(None, None),
         )
 
     def test___init__01(self):
@@ -446,7 +436,7 @@ class _Recordset(unittest.TestCase):
         self.assertEqual(s._rs_segments, {})
         self.assertEqual(s.record_cache, {})
         self.assertEqual(s.record_deque, deque(maxlen=1))
-        self.assertEqual(s._current_segment, None)
+        self.assertEqual(s.location.current_segment, None)
         self.assertEqual(s._sorted_segnums, [])
         self.assertEqual(s._dbhome, None)
         self.assertEqual(s._dbset, None)
@@ -457,7 +447,7 @@ class _Recordset(unittest.TestCase):
         self.assertEqual(s._rs_segments, {})
         self.assertEqual(s.record_cache, {})
         self.assertEqual(s.record_deque, deque(maxlen=1))
-        self.assertEqual(s._current_segment, None)
+        self.assertEqual(s.location.current_segment, None)
         self.assertEqual(s._sorted_segnums, [])
         self.assertIsInstance(s._dbhome, self.D)
         self.assertEqual(s._dbset, "file1")
@@ -501,10 +491,10 @@ class _Recordset(unittest.TestCase):
         s._rs_segments[2] = 2
         s._rs_segments[3] = 3
         s._sorted_segnums = sorted(s._rs_segments)
-        self.assertEqual(s._current_segment, None)
+        self.assertEqual(s.location.current_segment, None)
         for i in range(len(s._sorted_segnums)):
             self.assertEqual(s.__delitem__(i), None)
-        self.assertEqual(s._current_segment, None)
+        self.assertEqual(s.location.current_segment, None)
 
     def test___delitem___02(self):
         s = self.rs
@@ -513,11 +503,11 @@ class _Recordset(unittest.TestCase):
         s._rs_segments[2] = 2
         s._rs_segments[3] = 3
         s._sorted_segnums = sorted(s._rs_segments)
-        self.assertEqual(s._current_segment, None)
+        self.assertEqual(s.location.current_segment, None)
         s._current_segment = 6
         for i in range(len(s._sorted_segnums)):
             self.assertEqual(s.__delitem__(i), None)
-        self.assertEqual(s._current_segment, None)
+        self.assertEqual(s.location.current_segment, None)
 
     def test___delitem___03(self):
         s = self.rs
@@ -526,13 +516,13 @@ class _Recordset(unittest.TestCase):
         s._rs_segments[2] = 2
         s._rs_segments[3] = 3
         s._sorted_segnums = sorted(s._rs_segments)
-        self.assertEqual(s._current_segment, None)
+        self.assertEqual(s.location.current_segment, None)
         s._current_segment = 6
         self.assertEqual(s.__delitem__(1), None)
         self.assertEqual(s.__delitem__(2), None)
         self.assertEqual(s.__delitem__(0), None)
         self.assertEqual(s.__delitem__(3), None)
-        self.assertEqual(s._current_segment, None)
+        self.assertEqual(s.location.current_segment, None)
 
     def test___contains__(self):
         self.assertEqual(0 in self.rs, False)
@@ -676,15 +666,18 @@ class _Recordset(unittest.TestCase):
         self.rs[1] = recordset.RecordsetSegmentList(
             1, "key", records=b"\x00A\x00B\x00C"
         )
+        self.assertEqual(self.rs.prev(), None)
+        # self.rs.location.current_segment = None
+        self.rs.location.current_position_in_segment = None
         self.assertEqual(self.rs.prev(), ("key", 195))
 
     def test_current(self):
         self.assertEqual(self.rs.current(), None)
         self.rs[self.rsl.segment_number] = self.rsl
-        self.assertEqual(self.rs._current_segment, None)
+        self.assertEqual(self.rs.location.current_segment, None)
         self.assertEqual(self.rs.current(), None)
         self.rs.first()
-        self.assertEqual(self.rs._current_segment, 0)
+        self.assertEqual(self.rs.location.current_segment, 0)
         self.assertEqual(self.rs.current(), ("key", 321))
 
     def test_setat(self):
@@ -1051,11 +1044,11 @@ class _Recordset(unittest.TestCase):
         )
         self.assertEqual(self.rs.count_records(), 2)
 
-    def test_create_recordset_cursor(self):
-        self.assertIsInstance(self.rs.create_recordset_cursor(), self.RC)
-
-    def test_reset_current_segment(self):
-        self.assertEqual(self.rs.reset_current_segment(), None)
+    def test_create_recordsetbase_cursor(self):
+        self.assertIsInstance(
+            self.rs.create_recordsetbase_cursor(),
+            recordsetbasecursor.RecordSetBaseCursor,
+        )
 
 
 if __name__ == "__main__":

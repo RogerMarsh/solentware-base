@@ -88,9 +88,10 @@ class FindTC(unittest.TestCase):
             if hasattr(wc, k):
                 setattr(wc, k, kw[k])
         rs = method(wc)
+        c = rs.create_recordsetbase_cursor()
         rns = set()
-        while rs:
-            r = rs.next()
+        while True:
+            r = c.next()
             if not r:
                 break
             rns.add(r[0])
@@ -103,17 +104,19 @@ class FindTC(unittest.TestCase):
                 setattr(wc, k, kw[k])
         finder.initialize_answer(wc)
         rsall = finder._db.recordlist_ebm(finder._dbset)
+        c = rsall.create_recordsetbase_cursor()
         nr = SampleNameRecord()
         while True:
-            r = rsall.next()
+            r = c.next()
             if r is None:
                 break
             nr.load_record(finder._db.get_primary_record(finder._dbset, r[0]))
             method(wc, r[0], nr)
         rs = wc.result.answer
+        c = rs.create_recordsetbase_cursor()
         rns = set()
-        while rs:
-            r = rs.next()
+        while True:
+            r = c.next()
             if not r:
                 break
             rns.add(r[0])
@@ -132,9 +135,10 @@ class FindTC(unittest.TestCase):
         wc.result.answer = finder._eq(wc)
         wc.left = wcl
         rs = method(wc)
+        c = rs.create_recordsetbase_cursor()
         rns = set()
-        while rs:
-            r = rs.next()
+        while True:
+            r = c.next()
             if not r:
                 break
             rns.add(r[0])
@@ -156,9 +160,10 @@ class FindTC(unittest.TestCase):
         finder.operator(wc)
         self.assertIs(wc.result, wc.left.result)
         rs = wc.left.result.answer
+        c = rs.create_recordsetbase_cursor()
         rns = set()
-        while rs:
-            r = rs.next()
+        while True:
+            r = c.next()
             if not r:
                 break
             rns.add(r[0])

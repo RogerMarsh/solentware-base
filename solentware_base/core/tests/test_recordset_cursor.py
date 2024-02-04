@@ -7,6 +7,7 @@
 import unittest
 
 from .. import recordset
+from .. import recordsetcursor
 
 
 class RecordsetCursor(unittest.TestCase):
@@ -38,12 +39,12 @@ class RecordsetCursor(unittest.TestCase):
         self.D = D
         self.d = D()
         self.rs = recordset._Recordset(self.d, "file1")
-        self.rsc = recordset.RecordsetCursor(self.rs)
+        self.rsc = recordsetcursor.RecordsetCursor(self.rs)
         self.rsl = recordset.RecordsetSegmentList(
             2, "key", records=b"\x00A\x00B\x00C"
         )
 
-        class RC(recordset.RecordsetCursor):
+        class RC(recordsetcursor.RecordsetCursor):
             # The implementations of _get_record are different for DPT, SQLite,
             # and Berkeley DB.
             def _get_record(self, record_number, use_cache=False):
@@ -314,7 +315,7 @@ class RecordsetCursor(unittest.TestCase):
     def test__get_record(self):
         try:
             self.rsc._get_record(1)
-        except recordset.RecordsetError as exc:
+        except recordsetcursor.RecordsetCursorError as exc:
             self.assertEqual(
                 str(exc), "_get_record must be implemented in a subclass"
             )
@@ -338,7 +339,7 @@ class RecordsetCursor(unittest.TestCase):
         self.assertEqual(self.rs.count_records(), 2)
         try:
             self.rsc.refresh_recordset(M(65603, True))
-        except recordset.RecordsetError as exc:
+        except recordsetcursor.RecordsetCursorError as exc:
             self.assertEqual(str(exc), "refresh_recordset not implemented")
 
 
