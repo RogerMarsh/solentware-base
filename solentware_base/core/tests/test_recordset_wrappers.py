@@ -13,6 +13,27 @@ from ..segmentsize import SegmentSize
 
 class _RecordSetBase(unittest.TestCase):
     def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+    def test__assumptions(self):
+        self.assertRaisesRegex(
+            TypeError,
+            r"_RecordSetBase\(\) takes no arguments$",
+            recordset._RecordSetBase,
+            *(None,),
+        )
+
+
+class FoundSet(unittest.TestCase):
+    # Tests for methods in recordset._RecordSetBase and the __init__
+    # method of FoundSet.
+    # FoundSet does not add any methods: it is significant for the methods
+    # added in RecordList not present in FoundSet, and the unimplemented
+    # FoundSet methods which would not be present in RecordList.
+    def setUp(self):
         class DB:
             pass
 
@@ -47,31 +68,34 @@ class _RecordSetBase(unittest.TestCase):
 
         self.D = D
         self.d = D()
-        self.rsb1 = recordset._RecordSetBase(self.d, "file1")
+        self.rs = recordset._Recordset(self.d, "file1")
+        self.fs1 = recordset.FoundSet(self.rs)
 
     def tearDown(self):
-        self.rsb1 = None
+        self.fs1 = None
+        self.rs = None
 
     def test__assumptions(self):
-        msg = "Failure of this test invalidates all other tests"
         self.assertRaisesRegex(
             TypeError,
             "".join(
                 (
-                    r"__init__\(\) missing 2 required positional arguments: ",
-                    "'dbhome' and 'dbset'$",
+                    r"__init__\(\) missing 1 required positional argument: ",
+                    "'recordset'$",
                 )
             ),
-            recordset._RecordSetBase,
+            recordset.FoundSet,
         )
         self.assertRaisesRegex(
             TypeError,
             "".join(
-                (r"__init__\(\) got an unexpected keyword argument 'xxxxx'$",)
+                (
+                    r"__init__\(\) takes 2 positional arguments ",
+                    "but 3 were given$",
+                )
             ),
-            recordset._RecordSetBase,
+            recordset.FoundSet,
             *(None, None),
-            **dict(xxxxx=None),
         )
         if sys.version_info[:2] < (3, 6):
             excmsg = r"(unorderable types: str\(\) [<>] int\(\))"
@@ -89,7 +113,7 @@ class _RecordSetBase(unittest.TestCase):
             *(self.d, "file1"),
             **dict(cache_size="a"),
         )
-        self.assertEqual(sorted(self.rsb1.__dict__.keys()), ["recordset"])
+        self.assertEqual(sorted(self.fs1.__dict__.keys()), ["recordset"])
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -99,7 +123,7 @@ class _RecordSetBase(unittest.TestCase):
                     "'key' and 'value'$",
                 )
             ),
-            self.rsb1.__setitem__,
+            self.fs1.__setitem__,
         )
         self.assertRaisesRegex(
             TypeError,
@@ -110,7 +134,7 @@ class _RecordSetBase(unittest.TestCase):
                     "'key'$",
                 )
             ),
-            self.rsb1.__getitem__,
+            self.fs1.__getitem__,
         )
         self.assertRaisesRegex(
             TypeError,
@@ -121,7 +145,7 @@ class _RecordSetBase(unittest.TestCase):
                     "'segment'$",
                 )
             ),
-            self.rsb1.__delitem__,
+            self.fs1.__delitem__,
         )
         self.assertRaisesRegex(
             TypeError,
@@ -132,7 +156,7 @@ class _RecordSetBase(unittest.TestCase):
                     "'segment'$",
                 )
             ),
-            self.rsb1.__contains__,
+            self.fs1.__contains__,
         )
         self.assertRaisesRegex(
             TypeError,
@@ -142,7 +166,7 @@ class _RecordSetBase(unittest.TestCase):
                     "but 2 were given$",
                 )
             ),
-            self.rsb1.__len__,
+            self.fs1.__len__,
             *(None,),
         )
         self.assertRaisesRegex(
@@ -153,7 +177,7 @@ class _RecordSetBase(unittest.TestCase):
                     "but 2 were given$",
                 )
             ),
-            self.rsb1.close,
+            self.fs1.close,
             *(None,),
         )
         self.assertRaisesRegex(
@@ -164,7 +188,7 @@ class _RecordSetBase(unittest.TestCase):
                     "positional argument: 'segment'$",
                 )
             ),
-            self.rsb1.insort_left_nodup,
+            self.fs1.insort_left_nodup,
         )
         self.assertRaisesRegex(
             TypeError,
@@ -174,7 +198,7 @@ class _RecordSetBase(unittest.TestCase):
                     "'other'$",
                 )
             ),
-            self.rsb1.__or__,
+            self.fs1.__or__,
         )
         self.assertRaisesRegex(
             TypeError,
@@ -184,7 +208,7 @@ class _RecordSetBase(unittest.TestCase):
                     "'other'$",
                 )
             ),
-            self.rsb1.__and__,
+            self.fs1.__and__,
         )
         self.assertRaisesRegex(
             TypeError,
@@ -194,7 +218,7 @@ class _RecordSetBase(unittest.TestCase):
                     "'other'$",
                 )
             ),
-            self.rsb1.__xor__,
+            self.fs1.__xor__,
         )
         self.assertRaisesRegex(
             TypeError,
@@ -204,7 +228,7 @@ class _RecordSetBase(unittest.TestCase):
                     "positional arguments but 3 were given$",
                 )
             ),
-            self.rsb1.normalize,
+            self.fs1.normalize,
             *(None, None),
         )
         self.assertRaisesRegex(
@@ -215,7 +239,7 @@ class _RecordSetBase(unittest.TestCase):
                     "positional argument: 'record_number'$",
                 )
             ),
-            self.rsb1.is_record_number_in_record_set,
+            self.fs1.is_record_number_in_record_set,
         )
         self.assertRaisesRegex(
             TypeError,
@@ -225,22 +249,22 @@ class _RecordSetBase(unittest.TestCase):
                     "positional arguments but 3 were given$",
                 )
             ),
-            self.rsb1.create_recordsetbase_cursor,
+            self.fs1.create_recordsetbase_cursor,
             *(None, None),
         )
 
     def test___init__(self):
-        self.assertIsInstance(self.rsb1, recordset._RecordSetBase)
-        self.assertIsInstance(self.rsb1.recordset, recordset._Recordset)
+        self.assertIsInstance(self.fs1, recordset.FoundSet)
+        self.assertIsInstance(self.fs1.recordset, recordset._Recordset)
 
     def test___setitem__(self):
-        self.assertEqual(self.rsb1.__setitem__(0, True), None)
+        self.assertEqual(self.fs1.__setitem__(0, True), None)
 
     def test___getitem__(self):
         self.assertRaisesRegex(
             KeyError,
             "".join(("0$",)),
-            self.rsb1.__getitem__,
+            self.fs1.__getitem__,
             *(0,),
         )
 
@@ -248,54 +272,55 @@ class _RecordSetBase(unittest.TestCase):
         self.assertRaisesRegex(
             KeyError,
             "".join(("0$",)),
-            self.rsb1.__delitem__,
+            self.fs1.__delitem__,
             *(0,),
         )
 
     def test___contains__(self):
-        self.assertEqual(0 in self.rsb1, False)
+        self.assertEqual(0 in self.fs1, False)
 
     def test___len__(self):
-        self.assertEqual(self.rsb1.__len__(), 0)
+        self.assertEqual(self.fs1.__len__(), 0)
 
     def test_count_records(self):
-        self.assertEqual(self.rsb1.count_records(), 0)
+        self.assertEqual(self.fs1.count_records(), 0)
 
     def test_close(self):
-        self.assertEqual(self.rsb1.close(), None)
+        self.assertEqual(self.fs1.close(), None)
 
     def test_insort_left_nodup(self):
-        self.assertEqual(self.rsb1.insort_left_nodup(2), None)
+        self.assertEqual(self.fs1.insort_left_nodup(2), None)
 
     def test___or__(self):
-        rsb2 = recordset._RecordSetBase(self.d, "file1")
-        rsb = self.rsb1 | rsb2
-        self.assertIsInstance(rsb, recordset._RecordSetBase)
-        self.assertIsNot(rsb, self.rsb1)
-        self.assertIsNot(rsb, rsb2)
+        fs2 = recordset.FoundSet(self.rs)
+        fs = self.fs1 | fs2
+        self.assertIsInstance(fs, recordset.RecordList)
+        self.assertIsNot(fs, self.fs1)
+        self.assertIsNot(fs, fs2)
 
     def test___and__(self):
-        rsb2 = recordset._RecordSetBase(self.d, "file1")
-        rsb = self.rsb1 & rsb2
-        self.assertIsInstance(rsb, recordset._RecordSetBase)
-        self.assertIsNot(rsb, self.rsb1)
-        self.assertIsNot(rsb, rsb2)
+        fs2 = recordset.FoundSet(self.rs)
+        fs = self.fs1 & fs2
+        self.assertIsInstance(fs, recordset.RecordList)
+        self.assertIsNot(fs, self.fs1)
+        self.assertIsNot(fs, fs2)
 
     def test___xor__(self):
-        rsb2 = recordset._RecordSetBase(self.d, "file1")
-        rsb = self.rsb1 ^ rsb2
-        self.assertIsInstance(rsb, recordset._RecordSetBase)
-        self.assertIsNot(rsb, self.rsb1)
-        self.assertIsNot(rsb, rsb2)
+        fs2 = recordset.FoundSet(self.rs)
+        fs = self.fs1 ^ fs2
+        self.assertIsInstance(fs, recordset.RecordList)
+        self.assertIsNot(fs, self.fs1)
+        self.assertIsNot(fs, fs2)
 
     def test_normalize(self):
-        self.assertEqual(self.rsb1.normalize(), None)
+        self.assertEqual(self.fs1.normalize(), None)
 
     def test_is_record_number_in_record_set(self):
-        self.assertEqual(self.rsb1.is_record_number_in_record_set(1), False)
+        self.assertEqual(self.fs1.is_record_number_in_record_set(1), False)
 
 
 class RecordList(unittest.TestCase):
+    # Tests for RecordList methods not in recordset._RecordSetBase.
     def setUp(self):
         class DB:
             pass
@@ -342,10 +367,10 @@ class RecordList(unittest.TestCase):
 
         self.D = D
         self.d = D()
-        self.rsb1 = recordset.RecordList(self.d, "file1")
+        self.rsl1 = recordset.RecordList(self.d, "file1")
 
     def tearDown(self):
-        self.rsb1 = None
+        self.rsl1 = None
 
     def test__assumptions(self):
         msg = "Failure of this test invalidates all other tests"
@@ -361,79 +386,58 @@ class RecordList(unittest.TestCase):
         )
 
     def test___ior__(self):
-        rsb2 = recordset.RecordList(self.d, "file1")
-        x = rsb2
-        rsb2 |= self.rsb1
-        self.assertIsInstance(rsb2, recordset.RecordList)
-        self.assertIsNot(rsb2, self.rsb1)
-        self.assertIs(rsb2, x)
+        rsl2 = recordset.RecordList(self.d, "file1")
+        rsl = rsl2
+        rsl2 |= self.rsl1
+        self.assertIsInstance(rsl2, recordset.RecordList)
+        self.assertIsNot(rsl2, self.rsl1)
+        self.assertIs(rsl2, rsl)
 
     def test___iand__(self):
-        rsb2 = recordset.RecordList(self.d, "file1")
-        x = rsb2
-        rsb2 &= self.rsb1
-        self.assertIsInstance(rsb2, recordset.RecordList)
-        self.assertIsNot(rsb2, self.rsb1)
-        self.assertIs(rsb2, x)
+        rsl2 = recordset.RecordList(self.d, "file1")
+        rsl = rsl2
+        rsl2 &= self.rsl1
+        self.assertIsInstance(rsl2, recordset.RecordList)
+        self.assertIsNot(rsl2, self.rsl1)
+        self.assertIs(rsl2, rsl)
 
     def test___ixor__(self):
-        rsb2 = recordset.RecordList(self.d, "file1")
-        x = rsb2
-        rsb2 ^= self.rsb1
-        self.assertIsInstance(rsb2, recordset.RecordList)
-        self.assertIsNot(rsb2, self.rsb1)
-        self.assertIs(rsb2, x)
+        rsl2 = recordset.RecordList(self.d, "file1")
+        rsl = rsl2
+        rsl2 ^= self.rsl1
+        self.assertIsInstance(rsl2, recordset.RecordList)
+        self.assertIsNot(rsl2, self.rsl1)
+        self.assertIs(rsl2, rsl)
 
     def test_clear_recordset(self):
-        self.assertEqual(self.rsb1.clear_recordset(), None)
+        self.assertEqual(self.rsl1.clear_recordset(), None)
 
     def test_place_record_number(self):
         self.assertEqual(self.d.ebm.is_record_number_in_record_set(), True)
-        self.assertEqual(self.rsb1.place_record_number(10), None)
+        self.assertEqual(self.rsl1.place_record_number(10), None)
         self.d.ebm.record_number_in_ebm = False
         self.assertEqual(self.d.ebm.is_record_number_in_record_set(), False)
-        self.assertEqual(self.rsb1.place_record_number(10), None)
+        self.assertEqual(self.rsl1.place_record_number(10), None)
 
     def test_remove_record_number(self):
         self.assertEqual(self.d.ebm.is_record_number_in_record_set(), True)
-        self.assertEqual(self.rsb1.remove_record_number(20), None)
+        self.assertEqual(self.rsl1.remove_record_number(20), None)
         self.d.ebm.record_number_in_ebm = False
         self.assertEqual(self.d.ebm.is_record_number_in_record_set(), False)
-        self.assertEqual(self.rsb1.remove_record_number(20), None)
+        self.assertEqual(self.rsl1.remove_record_number(20), None)
 
     def test_remove_recordset(self):
-        rsb2 = recordset.RecordList(self.d, "file1")
-        self.assertEqual(self.rsb1.remove_recordset(rsb2), None)
+        rsl2 = recordset.RecordList(self.d, "file1")
+        self.assertEqual(self.rsl1.remove_recordset(rsl2), None)
 
     def test_replace_records(self):
-        rsb2 = recordset.RecordList(self.d, "file1")
-        self.assertEqual(self.rsb1.replace_records(rsb2), None)
-
-
-class FoundSet(unittest.TestCase):
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
-
-    def test__assumptions(self):
-        msg = "Failure of this test invalidates all other tests"
-        self.assertRaisesRegex(
-            TypeError,
-            "".join(
-                (
-                    r"__init__\(\) missing 2 required positional arguments: ",
-                    "'dbhome' and 'dbset'$",
-                )
-            ),
-            recordset.FoundSet,
-        )
+        rsl2 = recordset.RecordList(self.d, "file1")
+        self.assertEqual(self.rsl1.replace_records(rsl2), None)
 
 
 if __name__ == "__main__":
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
     runner().run(loader(_RecordSetBase))
-    runner().run(loader(RecordList))
     runner().run(loader(FoundSet))
+    runner().run(loader(RecordList))

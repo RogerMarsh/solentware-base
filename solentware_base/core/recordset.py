@@ -1231,24 +1231,20 @@ class _Recordset:
         return recordsetbasecursor.RecordSetBaseCursor(self, location=location)
 
 
-# __init__ may follow _DPTRecordSet example eventually.
 class _RecordSetBase:
-    """Wrapper for _Recordset compatible with _dpt._DPTRecordSet.
+    """Methods common to RecordList and FoundSet.
 
-    _Recordset is roughly equivalent to dptapi.APIRecordList and RecordList is
-    roughly equivalent to _dpt._DPTRecordList.
+    _RecordSetBase is roughly equivalent, for all the non-DPT database
+    engines, to _dpt._DPTRecordSet for the DPT database engine.
 
-    This class can always just ask the wrapped _Recordset instance to do any
-    action, but _DPTRecordList has to implement __and__, __xor__, __or__,
-    __iand__, __ixor__, __ior__, and __del__, for itself.
-
+    _RecordSetBase implements __and__, __xor__, and __or__, methods which
+    operate on the wrapped _Recordset instance.  Those methods of that
+    instance could be used directly, unlike .dpt._DPTRecordSet which has
+    to implement __and__, __xor__, and __or__, on it's wrapped instances
+    for itself.
     """
 
     # The RecordsetCursor methods may go directly to the _Recordset methods.
-
-    def __init__(self, dbhome, dbset, cache_size=1):
-        """Create a _Recordset instance."""
-        self.recordset = _Recordset(dbhome, dbset, cache_size=cache_size)
 
     # Added for compatibility with _DPTRecordList class in _dpt module where
     # explicit destruction of underlying APIRecordList instance is mandatory.
@@ -1359,18 +1355,27 @@ class _RecordSetBase:
         )
 
 
-# __init__ may follow _DPTRecordList example eventually.
 class RecordList(_RecordSetBase):
-    """Wrapper for _Recordset compatible with _dpt._DPTRecordList.
+    """Extend _RecordSetBase to implement in-place amendment actions.
+
+    RecordList should be instantiated only in the Database classes defined
+    in the ._db, ._db_tkinter, ._lmdb, ._nosql, and ._sqlite, modules.
 
     _Recordset is roughly equivalent to dptapi.APIRecordList and RecordList is
     roughly equivalent to _dpt._DPTRecordList.
 
-    This class can always just ask the wrapped _Recordset instance to do any
-    action, but _DPTRecordList has to implement __and__, __xor__, __or__,
-    __iand__, __ixor__, __ior__, and __del__, for itself.
+    RecordList implements __iand__, __ixor__, and __ior__, methods which
+    operate on the wrapped _Recordset instance.  Those methods of that
+    instance could be used directly, unlike .dpt._DPTRecordList which has
+    to implement __iand__, __ixor__, and __ior__, on it's wrapped instances
+    for itself.
 
+    Provide the same methods as .dpt._DPTRecordList.
     """
+
+    def __init__(self, dbhome, dbset, cache_size=1):
+        """Create a _Recordset instance."""
+        self.recordset = _Recordset(dbhome, dbset, cache_size=cache_size)
 
     def __ior__(self, other):
         """Include records in other record set in self record set."""
@@ -1426,21 +1431,29 @@ class RecordList(_RecordSetBase):
         self.recordset |= newrecords.recordset
 
 
-# Following the class hierarchy in _dpt module.
-# In particular not RecordList(FoundSet) because dptapi.APIFoundSet supports
-# record locks but dptapi.RecordList does not.
-# __init__ may follow _DPTFoundSet example eventually.
 class FoundSet(_RecordSetBase):
-    """Wrapper for _Recordset compatible with _dpt._DPTFoundSet.
+    """Extend _RecordSetBase to be base class without in-place amendment.
 
-    _Recordset is roughly equivalent to dptapi.APIRecordList and RecordList is
-    roughly equivalent to _dpt._DPTRecordList.
+    recordset must be a _Recordset instance.
 
-    This class can always just ask the wrapped _Recordset instance to do any
-    action, but _DPTRecordList has to implement __and__, __xor__, __or__,
-    __iand__, __ixor__, __ior__, and __del__, for itself.
+    FoundSet should be instantiated only in the Database classes defined
+    in the ._db, ._db_tkinter, ._lmdb, ._nosql, and ._sqlite, modules.
 
+    FoundSet is a _RecordSetBase without in-place amendment of the wrapped
+    _Recordset instance.  Use a RecordList instance to allow in-place
+    amendment.
+
+    FoundSet exists to be the non-dpt version of _dpt._DPTFoundSet but
+    is not the same in two respects: the wrapped _Recordset instance can
+    be amended in-place by direct use of _Recordset methods, and the
+    dptapi.APIFoundSet instance wrapped by _dpt._DPTFoundSet supports
+    record locks.
     """
+
+    def __init__(self, recordset):
+        """Note the _Recordset instance."""
+        assert isinstance(recordset, _Recordset)
+        self.recordset = recordset
 
 
 # This is for actual recordset.
