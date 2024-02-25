@@ -1861,11 +1861,11 @@ class CursorPrimary(Cursor):
         segment_ebm = Bitarray()
         segment_ebm.frombytes(segment)
         try:
-            position += segment_ebm.search(SINGLEBIT).index(record_number)
+            position += segment_ebm.search(SINGLEBIT).index(record_number) + 1
         except ValueError:
             position += bisect.bisect_left(
                 segment_ebm.search(SINGLEBIT), record_number
-            )
+            ) + 1
         return position
 
     def get_record_at_position(self, position=None):

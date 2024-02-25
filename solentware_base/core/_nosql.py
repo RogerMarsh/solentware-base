@@ -1732,8 +1732,8 @@ class CursorPrimary(Cursor):
                 segment_number, None, ebm.get_ebm_segment(segment_number, db)
             ).get_position_of_record_number(record_number)
         elif tes[index - 1] < segment_number:
-            count += ebm.read_exists_segment(tes[index - 1], db).count()
-        return count + 1  # Calculation is 0-based in this version of method.
+            count += ebm.read_exists_segment(tes[index - 1], db).count() + 1
+        return count  # Calculation is 0-based in this version of method.
 
     def get_record_at_position(self, position=None):
         """Return record for positionth record in file or None."""

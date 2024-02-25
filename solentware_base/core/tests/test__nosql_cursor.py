@@ -926,13 +926,13 @@ class Cursor_secondary(_NoSQL):
         s = self.cursor.get_position_of_record(("ba_o", 300))
         self.assertEqual(s, 82)
 
-    # Same answer as _db and _sqlite because the a_o segemnt is not counted:
-    # here it has 32 bits set rather than 31 bits set.  Compare with other two
-    # get_position_of_record tests.
+    # Same answer as _db, _lmdb and _sqlite because the a_o segemnt is not
+    # counted: here it has 32 bits set rather than 31 bits set.  Compare with
+    # other two get_position_of_record tests (12 and 14).
     def test_13_get_position_of_record_03(self):
         self.cursor._partial = "b"
         s = self.cursor.get_position_of_record(("bb_o", 20))
-        self.assertEqual(s, 27)
+        self.assertEqual(s, 28)
 
     def test_14_get_position_of_record_04(self):
         s = self.cursor.get_position_of_record(("cep", 150))

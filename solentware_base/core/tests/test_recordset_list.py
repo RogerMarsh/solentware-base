@@ -306,9 +306,9 @@ class RecordsetSegmentList(unittest.TestCase):
 
     def test_get_position_of_record_number(self):
         self.assertEqual(self.rsl.get_position_of_record_number(64), 0)
-        self.assertEqual(self.rsl.get_position_of_record_number(65), 0)
-        self.assertEqual(self.rsl.get_position_of_record_number(66), 1)
-        self.assertEqual(self.rsl.get_position_of_record_number(67), 2)
+        self.assertEqual(self.rsl.get_position_of_record_number(65), 1)
+        self.assertEqual(self.rsl.get_position_of_record_number(66), 2)
+        self.assertEqual(self.rsl.get_position_of_record_number(67), 3)
         self.assertEqual(self.rsl.get_position_of_record_number(68), 3)
         self.assertEqual(self.rsl.get_position_of_record_number(63), 0)
 

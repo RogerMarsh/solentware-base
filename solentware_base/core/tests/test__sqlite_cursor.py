@@ -312,11 +312,11 @@ class Cursor_primary(_SQLite):
                 )
             ),
         )
-        self.assertEqual(self.cursor.get_position_of_record((304, None)), 255)
-        self.assertEqual(self.cursor.get_position_of_record((310, None)), 256)
-        self.assertEqual(self.cursor.get_position_of_record((317, None)), 256)
-        self.assertEqual(self.cursor.get_position_of_record((319, None)), 257)
-        self.assertEqual(self.cursor.get_position_of_record((320, None)), 257)
+        self.assertEqual(self.cursor.get_position_of_record((304, None)), 256)
+        self.assertEqual(self.cursor.get_position_of_record((310, None)), 257)
+        self.assertEqual(self.cursor.get_position_of_record((317, None)), 257)
+        self.assertEqual(self.cursor.get_position_of_record((319, None)), 258)
+        self.assertEqual(self.cursor.get_position_of_record((320, None)), 258)
 
     def test_08_get_record_at_position_01(self):
         self.assertEqual(self.cursor.get_record_at_position(), None)
@@ -810,7 +810,7 @@ class Cursor_secondary(_SQLite):
     def test_13_get_position_of_record_03(self):
         self.cursor._partial = "b"
         s = self.cursor.get_position_of_record(("ba_o", 20))
-        self.assertEqual(s, 0)
+        self.assertEqual(s, 1)
 
     def test_14_get_position_of_record_04(self):
         s = self.cursor.get_position_of_record(("cep", 150))

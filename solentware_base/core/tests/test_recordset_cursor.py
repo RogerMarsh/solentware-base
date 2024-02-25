@@ -230,7 +230,7 @@ class RecordsetCursor(unittest.TestCase):
     def test_get_position_of_record(self):
         self.assertEqual(self.rsc.get_position_of_record((65601, "")), 0)
         self.rs[self.rsl.segment_number] = self.rsl
-        self.assertEqual(self.rsc.get_position_of_record((65601, "")), 0)
+        self.assertEqual(self.rsc.get_position_of_record((65601, "")), 1)
 
     def test_get_record_at_position(self):
         self.rs[0] = recordset.RecordsetSegmentList(

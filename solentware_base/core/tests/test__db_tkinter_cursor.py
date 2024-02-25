@@ -422,11 +422,11 @@ class Cursor_primary__get_record_at_position(_DB):
                 )
             ),
         )
-        self.assertEqual(self.cursor.get_position_of_record((304, None)), 255)
-        self.assertEqual(self.cursor.get_position_of_record((310, None)), 256)
-        self.assertEqual(self.cursor.get_position_of_record((317, None)), 256)
-        self.assertEqual(self.cursor.get_position_of_record((319, None)), 257)
-        self.assertEqual(self.cursor.get_position_of_record((320, None)), 257)
+        self.assertEqual(self.cursor.get_position_of_record((304, None)), 256)
+        self.assertEqual(self.cursor.get_position_of_record((310, None)), 257)
+        self.assertEqual(self.cursor.get_position_of_record((317, None)), 257)
+        self.assertEqual(self.cursor.get_position_of_record((319, None)), 258)
+        self.assertEqual(self.cursor.get_position_of_record((320, None)), 258)
 
     def test_08_get_record_at_position_04(self):
         # Records 1 to 255, 299, 304 and 317, in segment 3, exist.
@@ -1032,7 +1032,7 @@ class Cursor_secondary(_DB):
     def test_13_get_position_of_record_03(self):
         self.cursor._partial = "b"
         s = self.cursor.get_position_of_record(("bb_o", 20))
-        self.assertEqual(s, 27)
+        self.assertEqual(s, 28)
 
     def test_14_get_position_of_record_04(self):
         s = self.cursor.get_position_of_record(("cep", 150))

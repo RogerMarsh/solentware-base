@@ -548,11 +548,11 @@ class _Recordset(unittest.TestCase):
         self.assertEqual(self.rs.get_position_of_record_number(3500), 0)
         self.rs[self.rsl.segment_number] = self.rsl
         self.assertEqual(self.rs.get_position_of_record_number(350), 3)
-        self.assertEqual(self.rs.get_position_of_record_number(322), 1)
+        self.assertEqual(self.rs.get_position_of_record_number(322), 2)
         self.rs[0] = recordset.RecordsetSegmentList(
             0, "key", records=b"\x00A\x00B\x00C"
         )
-        self.assertEqual(self.rs.get_position_of_record_number(322), 4)
+        self.assertEqual(self.rs.get_position_of_record_number(322), 5)
 
     def test_get_record_number_at_position_01(self):
         if sys.version_info[:2] < (3, 6):

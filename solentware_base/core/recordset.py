@@ -282,7 +282,7 @@ class RecordsetSegmentBitarray:
 
     def get_position_of_record_number(self, recnum):
         """Return position of recnum in segment counting records that exist."""
-        return bisect_left(self.bitarray.search(SINGLEBIT), recnum)
+        return bisect_left(self.bitarray.search(SINGLEBIT), recnum) + 1
 
     def get_record_number_at_position(self, position):
         """Return record number at position in segment.
@@ -582,9 +582,9 @@ class RecordsetSegmentList:
     def get_position_of_record_number(self, recnum):
         """Return position of recnum in segment counting records that exist."""
         try:
-            return self.list.index(recnum)  # + 1
+            return self.list.index(recnum) + 1
         except ValueError:
-            return len([e for e in self.list if recnum > e])  # = e])
+            return len([e for e in self.list if recnum >= e])
 
     def get_record_number_at_position(self, position):
         """Return record number at position from start or end of segment."""

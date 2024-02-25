@@ -311,14 +311,14 @@ class RecordsetSegmentBitarray(unittest.TestCase):
         )
 
     def test_get_position_of_record_number(self):
-        self.assertEqual(self.rsi.get_position_of_record_number(16), 1)
-        self.assertEqual(self.rsi.get_position_of_record_number(17), 2)
-        self.assertEqual(self.rsi.get_position_of_record_number(18), 3)
-        self.assertEqual(self.rsi.get_position_of_record_number(19), 4)
-        self.assertEqual(self.rsi.get_position_of_record_number(23), 8)
-        self.assertEqual(self.rsi.get_position_of_record_number(24), 9)
-        self.assertEqual(self.rsi.get_position_of_record_number(7), 0)
-        self.assertEqual(self.rsi.get_position_of_record_number(8), 1)
+        self.assertEqual(self.rsi.get_position_of_record_number(16), 2)
+        self.assertEqual(self.rsi.get_position_of_record_number(17), 3)
+        self.assertEqual(self.rsi.get_position_of_record_number(18), 4)
+        self.assertEqual(self.rsi.get_position_of_record_number(19), 5)
+        self.assertEqual(self.rsi.get_position_of_record_number(23), 9)
+        self.assertEqual(self.rsi.get_position_of_record_number(24), 10)
+        self.assertEqual(self.rsi.get_position_of_record_number(7), 1)
+        self.assertEqual(self.rsi.get_position_of_record_number(8), 2)
 
     def test_get_record_number_at_position_01(self):
         self.assertEqual(self.rsi.get_record_number_at_position(0), 263)
