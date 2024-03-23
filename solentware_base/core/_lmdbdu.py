@@ -54,17 +54,16 @@ class Database(_databasedu.Database):
         return super().environment_flags(dbe)
 
     def deferred_update_housekeeping(self):
-        """Override to commit transaction for segment.
+        """Override and continue to do nothing.
 
-        In Symas LMMD this is not essential, but is done for compatibility
-        with Berkeley DB where it is necessary to prune log files frequently.
+        In Symas LMDB the size of the memory map should be adjusted to cope
+        with expected size of the update.  Symas LMDB suggests just setting
+        this to maximum; but here applications would set this to a good
+        estimate of the required size plus some space too spare.
 
-        Applications should extend this method as required: perhaps to
-        record progress at commit time to assist restart.
+        Applications should override and set their own estimate.
 
         """
-        self.commit()
-        self.start_transaction()
 
     def do_final_segment_deferred_updates(self):
         """Do deferred updates for partially filled final segment."""
@@ -81,7 +80,7 @@ class Database(_databasedu.Database):
                 )
                 if record_number in self.deferred_update_points:
                     continue  # Assume put_instance did deferred updates
-            self.write_existence_bit_map(file, segment)
+            self._write_existence_bit_map(file, segment)
             for secondary in self.specification[file][SECONDARY]:
                 self.sort_and_write(file, secondary, segment)
                 self.merge(file, secondary)
@@ -121,7 +120,7 @@ class Database(_databasedu.Database):
             self.first_chunk[file] = None
         self.commit()
 
-    def write_existence_bit_map(self, file, segment):
+    def _write_existence_bit_map(self, file, segment):
         """Write the existence bit map for segment."""
         self.dbtxn.transaction.put(
             segment.to_bytes(4, byteorder="big"),

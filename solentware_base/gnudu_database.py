@@ -21,6 +21,3 @@ class Database(gnu_database.Database, _nosqldu.Database, _nosql.Database):
 
     The dbm.gnu engine comes from the gnu_database.Database class.
     """
-
-    # Override _databasedu.Database._take_backup_before_deferred_update
-    _take_backup_before_deferred_update = True

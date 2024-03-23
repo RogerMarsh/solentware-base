@@ -71,9 +71,7 @@ class Database(_databasedu.Database):
         record progress at commit time to assist restart.
 
         """
-        self.commit()
         self._commit_on_housekeeping()
-        self.start_transaction()
 
     def do_final_segment_deferred_updates(self):
         """Do deferred updates for partially filled final segment."""
@@ -87,7 +85,7 @@ class Database(_databasedu.Database):
             )
             if record_number in self.deferred_update_points:
                 continue  # Assume put_instance did deferred updates
-            self.write_existence_bit_map(file, segment)
+            self._write_existence_bit_map(file, segment)
             for secondary in self.specification[file][SECONDARY]:
                 self.sort_and_write(file, secondary, segment)
                 self.merge(file, secondary)
@@ -120,7 +118,7 @@ class Database(_databasedu.Database):
         self.initial_high_segment.clear()
         self.commit()
 
-    def write_existence_bit_map(self, file, segment):
+    def _write_existence_bit_map(self, file, segment):
         """Write the existence bit map for segment in file."""
         assert file in self.specification
         ebmc = self.ebm_control[file]

@@ -86,15 +86,6 @@ class Database(_database.Database):
 
     segment_size_bytes = SegmentSize.db_segment_size_bytes
 
-    # Deferred updates are done without transactions so this attribute
-    # should be False always.
-    # This and it's property, and methods archive and delete_archive are
-    # duplicated in the _databasedu.Database hierarchy: enough for a
-    # shared superclass for default backup stuff.
-    _take_backup_before_deferred_update = True
-
-    import_backup_directory = "__import_backup"
-
     # Not used by _dpt: segment size follows page size defined by DPT.
     # Present to be compatible with _db and _sqlite modules, where segment size
     # is independent from the page size defined by Berkeley DB or SQLite3.  For
@@ -881,8 +872,8 @@ class Database(_database.Database):
                 recordlist |= vfs
                 # dptfile.DestroyRecordSet(vfs)
             dvcursor.Advance(1)
-        dptfile.CloseDirectValueCursor(dvcursor)
-        dptfile.DestroyRecordSet(foundset)
+        dptfile.table_connection.CloseDirectValueCursor(dvcursor)
+        dptfile.table_connection.DestroyRecordSet(foundset)
         return recordlist
 
     def recordlist_key(self, file, field, key=None, cache_size=1):
@@ -957,8 +948,8 @@ class Database(_database.Database):
             recordlist |= vfs
             # dptfile.DestroyRecordSet(vfs)
             dvcursor.Advance(1)
-        dptfile.CloseDirectValueCursor(dvcursor)
-        dptfile.DestroyRecordSet(foundset)
+        dptfile.table_connection.CloseDirectValueCursor(dvcursor)
+        dptfile.table_connection.DestroyRecordSet(foundset)
         return recordlist
 
     def recordlist_key_range(
@@ -1075,7 +1066,7 @@ class Database(_database.Database):
             )
             rscursor.Advance(1)
         foundset.CloseCursor(rscursor)
-        dptfile.DestroyRecordSet(foundset)
+        dptfile.table_connection.DestroyRecordSet(foundset)
 
     def file_records_under(self, file, field, recordset, key):
         """Replace records for index field[key] with recordset records.
@@ -1107,15 +1098,6 @@ class Database(_database.Database):
     def _generate_database_file_name(self, name):
         """Override, return path to DPT file for name."""
         return self.table[name].file
-
-    @property
-    def take_backup_before_deferred_update(self):
-        """Return True if temporary backups should protect deferred update.
-
-        It is expected the archive and delete_archive methods will do this.
-
-        """
-        return self._take_backup_before_deferred_update
 
 
 class DPTFile:
@@ -1752,6 +1734,44 @@ class DPTFile:
                 if indexname in pcb:
                     pcb[indexname](instance, sri[indexname])
 
+    def index_instance(self, instance):
+        """Apply instance index values on database."""
+        putkey = instance.key.pack()
+        if putkey is None:
+            # Apply index values without record number is not allowed.
+            raise DatabaseError(
+                "Cannot apply index values without a record number"
+            )
+        instance.set_packed_value_and_indexes()
+        recordset = self.opencontext.FindRecords(
+            self._dbe.APIFindSpecification(self._dbe.FD_SINGLEREC, putkey)
+        )
+        recordsetcursor = recordset.OpenCursor()
+        try:
+            recordsetcursor.GotoFirst()
+            if not recordsetcursor.Accessible():
+                return
+            record = recordsetcursor.AccessCurrentRecordForReadWrite()
+            instance.set_packed_value_and_indexes()
+            sri = instance.srindex
+            sec = self.secondary
+            pcb = instance.putcallbacks
+            fieldvalue = self._dbe.APIFieldValue
+            for indexname in sri:
+                if indexname not in pcb:
+                    fieldname = self.dpt_field_names[sec[indexname]]
+                    for value in sri[indexname]:
+                        record.AddField(fieldname, fieldvalue(value))
+            instance.key.load(putkey)
+            instance.srkey = repr(putkey)
+            if len(pcb):
+                for indexname in sri:
+                    if indexname in pcb:
+                        pcb[indexname](instance, sri[indexname])
+        finally:
+            recordset.CloseCursor(recordsetcursor)
+            self.opencontext.DestroyRecordSet(recordset)
+
     def foundset_all_records(self, fieldname):
         """Return APIFoundset containing all records on DPT file."""
         return _DPTFoundSet(
@@ -2129,6 +2149,7 @@ class Cursor(cursor.Cursor):
         if self.get_partial() is None:
             return self._get_record(self._cursor.last())
         chars = list(self.get_partial())
+        fieldvalue = dptapi.APIFieldValue()
         while True:
             try:
                 chars[-1] = chr(ord(chars[-1]) + 1)
@@ -2137,9 +2158,9 @@ class Cursor(cursor.Cursor):
                 if not chars:
                     return self._get_record(self._cursor.last())
                 continue
-            self._cursor.dptdb.fieldvalue.Assign("".join(chars))
+            fieldvalue.Assign("".join(chars))
             self._cursor.dvcursor.SetOptions(dptapi.CURSOR_POSFAIL_NEXT)
-            self._cursor.dvcursor.SetPosition(self._cursor.dptdb.fieldvalue)
+            self._cursor.dvcursor.SetPosition(fieldvalue)
             self._cursor.dvcursor.SetOptions(dptapi.CURSOR_DEFOPTS)
             if self._cursor.dvcursor.Accessible():
                 return self.prev()

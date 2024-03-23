@@ -56,18 +56,19 @@ class Database(_databasedu.Database):
         raise DatabaseError("database_cursor not implemented")
 
     def deferred_update_housekeeping(self):
-        """Override to commit transaction for segment and clear log files.
+        """Override to remove unused log files.
 
         Deferred update within transactions is not practical in Berkeley DB
         unless the log files are pruned frequently.
 
-        Applications should extend this method as required: perhaps to
-        record progress at commit time to assist restart.
+        The Tcl interface to Berkeley DB does not support the set_flags()
+        or log_set_config() methods of DBEnv; and the open() method of
+        DBEnv does not support theDB_LOG_AUTOREMOVE flag.
+
+        So the DB archive utility must be run with the '-d' option.
 
         """
-        self.commit()
         self._run_db_archive()
-        self.start_transaction()
 
     def do_final_segment_deferred_updates(self):
         """Do deferred updates for partially filled final segment."""
@@ -90,7 +91,7 @@ class Database(_databasedu.Database):
                 continue
             finally:
                 tcl_tk_call((dbc, "close"))
-            self.write_existence_bit_map(file, segment)
+            self._write_existence_bit_map(file, segment)
             for secondary in self.specification[file][SECONDARY]:
                 self.sort_and_write(file, secondary, segment)
                 # In Tcl API the database handles opened in sort_and_write
@@ -138,7 +139,7 @@ class Database(_databasedu.Database):
             self.first_chunk[file] = None
         self.commit()
 
-    def write_existence_bit_map(self, file, segment):
+    def _write_existence_bit_map(self, file, segment):
         """Write the existence bit map for segment."""
         command = [self.ebm_control[file].ebm_table, "put"]
         if self.dbtxn:

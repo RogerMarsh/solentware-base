@@ -827,7 +827,7 @@ class Database_methods(_DBOpen):
             rs[0].tobytes(),
             b"".join(
                 (
-                    b"\x7f\xff\xff\xff\xe0\x00\x00\x00",
+                    b"\x7f\xff\xff\xff\xf0\x00\x00\x00",
                     b"\x00\x00\x00\x00\x00\x00\x00\x00",
                 )
             ),
@@ -843,7 +843,7 @@ class Database_methods(_DBOpen):
             rs[0].tobytes(),
             b"".join(
                 (
-                    b"\x00\x3f\xff\xff\xe0\x00\x00\x00",
+                    b"\x00\x3f\xff\xff\xf0\x00\x00\x00",
                     b"\x00\x00\x00\x00\x00\x00\x00\x00",
                 )
             ),
@@ -873,7 +873,7 @@ class Database_methods(_DBOpen):
             b"".join(
                 (
                     b"\xff\xff\xff\xff\xff\xff\xff\xff",
-                    b"\xff\xff\xff\xfc\x00\x00\x00\x00",
+                    b"\xff\xff\xff\xfe\x00\x00\x00\x00",
                 )
             ),
         )

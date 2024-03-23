@@ -22,25 +22,6 @@ class DatabaseduError(Exception):
 class Database(_database.Database):
     """Provide deferred update versions of the record update methods."""
 
-    # Deferred updates are done inside transactions if possible, despite
-    # it being slower, so backup should not be necessary in most cases.
-    # Where deferred update within transactions is not available, or is
-    # wanted perhaps, a subclass of _databasedu.Database should override
-    # this attribute to 'True'.
-    # This and it's property, and methods archive and delete_archive are
-    # duplicated in the dptdu_database.Database hierarchy: enough for a
-    # shared superclass for default backup stuff.
-    _take_backup_before_deferred_update = False
-
-    @property
-    def take_backup_before_deferred_update(self):
-        """Return True if temporary backups should protect deferred update.
-
-        It is expected the archive and delete_archive methods will do this.
-
-        """
-        return self._take_backup_before_deferred_update
-
     def put_instance(self, dbset, instance):
         """Put new instance on database dbset.
 
@@ -66,7 +47,7 @@ class Database(_database.Database):
         instance.srkey = self.encode_record_number(putkey)
         srindex = instance.srindex
         segment, record_number = divmod(putkey, SegmentSize.db_segment_size)
-        self.defer_add_record_to_ebm(dbset, segment, record_number)
+        self._defer_add_record_to_ebm(dbset, segment, record_number)
         pcb = instance.putcallbacks
         for secondary in srindex:
             if secondary not in self.specification[dbset][SECONDARY]:
@@ -74,12 +55,12 @@ class Database(_database.Database):
                     pcb[secondary](instance, srindex[secondary])
                 continue
             for j in srindex[secondary]:
-                self.defer_add_record_to_field_value(
+                self._defer_add_record_to_field_value(
                     dbset, secondary, j, segment, record_number
                 )
 
         if record_number in self.deferred_update_points:
-            self.write_existence_bit_map(dbset, segment)
+            self._write_existence_bit_map(dbset, segment)
             for secondary in self.specification[dbset][SECONDARY]:
                 self.sort_and_write(dbset, secondary, segment)
             if record_number == max(self.deferred_update_points):
@@ -88,7 +69,45 @@ class Database(_database.Database):
                 self.first_chunk[dbset] = False
                 self.high_segment[dbset] = segment
 
-    def defer_add_record_to_ebm(self, file, segment, record_number):
+    def index_instance(self, dbset, instance):
+        """Apply instance index values on database dbset.
+
+        This method assumes all primary databases are integer primary key,
+        and there is enough memory to do a segment at a time.
+
+        """
+        putkey = instance.key.pack()
+        if putkey is None:
+            # Apply index values without record number is not allowed.
+            raise DatabaseduError(
+                "Cannot apply index values without a record number"
+            )
+        instance.set_packed_value_and_indexes()
+        instance.srkey = self.encode_record_number(putkey)
+        srindex = instance.srindex
+        segment, record_number = divmod(putkey, SegmentSize.db_segment_size)
+        pcb = instance.putcallbacks
+        for secondary in srindex:
+            if secondary not in self.specification[dbset][SECONDARY]:
+                if secondary in pcb:
+                    pcb[secondary](instance, srindex[secondary])
+                continue
+            for j in srindex[secondary]:
+                self._defer_add_record_to_field_value(
+                    dbset, secondary, j, segment, record_number
+                )
+
+        if record_number in self.deferred_update_points:
+            for secondary in srindex:
+                assert secondary in self.specification[dbset][SECONDARY]
+                self.sort_and_write(dbset, secondary, segment)
+            if record_number == max(self.deferred_update_points):
+                self.first_chunk[dbset] = True
+            elif record_number == min(self.deferred_update_points):
+                self.first_chunk[dbset] = False
+                self.high_segment[dbset] = segment
+
+    def _defer_add_record_to_ebm(self, file, segment, record_number):
         """Add bit to existence bit map for new record and defer update."""
         assert file in self.specification
         try:
@@ -110,7 +129,7 @@ class Database(_database.Database):
                 self.existence_bit_maps[file] = {}
             self.existence_bit_maps[file][segment] = ebm
 
-    def defer_add_record_to_field_value(
+    def _defer_add_record_to_field_value(
         self, file, field, key, segment, record_number
     ):
         """Add record_number to cached segment for key."""

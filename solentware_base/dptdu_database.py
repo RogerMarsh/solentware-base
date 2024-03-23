@@ -92,6 +92,27 @@ class Database(_dpt.Database):
     def do_final_segment_deferred_updates(self):
         """Do nothing.  Provided for compatibility with other engines."""
 
+    def index_instance(self, dbset, instance):
+        """Apply instance index values on database dbset.
+
+        Formerly 'dbset' was called 'file' to fit DPT terminology but
+        'dbset' is a neutral term used in other database interfaces.
+
+        """
+        self.table[dbset].index_instance(instance)
+
+    def sort_and_write(self, *args):
+        """Do nothing, provides compatibility with other database engines.
+
+        Sort and write for deferred updates is an internal function in DPT.
+        """
+
+    def merge(self, *args):
+        """Do nothing, provides compatibility with other database engines.
+
+        Merge for deferred updates is an internal function in DPT.
+        """
+
 
 class DPTFile(_dpt.DPTFile):
     """This class is used to access files in a DPT database.

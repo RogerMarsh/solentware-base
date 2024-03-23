@@ -40,15 +40,15 @@ class _Database_put_instance(unittest.TestCase):
             def encode_record_number(self, key):
                 return key
 
-            def defer_add_record_to_ebm(self, dbset, segment, key):
+            def _defer_add_record_to_ebm(self, dbset, segment, key):
                 return 1, 17233
 
-            def defer_add_record_to_field_value(
+            def _defer_add_record_to_field_value(
                 self, dbset, secondary, v, segment, record_number
             ):
                 pass
 
-            def write_existence_bit_map(self, dbset, segment):
+            def _write_existence_bit_map(self, dbset, segment):
                 return None
 
             def sort_and_write(self, dbset, secondary, segment):
@@ -150,12 +150,12 @@ class Database_defer_add_record_to_ebm(unittest.TestCase):
         self.database.ebm_control["file1"] = self.EBMC()
         self.assertEqual(len(self.database.existence_bit_maps), 0)
         self.assertEqual(
-            self.database.defer_add_record_to_ebm("file1", 1, 20), None
+            self.database._defer_add_record_to_ebm("file1", 1, 20), None
         )
         v = self.database.existence_bit_maps["file1"]
         self.assertIsInstance(v[1], _bytebit.Bitarray)
         self.assertEqual(
-            self.database.defer_add_record_to_ebm("file1", 1, 20), None
+            self.database._defer_add_record_to_ebm("file1", 1, 20), None
         )
         self.assertIsInstance(v[1], _bytebit.Bitarray)
 
@@ -176,7 +176,7 @@ class Database_defer_add_record_to_field_value(unittest.TestCase):
     def test_defer_add_record_to_field_value_01(self):
         self.assertEqual(len(self.database.value_segments), 0)
         self.assertEqual(
-            self.database.defer_add_record_to_field_value(
+            self.database._defer_add_record_to_field_value(
                 "file1", "field1", "v1", 1, 20
             ),
             None,
@@ -184,14 +184,14 @@ class Database_defer_add_record_to_field_value(unittest.TestCase):
         v = self.database.value_segments["file1"]["field1"]
         self.assertIsInstance(v["v1"], list)
         self.assertEqual(
-            self.database.defer_add_record_to_field_value(
+            self.database._defer_add_record_to_field_value(
                 "file1", "field1", "v1", 1, 30
             ),
             None,
         )
         self.assertIsInstance(v["v1"], list)
         self.assertEqual(
-            self.database.defer_add_record_to_field_value(
+            self.database._defer_add_record_to_field_value(
                 "file1", "field1", "v1", 1, 3500
             ),
             None,
@@ -202,7 +202,7 @@ class Database_defer_add_record_to_field_value(unittest.TestCase):
         self.assertEqual(len(self.database.value_segments), 0)
         for i in range(SegmentSize.db_upper_conversion_limit):
             self.assertEqual(
-                self.database.defer_add_record_to_field_value(
+                self.database._defer_add_record_to_field_value(
                     "file1", "field1", "v1", 1, i
                 ),
                 None,
@@ -210,14 +210,14 @@ class Database_defer_add_record_to_field_value(unittest.TestCase):
         v = self.database.value_segments["file1"]["field1"]
         self.assertIsInstance(v["v1"], list)
         self.assertEqual(
-            self.database.defer_add_record_to_field_value(
+            self.database._defer_add_record_to_field_value(
                 "file1", "field1", "v1", 1, 3500
             ),
             None,
         )
         self.assertIsInstance(v["v1"], _bytebit.Bitarray)
         self.assertEqual(
-            self.database.defer_add_record_to_field_value(
+            self.database._defer_add_record_to_field_value(
                 "file1", "field1", "v1", 1, 4000
             ),
             None,
@@ -324,22 +324,6 @@ class Database_deferred_update_housekeeping(unittest.TestCase):
         self.assertEqual(self.database.deferred_update_housekeeping(), None)
 
 
-class Database_take_backup_before_deferred_update(unittest.TestCase):
-    def setUp(self):
-        class _D(_databasedu.Database):
-            pass
-
-        self.database = _D()
-
-    def tearDown(self):
-        self.database = None
-
-    def test_take_backup_before_deferred_update(self):
-        self.assertEqual(
-            self.database.take_backup_before_deferred_update, False
-        )
-
-
 if __name__ == "__main__":
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
@@ -350,4 +334,3 @@ if __name__ == "__main__":
     runner().run(loader(Database__prepare_segment_record_list))
     runner().run(loader(Database_set_segment_size))
     runner().run(loader(Database_deferred_update_housekeeping))
-    runner().run(loader(Database_take_backup_before_deferred_update))

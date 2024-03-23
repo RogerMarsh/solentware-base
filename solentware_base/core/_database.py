@@ -41,9 +41,7 @@ class Database:
     Property file_per_database returns False because all 'key:value' sets,
     and the associated inverted list indicies, are held in one file by
     default.  Berkeley DB is the known example where it is reasonable to
-    return True: override the class attribute, and the archive() and
-    delete_archive() methods in .archivedu.Archivedu class, if this case
-    is wanted.
+    return True: override the class attribute, if this case is wanted.
 
     """
 

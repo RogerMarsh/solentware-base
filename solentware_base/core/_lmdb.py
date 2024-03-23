@@ -1421,7 +1421,7 @@ class Database(_database.Database):
                     recordlist[segment_start][(segment_start, i)] = False
             if final_segment is not None:
                 for i in range(
-                    final_segment * 8 + end_byte, (final_segment + 1) * 8
+                    final_segment * 8 + end_byte + 1, (final_segment + 1) * 8
                 ):
                     recordlist[segment_end][(segment_end, i)] = False
         return recordlist
@@ -2089,9 +2089,12 @@ class CursorPrimary(Cursor):
         try:
             position += segment_ebm.search(SINGLEBIT).index(record_number) + 1
         except ValueError:
-            position += bisect.bisect_left(
-                segment_ebm.search(SINGLEBIT), record_number
-            ) + 1
+            position += (
+                bisect.bisect_left(
+                    segment_ebm.search(SINGLEBIT), record_number
+                )
+                + 1
+            )
         return position
 
     def get_record_at_position(self, position=None):

@@ -310,11 +310,11 @@ class Database_methods(_NoSQLOpen):
             TypeError,
             "".join(
                 (
-                    r"write_existence_bit_map\(\) missing 2 required ",
+                    r"_write_existence_bit_map\(\) missing 2 required ",
                     "positional arguments: 'file' and 'segment'$",
                 )
             ),
-            self.database.write_existence_bit_map,
+            self.database._write_existence_bit_map,
         )
         self.assertRaisesRegex(
             TypeError,
@@ -355,14 +355,14 @@ class Database_methods(_NoSQLOpen):
         bs = recordset.RecordsetSegmentBitarray(segment, None, b)
         self.database.existence_bit_maps["file1"] = {}
         self.database.existence_bit_maps["file1"][segment] = bs
-        self.database.write_existence_bit_map("file1", segment)
+        self.database._write_existence_bit_map("file1", segment)
         ae = self.assertEqual
         ae(literal_eval(self.database.dbenv["1_0__ebm_0"].decode()), b)
         ae(self.database.ebm_control["file1"].table_ebm_segments, [0])
         c = b"\x00\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
         cs = recordset.RecordsetSegmentBitarray(segment, None, c)
         self.database.existence_bit_maps["file1"][segment] = cs
-        self.database.write_existence_bit_map("file1", segment)
+        self.database._write_existence_bit_map("file1", segment)
         ae(literal_eval(self.database.dbenv["1_0__ebm_0"].decode()), c)
         ae(self.database.ebm_control["file1"].table_ebm_segments, [0])
 

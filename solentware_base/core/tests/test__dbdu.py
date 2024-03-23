@@ -260,11 +260,11 @@ class Database_methods(_DBOpen):
             TypeError,
             "".join(
                 (
-                    r"write_existence_bit_map\(\) missing 2 required ",
+                    r"_write_existence_bit_map\(\) missing 2 required ",
                     "positional arguments: 'file' and 'segment'$",
                 )
             ),
-            self.database.write_existence_bit_map,
+            self.database._write_existence_bit_map,
         )
         self.assertRaisesRegex(
             TypeError,
@@ -317,7 +317,7 @@ class Database_methods(_DBOpen):
         bs = recordset.RecordsetSegmentBitarray(segment, None, b)
         self.database.existence_bit_maps["file1"] = {}
         self.database.existence_bit_maps["file1"][segment] = bs
-        self.database.write_existence_bit_map("file1", segment)
+        self.database._write_existence_bit_map("file1", segment)
 
     def test_05_new_deferred_root(self):
         self.assertEqual(

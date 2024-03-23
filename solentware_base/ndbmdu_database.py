@@ -21,6 +21,3 @@ class Database(ndbm_database.Database, _nosqldu.Database, _nosql.Database):
 
     The dbm.ndbm engine comes from the ndbm_database.Database class.
     """
-
-    # Override _databasedu.Database._take_backup_before_deferred_update
-    _take_backup_before_deferred_update = True

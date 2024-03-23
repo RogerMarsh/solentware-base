@@ -54,19 +54,6 @@ class Database(_databasedu.Database):
         """Not implemented for deferred update."""
         raise DatabaseError("database_cursor not implemented")
 
-    def deferred_update_housekeeping(self):
-        """Override to commit transaction for segment and clear log files.
-
-        Deferred update within transactions is not practical in Berkeley DB
-        unless the log files are pruned frequently.
-
-        Applications should extend this method as required: perhaps to
-        record progress at commit time to assist restart.
-
-        """
-        self.commit()
-        self.start_transaction()
-
     def do_final_segment_deferred_updates(self):
         """Do deferred updates for partially filled final segment."""
         # Write the final deferred segment database for each index
@@ -82,7 +69,7 @@ class Database(_databasedu.Database):
                 continue
             finally:
                 dbc.close()
-            self.write_existence_bit_map(file, segment)
+            self._write_existence_bit_map(file, segment)
             for secondary in self.specification[file][SECONDARY]:
                 self.sort_and_write(file, secondary, segment)
                 self.merge(file, secondary)
@@ -120,7 +107,7 @@ class Database(_databasedu.Database):
             self.first_chunk[file] = None
         self.commit()
 
-    def write_existence_bit_map(self, file, segment):
+    def _write_existence_bit_map(self, file, segment):
         """Write the existence bit map for segment."""
         self.ebm_control[file].ebm_table.put(
             segment + 1,

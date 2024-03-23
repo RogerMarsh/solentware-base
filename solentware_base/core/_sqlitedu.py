@@ -57,19 +57,6 @@ class Database(_databasedu.Database):
         """Not implemented for deferred update."""
         raise DatabaseError("database_cursor not implemented")
 
-    def deferred_update_housekeeping(self):
-        """Override to commit transaction for segment.
-
-        In Sqlite 3 this is not essential, but is done for compatibility
-        with Berkeley DB where it is necessary to prune log files frequently.
-
-        Applications should extend this method as required: perhaps to
-        record progress at commit time to assist restart.
-
-        """
-        self.commit()
-        self.start_transaction()
-
     def do_final_segment_deferred_updates(self):
         """Do deferred updates for partially filled final segment."""
         # Write the final deferred segment database for each index
@@ -99,7 +86,7 @@ class Database(_databasedu.Database):
                 continue
             finally:
                 cursor.close()
-            self.write_existence_bit_map(file, segment)
+            self._write_existence_bit_map(file, segment)
             for secondary in self.specification[file][SECONDARY]:
                 self.sort_and_write(file, secondary, segment)
                 self.merge(file, secondary)
@@ -165,7 +152,7 @@ class Database(_databasedu.Database):
         # self.dbenv.cursor().execute('pragma journal_mode = delete')
         # self.dbenv.cursor().execute('pragma synchronous = full')
 
-    def write_existence_bit_map(self, file, segment):
+    def _write_existence_bit_map(self, file, segment):
         """Write the existence bit map for segment in file."""
         assert file in self.specification
         statement = " ".join(
@@ -336,7 +323,7 @@ class Database(_databasedu.Database):
         # statement.
         insert_new_segment = " ".join(
             (
-                "insert into",
+                "insert or replace into",
                 tablename,
                 "(",
                 field,

@@ -1428,7 +1428,7 @@ class Database(_database.Database):
                     recordlist[segment_start][(segment_start, i)] = False
             if final_segment is not None:
                 for i in range(
-                    final_segment * 8 + end_byte, (final_segment + 1) * 8
+                    final_segment * 8 + end_byte + 1, (final_segment + 1) * 8
                 ):
                     recordlist[segment_end][(segment_end, i)] = False
         finally:

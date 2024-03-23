@@ -189,16 +189,6 @@ class Database_methods(_SQLiteOpen):
             TypeError,
             "".join(
                 (
-                    r"write_existence_bit_map\(\) missing 2 required ",
-                    "positional arguments: 'file' and 'segment'$",
-                )
-            ),
-            self.database.write_existence_bit_map,
-        )
-        self.assertRaisesRegex(
-            TypeError,
-            "".join(
-                (
                     r"new_deferred_root\(\) missing 2 required ",
                     "positional arguments: 'file' and 'field'$",
                 )
@@ -228,14 +218,6 @@ class Database_methods(_SQLiteOpen):
     def test_03_unset_defer_update(self):
         self.database.start_transaction()
         self.database.unset_defer_update()
-
-    def test_04_write_existence_bit_map(self):
-        segment = 0
-        b = b"\x7f\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-        bs = recordset.RecordsetSegmentBitarray(segment, None, b)
-        self.database.existence_bit_maps["file1"] = {}
-        self.database.existence_bit_maps["file1"][segment] = bs
-        self.database.write_existence_bit_map("file1", segment)
 
     def test_05_new_deferred_root(self):
         self.assertEqual(self.database.table["file1_field1"], ["file1_field1"])
