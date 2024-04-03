@@ -731,6 +731,11 @@ class Cursor_secondary(_DB):
         s = self.cursor.count_records()
         self.assertEqual(s, 51)
 
+    def test_06_count_records_03(self):
+        self.cursor._partial = ""
+        s = self.cursor.count_records()
+        self.assertEqual(s, 182)
+
     def test_07_first_01(self):
         self.cursor._partial = False
         s = self.cursor.first()
@@ -771,6 +776,14 @@ class Cursor_secondary(_DB):
         s = self.cursor.get_position_of_record(("cep", 150))
         self.assertEqual(s, 154)
 
+    # For issue 8 on set_range_dup() and set_range().
+    # The set_range() call is reachable only if _partial is a str, and
+    # "" is the needed value.  But first() gets called in this case.
+    def test_14_get_position_of_record_05(self):
+        self.cursor._partial = ""
+        s = self.cursor.get_position_of_record(("", 150))
+        self.assertEqual(s, 0)
+
     def test_30_last_01(self):
         self.cursor._partial = False
         s = self.cursor.last()
@@ -795,19 +808,35 @@ class Cursor_secondary(_DB):
         s = self.cursor.last()
         self.assertEqual(s, None)
 
+    # For issue 8 on set_range_dup() and set_range().
+    # The set_range() call is reachable only if _partial is a str, and
+    # "" is the needed value.  It gets an IndexError exception before
+    # reaching the call.
+    def test_33_last_05(self):
+        self.cursor._partial = ""
+        self.assertRaisesRegex(
+            IndexError,
+            "list index out of range$",
+            self.cursor.last,
+        )
+
     def test_34_nearest_01(self):
         self.assertEqual(self.cursor.nearest(b"d"), ("deq", 104))
 
-    def test_35_nearest_02(self):
+    def test_34_nearest_02(self):
         self.cursor._partial = False
         self.assertEqual(self.cursor.nearest(b"d"), None)
 
-    def test_36_nearest_03(self):
+    def test_34_nearest_03(self):
         self.cursor._partial = "b"
         self.assertEqual(self.cursor.nearest(b"bb"), ("bb_o", 56))
 
-    def test_37_nearest_04(self):
+    def test_34_nearest_04(self):
         self.assertEqual(self.cursor.nearest(b"z"), None)
+
+    # For issue 8 on set_range_dup() and set_range().
+    def test_34_nearest_05(self):
+        self.assertEqual(self.cursor.nearest(b""), ("a_o", 1))
 
     def test_38_next_01(self):
         ae = self.assertEqual
@@ -973,6 +1002,10 @@ class Cursor_secondary(_DB):
 
     def test_53_setat_06(self):
         s = self.cursor.setat(("cep", 50))
+        self.assertEqual(s, None)
+
+    def test_53_setat_07(self):
+        s = self.cursor.setat(("", 50))
         self.assertEqual(s, None)
 
     def test_54_set_partial_key(self):
@@ -1201,6 +1234,30 @@ class Cursor_secondary__get_record_at_position(_DB):
             ae(grat(i), None)
         for i in range(-29, -60, -1):
             ae(grat(i), None)
+        ae(grat(-60), None)
+
+    # For issue 8 on set_range_dup() and set_range().
+    # Set _partial to b"" to force the set_range() call path.
+    # No exceptions is success: did not work out the individual positions.
+    def test_20_get_record_at_position_04(self):
+        self.cursor._partial = ""
+        ae = self.assertEqual
+        grat = self.cursor.get_record_at_position
+        for i in range(31):
+            ae(grat(i), ("a_o", i + 1))
+        for i in range(31, 34):
+            ae(grat(i), ("a_o", i + 163))
+        for i in range(34, 58):
+            ae(grat(i), ("a_o", i + 246))
+        ae(grat(58), ("a_o", 434))
+        ae(grat(59), None)
+        ae(grat(-1), ("a_o", 434))
+        #for i in range(-2, -26, -1):
+        #    ae(grat(i), ("a_o", 302))
+        #for i in range(-26, -29, -1):
+        #    ae(grat(i), None)
+        #for i in range(-29, -60, -1):
+        #    ae(grat(i), None)
         ae(grat(-60), None)
 
 

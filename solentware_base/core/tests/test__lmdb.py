@@ -1591,6 +1591,58 @@ class Database_find_values_empty(_DBOpen):
             [i for i in self.database.find_values(self.valuespec, "file1")], []
         )
 
+    def test_12_find_values(self):
+        self.valuespec.above_value = ""
+        self.valuespec.below_value = ""
+        self.assertEqual(
+            [i for i in self.database.find_values(self.valuespec, "file1")], []
+        )
+
+    def test_13_find_values(self):
+        self.valuespec.above_value = ""
+        self.valuespec.to_value = ""
+        self.assertEqual(
+            [i for i in self.database.find_values(self.valuespec, "file1")], []
+        )
+
+    def test_14_find_values(self):
+        self.valuespec.from_value = ""
+        self.valuespec.to_value = ""
+        self.assertEqual(
+            [i for i in self.database.find_values(self.valuespec, "file1")], []
+        )
+
+    def test_15_find_values(self):
+        self.valuespec.from_value = ""
+        self.valuespec.below_value = ""
+        self.assertEqual(
+            [i for i in self.database.find_values(self.valuespec, "file1")], []
+        )
+
+    def test_16_find_values(self):
+        self.valuespec.above_value = ""
+        self.assertEqual(
+            [i for i in self.database.find_values(self.valuespec, "file1")], []
+        )
+
+    def test_17_find_values(self):
+        self.valuespec.from_value = ""
+        self.assertEqual(
+            [i for i in self.database.find_values(self.valuespec, "file1")], []
+        )
+
+    def test_18_find_values(self):
+        self.valuespec.to_value = ""
+        self.assertEqual(
+            [i for i in self.database.find_values(self.valuespec, "file1")], []
+        )
+
+    def test_19_find_values(self):
+        self.valuespec.below_value = ""
+        self.assertEqual(
+            [i for i in self.database.find_values(self.valuespec, "file1")], []
+        )
+
 
 class Database_find_values(_DBOpen):
     def setUp(self):
@@ -2188,6 +2240,11 @@ class Database_make_recordset_key(_Database_recordset):
         self.assertEqual(rs[0].count_records(), 31)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
+    def test_23_make_recordset_key_05(self):
+        rs = self.database.recordlist_key("file1", "field1", key=b"")
+        self.assertIsInstance(rs, recordset.RecordList)
+        self.assertEqual(len(rs), 0)
+
     def test_27_make_recordset_key_startswith_01(self):
         rs = self.database.recordlist_key_startswith("file1", "field1")
         self.assertIsInstance(rs, recordset.RecordList)
@@ -2222,6 +2279,14 @@ class Database_make_recordset_key(_Database_recordset):
         )
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(rs[0].count_records(), 24)
+        self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
+
+    def test_28_make_recordset_key_startswith_06(self):
+        rs = self.database.recordlist_key_startswith(
+            "file1", "field1", keystart=b""
+        )
+        self.assertIsInstance(rs, recordset.RecordList)
+        self.assertEqual(rs[0].count_records(), 127)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
     def test_32_make_recordset_key_range_01(self):
@@ -2334,6 +2399,14 @@ class Database_make_recordset_key(_Database_recordset):
         self.assertEqual(rs[0].count_records(), 111)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
+    def test_32_make_recordset_key_range_15(self):
+        rs = self.database.recordlist_key_range("file1", "field1", gt=b"")
+        self.assertIsInstance(rs, recordset.RecordList)
+        self.assertEqual(len(rs), 2)
+        self.assertEqual(rs[0].count_records(), 127)
+        self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
+        self.assertIsInstance(rs[1], recordset.RecordsetSegmentList)
+
     def test_46_make_recordset_all_01(self):
         rs = self.database.recordlist_all("file1", "field1")
         self.assertIsInstance(rs, recordset.RecordList)
@@ -2352,6 +2425,24 @@ class Database_file_records(_Database_recordset):
 
     def test_47_unfile_records_under_02(self):
         self.database.unfile_records_under("file1", "field1", b"kkkk")
+
+    # The set_range() call for key b"" in unfile_records_under() has been
+    # done and the subsequent delete fails.
+    # This test is added dealing with issue 8 (Github) on set_range_dup.
+    # It is not clear silently ignoring the delete for key b"" is ever or
+    # always the correct action, so let the exception happen.
+    def test_47_unfile_records_under_03(self):
+        self.assertRaisesRegex(
+            lmdb.BadValsizeError,
+            "".join(
+                (
+                    r"mdb_del: MDB_BAD_VALSIZE: Unsupported size of key/DB ",
+                    "name/data, or wrong DUPFIXED size$",
+                )
+            ),
+            self.database.unfile_records_under,
+            *("file1", "field1", b""),
+        )
 
     def test_49_file_records_under_01(self):
         rs = self.database.recordlist_all("file1", "field1")
@@ -2389,6 +2480,22 @@ class Database_file_records(_Database_recordset):
     def test_49_file_records_under_07(self):
         rs = self.database.recordlist_key("file1", "field1", key=b"ba_o")
         self.database.file_records_under("file1", "field1", rs, b"www")
+
+    # The first thing file_records_under() does is call unfile_records_under().
+    # Assume the task is to file whatever is under key b'one' as b"" too.
+    def test_49_file_records_under_08(self):
+        rs = self.database.recordlist_key("file1", "field1", key=b"one")
+        self.assertRaisesRegex(
+            lmdb.BadValsizeError,
+            "".join(
+                (
+                    r"mdb_del: MDB_BAD_VALSIZE: Unsupported size of key/DB ",
+                    "name/data, or wrong DUPFIXED size$",
+                )
+            ),
+            self.database.file_records_under,
+            *("file1", "field1", rs, b""),
+        )
 
 
 class Database__get_segment_record_numbers(_Database_recordset):
