@@ -9,6 +9,8 @@ from .constants import (
     # HASH,
     SUBFILE_DELIMITER,
     SEGMENT_HEADER_LENGTH,
+    EXISTING_SEGMENT_REFERENCE,
+    NEW_SEGMENT_CONTENT,
 )
 from .segmentsize import SegmentSize
 from .recordset import (
@@ -17,6 +19,7 @@ from .recordset import (
     RecordsetSegmentList,
 )
 from . import _databasedu
+from . import merge
 
 
 class DatabaseError(Exception):
@@ -76,10 +79,7 @@ class Database(_databasedu.Database):
 
     def set_defer_update(self):
         """Prepare to do deferred update run."""
-        self._int_to_bytes = [
-            n.to_bytes(2, byteorder="big")
-            for n in range(SegmentSize.db_segment_size)
-        ]
+        self.set_int_to_bytes_lookup(lookup=True)
         self.start_transaction()
         for file in self.specification:
             dbc = self.table[file][0].cursor(txn=self.dbtxn)
@@ -101,7 +101,7 @@ class Database(_databasedu.Database):
 
     def unset_defer_update(self):
         """Unset deferred update for db DBs. Default all."""
-        self._int_to_bytes = None
+        self.set_int_to_bytes_lookup(lookup=False)
         for file in self.specification:
             self.high_segment[file] = None
             self.first_chunk[file] = None
@@ -394,3 +394,192 @@ class Database(_databasedu.Database):
         """Return existence bitmap for segment number 'key'."""
         # record keys are 1-based but segment_numbers are 0-based.
         return ebm_control.ebm_table.get(key + 1, txn=self.dbtxn)
+
+    def find_value_segments(self, field, file):
+        """Yield segment references for field in file."""
+        cursor = self.table[SUBFILE_DELIMITER.join((file, field))][0].cursor(
+            txn=self.dbtxn
+        )
+        try:
+            record = cursor.first()
+            while record:
+                value, segment = record
+                if len(segment) == 6:
+                    count = b"\x00\x01"
+                    reference = segment[4:]
+                else:
+                    assert len(segment) == 10
+                    count = segment[4:6]
+                    reference = segment[6:]
+                yield [
+                    value,
+                    segment[:4],
+                    EXISTING_SEGMENT_REFERENCE,
+                    count,
+                    reference,
+                ]
+                record = cursor.next()
+        finally:
+            cursor.close()
+
+    def delete_index(self, file, field):
+        """Remove all records from database for field in file."""
+        self.table[SUBFILE_DELIMITER.join((file, field))][0].truncate(
+            txn=self.dbtxn
+        )
+
+    def merge_import(self, index_directory, file, field, commit_limit):
+        """Merge sorted files in index_derectory and write to database.
+
+        Yield count of items written to index after commits done when
+        commit_limit items have been added since previous yield.
+
+        """
+
+        def make_segment_from_high():
+            if high[2] == b"\x00\x01":
+                return RecordsetSegmentInt(
+                    int.from_bytes(high[1], byteorder="big"),
+                    None,
+                    records=high[3],
+                )
+            bytestring_records = segment_table.get(
+                int.from_bytes(high[3], byteorder="big"), txn=dbtxn
+            )
+            if len(bytestring_records) == SegmentSize.db_segment_size_bytes:
+                return RecordsetSegmentBitarray(
+                    int.from_bytes(high[1], byteorder="big"),
+                    None,
+                    records=bytestring_records,
+                )
+            return RecordsetSegmentList(
+                int.from_bytes(high[1], byteorder="big"),
+                None,
+                records=bytestring_records,
+            )
+
+        def make_segment_from_item():
+            if item[2] == b"\x00\x01":
+                return RecordsetSegmentInt(
+                    int.from_bytes(item[1], byteorder="big"),
+                    None,
+                    records=item[3],
+                )
+            if len(item[3]) == SegmentSize.db_segment_size_bytes:
+                return RecordsetSegmentBitarray(
+                    int.from_bytes(item[1], byteorder="big"),
+                    None,
+                    records=item[3],
+                )
+            return RecordsetSegmentList(
+                int.from_bytes(item[1], byteorder="big"),
+                None,
+                records=item[3],
+            )
+
+        def read_high_item_in_index():
+            record = cursor.last()
+            assert len(record) == 2
+            value, segment = record
+            if len(segment) == 6:
+                count = b"x00\x01"
+                reference = segment[4:]
+            else:
+                count = segment[4:6]
+                reference = segment[6:]
+            return [
+                value,
+                segment[:4],
+                count,
+                reference,
+            ]
+
+        keylast = self._dbe.DB_KEYLAST
+        table = self.table[SUBFILE_DELIMITER.join((file, field))][0]
+        segment_table = self.segment_table[file]
+        dbtxn = self.dbtxn
+        cursor = table.cursor(txn=dbtxn)
+        merger = merge.Merge(index_directory)
+        prev_segment = None
+        prev_key = None
+        for commit_count, item in enumerate(merger.sorter()):
+            if not commit_count % commit_limit:
+                if prev_key is not None and dbtxn is not None:
+                    cursor.close()
+                    self.commit()
+                    self.deferred_update_housekeeping()
+                    yield commit_count
+                    self.start_transaction()
+                    dbtxn = self.dbtxn
+                    cursor = table.cursor(txn=dbtxn)
+            assert len(item) == 5
+            segment = item[1]
+            if prev_segment != segment:
+                prev_segment = segment
+                prev_key = item[0]
+                item_type = item.pop(2)
+                if item_type == EXISTING_SEGMENT_REFERENCE:
+                    cursor.put(item[0], b"".join(item[1:]), keylast)
+                    assert len(item) == 4
+                    continue
+                if int.from_bytes(item[-2], byteorder="big") > 1:
+                    item[-1] = segment_table.append(
+                        item[-1], txn=dbtxn
+                    ).to_bytes(4, byteorder="big")
+                    assert len(item) == 4
+                else:
+                    item.pop(2)
+                    assert len(item) == 3
+                cursor.put(item[0], b"".join(item[1:]), keylast)
+                assert item_type == NEW_SEGMENT_CONTENT
+                continue
+            if prev_key == item[0]:
+                assert item[2] == NEW_SEGMENT_CONTENT
+                del item[2]
+                high = read_high_item_in_index()
+                existing_segment = make_segment_from_high()
+                new_segment = make_segment_from_item()
+                new_segment |= existing_segment
+                new_segment.normalize()
+                item[-2] = self.encode_number_for_sequential_file_dump(
+                    new_segment.count_records(), 2
+                )
+                if int.from_bytes(high[-2], byteorder="big") == 1:
+                    item[-1] = segment_table.append(
+                        new_segment.tobytes(), txn=dbtxn
+                    ).to_bytes(4, byteorder="big")
+                    cursor.delete()
+                    cursor.put(item[0], b"".join(item[1:]), keylast)
+                else:
+                    segment_table.put(
+                        int.from_bytes(high[-1], "big"),
+                        new_segment.tobytes(),
+                        txn=dbtxn,
+                    )
+                    cursor.delete()
+                    item[-1] = high[-1]
+                    cursor.put(item[0], b"".join(item[1:]), keylast)
+                assert len(item) == 4
+                continue
+            item_type = item.pop(2)
+            if item_type == EXISTING_SEGMENT_REFERENCE:
+                prev_key = item[0]
+                cursor.put(item[0], b"".join(item[1:]), keylast)
+                assert len(item) == 4
+                continue
+            if int.from_bytes(item[-2], byteorder="big") > 1:
+                item[-1] = segment_table.append(item[-1], txn=dbtxn).to_bytes(
+                    4, byteorder="big"
+                )
+                assert len(item) == 4
+            else:
+                item.pop(2)
+                assert len(item) == 3
+            cursor.put(item[0], b"".join(item[1:]), keylast)
+            assert item_type == NEW_SEGMENT_CONTENT
+            continue
+        cursor.close()
+        if dbtxn is not None and prev_key is not None:
+            self.commit()
+            self.deferred_update_housekeeping()
+            self.start_transaction()

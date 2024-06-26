@@ -92,10 +92,7 @@ class Database(_databasedu.Database):
 
     def set_defer_update(self):
         """Prepare to do deferred update run."""
-        self._int_to_bytes = [
-            n.to_bytes(2, byteorder="big")
-            for n in range(SegmentSize.db_segment_size)
-        ]
+        self.set_int_to_bytes_lookup(lookup=True)
         self.start_transaction()
 
         for file in self.specification:
@@ -112,7 +109,7 @@ class Database(_databasedu.Database):
 
     def unset_defer_update(self):
         """Tidy-up at end of deferred update run."""
-        self._int_to_bytes = None
+        self.set_int_to_bytes_lookup(lookup=False)
         self.first_chunk.clear()
         self.high_segment.clear()
         self.initial_high_segment.clear()

@@ -265,8 +265,8 @@ if __name__ == "__main__":
         #         }
         # )
         # is a trimmed example expressing the idea.
-        specification=dict(
-            games=(
+        specification={
+            "games": (
                 "Black",
                 "Date",
                 "Event",
@@ -282,5 +282,5 @@ if __name__ == "__main__":
                 "Source",
                 "SquareMove",
             )
-        ),
+        },
     )

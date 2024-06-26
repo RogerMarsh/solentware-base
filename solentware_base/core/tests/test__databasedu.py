@@ -324,6 +324,99 @@ class Database_deferred_update_housekeeping(unittest.TestCase):
         self.assertEqual(self.database.deferred_update_housekeeping(), None)
 
 
+class Database_encode_for_dump(unittest.TestCase):
+    def setUp(self):
+        class _D(_databasedu.Database):
+            pass
+
+        self.database = _D()
+        self.database.set_int_to_bytes_lookup()
+
+    def tearDown(self):
+        self.database = None
+
+    def test_encode_number_for_sequential_file_dump_01(self):
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"encode_number_for_sequential_file_dump\(\) ",
+                    r"missing 2 required positional arguments: ",
+                    "'number' and 'bytes_'$",
+                )
+            ),
+            self.database.encode_number_for_sequential_file_dump,
+        )
+
+    def test_encode_number_for_sequential_file_dump_02(self):
+        bytes_ = self.database.encode_number_for_sequential_file_dump(5, 3)
+        self.assertEqual(bytes_, b"\x00\x00\x05")
+
+    def test_encode_segment_for_sequential_file_dump_01(self):
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"encode_segment_for_sequential_file_dump\(\) ",
+                    r"missing 1 required positional argument: ",
+                    "'record_numbers'$",
+                )
+            ),
+            self.database.encode_segment_for_sequential_file_dump,
+        )
+
+    def test_encode_segment_for_sequential_file_dump_02(self):
+        self.assertEqual(SegmentSize.db_upper_conversion_limit, 2000)
+        bytes_ = self.database.encode_segment_for_sequential_file_dump([3, 4])
+        self.assertEqual(bytes_, b"\x00\x03\x00\x04")
+
+    def test_encode_segment_for_sequential_file_dump_03(self):
+        self.assertEqual(SegmentSize.db_upper_conversion_limit, 2000)
+        self.assertEqual(SegmentSize.db_segment_size_bytes, 4096)
+        recs = [n for n in range(SegmentSize.db_upper_conversion_limit + 1)]
+        bytes_ = self.database.encode_segment_for_sequential_file_dump(recs)
+        self.assertEqual(len(bytes_), SegmentSize.db_segment_size_bytes)
+
+
+class Database_set_int_to_bytes_lookup(unittest.TestCase):
+    def setUp(self):
+        class _D(_databasedu.Database):
+            pass
+
+        self.database = _D()
+
+    def tearDown(self):
+        self.database = None
+
+    def test_Database_set_int_to_bytes_lookup_01(self):
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"set_int_to_bytes_lookup\(\) ",
+                    r"takes from 1 to 2 positional arguments ",
+                    "but 3 were given$",
+                )
+            ),
+            self.database.set_int_to_bytes_lookup,
+            *(None, None),
+        )
+
+    def test_Database_set_int_to_bytes_lookup_02(self):
+        self.database.set_int_to_bytes_lookup(lookup=False)
+        self.assertEqual(self.database._int_to_bytes is None, True)
+
+    def test_Database_set_int_to_bytes_lookup_03(self):
+        self.database.set_int_to_bytes_lookup(lookup=True)
+        self.assertEqual(
+            len(self.database._int_to_bytes),
+            SegmentSize.db_segment_size,
+        )
+        for item in self.database._int_to_bytes:
+            self.assertEqual(len(item), 2)
+            self.assertEqual(isinstance(item, bytes), True)
+
+
 if __name__ == "__main__":
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
@@ -334,3 +427,5 @@ if __name__ == "__main__":
     runner().run(loader(Database__prepare_segment_record_list))
     runner().run(loader(Database_set_segment_size))
     runner().run(loader(Database_deferred_update_housekeeping))
+    runner().run(loader(Database_encode_for_dump))
+    runner().run(loader(Database_set_int_to_bytes_lookup))

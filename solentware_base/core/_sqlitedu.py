@@ -13,9 +13,19 @@ from .constants import (
     SQLITE_COUNT_COLUMN,
     SQLITE_VALUE_COLUMN,
     SUBFILE_DELIMITER,
+    EXISTING_SEGMENT_REFERENCE,
+    INDEXPREFIX,
+    NEW_SEGMENT_CONTENT,
+    SQLITE_RECORDS_COLUMN,
 )
 from .segmentsize import SegmentSize
 from . import _databasedu
+from . import merge
+from .recordset import (
+    RecordsetSegmentBitarray,
+    RecordsetSegmentInt,
+    RecordsetSegmentList,
+)
 
 
 class DatabaseError(Exception):
@@ -104,10 +114,7 @@ class Database(_databasedu.Database):
         # Timings when adding to an empty database suggest the sqlite3 version
         # would be a little slower than the bsddb3 version.
 
-        self._int_to_bytes = [
-            n.to_bytes(2, byteorder="big")
-            for n in range(SegmentSize.db_segment_size)
-        ]
+        self.set_int_to_bytes_lookup(lookup=True)
 
         # Comment these if the 'do-nothing' override of commit() is commented.
         # self.dbenv.cursor().execute('pragma journal_mode = off')
@@ -139,7 +146,7 @@ class Database(_databasedu.Database):
 
     def unset_defer_update(self):
         """Tidy-up at end of deferred update run."""
-        self._int_to_bytes = None
+        self.set_int_to_bytes_lookup(lookup=False)
         for file in self.specification:
             self.high_segment[file] = None
             self.first_chunk[file] = None
@@ -367,3 +374,312 @@ class Database(_databasedu.Database):
     def get_ebm_segment(self, ebm_control, key):
         """Return existence bitmap for segment number 'key'."""
         return ebm_control.get_ebm_segment(key, self.dbenv)
+
+    def find_value_segments(self, field, file):
+        """Yield segment references for field in file."""
+        statement = " ".join(
+            (
+                "select",
+                field,
+                ",",
+                SQLITE_SEGMENT_COLUMN,
+                ",",
+                SQLITE_COUNT_COLUMN,
+                ",",
+                file,
+                "from",
+                self.table[SUBFILE_DELIMITER.join((file, field))][0],
+                "order by",
+                field,
+                ",",
+                "Segment",
+            )
+        )
+        cursor = self.dbenv.cursor()
+        try:
+            for value, segment, count, reference in cursor.execute(
+                statement, ()
+            ):
+                yield [
+                    value,
+                    segment,
+                    EXISTING_SEGMENT_REFERENCE,
+                    count,
+                    reference,
+                ]
+        finally:
+            cursor.close()
+
+    def encode_number_for_sequential_file_dump(self, number, bytes_):
+        """Return number.
+
+        Argument bytes_ must be supplied for compatibility with database
+        engines which convert the number to a fixed-length bytestring
+        encoding.
+
+        """
+        del bytes_
+        return number
+
+    def encode_segment_for_sequential_file_dump(self, record_numbers):
+        """Return encoding of record numbers appropriate to record count."""
+        if len(record_numbers) > SegmentSize.db_upper_conversion_limit:
+            seg = SegmentSize.empty_bitarray.copy()
+            for bit in record_numbers:
+                seg[bit] = True
+            return seg.tobytes()
+        if len(record_numbers) > 1:
+            int_to_bytes = self._int_to_bytes
+            return b"".join([int_to_bytes[n] for n in record_numbers])
+        return record_numbers[0]
+
+    def delete_index(self, file, field):
+        """Remove all records from database for field in file.
+
+        Implemented by dropping table followed by creating it and it's
+        indicies.
+
+        """
+        statement = " ".join(
+            (
+                "drop table if exists",
+                self.table[SUBFILE_DELIMITER.join((file, field))][0],
+            )
+        )
+        cursor = self.dbenv.cursor()
+        try:
+            cursor.execute(statement)
+        finally:
+            cursor.close()
+        secondary = SUBFILE_DELIMITER.join((file, field))
+        statement = " ".join(
+            (
+                "create table if not exists",
+                secondary,
+                "(",
+                field,
+                ",",
+                SQLITE_SEGMENT_COLUMN,
+                ",",
+                SQLITE_COUNT_COLUMN,
+                ",",
+                file,
+                ")",
+            )
+        )
+        cursor = self.dbenv.cursor()
+        try:
+            cursor.execute(statement)
+        finally:
+            cursor.close()
+        indexname = "".join(
+            (INDEXPREFIX, SUBFILE_DELIMITER.join((file, field)))
+        )
+        statement = " ".join(
+            (
+                "create unique index if not exists",
+                indexname,
+                "on",
+                secondary,
+                "(",
+                field,
+                ",",
+                SQLITE_SEGMENT_COLUMN,
+                ")",
+            )
+        )
+        cursor = self.dbenv.cursor()
+        try:
+            cursor.execute(statement)
+        finally:
+            cursor.close()
+
+    def merge_import(self, index_directory, file, field, commit_limit):
+        """Merge sorted files in index_derectory and write to database.
+
+        Yield count of items written to index after commits done when
+        commit_limit items have been added since previous yield.
+
+        """
+
+        def make_segment_from_item():
+            if item[2] == 1:
+                return RecordsetSegmentInt(
+                    item[1],
+                    None,
+                    records=item[3].to_bytes(2, byteorder="big"),
+                )
+            if len(item[3]) == SegmentSize.db_segment_size_bytes:
+                return RecordsetSegmentBitarray(item[1], None, records=item[3])
+            return RecordsetSegmentList(item[1], None, records=item[3])
+
+        assert file != field
+        secondary = self.table[SUBFILE_DELIMITER.join((file, field))][0]
+        write_item_to_index = " ".join(
+            (
+                "insert into",
+                secondary,
+                "(",
+                field,
+                ",",
+                SQLITE_SEGMENT_COLUMN,
+                ",",
+                SQLITE_COUNT_COLUMN,
+                ",",
+                file,
+                ")",
+                "values ( ? , ? , ? , ? )",
+            )
+        )
+        replace_index_item = " ".join(
+            (
+                "update",
+                secondary,
+                "set",
+                SQLITE_COUNT_COLUMN,
+                "= ? ,",
+                file,
+                "= ?",
+                "where",
+                field,
+                "== ? and",
+                SQLITE_SEGMENT_COLUMN,
+                "== ?",
+            )
+        )
+        replace_index_count = " ".join(
+            (
+                "update",
+                secondary,
+                "set",
+                SQLITE_COUNT_COLUMN,
+                "= ?",
+                "where",
+                field,
+                "== ? and",
+                SQLITE_SEGMENT_COLUMN,
+                "== ?",
+            )
+        )
+        read_high_item_in_index = " ".join(
+            (
+                "select",
+                field,
+                ",",
+                SQLITE_SEGMENT_COLUMN,
+                ",",
+                SQLITE_COUNT_COLUMN,
+                ",",
+                file,
+                "from",
+                secondary,
+                "order by",
+                field,
+                "desc",
+                ",",
+                SQLITE_SEGMENT_COLUMN,
+                "desc",
+                "limit 1",
+            )
+        )
+        insert_segment_records = " ".join(
+            (
+                "insert into",
+                self.segment_table[file],
+                "(",
+                SQLITE_RECORDS_COLUMN,
+                ")",
+                "values ( ? )",
+            )
+        )
+        last_inserted_row = " ".join(
+            (
+                "select last_insert_rowid() from",
+                self.segment_table[file],
+            )
+        )
+        set_segment_records = " ".join(
+            (
+                "update",
+                self.segment_table[file],
+                "set",
+                SQLITE_RECORDS_COLUMN,
+                "= ?",
+                "where rowid == ?",
+            )
+        )
+        merger = merge.Merge(index_directory)
+        prev_segment = None
+        prev_key = None
+        cursor = self.dbenv.cursor()
+        for commit_count, item in enumerate(merger.sorter()):
+            if not commit_count % commit_limit:
+                if prev_key is not None:
+                    self.commit()
+                    self.deferred_update_housekeeping()
+                    yield commit_count
+                    self.start_transaction()
+            assert len(item) == 5
+            segment = item[1]
+            if prev_segment != segment:
+                prev_segment = segment
+                prev_key = item[0]
+                item_type = item.pop(2)
+                if item_type == EXISTING_SEGMENT_REFERENCE:
+                    cursor.execute(write_item_to_index, item)
+                    assert len(item) == 4
+                    continue
+                if item[-2] > 1:
+                    cursor.execute(insert_segment_records, (item[-1],))
+                    item[-1] = cursor.execute(last_inserted_row).fetchone()[0]
+                cursor.execute(write_item_to_index, item)
+                assert item_type == NEW_SEGMENT_CONTENT
+                assert len(item) == 4
+                continue
+            if prev_key == item[0]:
+                assert item[2] == NEW_SEGMENT_CONTENT
+                del item[2]
+                high = cursor.execute(read_high_item_in_index).fetchone()
+                new_segment = make_segment_from_item()
+                new_segment |= self.populate_segment(high, file)
+                new_segment.normalize()
+                if high[2] == 1:
+                    cursor.execute(
+                        insert_segment_records, (new_segment.tobytes(),)
+                    )
+                    cursor.execute(
+                        replace_index_item,
+                        (
+                            new_segment.count_records(),
+                            cursor.execute(last_inserted_row).fetchone()[0],
+                            high[0],
+                            high[1],
+                        ),
+                    )
+                else:
+                    cursor.execute(
+                        set_segment_records, (new_segment.tobytes(), high[3])
+                    )
+                    cursor.execute(
+                        replace_index_count,
+                        (new_segment.count_records(), high[0], high[1]),
+                    )
+                assert len(item) == 4
+                continue
+            item_type = item.pop(2)
+            if item_type == EXISTING_SEGMENT_REFERENCE:
+                prev_key = item[0]
+                cursor.execute(write_item_to_index, item)
+                assert len(item) == 4
+                continue
+            if item[2] > 1:
+                cursor.execute(insert_segment_records, (item[3],))
+                item[3] = cursor.execute(last_inserted_row).fetchone()[0]
+            cursor.execute(write_item_to_index, item)
+            assert item_type == NEW_SEGMENT_CONTENT
+            assert len(item) == 4
+            continue
+        if prev_key is not None:
+            self.commit()
+            self.deferred_update_housekeeping()
+            self.start_transaction()

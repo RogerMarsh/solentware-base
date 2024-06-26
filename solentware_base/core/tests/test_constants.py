@@ -182,8 +182,10 @@ class ConstantsFunctions(unittest.TestCase):
         ae(constants.DEFAULT_MAP_SIZE, 10485760)
         ae(constants.DEFAULT_MAP_BLOCKS, 1)
         ae(constants.LMDB_MODULE, "lmdb")
+        ae(constants.EXISTING_SEGMENT_REFERENCE, 0),
+        ae(constants.NEW_SEGMENT_CONTENT, 1),
         cc = [d for d in dir(constants) if not d.endswith("__")]
-        ae(len(cc), 106)
+        ae(len(cc), 108)
         ae(
             sorted(cc),
             sorted(
@@ -294,6 +296,8 @@ class ConstantsFunctions(unittest.TestCase):
                     "DEFAULT_MAP_SIZE",
                     "DEFAULT_MAP_BLOCKS",
                     "DEFAULT_MAP_PAGES",
+                    "EXISTING_SEGMENT_REFERENCE",
+                    "NEW_SEGMENT_CONTENT",
                 ]
             ),
         )

@@ -476,7 +476,7 @@ class Database(_database.Database):
         # openldap.org/lists/openldap-devel/201409/... thread for informed
         # comment.
         del dbe
-        return dict(subdir=False, readahead=False)
+        return {"subdir": False, "readahead": False}
 
     def checkpoint_before_close_dbenv(self):
         """Do nothing.  Present for compatibility with _db module."""

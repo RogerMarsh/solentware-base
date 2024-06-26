@@ -223,3 +223,8 @@ DEFAULT_MAP_SIZE = 4096 * DEFAULT_MAP_PAGES
 # Initial maximum, and changes in maximum, size of a database are expressed
 # as a number of map blocks.
 DEFAULT_MAP_BLOCKS = 1
+
+# Decorators for merging existing and new segment references into empty index.
+# Values set so existing segment reference is lower in ascending order.
+EXISTING_SEGMENT_REFERENCE = 0
+NEW_SEGMENT_CONTENT = 1

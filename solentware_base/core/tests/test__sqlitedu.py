@@ -6,6 +6,7 @@
 
 import unittest
 import os
+import shutil
 
 try:
     import sqlite3
@@ -924,6 +925,262 @@ class Database_merge(_SQLiteOpen):
         self.database.merge("file1", "field1")
 
 
+class Database_encode_for_dump(_SQLitedu):
+    def setUp(self):
+        super().setUp()
+        self.database = self._D({}, folder="a")
+        self.database.set_int_to_bytes_lookup()
+
+    def test_encode_number_for_sequential_file_dump_01(self):
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"encode_number_for_sequential_file_dump\(\) ",
+                    r"missing 2 required positional arguments: ",
+                    "'number' and 'bytes_'$",
+                )
+            ),
+            self.database.encode_number_for_sequential_file_dump,
+        )
+
+    def test_encode_number_for_sequential_file_dump_02(self):
+        bytes_ = self.database.encode_number_for_sequential_file_dump(5, 3)
+        self.assertEqual(bytes_, 5)
+
+    def test_encode_segment_for_sequential_file_dump_01(self):
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"encode_segment_for_sequential_file_dump\(\) ",
+                    r"missing 1 required positional argument: ",
+                    "'record_numbers'$",
+                )
+            ),
+            self.database.encode_segment_for_sequential_file_dump,
+        )
+
+    def test_encode_segment_for_sequential_file_dump_02(self):
+        self.assertEqual(SegmentSize.db_upper_conversion_limit, 2000)
+        bytes_ = self.database.encode_segment_for_sequential_file_dump([3, 4])
+        self.assertEqual(bytes_, b"\x00\x03\x00\x04")
+
+    def test_encode_segment_for_sequential_file_dump_03(self):
+        self.assertEqual(SegmentSize.db_upper_conversion_limit, 2000)
+        self.assertEqual(SegmentSize.db_segment_size_bytes, 4096)
+        recs = [n for n in range(SegmentSize.db_upper_conversion_limit + 1)]
+        bytes_ = self.database.encode_segment_for_sequential_file_dump(recs)
+        self.assertEqual(len(bytes_), SegmentSize.db_segment_size_bytes)
+
+    def test_encode_segment_for_sequential_file_dump_03(self):
+        self.assertEqual(SegmentSize.db_upper_conversion_limit, 2000)
+        bytes_ = self.database.encode_segment_for_sequential_file_dump([3])
+        self.assertEqual(bytes_, 3)
+
+
+class Database_delete_index(_SQLiteOpen):
+    def test_01(self):
+        database = self._D({}, segment_size_bytes=None)
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"delete_index\(\) missing 2 required ",
+                    "positional arguments: 'file' and 'field'$",
+                )
+            ),
+            database.delete_index,
+        )
+
+    def test_delete_index_01(self):
+        self.assertEqual(
+            self.database.delete_index("file1", "field1") is None, True
+        )
+
+
+class Database_find_value_segments(_SQLiteOpen):
+    def test_01(self):
+        database = self._D({}, segment_size_bytes=None)
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"find_value_segments\(\) missing 2 required ",
+                    "positional arguments: 'field' and 'file'$",
+                )
+            ),
+            database.find_value_segments,
+        )
+
+    def test_find_value_segments_01(self):
+        self.assertRaisesRegex(
+            StopIteration,
+            "$",
+            next,
+            *(self.database.find_value_segments("field1", "file1"),),
+        )
+
+    def test_find_value_segments_02(self):
+        self.database.value_segments["file1"] = {"field1": {"int": [1]}}
+        self.database.first_chunk["file1"] = False
+        self.database.initial_high_segment["file1"] = 4
+        self.database.high_segment["file1"] = 3
+        self.database.start_transaction()
+        self.database.sort_and_write("file1", "field1", 5)
+        self.database.commit()
+        for item in self.database.find_value_segments("field1", "file1"):
+            self.assertEqual(item, ["int", 5, 0, 1, 1])
+
+    def test_find_value_segments_03(self):
+        self.database.value_segments["file1"] = {"field1": {"list": [1, 4]}}
+        self.database.first_chunk["file1"] = False
+        self.database.initial_high_segment["file1"] = 4
+        self.database.high_segment["file1"] = 3
+        self.database._int_to_bytes = [
+            n.to_bytes(2, byteorder="big")
+            for n in range(SegmentSize.db_segment_size)
+        ]
+        self.database.start_transaction()
+        self.database.sort_and_write("file1", "field1", 5)
+        self.database.commit()
+        for item in self.database.find_value_segments("field1", "file1"):
+            self.assertEqual(item, ["list", 5, 0, 2, 1])
+
+
+# Not memory-only so the folder can hold the sorted index sequential files.
+class _SQLiteMerge(_SQLitedu):
+    def setUp(self):
+        super().setUp()
+        self.folder = os.path.join("/tmp", "merge_test_sqlitedu")
+        self.database = self._D(
+            filespec.FileSpec(**{"file1": {"field1"}}),
+            folder=self.folder,
+            segment_size_bytes=None,
+        )
+        self.database.open_database()
+        self.sequential = os.path.join(self.folder, "sequential")
+        os.mkdir(self.sequential)
+        self.field = os.path.join(self.sequential, "field1")
+        os.mkdir(self.field)
+
+    def tearDown(self):
+        self.database.close_database()
+        shutil.rmtree(self.folder)
+        super().tearDown()
+
+
+class Database_merge_import(_SQLiteMerge):
+    def test_01(self):
+        database = self._D({}, segment_size_bytes=None)
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"merge_import\(\) missing 4 required ",
+                    "positional arguments: 'index_directory', ",
+                    "'file', 'field', and 'commit_limit'$",
+                )
+            ),
+            database.merge_import,
+        )
+
+    def test_merge_import_01(self):
+        self.assertRaisesRegex(
+            FileNotFoundError,
+            "No such file or directory: 'ss'$",
+            next,
+            *(self.database.merge_import("ss", "file1", "field1", 10),),
+        )
+
+    def test_merge_import_02(self):
+        shutil.rmtree(self.field)
+        self.assertRaisesRegex(
+            StopIteration,
+            "$",
+            next,
+            *(
+                self.database.merge_import(
+                    self.sequential, "file1", "field1", 10
+                ),
+            ),
+        )
+
+    def test_merge_import_03(self):
+        self.assertRaisesRegex(
+            StopIteration,
+            "$",
+            next,
+            *(self.database.merge_import(self.field, "file1", "field1", 10),),
+        )
+
+    def test_merge_import_04(self):
+        with open(os.path.join(self.field, "0"), mode="w") as file:
+            file.write("")
+        self.assertRaisesRegex(
+            StopIteration,
+            "$",
+            next,
+            *(self.database.merge_import(self.field, "file1", "field1", 10),),
+        )
+
+    def test_merge_import_05(self):
+        with open(os.path.join(self.field, "0"), mode="w") as file:
+            file.write("1")
+        self.assertRaisesRegex(
+            TypeError,
+            r"object of type 'int' has no len\(\)$",
+            next,
+            *(self.database.merge_import(self.field, "file1", "field1", 10),),
+        )
+
+    def test_merge_import_06(self):
+        with open(os.path.join(self.field, "0"), mode="w") as file:
+            file.write(repr(["a", "b", "c", "d"]))
+        self.assertRaisesRegex(
+            AssertionError,
+            "",
+            next,
+            *(self.database.merge_import(self.field, "file1", "field1", 10),),
+        )
+
+    def test_merge_import_07(self):
+        with open(os.path.join(self.field, "0"), mode="w") as file:
+            file.write(repr(["a", "b", "c", "d", "e", "f"]))
+        self.assertRaisesRegex(
+            AssertionError,
+            "",
+            next,
+            *(self.database.merge_import(self.field, "file1", "field1", 10),),
+        )
+
+    def test_merge_import_08(self):
+        with open(os.path.join(self.field, "0"), mode="w") as file:
+            file.write(repr(["a", b"\x00\x00\x00\x01", 1, 1, b"\x00\x07"]))
+        self.database.start_transaction()
+        self.assertRaisesRegex(
+            StopIteration,
+            "$",
+            next,
+            *(self.database.merge_import(self.field, "file1", "field1", 2),),
+        )
+        self.database.commit()
+
+    def test_merge_import_09(self):
+        with open(os.path.join(self.field, "0"), mode="w") as file:
+            file.write(repr(["a", b"\x00\x00\x00\x01", 1, 1, b"\x00\x07"]))
+            file.write("\n")
+            file.write(repr(["b", b"\x00\x00\x00\x01", 1, 1, b"\x00\x07"]))
+            file.write("\n")
+            file.write(repr(["c", b"\x00\x00\x00\x01", 1, 1, b"\x00\x07"]))
+        self.database.start_transaction()
+        for count in self.database.merge_import(
+            self.field, "file1", "field1", 2
+        ):
+            self.assertEqual(count, 2)
+        self.database.commit()
+
+
 if __name__ == "__main__":
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
@@ -937,3 +1194,7 @@ if __name__ == "__main__":
         runner().run(loader(Database_do_final_segment_deferred_updates))
         runner().run(loader(Database_sort_and_write))
         runner().run(loader(Database_merge))
+        runner().run(loader(Database_encode_for_dump))
+        runner().run(loader(Database_delete_index))
+        runner().run(loader(Database_find_value_segments))
+        runner().run(loader(Database_merge_import))

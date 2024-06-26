@@ -208,3 +208,31 @@ class Database(_database.Database):
         Actions are specific to a database engine.
 
         """
+
+    def encode_number_for_sequential_file_dump(self, number, bytes_):
+        """Return big-endian encoding of number in bytes_ bytes."""
+        return number.to_bytes(bytes_, byteorder="big")
+
+    def encode_segment_for_sequential_file_dump(self, record_numbers):
+        """Return encoding of record numbers appropriate to record count."""
+        if len(record_numbers) > SegmentSize.db_upper_conversion_limit:
+            seg = SegmentSize.empty_bitarray.copy()
+            for bit in record_numbers:
+                seg[bit] = True
+            return seg.tobytes()
+        int_to_bytes = self._int_to_bytes
+        return b"".join([int_to_bytes[n] for n in record_numbers])
+
+    def set_int_to_bytes_lookup(self, lookup=True):
+        """Create lookup to convert integers to bytestring big-endian.
+
+        Set lookup table to None if bool(lookup) is False.
+
+        """
+        if lookup:
+            self._int_to_bytes = [
+                n.to_bytes(2, byteorder="big")
+                for n in range(SegmentSize.db_segment_size)
+            ]
+        else:
+            self._int_to_bytes = None

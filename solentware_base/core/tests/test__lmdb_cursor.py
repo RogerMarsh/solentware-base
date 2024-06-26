@@ -1252,11 +1252,11 @@ class Cursor_secondary__get_record_at_position(_DB):
         ae(grat(58), ("a_o", 434))
         ae(grat(59), None)
         ae(grat(-1), ("a_o", 434))
-        #for i in range(-2, -26, -1):
+        # for i in range(-2, -26, -1):
         #    ae(grat(i), ("a_o", 302))
-        #for i in range(-26, -29, -1):
+        # for i in range(-26, -29, -1):
         #    ae(grat(i), None)
-        #for i in range(-29, -60, -1):
+        # for i in range(-29, -60, -1):
         #    ae(grat(i), None)
         ae(grat(-60), None)
 
