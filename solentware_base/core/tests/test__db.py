@@ -472,10 +472,10 @@ class Database_open_database(_DB):
         )
         d.open_database(dbe_module.db)
         self.assertEqual(d.is_database_file_active("file1"), True)
-        x = d.table["file1"][0]
-        d.table["file1"][0] = None
+        x = d.table["file1"]
+        d.table["file1"] = None
         self.assertEqual(d.is_database_file_active("file1"), False)
-        d.table["file1"][0] = x
+        d.table["file1"] = x
 
     def check_specification(self):
         d = self.database
@@ -776,7 +776,7 @@ class Database_methods(_DBOpen):
         )
 
     def test_16_recordset_record_number(self):
-        self.database.table["file1"][0].put(1, encode("Some value"))
+        self.database.table["file1"].put(1, encode("Some value"))
         values = b"\x40" + b"\x00" * (SegmentSize.db_segment_size_bytes - 1)
         self.database.ebm_control["file1"].ebm_table.put(1, values)
         rl = self.database.recordlist_record_number("file1", key=1)
@@ -991,7 +991,7 @@ class Database_find_values(_DBOpen):
         )
 
     def test_11_find_values(self):
-        self.database.table["file1_field1"][0].put(b"d", encode("values"))
+        self.database.table["file1_field1"].put(b"d", encode("values"))
         self.assertEqual(
             [i for i in self.database.find_values(self.valuespec, "file1")],
             ["d"],
@@ -1062,7 +1062,7 @@ class Database_make_recordset(_DBOpen):
         self.references = {}
         for s in segments:
             self.segments[self.database.segment_table["file1"].append(s)] = s
-        cursor = self.database.table["file1_field1"][0].cursor(
+        cursor = self.database.table["file1_field1"].cursor(
             txn=self.database.dbtxn
         )
         try:
@@ -1332,7 +1332,7 @@ class Database_make_recordset(_DBOpen):
         self.assertIsInstance(s, recordset.RecordsetSegmentInt)
 
     def test_13_populate_segment(self):
-        cursor = self.database.table["file1_field1"][0].cursor(
+        cursor = self.database.table["file1_field1"].cursor(
             txn=self.database.dbtxn
         )
         try:
@@ -1360,7 +1360,7 @@ class Database_make_recordset(_DBOpen):
         self.assertEqual(s.count_records(), 2)
 
     def test_15_populate_segment(self):
-        cursor = self.database.table["file1_field1"][0].cursor(
+        cursor = self.database.table["file1_field1"].cursor(
             txn=self.database.dbtxn
         )
         try:
@@ -1391,7 +1391,7 @@ class Database_make_recordset(_DBOpen):
         self.assertEqual(s.count_records(), 24)
 
     def test_17_populate_segment(self):
-        cursor = self.database.table["file1_field1"][0].cursor(
+        cursor = self.database.table["file1_field1"].cursor(
             txn=self.database.dbtxn
         )
         try:
@@ -1764,7 +1764,7 @@ class Database_freed_record_number(_DBOpen):
         for i in range(SegmentSize.db_segment_size * 3 - 1):
             self.database.add_record_to_ebm(
                 "file1",
-                self.database.table["file1"][0].append(
+                self.database.table["file1"].append(
                     encode("value"), txn=self.database.dbtxn
                 ),
             )
@@ -1934,7 +1934,7 @@ class Database_freed_record_number(_DBOpen):
         for i in range(i, i + 129):
             self.database.add_record_to_ebm(
                 "file1",
-                self.database.table["file1"][0].append(
+                self.database.table["file1"].append(
                     encode("value"), txn=self.database.dbtxn
                 ),
             )
@@ -2023,7 +2023,7 @@ class RecordsetCursor(_DBOpen):
         )
         keys = ("a_o",)
         for i in range(380):
-            self.database.table["file1"][0].append(
+            self.database.table["file1"].append(
                 encode(str(i + 1) + "Any value")
             )
         bits = b"\x7f" + b"\xff" * (SegmentSize.db_segment_size_bytes - 1)
@@ -2034,7 +2034,7 @@ class RecordsetCursor(_DBOpen):
         for s in segments:
             self.database.segment_table["file1"].append(s)
         self.database.start_transaction()
-        cursor = self.database.table["file1_field1"][0].cursor(
+        cursor = self.database.table["file1_field1"].cursor(
             txn=self.database.dbtxn
         )
         for e in range(len(segments)):
@@ -2086,7 +2086,7 @@ class RecordsetCursor(_DBOpen):
         rc = _db.RecordsetCursor(
             self.database.recordlist_key("file1", "field1", key=b"a_o"),
             transaction=self.database.dbtxn,
-            database=self.database.table["file1"][0],
+            database=self.database.table["file1"],
         )
         self.assertEqual(rc._get_record(4000), None)
         self.assertEqual(rc._get_record(120), None)

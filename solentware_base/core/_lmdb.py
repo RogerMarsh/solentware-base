@@ -291,7 +291,7 @@ class Database(_database.Database):
                 continue
             fields = specification[SECONDARY]
             self.table[file] = [None]
-            self.table[file][0] = _Datastore(
+            self.table[file] = _Datastore(
                 self._encoded_database_name(file),
                 integerkey=False,
                 create=db_create,
@@ -314,7 +314,7 @@ class Database(_database.Database):
                     fieldname = filespec.FileSpec.field_name(field)
                 secondary = SUBFILE_DELIMITER.join((file, field))
                 self.table[secondary] = [None]
-                self.table[secondary][0] = _Datastore(
+                self.table[secondary] = _Datastore(
                     self._encoded_database_name(secondary),
                     dupsort=True,
                     create=db_create,
@@ -504,8 +504,7 @@ class Database(_database.Database):
                 continue
             if file in self.table:
                 if self.table[file] is not None:
-                    for dbo in self.table[file]:
-                        dbo.open_datastore(dbenv, txn=txn)
+                    self.table[file].open_datastore(dbenv, txn=txn)
             if file in self.segment_table:
                 if self.segment_table[file] is not None:
                     self.segment_table[file].open_datastore(dbenv, txn=txn)
@@ -526,8 +525,7 @@ class Database(_database.Database):
             for field in specification[SECONDARY]:
                 secondary = SUBFILE_DELIMITER.join((file, field))
                 if secondary in self.table:
-                    for dbo in self.table[secondary]:
-                        dbo.open_datastore(dbenv, txn=txn)
+                    self.table[secondary].open_datastore(dbenv, txn=txn)
 
     def close_database_context_files(self, files=None):
         """Close datastores implementing files in database.
@@ -550,8 +548,7 @@ class Database(_database.Database):
         for file, specification in self.specification.items():
             if file in self.table:
                 if self.table[file] is not None:
-                    for dbo in self.table[file]:
-                        dbo.close_datastore()
+                    self.table[file].close_datastore()
             if file in self.segment_table:
                 if self.segment_table[file] is not None:
                     self.segment_table[file].close_datastore()
@@ -561,8 +558,7 @@ class Database(_database.Database):
             for field in specification[SECONDARY]:
                 secondary = SUBFILE_DELIMITER.join((file, field))
                 if secondary in self.table:
-                    for dbo in self.table[secondary]:
-                        dbo.close_datastore()
+                    self.table[secondary].close_datastore()
 
     def close_database_contexts(self, files=None):
         """Commit or backout transaction then delete the database handles.
@@ -605,7 +601,7 @@ class Database(_database.Database):
         assert file in self.specification
         if key is None:
             with self.dbtxn.transaction.cursor(
-                self.table[file][0].datastore
+                self.table[file].datastore
             ) as cursor:
                 if cursor.last():
                     key = int.from_bytes(cursor.key(), byteorder="big") + 1
@@ -620,7 +616,7 @@ class Database(_database.Database):
         self.dbtxn.transaction.put(
             key.to_bytes(4, byteorder="big"),
             value.encode(),
-            db=self.table[file][0].datastore,
+            db=self.table[file].datastore,
         )
         return None
 
@@ -634,7 +630,7 @@ class Database(_database.Database):
         self.dbtxn.transaction.put(
             key.to_bytes(4, byteorder="big"),
             newvalue.encode(),
-            db=self.table[file][0].datastore,
+            db=self.table[file].datastore,
         )
 
     def delete(self, file, key, value):
@@ -650,7 +646,7 @@ class Database(_database.Database):
         assert file in self.specification
         self.dbtxn.transaction.delete(
             key.to_bytes(4, byteorder="big"),
-            db=self.table[file][0].datastore,
+            db=self.table[file].datastore,
         )
 
     def get_primary_record(self, file, key):
@@ -660,7 +656,7 @@ class Database(_database.Database):
             return None
         record = self.dbtxn.transaction.get(
             key.to_bytes(4, byteorder="big"),
-            db=self.table[file][0].datastore,
+            db=self.table[file].datastore,
         )
         if record is None:
             return None
@@ -853,7 +849,7 @@ class Database(_database.Database):
     def get_high_record(self, file):
         """Return the high existing record number in table for file."""
         with self.dbtxn.transaction.cursor(
-            self.table[file][0].datastore
+            self.table[file].datastore
         ) as cursor:
             if cursor.last():
                 return int.from_bytes(cursor.key(), byteorder="big")
@@ -888,7 +884,7 @@ class Database(_database.Database):
         key = self.encode_record_selector(key)
         secondary = SUBFILE_DELIMITER.join((file, field))
         with self.dbtxn.transaction.cursor(
-            self.table[secondary][0].datastore
+            self.table[secondary].datastore
         ) as cursor:
             segment_bytes = segment.to_bytes(4, byteorder="big")
             record = cursor.set_range_dup(key, segment_bytes)
@@ -1078,7 +1074,7 @@ class Database(_database.Database):
         key = self.encode_record_selector(key)
         secondary = SUBFILE_DELIMITER.join((file, field))
         with self.dbtxn.transaction.cursor(
-            self.table[secondary][0].datastore
+            self.table[secondary].datastore
         ) as cursor:
             segment_bytes = segment.to_bytes(4, byteorder="big")
             record = cursor.set_range_dup(key, segment_bytes)
@@ -1234,8 +1230,8 @@ class Database(_database.Database):
     def find_values(self, valuespec, file):
         """Yield values in range defined in valuespec in index named file."""
         with self.dbtxn.transaction.cursor(
-            self.table[SUBFILE_DELIMITER.join((file, valuespec.field))][
-                0
+            self.table[
+                SUBFILE_DELIMITER.join((file, valuespec.field))
             ].datastore
         ) as cursor:
             if valuespec.above_value and valuespec.below_value:
@@ -1488,7 +1484,7 @@ class Database(_database.Database):
             return recordlist
         pattern = b".*?" + keylike
         with self.dbtxn.transaction.cursor(
-            self.table[SUBFILE_DELIMITER.join((file, field))][0].datastore
+            self.table[SUBFILE_DELIMITER.join((file, field))].datastore
         ) as cursor:
             record = cursor.first()
             while record:
@@ -1504,7 +1500,7 @@ class Database(_database.Database):
         if key is None:
             return recordlist
         with self.dbtxn.transaction.cursor(
-            self.table[SUBFILE_DELIMITER.join((file, field))][0].datastore
+            self.table[SUBFILE_DELIMITER.join((file, field))].datastore
         ) as cursor:
             record = cursor.set_range(key)
             while record:
@@ -1526,7 +1522,7 @@ class Database(_database.Database):
         if keystart is None:
             return recordlist
         with self.dbtxn.transaction.cursor(
-            self.table[SUBFILE_DELIMITER.join((file, field))][0].datastore
+            self.table[SUBFILE_DELIMITER.join((file, field))].datastore
         ) as cursor:
             record = cursor.set_range(keystart)
             while record:
@@ -1550,7 +1546,7 @@ class Database(_database.Database):
             raise DatabaseError("Both 'le' and 'lt' given in key range")
         recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
         with self.dbtxn.transaction.cursor(
-            self.table[SUBFILE_DELIMITER.join((file, field))][0].datastore
+            self.table[SUBFILE_DELIMITER.join((file, field))].datastore
         ) as cursor:
             if ge is None and gt is None:
                 record = cursor.first()
@@ -1587,7 +1583,7 @@ class Database(_database.Database):
         """Return RecordList on file containing records for field."""
         recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
         with self.dbtxn.transaction.cursor(
-            self.table[SUBFILE_DELIMITER.join((file, field))][0].datastore
+            self.table[SUBFILE_DELIMITER.join((file, field))].datastore
         ) as cursor:
             record = cursor.first()
             while record:
@@ -1608,7 +1604,7 @@ class Database(_database.Database):
 
         """
         with self.dbtxn.transaction.cursor(
-            self.table[SUBFILE_DELIMITER.join((file, field))][0].datastore
+            self.table[SUBFILE_DELIMITER.join((file, field))].datastore
         ) as cursor:
             # Delete segment records.
             record = cursor.set_range(key)
@@ -1626,7 +1622,7 @@ class Database(_database.Database):
 
         self.dbtxn.transaction.delete(
             key,
-            db=self.table[SUBFILE_DELIMITER.join((file, field))][0].datastore,
+            db=self.table[SUBFILE_DELIMITER.join((file, field))].datastore,
         )
 
     def file_records_under(self, file, field, recordset, key):
@@ -1638,7 +1634,7 @@ class Database(_database.Database):
         self.unfile_records_under(file, field, key)
 
         with self.dbtxn.transaction.cursor(
-            self.table[SUBFILE_DELIMITER.join((file, field))][0].datastore
+            self.table[SUBFILE_DELIMITER.join((file, field))].datastore
         ) as cursor:
             recordset.normalize()
             for segment_number in recordset.sorted_segnums:
@@ -1705,14 +1701,14 @@ class Database(_database.Database):
             return recordset.create_recordsetbase_cursor(internalcursor=True)
         if file == field:
             return CursorPrimary(
-                self.table[file][0],
+                self.table[file],
                 keyrange=keyrange,
                 transaction=self.dbtxn,
                 ebm=self.ebm_control[file].ebm_table,
                 engine=self._dbe,
             )
         return CursorSecondary(
-            self.table[SUBFILE_DELIMITER.join((file, field))][0],
+            self.table[SUBFILE_DELIMITER.join((file, field))],
             keyrange=keyrange,
             transaction=self.dbtxn,
             segment=self.segment_table[file],
@@ -1723,19 +1719,19 @@ class Database(_database.Database):
         return RecordsetCursor(
             recordset,
             transaction=self.dbtxn,
-            database=self.table[recordset.dbset][0],
+            database=self.table[recordset.dbset],
         )
 
     # Comment in chess_ui for make_position_analysis_data_source method, only
     # call, suggests is_database_file_active should not be needed.
     def is_database_file_active(self, file):
         """Return True if Symas LMMD sub-database object for file exists."""
-        return self.table[file][0] is not None
+        return self.table[file] is not None
 
     def get_table_connection(self, file):
         """Return main Symas LMMD sub-database object for file."""
         if self.dbenv:
-            return self.table[file][0].datastore
+            return self.table[file].datastore
         return None
 
     def _datastoreclass(self):
@@ -2420,6 +2416,7 @@ class CursorSecondary(Cursor):
                 if record_number is not None:
                     return record[0].decode(), record_number
                 break
+        return None
 
     def last(self):
         """Return last record taking partial key into account."""
@@ -2635,6 +2632,7 @@ class CursorSecondary(Cursor):
         record = self._cursor.item()
         if record[0].startswith(partial):
             return self.set_current_segment(*record).last()
+        return None
 
     def refresh_recordset(self, instance=None):
         """Refresh records for datagrid access after database update.

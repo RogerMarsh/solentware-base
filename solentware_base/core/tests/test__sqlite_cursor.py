@@ -148,7 +148,7 @@ class Cursor_primary(_SQLite):
         super().setUp()
         self.cursor = _sqlite.CursorPrimary(
             self.database.dbenv,
-            table=self.database.table["file1"][0],
+            table=self.database.table["file1"],
             ebm=self.database.ebm_control["file1"].ebm_table,
             file="file1",
         )
@@ -579,7 +579,7 @@ class Cursor_secondary(_SQLite):
             cursor.close()
         self.cursor = _sqlite.CursorSecondary(
             self.database.dbenv,
-            table=self.database.table["file1_field1"][0],
+            table=self.database.table["file1_field1"],
             segment=self.database.segment_table["file1"],
             file="file1",
             field="field1",
@@ -1107,7 +1107,7 @@ class Cursor_secondary__get_record_at_position(_SQLite):
             cursor.close()
         self.cursor = _sqlite.CursorSecondary(
             self.database.dbenv,
-            table=self.database.table["file1_field1"][0],
+            table=self.database.table["file1_field1"],
             segment=self.database.segment_table["file1"],
             file="file1",
             field="field1",

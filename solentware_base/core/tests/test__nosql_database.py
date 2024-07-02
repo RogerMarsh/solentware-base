@@ -107,12 +107,12 @@ class Database_open_database(_NoSQL):
         self.assertEqual(
             self.database.table,
             {
-                "file1": ["1"],
+                "file1": "1",
                 "___control": "0",
-                "file1_field1": ["1_1"],
-                "file2": ["2"],
-                "file3": ["3"],
-                "file3_field2": ["3_1"],
+                "file1_field1": "1_1",
+                "file2": "2",
+                "file3": "3",
+                "file3_field2": "3_1",
             },
         )
         self.assertEqual(

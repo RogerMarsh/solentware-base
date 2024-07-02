@@ -61,7 +61,7 @@ class Database(_databasedu.Database):
         """Do deferred updates for partially filled final segment."""
         # Write the final deferred segment database for each index
         for file in self.existence_bit_maps:
-            dbc = self.table[file][0].cursor(txn=self.dbtxn)
+            dbc = self.table[file].cursor(txn=self.dbtxn)
             try:
                 segment, record_number = divmod(
                     dbc.last()[0], SegmentSize.db_segment_size
@@ -82,7 +82,7 @@ class Database(_databasedu.Database):
         self.set_int_to_bytes_lookup(lookup=True)
         self.start_transaction()
         for file in self.specification:
-            dbc = self.table[file][0].cursor(txn=self.dbtxn)
+            dbc = self.table[file].cursor(txn=self.dbtxn)
             try:
                 high_record = dbc.last()
             finally:
@@ -128,9 +128,9 @@ class Database(_databasedu.Database):
         # To verify path coverage uncomment the '_path_marker' code.
         # self._path_marker = set()
         segkeys = sorted(segvalues)
-        cursor_high = self.table[SUBFILE_DELIMITER.join((file, field))][
-            -1
-        ].cursor(txn=self.dbtxn)
+        cursor_high = self.table[SUBFILE_DELIMITER.join((file, field))].cursor(
+            txn=self.dbtxn
+        )
         try:
             for skey in segkeys:
                 k = skey.encode()
@@ -317,9 +317,9 @@ class Database(_databasedu.Database):
         # the code for Berkeley DB updates the main index directly if an entry
         # already exists, but the code for SQLite always updates a temporary
         # table and merges into the main table later.
-        cursor_new = self.table[SUBFILE_DELIMITER.join((file, field))][
-            -1
-        ].cursor(txn=self.dbtxn)
+        cursor_new = self.table[SUBFILE_DELIMITER.join((file, field))].cursor(
+            txn=self.dbtxn
+        )
         try:
             if (
                 self.high_segment[file] == segment
@@ -397,7 +397,7 @@ class Database(_databasedu.Database):
 
     def find_value_segments(self, field, file):
         """Yield segment references for field in file."""
-        cursor = self.table[SUBFILE_DELIMITER.join((file, field))][0].cursor(
+        cursor = self.table[SUBFILE_DELIMITER.join((file, field))].cursor(
             txn=self.dbtxn
         )
         try:
@@ -424,7 +424,7 @@ class Database(_databasedu.Database):
 
     def delete_index(self, file, field):
         """Remove all records from database for field in file."""
-        self.table[SUBFILE_DELIMITER.join((file, field))][0].truncate(
+        self.table[SUBFILE_DELIMITER.join((file, field))].truncate(
             txn=self.dbtxn
         )
 
@@ -495,7 +495,7 @@ class Database(_databasedu.Database):
             ]
 
         keylast = self._dbe.DB_KEYLAST
-        table = self.table[SUBFILE_DELIMITER.join((file, field))][0]
+        table = self.table[SUBFILE_DELIMITER.join((file, field))]
         segment_table = self.segment_table[file]
         dbtxn = self.dbtxn
         cursor = table.cursor(txn=dbtxn)

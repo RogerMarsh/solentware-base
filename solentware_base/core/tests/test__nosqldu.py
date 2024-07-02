@@ -368,9 +368,9 @@ class Database_methods(_NoSQLOpen):
 
     def test_05_new_deferred_root(self):
         ae = self.assertEqual
-        ae(self.database.table["file1_field1"], ["1_1"])
+        ae(self.database.table["file1_field1"], "1_1")
         ae(self.database.new_deferred_root("file1", "field1"), None)
-        ae(self.database.table["file1_field1"], ["1_1"])
+        ae(self.database.table["file1_field1"], "1_1")
 
     def test_06_set_defer_update_01(self):
         self.database.set_defer_update()
@@ -572,7 +572,7 @@ class Database_sort_and_write(_NoSQLOpen):
         self.database.initial_high_segment["file1"] = 4
         self.database.high_segment["file1"] = 3
         self.database.sort_and_write("file1", "field1", 4)
-        self.assertEqual(self.database.table["file1_field1"], ["1_1"])
+        self.assertEqual(self.database.table["file1_field1"], "1_1")
 
     def test_08(self):
         self.database.value_segments["file1"] = {"field1": {}}
@@ -580,7 +580,7 @@ class Database_sort_and_write(_NoSQLOpen):
         self.database.initial_high_segment["file1"] = 4
         self.database.high_segment["file1"] = 3
         self.database.sort_and_write("file1", "field1", 5)
-        self.assertEqual(self.database.table["file1_field1"], ["1_1"])
+        self.assertEqual(self.database.table["file1_field1"], "1_1")
 
     def test_09(self):
         self.database.value_segments["file1"] = {"field1": {}}
@@ -588,7 +588,7 @@ class Database_sort_and_write(_NoSQLOpen):
         self.database.initial_high_segment["file1"] = 4
         self.database.high_segment["file1"] = 3
         self.database.sort_and_write("file1", "field1", 5)
-        self.assertEqual(self.database.table["file1_field1"], ["1_1"])
+        self.assertEqual(self.database.table["file1_field1"], "1_1")
 
     def test_10(self):
         self.database.value_segments["file1"] = {"field1": {"list": [7]}}
@@ -598,7 +598,7 @@ class Database_sort_and_write(_NoSQLOpen):
         self.database.sort_and_write("file1", "field1", 5)
         ae = self.assertEqual
         db = self.database.dbenv
-        ae(self.database.table["file1_field1"], ["1_1"])
+        ae(self.database.table["file1_field1"], "1_1")
         ae(literal_eval(db["1_1_0_list"].decode()), {5: (7, 1)})
         ae("1_1_1_5_int" in db, False)
 
@@ -614,7 +614,7 @@ class Database_sort_and_write(_NoSQLOpen):
         self.database.sort_and_write("file1", "field1", 5)
         ae = self.assertEqual
         db = self.database.dbenv
-        ae(self.database.table["file1_field1"], ["1_1"])
+        ae(self.database.table["file1_field1"], "1_1")
         ae(literal_eval(db["1_1_0_list"].decode()), {5: ("L", 2)})
         ae("1_1_1_5_list" in db, True)
         ae(literal_eval(db["1_1_1_5_list"].decode()), b"\x00\x01\x00\x04")
@@ -629,7 +629,7 @@ class Database_sort_and_write(_NoSQLOpen):
         self.database.sort_and_write("file1", "field1", 5)
         ae = self.assertEqual
         db = self.database.dbenv
-        ae(self.database.table["file1_field1"], ["1_1"])
+        ae(self.database.table["file1_field1"], "1_1")
         ae(literal_eval(db["1_1_0_bits"].decode()), {5: ("B", 32)})
         ae("1_1_1_5_bits" in db, True)
         ae(
@@ -643,29 +643,12 @@ class Database_sort_and_write(_NoSQLOpen):
         )
 
 
+# merge() does nothing.
 class Database_merge(_NoSQLOpen):
     def setUp(self):
         super().setUp()
         if SegmentSize._segment_sort_scale != _segment_sort_scale:
             SegmentSize._segment_sort_scale = _segment_sort_scale
-
-    def test_01(self):
-        database = self._D({}, segment_size_bytes=None)
-        self.assertRaisesRegex(
-            TypeError,
-            "".join(
-                (
-                    r"merge\(\) missing 2 required ",
-                    "positional arguments: 'file' and 'field'$",
-                )
-            ),
-            database.merge,
-        )
-
-    def test_02(self):
-        self.assertEqual(SegmentSize._segment_sort_scale, _segment_sort_scale)
-        self.assertEqual(self.database.table["file1_field1"], ["1_1"])
-        self.assertEqual(self.database.merge("file1", "field1"), None)
 
 
 if __name__ == "__main__":

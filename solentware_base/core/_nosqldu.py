@@ -159,7 +159,7 @@ class Database(_databasedu.Database):
         # Note this module implements sort_and_write in a different way to
         # _dbdu, _dbdu_tkinter, _lmdbdu, and _sqlitedu.
         fieldkey = SUBFILE_DELIMITER.join((file, field))
-        tablename = self.table[fieldkey][-1]
+        tablename = self.table[fieldkey]
         if fieldkey in self.trees:
             fieldtree = self.trees[fieldkey]
         else:

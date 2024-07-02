@@ -221,18 +221,16 @@ class Database_methods(_SQLiteOpen):
         self.database.unset_defer_update()
 
     def test_05_new_deferred_root(self):
-        self.assertEqual(self.database.table["file1_field1"], ["file1_field1"])
-        self.assertEqual(
-            self.database.index["file1_field1"], ["ixfile1_field1"]
-        )
+        self.assertEqual(self.database.table["file1_field1"], "file1_field1")
+        self.assertEqual(self.database.index["file1_field1"], "ixfile1_field1")
         self.database.new_deferred_root("file1", "field1")
         self.assertEqual(
             self.database.table["file1_field1"],
-            ["file1_field1"],
+            "file1_field1",
         )
         self.assertEqual(
             self.database.index["file1_field1"],
-            ["ixfile1_field1"],
+            "ixfile1_field1",
         )
 
     def test_06_set_defer_update_01(self):
@@ -481,7 +479,7 @@ class Database_sort_and_write(_SQLiteOpen):
         self.database.initial_high_segment["file1"] = 4
         self.database.high_segment["file1"] = 3
         self.database.sort_and_write("file1", "field1", 4)
-        self.assertEqual(self.database.table["file1_field1"], ["file1_field1"])
+        self.assertEqual(self.database.table["file1_field1"], "file1_field1")
 
     def test_08(self):
         self.database.value_segments["file1"] = {"field1": {}}
@@ -491,7 +489,7 @@ class Database_sort_and_write(_SQLiteOpen):
         self.database.sort_and_write("file1", "field1", 5)
         self.assertEqual(
             self.database.table["file1_field1"],
-            ["file1_field1"],
+            "file1_field1",
         )
 
     def test_09(self):
@@ -500,7 +498,7 @@ class Database_sort_and_write(_SQLiteOpen):
         self.database.initial_high_segment["file1"] = 4
         self.database.high_segment["file1"] = 3
         self.database.sort_and_write("file1", "field1", 5)
-        self.assertEqual(self.database.table["file1_field1"], ["file1_field1"])
+        self.assertEqual(self.database.table["file1_field1"], "file1_field1")
 
     def test_10(self):
         self.database.value_segments["file1"] = {"field1": {"list": [1]}}
@@ -508,7 +506,7 @@ class Database_sort_and_write(_SQLiteOpen):
         self.database.initial_high_segment["file1"] = 4
         self.database.high_segment["file1"] = 3
         self.database.sort_and_write("file1", "field1", 5)
-        self.assertEqual(self.database.table["file1_field1"], ["file1_field1"])
+        self.assertEqual(self.database.table["file1_field1"], "file1_field1")
         cursor = self.database.dbenv.cursor()
         self.assertEqual(
             cursor.execute("select * from file1_field1").fetchall(),
@@ -528,7 +526,7 @@ class Database_sort_and_write(_SQLiteOpen):
             for n in range(SegmentSize.db_segment_size)
         ]
         self.database.sort_and_write("file1", "field1", 5)
-        self.assertEqual(self.database.table["file1_field1"], ["file1_field1"])
+        self.assertEqual(self.database.table["file1_field1"], "file1_field1")
         cursor = self.database.dbenv.cursor()
         self.assertEqual(
             cursor.execute("select * from file1_field1").fetchall(),
@@ -547,7 +545,7 @@ class Database_sort_and_write(_SQLiteOpen):
         self.database.initial_high_segment["file1"] = 4
         self.database.high_segment["file1"] = 3
         self.database.sort_and_write("file1", "field1", 5)
-        self.assertEqual(self.database.table["file1_field1"], ["file1_field1"])
+        self.assertEqual(self.database.table["file1_field1"], "file1_field1")
         cursor = self.database.dbenv.cursor()
         self.assertEqual(
             cursor.execute("select * from file1_field1").fetchall(),
@@ -572,7 +570,7 @@ class Database_sort_and_write(_SQLiteOpen):
             for n in range(SegmentSize.db_segment_size)
         ]
         self.database.sort_and_write("file1", "field1", 5)
-        self.assertEqual(self.database.table["file1_field1"], ["file1_field1"])
+        self.assertEqual(self.database.table["file1_field1"], "file1_field1")
         cursor = self.database.dbenv.cursor()
         self.assertEqual(
             cursor.execute("select count ( * ) from file1_field1").fetchall(),
@@ -641,7 +639,7 @@ class Database_sort_and_write(_SQLiteOpen):
             for n in range(SegmentSize.db_segment_size)
         ]
         self.database.sort_and_write("file1", "field1", 5)
-        self.assertEqual(self.database.table["file1_field1"], ["file1_field1"])
+        self.assertEqual(self.database.table["file1_field1"], "file1_field1")
         self.assertEqual(
             cursor.execute("select count ( * ) from file1_field1").fetchall(),
             [(3,)],
@@ -654,275 +652,12 @@ class Database_sort_and_write(_SQLiteOpen):
         )
 
 
+# merge() does nothing.
 class Database_merge(_SQLiteOpen):
     def setUp(self):
         super().setUp()
         if SegmentSize._segment_sort_scale != _segment_sort_scale:
             SegmentSize._segment_sort_scale = _segment_sort_scale
-
-    def test_01(self):
-        database = self._D({}, segment_size_bytes=None)
-        self.assertRaisesRegex(
-            TypeError,
-            "".join(
-                (
-                    r"merge\(\) missing 2 required ",
-                    "positional arguments: 'file' and 'field'$",
-                )
-            ),
-            database.merge,
-        )
-
-    def test_02(self):
-        self.assertEqual(SegmentSize._segment_sort_scale, _segment_sort_scale)
-        self.assertEqual(self.database.table["file1_field1"], ["file1_field1"])
-        self.database.merge("file1", "field1")
-        if hasattr(self.database, "_path_marker"):
-            self.assertEqual(self.database._path_marker, {"p1"})
-
-    def test_03(self):
-        self.database.table["file1_field1"].append("t_0_file1_field1")
-        # When extra tables, 't_0_*, were used merge(...) caused an
-        # sqlite3.OperationalError exception caught by assertRaisesRegex()
-        # call.
-        self.database.merge("file1", "field1")
-
-    def test_04(self):
-        self.assertEqual(SegmentSize._segment_sort_scale, _segment_sort_scale)
-        self.database.new_deferred_root("file1", "field1")
-        self.assertEqual(
-            self.database.table["file1_field1"],
-            ["file1_field1"],
-        )
-        self.database.merge("file1", "field1")
-        if hasattr(self.database, "_path_marker"):
-            self.assertEqual(
-                self.database._path_marker,
-                {
-                    "p7",
-                    "p9",
-                    "p4",
-                    "p5",
-                    "p2",
-                    "p21",
-                    "p19",
-                    "p11",
-                    "p3",
-                    "p8",
-                    "p6",
-                },
-            )
-
-    # The combinations of _segment_sort_scale settings and 'insert into ...'
-    # statements in tests 5, 6, and 7 force merge() method through all paths
-    # where deferred updates have to be done.
-    # The remaining 'do-nothing' paths are traversed by tests 1, 2, 3, and 4.
-
-    def test_05(self):
-        self.assertEqual(SegmentSize._segment_sort_scale, _segment_sort_scale)
-        self.database.new_deferred_root("file1", "field1")
-        self.assertEqual(
-            self.database.table["file1_field1"],
-            ["file1_field1"],
-        )
-        cursor = self.database.dbenv.cursor()
-        cursor.execute(
-            " ".join(
-                (
-                    "insert into file1_field1 ( field1 , Segment ,"
-                    "RecordCount , file1 )",
-                    "values ( ? , ? , ? , ? )",
-                )
-            ),
-            ("list", 5, 2, 2),
-        )
-        cursor.execute(
-            " ".join(
-                (
-                    "insert into file1__segment ( rowid , RecordNumbers )",
-                    "values ( ? , ? )",
-                )
-            ),
-            (2, b"\x00\x01\x00\x04"),
-        )
-        self.database.merge("file1", "field1")
-        if hasattr(self.database, "_path_marker"):
-            self.assertEqual(
-                self.database._path_marker,
-                {
-                    "p7",
-                    "p9",
-                    "p4",
-                    "p5",
-                    "p2",
-                    "p21",
-                    "p19",
-                    "p11",
-                    "p3",
-                    "p8",
-                    "p6",
-                    "p13",
-                    "p12",
-                    "p14",
-                    "p10",
-                },
-            )
-
-    def test_06(self):
-        SegmentSize._segment_sort_scale = 1
-        self.assertEqual(SegmentSize._segment_sort_scale, 1)
-        self.database.new_deferred_root("file1", "field1")
-        self.database.new_deferred_root("file1", "field1")
-        self.assertEqual(
-            self.database.table["file1_field1"],
-            ["file1_field1"],
-        )
-        cursor = self.database.dbenv.cursor()
-        cursor.execute(
-            " ".join(
-                (
-                    "insert into file1_field1 ( field1 , Segment ,"
-                    "RecordCount , file1 )",
-                    "values ( ? , ? , ? , ? )",
-                )
-            ),
-            ("list", 5, 2, 2),
-        )
-        cursor.execute(
-            " ".join(
-                (
-                    "insert into file1__segment ( rowid , RecordNumbers )",
-                    "values ( ? , ? )",
-                )
-            ),
-            (2, b"\x00\x01\x00\x04"),
-        )
-        self.database.merge("file1", "field1")
-        if hasattr(self.database, "_path_marker"):
-            self.assertEqual(
-                self.database._path_marker,
-                {"p9", "p4", "p5", "p2", "p21", "p19", "p11", "p3", "p20"},
-            )
-
-    def test_07(self):
-        SegmentSize._segment_sort_scale = 2
-        self.assertEqual(SegmentSize._segment_sort_scale, 2)
-        self.merge_07_08()
-        if hasattr(self.database, "_path_marker"):
-            self.assertEqual(
-                self.database._path_marker,
-                {
-                    "p9",
-                    "p4",
-                    "p5",
-                    "p2",
-                    "p21",
-                    "p17",
-                    "p19",
-                    "p11",
-                    "p3",
-                    "p6",
-                    "p13",
-                    "p12",
-                    "p15",
-                    "p18",
-                    "p10",
-                    "p16",
-                },
-            )
-
-    # Verify test_07 is passed with the default SegmentSize.segment_sort_scale.
-    def test_08(self):
-        self.assertEqual(SegmentSize._segment_sort_scale, _segment_sort_scale)
-        self.merge_07_08()
-        if hasattr(self.database, "_path_marker"):
-            self.assertEqual(
-                self.database._path_marker,
-                {
-                    "p9",
-                    "p4",
-                    "p5",
-                    "p2",
-                    "p21",
-                    "p7",
-                    "p19",
-                    "p11",
-                    "p3",
-                    "p6",
-                    "p13",
-                    "p12",
-                    "p14",
-                    "p8",
-                    "p10",
-                },
-            )
-
-    def merge_07_08(self):
-        self.database.new_deferred_root("file1", "field1")
-        self.database.new_deferred_root("file1", "field1")
-        self.assertEqual(
-            self.database.table["file1_field1"],
-            ["file1_field1"],
-        )
-        cursor = self.database.dbenv.cursor()
-        cursor.execute(
-            " ".join(
-                (
-                    "insert into file1_field1 ( field1 , Segment ,"
-                    "RecordCount , file1 )",
-                    "values ( ? , ? , ? , ? )",
-                )
-            ),
-            ("list", 5, 2, 2),
-        )
-        cursor.execute(
-            " ".join(
-                (
-                    "insert into file1__segment ( rowid , RecordNumbers )",
-                    "values ( ? , ? )",
-                )
-            ),
-            (2, b"\x00\x01\x00\x04"),
-        )
-        cursor.execute(
-            " ".join(
-                (
-                    "insert into file1_field1 ( field1 , Segment ,"
-                    "RecordCount , file1 )",
-                    "values ( ? , ? , ? , ? )",
-                )
-            ),
-            ("list1", 5, 2, 3),
-        )
-        cursor.execute(
-            " ".join(
-                (
-                    "insert into file1__segment ( rowid , RecordNumbers )",
-                    "values ( ? , ? )",
-                )
-            ),
-            (3, b"\x00\x01\x00\x04"),
-        )
-        cursor.execute(
-            " ".join(
-                (
-                    "insert into file1_field1 ( field1 , Segment ,"
-                    "RecordCount , file1 )",
-                    "values ( ? , ? , ? , ? )",
-                )
-            ),
-            ("list1", 6, 2, 4),
-        )
-        cursor.execute(
-            " ".join(
-                (
-                    "insert into file1__segment ( rowid , RecordNumbers )",
-                    "values ( ? , ? )",
-                )
-            ),
-            (4, b"\x00\x01\x00\x04"),
-        )
-        self.database.merge("file1", "field1")
 
 
 class Database_encode_for_dump(_SQLitedu):

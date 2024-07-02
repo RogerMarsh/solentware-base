@@ -73,7 +73,7 @@ class Database(_databasedu.Database):
         # Write the final deferred segment database for each index
         for file in self.existence_bit_maps:
             with self.dbtxn.transaction.cursor(
-                db=self.table[file][0].datastore
+                db=self.table[file].datastore
             ) as dbc:
                 if not dbc.last():
                     continue
@@ -95,7 +95,7 @@ class Database(_databasedu.Database):
         for file in self.specification:
             high_record = None
             with self.dbtxn.transaction.cursor(
-                db=self.table[file][0].datastore
+                db=self.table[file].datastore
             ) as dbc:
                 if dbc.last():
                     high_record = dbc.item()
@@ -142,7 +142,7 @@ class Database(_databasedu.Database):
         # self._path_marker = set()
         segkeys = sorted(segvalues)
         with self.dbtxn.transaction.cursor(
-            db=self.table[SUBFILE_DELIMITER.join((file, field))][-1].datastore
+            db=self.table[SUBFILE_DELIMITER.join((file, field))].datastore
         ) as cursor_high:
             for skey in segkeys:
                 k = skey.encode()
@@ -346,7 +346,7 @@ class Database(_databasedu.Database):
         # extra 'try ... finally ...' compared with the _sqlitedu module which
         # makes the difference.)
         with self.dbtxn.transaction.cursor(
-            db=self.table[SUBFILE_DELIMITER.join((file, field))][-1].datastore
+            db=self.table[SUBFILE_DELIMITER.join((file, field))].datastore
         ) as cursor_new:
             if (
                 self.high_segment[file] == segment
@@ -449,7 +449,7 @@ class Database(_databasedu.Database):
     def find_value_segments(self, field, file):
         """Yield segment references for field in file."""
         with self.dbtxn.transaction.cursor(
-            self.table[SUBFILE_DELIMITER.join((file, field))][0].datastore
+            self.table[SUBFILE_DELIMITER.join((file, field))].datastore
         ) as cursor:
             record = cursor.first()
             while record:
@@ -472,7 +472,7 @@ class Database(_databasedu.Database):
     def delete_index(self, file, field):
         """Remove all records from database for field in file."""
         self.dbtxn.transaction.drop(
-            self.table[SUBFILE_DELIMITER.join((file, field))][0].datastore,
+            self.table[SUBFILE_DELIMITER.join((file, field))].datastore,
             delete=False,
         )
 
@@ -552,7 +552,7 @@ class Database(_databasedu.Database):
             segment_cursor.put(srn, segment_value, overwrite=False)
             return srn
 
-        table = self.table[SUBFILE_DELIMITER.join((file, field))][0].datastore
+        table = self.table[SUBFILE_DELIMITER.join((file, field))].datastore
         datastore = self.segment_table[file].datastore
         transaction = self.dbtxn.transaction
         cursor = transaction.cursor(table)

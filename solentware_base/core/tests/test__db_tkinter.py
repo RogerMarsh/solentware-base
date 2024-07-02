@@ -460,10 +460,10 @@ class Database_open_database(_DB):
         )
         d.open_database(bdb)
         self.assertEqual(d.is_database_file_active("file1"), True)
-        x = d.table["file1"][0]
-        d.table["file1"][0] = None
+        x = d.table["file1"]
+        d.table["file1"] = None
         self.assertEqual(d.is_database_file_active("file1"), False)
-        d.table["file1"][0] = x
+        d.table["file1"] = x
 
     def check_specification(self):
         d = self.database
@@ -768,7 +768,7 @@ class Database_methods(_DBOpen):
 
     def test_16_recordset_record_number(self):
         db_tcl.tcl_tk_call(
-            (self.database.table["file1"][0], "put", 1, encode("Some value"))
+            (self.database.table["file1"], "put", 1, encode("Some value"))
         )
         values = b"\x40" + b"\x00" * (SegmentSize.db_segment_size_bytes - 1)
         db_tcl.tcl_tk_call(
@@ -1002,7 +1002,7 @@ class Database_find_values(_DBOpen):
     def test_11_find_values(self):
         db_tcl.tcl_tk_call(
             (
-                self.database.table["file1_field1"][0],
+                self.database.table["file1_field1"],
                 "put",
                 b"d",
                 encode("values"),
@@ -1081,7 +1081,7 @@ class Database_make_recordset(_DBOpen):
                 (self.database.segment_table["file1"], "put", "-append", s)
             )
             self.segments[rs] = s
-        command = [self.database.table["file1_field1"][0], "cursor"]
+        command = [self.database.table["file1_field1"], "cursor"]
         if self.database.dbtxn:
             command.extend(["-txn", self.database.dbtxn])
         cursor = db_tcl.tcl_tk_call(tuple(command))
@@ -1353,7 +1353,7 @@ class Database_make_recordset(_DBOpen):
         self.assertIsInstance(s, recordset.RecordsetSegmentInt)
 
     def test_13_populate_segment(self):
-        command = [self.database.table["file1_field1"][0], "cursor"]
+        command = [self.database.table["file1_field1"], "cursor"]
         if self.database.dbtxn:
             command.extend(["-txn", self.database.dbtxn])
         cursor = db_tcl.tcl_tk_call(tuple(command))
@@ -1382,7 +1382,7 @@ class Database_make_recordset(_DBOpen):
         self.assertEqual(s.count_records(), 2)
 
     def test_15_populate_segment(self):
-        command = [self.database.table["file1_field1"][0], "cursor"]
+        command = [self.database.table["file1_field1"], "cursor"]
         if self.database.dbtxn:
             command.extend(["-txn", self.database.dbtxn])
         cursor = db_tcl.tcl_tk_call(tuple(command))
@@ -1414,7 +1414,7 @@ class Database_make_recordset(_DBOpen):
         self.assertEqual(s.count_records(), 24)
 
     def test_17_populate_segment(self):
-        command = [self.database.table["file1_field1"][0], "cursor"]
+        command = [self.database.table["file1_field1"], "cursor"]
         if self.database.dbtxn:
             command.extend(["-txn", self.database.dbtxn])
         cursor = db_tcl.tcl_tk_call(tuple(command))
@@ -1796,7 +1796,7 @@ class Database_freed_record_number(_DBOpen):
         #    "file1", self.database, bdb, True
         # )
         for i in range(SegmentSize.db_segment_size * 3 - 1):
-            command = [self.database.table["file1"][0], "put", "-append"]
+            command = [self.database.table["file1"], "put", "-append"]
             if self.database.dbtxn:
                 command.extend(["-txn", self.database.dbtxn])
             command.append(encode("value"))
@@ -1978,7 +1978,7 @@ class Database_freed_record_number(_DBOpen):
         )
         rn = self.database.get_lowest_freed_record_number("file1")
         self.assertEqual(rn, None)
-        command = [self.database.table["file1"][0], "put", "-append"]
+        command = [self.database.table["file1"], "put", "-append"]
         if self.database.dbtxn:
             command.extend(["-txn", self.database.dbtxn])
         command.append(encode("value"))
@@ -2079,7 +2079,7 @@ class RecordsetCursor(_DBOpen):
                 )
             ),
         )
-        command = [self.database.table["file1"][0], "put", "-append"]
+        command = [self.database.table["file1"], "put", "-append"]
         keys = ("a_o",)
         for i in range(380):
             db_tcl.tcl_tk_call(
@@ -2101,7 +2101,7 @@ class RecordsetCursor(_DBOpen):
                 (self.database.segment_table["file1"], "put", "-append", s)
             )
         self.database.start_transaction()
-        command = [self.database.table["file1_field1"][0], "cursor"]
+        command = [self.database.table["file1_field1"], "cursor"]
         if self.database.dbtxn:
             command.extend(["-txn", self.database.dbtxn])
         cursor = db_tcl.tcl_tk_call(tuple(command))
@@ -2158,7 +2158,7 @@ class RecordsetCursor(_DBOpen):
         rc = _db_tkinter.RecordsetCursor(
             self.database.recordlist_key("file1", "field1", key=b"a_o"),
             transaction=self.database.dbtxn,
-            database=self.database.table["file1"][0],
+            database=self.database.table["file1"],
         )
         self.assertEqual(rc._get_record(4000), None)
         self.assertEqual(rc._get_record(120), None)

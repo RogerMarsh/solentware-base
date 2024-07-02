@@ -77,7 +77,7 @@ class Database(_databasedu.Database):
         """Do deferred updates for partially filled final segment."""
         # Write the final deferred segment database for each index
         for file in self.existence_bit_maps:
-            command = [self.table[file][0], "cursor"]
+            command = [self.table[file], "cursor"]
             if self.dbtxn:
                 command.extend(["-txn", self.dbtxn])
             dbc = tcl_tk_call(tuple(command))
@@ -110,7 +110,7 @@ class Database(_databasedu.Database):
         self.set_int_to_bytes_lookup(lookup=True)
         self.start_transaction()
         for file in self.specification:
-            command = [self.table[file][0], "cursor"]
+            command = [self.table[file], "cursor"]
             if self.dbtxn:
                 command.extend(["-txn", self.dbtxn])
             dbc = tcl_tk_call(tuple(command))
@@ -164,7 +164,7 @@ class Database(_databasedu.Database):
         # self._path_marker = set()
         segkeys = sorted(segvalues)
         command = [
-            self.table[SUBFILE_DELIMITER.join((file, field))][-1],
+            self.table[SUBFILE_DELIMITER.join((file, field))],
             "cursor",
         ]
         if self.dbtxn:
@@ -385,7 +385,7 @@ class Database(_databasedu.Database):
         # extra 'try ... finally ...' compared with the _sqlitedu module which
         # makes the difference.)
         command = [
-            self.table[SUBFILE_DELIMITER.join((file, field))][-1],
+            self.table[SUBFILE_DELIMITER.join((file, field))],
             "cursor",
         ]
         if self.dbtxn:
@@ -488,7 +488,7 @@ class Database(_databasedu.Database):
     def find_value_segments(self, field, file):
         """Yield segment references for field in file."""
         command = [
-            self.table[SUBFILE_DELIMITER.join((file, field))][0],
+            self.table[SUBFILE_DELIMITER.join((file, field))],
             "cursor",
         ]
         if self.dbtxn:
@@ -519,7 +519,7 @@ class Database(_databasedu.Database):
     def delete_index(self, file, field):
         """Remove all records from database for field in file."""
         command = [
-            self.table[SUBFILE_DELIMITER.join((file, field))][0],
+            self.table[SUBFILE_DELIMITER.join((file, field))],
             "truncate",
         ]
         if self.dbtxn:
@@ -595,7 +595,7 @@ class Database(_databasedu.Database):
                 reference,
             ]
 
-        table = self.table[SUBFILE_DELIMITER.join((file, field))][0]
+        table = self.table[SUBFILE_DELIMITER.join((file, field))]
         segment_table = self.segment_table[file]
 
         # Seems necessary to prevent UnboundLocalError for cursor in

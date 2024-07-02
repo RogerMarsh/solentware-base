@@ -54,7 +54,7 @@ class Cursor_exceptions(_DB):
             *(None, None, None, None),
         )
         cursor = _lmdb.Cursor(
-            self.database.table["file1"][0],
+            self.database.table["file1"],
             transaction=self.database.dbtxn,
         )
 
@@ -119,7 +119,7 @@ class Cursor_cursor(_DB):
     def setUp(self):
         super().setUp()
         self.cursor = _lmdb.Cursor(
-            self.database.table["file1"][0],
+            self.database.table["file1"],
             transaction=self.database.dbtxn,
         )
 
@@ -175,7 +175,7 @@ class Cursor_primary(_DB):
     def setUp(self):
         super().setUp()
         self.cursor = _lmdb.CursorPrimary(
-            self.database.table["file1"][0],
+            self.database.table["file1"],
             ebm=self.database.ebm_control["file1"].ebm_table,
             engine=self.dbe_module,
             transaction=self.database.dbtxn,
@@ -503,7 +503,7 @@ class Cursor_secondary(_DB):
                 self.segments[key] = s
         self.database.start_transaction()
         with self.database.dbtxn.transaction.cursor(
-            self.database.table["file1_field1"][0].datastore
+            self.database.table["file1_field1"].datastore
         ) as cursor:
             for e, k in enumerate(keys):
                 self.keyvalues[k] = e
@@ -557,7 +557,7 @@ class Cursor_secondary(_DB):
                 ),
             )
         self.cursor = _lmdb.CursorSecondary(
-            self.database.table["file1_field1"][0],
+            self.database.table["file1_field1"],
             segment=self.database.segment_table["file1"],
             transaction=self.database.dbtxn,
         )
@@ -1122,7 +1122,7 @@ class Cursor_secondary__get_record_at_position(_DB):
                 self.segments[keyb] = s
         self.database.start_transaction()
         with self.database.dbtxn.transaction.cursor(
-            self.database.table["file1_field1"][0].datastore
+            self.database.table["file1_field1"].datastore
         ) as cursor:
             cursor.put(
                 key.encode(),
@@ -1164,7 +1164,7 @@ class Cursor_secondary__get_record_at_position(_DB):
                 ),
             )
         self.cursor = _lmdb.CursorSecondary(
-            self.database.table["file1_field1"][0],
+            self.database.table["file1_field1"],
             segment=self.database.segment_table["file1"],
             transaction=self.database.dbtxn,
         )

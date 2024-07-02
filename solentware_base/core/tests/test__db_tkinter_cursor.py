@@ -72,12 +72,10 @@ class Cursor_db(_DB):
         #    _db_tkinter.Cursor,
         #    *(None, None, None, None, None),
         # )
-        cursor = _db_tkinter.Cursor(
-            self.database.table["file1"][0], engine=bdb
-        )
+        cursor = _db_tkinter.Cursor(self.database.table["file1"], engine=bdb)
 
         # Superclass of _db_tkinter.Cursor defines close().
-        # Confirm self.database.table['file1'][0] object has close() method.
+        # Confirm self.database.table['file1'] object has close() method.
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -133,9 +131,7 @@ class Cursor_db(_DB):
         )
 
     def test_02___init__(self):
-        cursor = _db_tkinter.Cursor(
-            self.database.table["file1"][0], engine=bdb
-        )
+        cursor = _db_tkinter.Cursor(self.database.table["file1"], engine=bdb)
         self.assertEqual(cursor._transaction, None)
         self.assertEqual(cursor._current_segment, None)
         self.assertEqual(cursor.current_segment_number, None)
@@ -144,24 +140,18 @@ class Cursor_db(_DB):
 
     def test_03_close(self):
         # Superclass of _db_tkinter.Cursor defines close().
-        # Confirm self.database.table['file1'][0] object has close() method.
-        cursor = _db_tkinter.Cursor(
-            self.database.table["file1"][0], engine=bdb
-        )
+        # Confirm self.database.table['file1'] object has close() method.
+        cursor = _db_tkinter.Cursor(self.database.table["file1"], engine=bdb)
         cursor.close()
         self.assertEqual(cursor._cursor, None)
 
     def test_04_get_converted_partial(self):
-        cursor = _db_tkinter.Cursor(
-            self.database.table["file1"][0], engine=bdb
-        )
+        cursor = _db_tkinter.Cursor(self.database.table["file1"], engine=bdb)
         cursor._partial = ""
         self.assertEqual(cursor.get_converted_partial(), b"")
 
     def test_05_get_partial_with_wildcard(self):
-        cursor = _db_tkinter.Cursor(
-            self.database.table["file1"][0], engine=bdb
-        )
+        cursor = _db_tkinter.Cursor(self.database.table["file1"], engine=bdb)
         self.assertRaisesRegex(
             _db_tkinter.DatabaseError,
             "get_partial_with_wildcard not implemented$",
@@ -169,9 +159,7 @@ class Cursor_db(_DB):
         )
 
     def test_06_get_converted_partial_with_wildcard(self):
-        cursor = _db_tkinter.Cursor(
-            self.database.table["file1"][0], engine=bdb
-        )
+        cursor = _db_tkinter.Cursor(self.database.table["file1"], engine=bdb)
         self.assertRaisesRegex(
             AttributeError,
             "'NoneType' object has no attribute 'encode'$",
@@ -181,9 +169,7 @@ class Cursor_db(_DB):
         self.assertEqual(cursor.get_converted_partial_with_wildcard(), b"part")
 
     def test_07_refresh_recordset(self):
-        cursor = _db_tkinter.Cursor(
-            self.database.table["file1"][0], engine=bdb
-        )
+        cursor = _db_tkinter.Cursor(self.database.table["file1"], engine=bdb)
         self.assertEqual(cursor.refresh_recordset(), None)
 
 
@@ -222,7 +208,7 @@ class Cursor_primary(_DB):
     def setUp(self):
         super().setUp()
         self.cursor = _db_tkinter.CursorPrimary(
-            self.database.table["file1"][0],
+            self.database.table["file1"],
             ebm=self.database.ebm_control["file1"].ebm_table,
             engine=bdb,
         )
@@ -400,7 +386,7 @@ class Cursor_primary__get_record_at_position(_DB):
     def setUp(self):
         super().setUp()
         self.cursor = _db_tkinter.CursorPrimary(
-            self.database.table["file1"][0],
+            self.database.table["file1"],
             ebm=self.database.ebm_control["file1"].ebm_table,
             engine=bdb,
         )
@@ -518,7 +504,7 @@ class Cursor_primary__get_record_at_position(_DB):
         bdb.tk.call(tuple(command))
 
     def create_record(self, record_number):
-        command = [self.database.table["file1"][0], "put"]
+        command = [self.database.table["file1"], "put"]
         if self.database.dbtxn:
             command.extend(["-txn", self.database.dbtxn])
         command.extend([record_number, str(record_number).encode()])
@@ -604,7 +590,7 @@ class Cursor_secondary_exception_in___del__(_DB):
             )
             self.segments[rs] = s
         self.database.start_transaction()
-        command = [self.database.table["file1_field1"][0], "cursor"]
+        command = [self.database.table["file1_field1"], "cursor"]
         if self.database.dbtxn:
             command.extend(["-txn", self.database.dbtxn])
         cursor = bdb.tk.call(tuple(command))
@@ -755,7 +741,7 @@ class Cursor_secondary(_DB):
             )
             self.segments[rs] = s
         self.database.start_transaction()
-        command = [self.database.table["file1_field1"][0], "cursor"]
+        command = [self.database.table["file1_field1"], "cursor"]
         if self.database.dbtxn:
             command.extend(["-txn", self.database.dbtxn])
         cursor = bdb.tk.call(tuple(command))
@@ -819,7 +805,7 @@ class Cursor_secondary(_DB):
         finally:
             bdb.tk.call((cursor, "close"))
         self.cursor = _db_tkinter.CursorSecondary(
-            self.database.table["file1_field1"][0],
+            self.database.table["file1_field1"],
             segment=self.database.segment_table["file1"],
             transaction=self.database.dbtxn,
             engine=bdb,
@@ -1348,7 +1334,7 @@ class Cursor_secondary__get_record_at_position(_DB):
             )
             self.segments[rs] = s
         self.database.start_transaction()
-        command = [self.database.table["file1_field1"][0], "cursor"]
+        command = [self.database.table["file1_field1"], "cursor"]
         if self.database.dbtxn:
             command.extend(["-txn", self.database.dbtxn])
         cursor = bdb.tk.call(tuple(command))
@@ -1399,7 +1385,7 @@ class Cursor_secondary__get_record_at_position(_DB):
         finally:
             bdb.tk.call((cursor, "close"))
         self.cursor = _db_tkinter.CursorSecondary(
-            self.database.table["file1_field1"][0],
+            self.database.table["file1_field1"],
             segment=self.database.segment_table["file1"],
             transaction=self.database.dbtxn,
             engine=bdb,

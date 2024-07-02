@@ -252,11 +252,11 @@ class Database(_database.Database):
             if file not in files:
                 continue
             fields = specification[SECONDARY]
-            self.table[file] = [file]
+            self.table[file] = file
             statement = " ".join(
                 (
                     create_table,
-                    self.table[file][0],
+                    self.table[file],
                     "(",
                     file,
                     db_key,
@@ -280,7 +280,7 @@ class Database(_database.Database):
             cursor.execute(statement)
             for field in fields:
                 secondary = SUBFILE_DELIMITER.join((file, field))
-                self.table[secondary] = [secondary]
+                self.table[secondary] = secondary
                 statement = " ".join(
                     (
                         create_table,
@@ -300,7 +300,7 @@ class Database(_database.Database):
                 indexname = "".join(
                     (INDEXPREFIX, SUBFILE_DELIMITER.join((file, field)))
                 )
-                self.index[secondary] = [indexname]
+                self.index[secondary] = indexname
                 statement = " ".join(
                     (
                         db_create_index,
@@ -385,7 +385,7 @@ class Database(_database.Database):
                 statement = " ".join(
                     (
                         "insert into",
-                        self.table[file][0],
+                        self.table[file],
                         "(",
                         SQLITE_VALUE_COLUMN,
                         ")",
@@ -405,7 +405,7 @@ class Database(_database.Database):
             statement = " ".join(
                 (
                     "insert or replace into",
-                    self.table[file][0],
+                    self.table[file],
                     "(",
                     SQLITE_VALUE_COLUMN,
                     ",",
@@ -416,7 +416,7 @@ class Database(_database.Database):
             )
             # statement = ' '.join((
             #    'update',
-            #    self.table[file][0],
+            #    self.table[file],
             #    'set',
             #    SQLITE_VALUE_COLUMN, '= ?',
             #    'where',
@@ -439,7 +439,7 @@ class Database(_database.Database):
             statement = " ".join(
                 (
                     "update",
-                    self.table[file][0],
+                    self.table[file],
                     "set",
                     SQLITE_VALUE_COLUMN,
                     "= ?",
@@ -467,7 +467,7 @@ class Database(_database.Database):
             statement = " ".join(
                 (
                     "delete from",
-                    self.table[file][0],
+                    self.table[file],
                     "where",
                     file,
                     "== ?",
@@ -475,7 +475,7 @@ class Database(_database.Database):
             )
             # statement = ' '.join((
             #    'update',
-            #    self.table[file][0],
+            #    self.table[file],
             #    'set',
             #    SQLITE_VALUE_COLUMN, '= null',
             #    'where',
@@ -493,7 +493,7 @@ class Database(_database.Database):
         statement = " ".join(
             (
                 "select * from",
-                self.table[file][0],
+                self.table[file],
                 "where",
                 file,
                 "== ?",
@@ -729,7 +729,7 @@ class Database(_database.Database):
                 ",",
                 SQLITE_VALUE_COLUMN,
                 "from",
-                self.table[file][0],
+                self.table[file],
                 "order by",
                 file,
                 "desc",
@@ -755,7 +755,7 @@ class Database(_database.Database):
         increases the number of records in the set above the relevant
         limit.
         """
-        secondary = self.table[SUBFILE_DELIMITER.join((file, field))][0]
+        secondary = self.table[SUBFILE_DELIMITER.join((file, field))]
         select_existing_segment = " ".join(
             (
                 "select",
@@ -890,7 +890,7 @@ class Database(_database.Database):
         converted from bitmap to list to integer if the removal reduces
         the number of records in the set below the relevant limit.
         """
-        secondary = self.table[SUBFILE_DELIMITER.join((file, field))][0]
+        secondary = self.table[SUBFILE_DELIMITER.join((file, field))]
         select_existing_segment = " ".join(
             (
                 "select",
@@ -1154,7 +1154,7 @@ class Database(_database.Database):
                     "select distinct",
                     field,
                     "from",
-                    self.table[SUBFILE_DELIMITER.join((file, field))][0],
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
                     "where",
                     field,
                     "> ? and",
@@ -1169,7 +1169,7 @@ class Database(_database.Database):
                     "select distinct",
                     field,
                     "from",
-                    self.table[SUBFILE_DELIMITER.join((file, field))][0],
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
                     "where",
                     field,
                     "> ? and",
@@ -1184,7 +1184,7 @@ class Database(_database.Database):
                     "select distinct",
                     field,
                     "from",
-                    self.table[SUBFILE_DELIMITER.join((file, field))][0],
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
                     "where",
                     field,
                     ">= ? and",
@@ -1199,7 +1199,7 @@ class Database(_database.Database):
                     "select distinct",
                     field,
                     "from",
-                    self.table[SUBFILE_DELIMITER.join((file, field))][0],
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
                     "where",
                     field,
                     ">= ? and",
@@ -1214,7 +1214,7 @@ class Database(_database.Database):
                     "select distinct",
                     field,
                     "from",
-                    self.table[SUBFILE_DELIMITER.join((file, field))][0],
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
                     "where",
                     field,
                     "> ?",
@@ -1227,7 +1227,7 @@ class Database(_database.Database):
                     "select distinct",
                     field,
                     "from",
-                    self.table[SUBFILE_DELIMITER.join((file, field))][0],
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
                     "where",
                     field,
                     ">= ?",
@@ -1240,7 +1240,7 @@ class Database(_database.Database):
                     "select distinct",
                     field,
                     "from",
-                    self.table[SUBFILE_DELIMITER.join((file, field))][0],
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
                     "where",
                     field,
                     "<= ?",
@@ -1253,7 +1253,7 @@ class Database(_database.Database):
                     "select distinct",
                     field,
                     "from",
-                    self.table[SUBFILE_DELIMITER.join((file, field))][0],
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
                     "where",
                     field,
                     "< ?",
@@ -1266,7 +1266,7 @@ class Database(_database.Database):
                     "select distinct",
                     field,
                     "from",
-                    self.table[SUBFILE_DELIMITER.join((file, field))][0],
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
                 )
             )
             values = ()
@@ -1484,7 +1484,7 @@ class Database(_database.Database):
                 ",",
                 file,
                 "from",
-                self.table[SUBFILE_DELIMITER.join((file, field))][0],
+                self.table[SUBFILE_DELIMITER.join((file, field))],
             )
         )
         db_segment_size_bytes = SegmentSize.db_segment_size_bytes
@@ -1533,7 +1533,7 @@ class Database(_database.Database):
                 ",",
                 file,
                 "from",
-                self.table[SUBFILE_DELIMITER.join((file, field))][0],
+                self.table[SUBFILE_DELIMITER.join((file, field))],
                 "where",
                 field,
                 "== ?",
@@ -1586,7 +1586,7 @@ class Database(_database.Database):
                 ",",
                 file,
                 "from",
-                self.table[SUBFILE_DELIMITER.join((file, field))][0],
+                self.table[SUBFILE_DELIMITER.join((file, field))],
                 "where",
                 field,
                 "glob ?",
@@ -1659,7 +1659,7 @@ class Database(_database.Database):
                     ",",
                     file,
                     "from",
-                    self.table[SUBFILE_DELIMITER.join((file, field))][0],
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
                     "where",
                     field,
                     lowop,
@@ -1679,7 +1679,7 @@ class Database(_database.Database):
                     ",",
                     file,
                     "from",
-                    self.table[SUBFILE_DELIMITER.join((file, field))][0],
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
                     "where",
                     field,
                     highop,
@@ -1699,7 +1699,7 @@ class Database(_database.Database):
                     ",",
                     file,
                     "from",
-                    self.table[SUBFILE_DELIMITER.join((file, field))][0],
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
                     "where",
                     field,
                     lowop,
@@ -1753,7 +1753,7 @@ class Database(_database.Database):
                 ",",
                 file,
                 "from",
-                self.table[SUBFILE_DELIMITER.join((file, field))][0],
+                self.table[SUBFILE_DELIMITER.join((file, field))],
             )
         )
         values = ()
@@ -1807,9 +1807,9 @@ class Database(_database.Database):
                 ",",
                 file,
                 "from",
-                self.table[secondary][0],
+                self.table[secondary],
                 "indexed by",
-                self.index[secondary][0],
+                self.index[secondary],
                 "where",
                 field,
                 "== ?",
@@ -1818,7 +1818,7 @@ class Database(_database.Database):
         delete_existing_segment = " ".join(
             (
                 "delete from",
-                self.table[secondary][0],
+                self.table[secondary],
                 "where",
                 field,
                 "== ? and",
@@ -1845,7 +1845,7 @@ class Database(_database.Database):
     def file_records_under(self, file, field, recordset, key):
         """Replace records for index field[key] with recordset records."""
         assert recordset.dbset == file
-        assert file == self.table[file][0]
+        assert file == self.table[file]
         secondary = SUBFILE_DELIMITER.join((file, field))
 
         # insert or replace (index value, segment number, record count,
@@ -1856,7 +1856,7 @@ class Database(_database.Database):
         insert_new_segment = " ".join(
             (
                 "insert or replace into",
-                self.table[secondary][0],
+                self.table[secondary],
                 "(",
                 field,
                 ",",
@@ -1937,14 +1937,14 @@ class Database(_database.Database):
         if file == field:
             return CursorPrimary(
                 self.dbenv,
-                table=self.table[file][0],
+                table=self.table[file],
                 ebm=self.ebm_control[file].ebm_table,
                 file=file,
                 keyrange=keyrange,
             )
         return CursorSecondary(
             self.dbenv,
-            table=self.table[SUBFILE_DELIMITER.join((file, field))][0],
+            table=self.table[SUBFILE_DELIMITER.join((file, field))],
             file=file,
             field=field,
             keyrange=keyrange,

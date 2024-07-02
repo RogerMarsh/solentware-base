@@ -322,19 +322,19 @@ class Database_methods(_DBOpen):
 
     def test_05_new_deferred_root(self):
         self.assertEqual(
-            self.database.table["file1_field1"][0].__class__.__name__, "DB"
+            self.database.table["file1_field1"].__class__.__name__, "DB"
         )
         # self.assertEqual(
         #    self.database.index['file1_field1'],
         #    ['ixfile1_field1'])
         self.database.new_deferred_root("file1", "field1")
         self.assertEqual(
-            self.database.table["file1_field1"][0].__class__.__name__, "DB"
+            self.database.table["file1_field1"].__class__.__name__, "DB"
         )
         # self.assertEqual(
         #    self.database.index['file1_field1'],
         #    ['ixfile1_field1', 'ixt_0_file1_field1'])
-        self.assertEqual(len(self.database.table["file1_field1"]), 1)
+        self.assertEqual(len(self.database.table["file1_field1"]), 0)
 
     def test_06_set_defer_update_01(self):
         self.database.set_defer_update()
@@ -343,7 +343,7 @@ class Database_methods(_DBOpen):
         self.assertEqual(self.database.first_chunk["file1"], None)
 
     def test_07_set_defer_update_02(self):
-        self.database.table["file1"][0].append(encode("any value"))
+        self.database.table["file1"].append(encode("any value"))
         self.database.set_defer_update()
         self.assertEqual(self.database.initial_high_segment["file1"], 0)
         self.assertEqual(self.database.high_segment["file1"], 0)
@@ -389,7 +389,7 @@ class Database_do_final_segment_deferred_updates(_DBOpen):
         self.database.do_final_segment_deferred_updates()
 
     def test_04(self):
-        self.database.table["file1"][0].append(b"Any value")
+        self.database.table["file1"].append(b"Any value")
         self.database.existence_bit_maps["file1"] = None
         self.assertEqual(len(self.database.existence_bit_maps), 1)
         self.assertIn(
@@ -402,7 +402,7 @@ class Database_do_final_segment_deferred_updates(_DBOpen):
         )
 
     def test_05(self):
-        self.database.table["file1"][0].append(b"Any value")
+        self.database.table["file1"].append(b"Any value")
         self.database.existence_bit_maps["file1"] = {}
         ba = Bitarray()
         ba.frombytes(
@@ -425,7 +425,7 @@ class Database_do_final_segment_deferred_updates(_DBOpen):
 
     def test_06(self):
         for i in range(127):
-            self.database.table["file1"][0].append(b"Any value")
+            self.database.table["file1"].append(b"Any value")
         self.database.existence_bit_maps["file1"] = {}
         ba = Bitarray()
         ba.frombytes(
@@ -464,11 +464,9 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
         self.database.sort_and_write("file1", "field1", 5)
         self.database.commit()
         dt = self.database.table["file1_field1"]
-        self.assertEqual(len(dt), 1)
-        for t in dt:
-            self.assertEqual(t.__class__.__name__, "DB")
-        self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
-        cursor = dt[0].cursor()
+        self.assertEqual(dt.__class__.__name__, "DB")
+        self.assertEqual(dt.get_dbname(), (None, "file1_field1"))
+        cursor = dt.cursor()
         ra = []
         while True:
             r = cursor.next()
@@ -514,9 +512,9 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
     # confusing if one looks closely.
     def test_14(self):
         dt = self.database.table["file1_field1"]
-        dt[0].put(b"int", b"\x00\x00\x00\x05\x00\x01")
-        dt[0].put(b"list", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x02")
-        dt[0].put(b"bits", b"\x00\x00\x00\x05\x00\x02")
+        dt.put(b"int", b"\x00\x00\x00\x05\x00\x01")
+        dt.put(b"list", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x02")
+        dt.put(b"bits", b"\x00\x00\x00\x05\x00\x02")
         self.database.segment_table["file1"].put(2, b"\x00\x01\x00\x04")
         ba = Bitarray()
         ba.frombytes(b"\x0a" * 16)
@@ -533,11 +531,10 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
         self.database.start_transaction()
         self.database.sort_and_write("file1", "field1", 5)
         self.database.commit()
-        self.assertEqual(len(dt), 1)
-        for t in dt:
-            self.assertEqual(t.__class__.__name__, "DB")
-        self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
-        cursor = dt[0].cursor()
+        self.assertEqual(len(dt), 3)
+        self.assertEqual(dt.__class__.__name__, "DB")
+        self.assertEqual(dt.get_dbname(), (None, "file1_field1"))
+        cursor = dt.cursor()
         ra = []
         while True:
             r = cursor.next()
@@ -589,10 +586,10 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
     # like putting the new segment 5 records in a separate record.
     def test_15(self):
         dt = self.database.table["file1_field1"]
-        dt[0].put(b"int", b"\x00\x00\x00\x05\x00\x01")
-        dt[0].put(b"list", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x02")
-        dt[0].put(b"list", b"\x00\x00\x00\x06\x00\x02\x00\x00\x00\x07")
-        dt[0].put(b"bits", b"\x00\x00\x00\x05\x00\x02")
+        dt.put(b"int", b"\x00\x00\x00\x05\x00\x01")
+        dt.put(b"list", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x02")
+        dt.put(b"list", b"\x00\x00\x00\x06\x00\x02\x00\x00\x00\x07")
+        dt.put(b"bits", b"\x00\x00\x00\x05\x00\x02")
         self.database.segment_table["file1"].put(2, b"\x00\x01\x00\x04")
         ba = Bitarray()
         ba.frombytes(b"\x0a" * 16)
@@ -609,11 +606,10 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
         self.database.start_transaction()
         self.database.sort_and_write("file1", "field1", 5)
         self.database.commit()
-        self.assertEqual(len(dt), 1)
-        for t in dt:
-            self.assertEqual(t.__class__.__name__, "DB")
-        self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
-        cursor = dt[0].cursor()
+        self.assertEqual(len(dt), 5)
+        self.assertEqual(dt.__class__.__name__, "DB")
+        self.assertEqual(dt.get_dbname(), (None, "file1_field1"))
+        cursor = dt.cursor()
         ra = []
         while True:
             r = cursor.next()
@@ -662,8 +658,8 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
 
     def test_16(self):
         dt = self.database.table["file1_field1"]
-        dt[0].put(b"list", b"\x00\x00\x00\x02\x00\x02\x00\x00\x00\x01")
-        dt[0].put(b"bits", b"\x00\x00\x00\x02\x00\x08\x00\x00\x00\x02")
+        dt.put(b"list", b"\x00\x00\x00\x02\x00\x02\x00\x00\x00\x01")
+        dt.put(b"bits", b"\x00\x00\x00\x02\x00\x08\x00\x00\x00\x02")
         self.database.segment_table["file1"].put(1, b"\x00\x01\x00\x04")
         self.database.segment_table["file1"].put(
             2,
@@ -687,11 +683,10 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
         self.database.start_transaction()
         self.database.sort_and_write("file1", "field1", 2)
         self.database.commit()
-        self.assertEqual(len(dt), 1)
-        for t in dt:
-            self.assertEqual(t.__class__.__name__, "DB")
-        self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
-        cursor = dt[0].cursor()
+        self.assertEqual(len(dt), 2)
+        self.assertEqual(dt.__class__.__name__, "DB")
+        self.assertEqual(dt.get_dbname(), (None, "file1_field1"))
+        cursor = dt.cursor()
         ra = []
         while True:
             r = cursor.next()
@@ -738,8 +733,8 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
 
     def test_17(self):
         dt = self.database.table["file1_field1"]
-        dt[0].put(b"list", b"\x00\x00\x00\x01\x00\x02\x00\x00\x00\x01")
-        dt[0].put(b"bits", b"\x00\x00\x00\x02\x00\x08\x00\x00\x00\x02")
+        dt.put(b"list", b"\x00\x00\x00\x01\x00\x02\x00\x00\x00\x01")
+        dt.put(b"bits", b"\x00\x00\x00\x02\x00\x08\x00\x00\x00\x02")
         self.database.segment_table["file1"].put(1, b"\x00\x01\x00\x04")
         self.database.segment_table["file1"].put(
             2,
@@ -763,11 +758,10 @@ class Database__sort_and_write_high_or_chunk(_DBOpen):
         self.database.start_transaction()
         self.database.sort_and_write("file1", "field1", 1)
         self.database.commit()
-        self.assertEqual(len(dt), 1)
-        for t in dt:
-            self.assertEqual(t.__class__.__name__, "DB")
-        self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
-        cursor = dt[0].cursor()
+        self.assertEqual(len(dt), 2)
+        self.assertEqual(dt.__class__.__name__, "DB")
+        self.assertEqual(dt.get_dbname(), (None, "file1_field1"))
+        cursor = dt.cursor()
         ra = []
         while True:
             r = cursor.next()
@@ -884,10 +878,9 @@ class Database_sort_and_write(_DBOpen):
         self.database.high_segment["file1"] = 3
         self.database.sort_and_write("file1", "field1", 4)
         dt = self.database.table["file1_field1"]
-        self.assertEqual(len(dt), 1)
-        for t in dt:
-            self.assertEqual(t.__class__.__name__, "DB")
-        self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
+        self.assertEqual(len(dt), 0)
+        self.assertEqual(dt.__class__.__name__, "DB")
+        self.assertEqual(dt.get_dbname(), (None, "file1_field1"))
 
     def test_08(self):
         self.database.value_segments["file1"] = {"field1": {}}
@@ -898,10 +891,9 @@ class Database_sort_and_write(_DBOpen):
         self.database.sort_and_write("file1", "field1", 5)
         self.database.commit()
         dt = self.database.table["file1_field1"]
-        self.assertEqual(len(dt), 1)
-        for t in dt:
-            self.assertEqual(t.__class__.__name__, "DB")
-        self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
+        self.assertEqual(len(dt), 0)
+        self.assertEqual(dt.__class__.__name__, "DB")
+        self.assertEqual(dt.get_dbname(), (None, "file1_field1"))
 
     def test_09(self):
         self.database.value_segments["file1"] = {"field1": {}}
@@ -910,10 +902,9 @@ class Database_sort_and_write(_DBOpen):
         self.database.high_segment["file1"] = 3
         self.database.sort_and_write("file1", "field1", 5)
         dt = self.database.table["file1_field1"]
-        self.assertEqual(len(dt), 1)
-        for t in dt:
-            self.assertEqual(t.__class__.__name__, "DB")
-        self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
+        self.assertEqual(len(dt), 0)
+        self.assertEqual(dt.__class__.__name__, "DB")
+        self.assertEqual(dt.get_dbname(), (None, "file1_field1"))
 
     def test_10(self):
         self.database.value_segments["file1"] = {"field1": {"list": [1]}}
@@ -925,10 +916,9 @@ class Database_sort_and_write(_DBOpen):
         self.database.commit()
         dt = self.database.table["file1_field1"]
         self.assertEqual(len(dt), 1)
-        for t in dt:
-            self.assertEqual(t.__class__.__name__, "DB")
-        self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
-        cursor = dt[0].cursor()
+        self.assertEqual(dt.__class__.__name__, "DB")
+        self.assertEqual(dt.get_dbname(), (None, "file1_field1"))
+        cursor = dt.cursor()
         ra = []
         while True:
             r = cursor.next()
@@ -959,10 +949,9 @@ class Database_sort_and_write(_DBOpen):
         self.database.commit()
         dt = self.database.table["file1_field1"]
         self.assertEqual(len(dt), 1)
-        for t in dt:
-            self.assertEqual(t.__class__.__name__, "DB")
-        self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
-        cursor = dt[0].cursor()
+        self.assertEqual(dt.__class__.__name__, "DB")
+        self.assertEqual(dt.get_dbname(), (None, "file1_field1"))
+        cursor = dt.cursor()
         ra = []
         while True:
             r = cursor.next()
@@ -993,10 +982,9 @@ class Database_sort_and_write(_DBOpen):
         self.database.commit()
         dt = self.database.table["file1_field1"]
         self.assertEqual(len(dt), 1)
-        for t in dt:
-            self.assertEqual(t.__class__.__name__, "DB")
-        self.assertEqual(dt[0].get_dbname(), (None, "file1_field1"))
-        cursor = dt[0].cursor()
+        self.assertEqual(dt.__class__.__name__, "DB")
+        self.assertEqual(dt.get_dbname(), (None, "file1_field1"))
+        cursor = dt.cursor()
         ra = []
         while True:
             r = cursor.next()
@@ -1016,191 +1004,12 @@ class Database_sort_and_write(_DBOpen):
         self.assertEqual(ra, [(1, b"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")])
 
 
+# merge() does nothing.
 class Database_merge(_DBOpen):
     def setUp(self):
         super().setUp()
         if SegmentSize._segment_sort_scale != _segment_sort_scale:
             SegmentSize._segment_sort_scale = _segment_sort_scale
-
-    def test_01(self):
-        database = self._D({}, segment_size_bytes=None)
-        self.assertRaisesRegex(
-            TypeError,
-            "".join(
-                (
-                    r"merge\(\) missing 2 required ",
-                    "positional arguments: 'file' and 'field'$",
-                )
-            ),
-            database.merge,
-        )
-
-    def test_02(self):
-        self.assertEqual(SegmentSize._segment_sort_scale, _segment_sort_scale)
-        self.assertEqual(len(self.database.table["file1_field1"]), 1)
-        dbo = set(t for t in self.database.table["file1_field1"])
-        self.assertEqual(len(dbo), 1)
-        for t in dbo:
-            self.assertEqual(t.__class__.__name__, "DB")
-        self.database.merge("file1", "field1")
-        if hasattr(self.database, "_path_marker"):
-            self.assertEqual(self.database._path_marker, {"p1"})
-
-    def test_03(self):
-        self.assertEqual(SegmentSize._segment_sort_scale, _segment_sort_scale)
-        self.database.new_deferred_root("file1", "field1")
-        dt = self.database.table["file1_field1"]
-        self.assertEqual(len(dt), 1)
-        dbo = set(t for t in dt)
-        self.assertEqual(len(dbo), 1)
-        for t in dbo:
-            self.assertEqual(t.__class__.__name__, "DB")
-        for t in dt[1:]:
-            t.close()
-        self.database.merge("file1", "field1")
-        if hasattr(self.database, "_path_marker"):
-            self.assertEqual(
-                self.database._path_marker,
-                {"p3", "p5", "p6", "p9", "p8", "p2", "p7", "p10", "p19", "p4"},
-            )
-
-    # The combinations of _segment_sort_scale settings and 'insert into ...'
-    # statements in tests 4, 5, and 6 force merge() method through all paths
-    # where deferred updates have to be done.
-    # 'p14' and 'p20' are not traversed.  Assume 'p18' is always traversed at
-    # some point to close and delete cursors when no longer needed.
-    # The remaining 'do-nothing' paths are traversed by tests 1, 2, and 3.
-
-    def test_04(self):
-        self.assertEqual(SegmentSize._segment_sort_scale, _segment_sort_scale)
-        dt = self.database.table["file1_field1"]
-        self.database.new_deferred_root("file1", "field1")
-        dt[-1].put(b"list", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x02")
-        self.assertEqual(len(dt), 1)
-        dbo = set(t for t in dt)
-        self.assertEqual(len(dbo), 1)
-        for t in dbo:
-            self.assertEqual(t.__class__.__name__, "DB")
-        dt[-1].close()
-        self.database.segment_table["file1"].put(2, b"\x00\x01\x00\x04")
-        self.database.merge("file1", "field1")
-        if hasattr(self.database, "_path_marker"):
-            self.assertEqual(
-                self.database._path_marker,
-                {
-                    "p3",
-                    "p15",
-                    "p8",
-                    "p16",
-                    "p5",
-                    "p7",
-                    "p12",
-                    "p13",
-                    "p11",
-                    "p10",
-                    "p4",
-                    "p19",
-                    "p18",
-                    "p6",
-                    "p2",
-                    "p17",
-                },
-            )
-
-    def test_05(self):
-        SegmentSize._segment_sort_scale = 1
-        self.assertEqual(SegmentSize._segment_sort_scale, 1)
-        dt = self.database.table["file1_field1"]
-        self.database.new_deferred_root("file1", "field1")
-        dt[-1].put(b"list", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x02")
-        self.database.new_deferred_root("file1", "field1")
-        self.assertEqual(len(dt), 1)
-        dbo = set(t for t in dt)
-        self.assertEqual(len(dbo), 1)
-        for t in dbo:
-            self.assertEqual(t.__class__.__name__, "DB")
-        dt[-1].close()
-        self.database.segment_table["file1"].put(2, b"\x00\x01\x00\x04")
-        self.database.merge("file1", "field1")
-        if hasattr(self.database, "_path_marker"):
-            self.assertEqual(
-                self.database._path_marker,
-                {"p4", "p10", "p5", "p19", "p7", "p9", "p2", "p3"},
-            )
-
-    def test_06(self):
-        SegmentSize._segment_sort_scale = 2
-        self.assertEqual(SegmentSize._segment_sort_scale, 2)
-        self.merge_06_07()
-        if hasattr(self.database, "_path_marker"):
-            self.assertEqual(
-                self.database._path_marker,
-                {
-                    "p7",
-                    "p2",
-                    "p11",
-                    "p6",
-                    "p15",
-                    "p19",
-                    "p3",
-                    "p16",
-                    "p17",
-                    "p18",
-                    "p13",
-                    "p12",
-                    "p5",
-                    "p10",
-                    "p4",
-                },
-            )
-
-    # Verify test_06 is passed with the default SegmentSize.segment_sort_scale.
-    # Almost. 'p8' is additional path traversed.  I assume it is necessary to
-    # potentially put a load of 'None's in buffer at 'p6' which get cleared out
-    # at 'p8' immediatly.
-    def test_07(self):
-        self.assertEqual(SegmentSize._segment_sort_scale, _segment_sort_scale)
-        self.merge_06_07()
-        if hasattr(self.database, "_path_marker"):
-            self.assertEqual(
-                self.database._path_marker,
-                {
-                    "p7",
-                    "p2",
-                    "p11",
-                    "p6",
-                    "p15",
-                    "p19",
-                    "p3",
-                    "p16",
-                    "p17",
-                    "p18",
-                    "p13",
-                    "p12",
-                    "p5",
-                    "p10",
-                    "p4",
-                    "p8",
-                },
-            )
-
-    def merge_06_07(self):
-        dt = self.database.table["file1_field1"]
-        self.database.new_deferred_root("file1", "field1")
-        dt[-1].put(b"list", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x02")
-        dt[-1].put(b"list1", b"\x00\x00\x00\x05\x00\x02\x00\x00\x00\x03")
-        self.database.new_deferred_root("file1", "field1")
-        dt[-1].put(b"list1", b"\x00\x00\x00\x06\x00\x02\x00\x00\x00\x04")
-        self.assertEqual(len(dt), 1)
-        dbo = set(t for t in dt)
-        self.assertEqual(len(dbo), 1)
-        for t in dbo:
-            self.assertEqual(t.__class__.__name__, "DB")
-        dt[-1].close()
-        self.database.segment_table["file1"].put(2, b"\x00\x01\x00\x04")
-        self.database.segment_table["file1"].put(3, b"\x00\x01\x00\x04")
-        self.database.segment_table["file1"].put(4, b"\x00\x01\x00\x04")
-        self.database.merge("file1", "field1")
 
 
 class Database_delete_index(_DBOpen):
@@ -1288,7 +1097,7 @@ class Database_find_value_segments(_DBOpen):
 class _DBMerge(_DBdu):
     def setUp(self):
         super().setUp()
-        self.folder = os.path.join("/tmp", "merge_test_sqlitedu")
+        self.folder = os.path.join("/tmp", "merge_test_dbdu")
         self.database = self._D(
             filespec.FileSpec(**{"file1": {"field1"}}),
             folder=self.folder,

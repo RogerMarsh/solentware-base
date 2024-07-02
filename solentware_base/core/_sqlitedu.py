@@ -76,7 +76,7 @@ class Database(_databasedu.Database):
                     "select",
                     file,
                     "from",
-                    self.table[file][0],
+                    self.table[file],
                     "order by",
                     file,
                     "desc",
@@ -216,7 +216,7 @@ class Database(_databasedu.Database):
         # the code for Berkeley DB updates the main index directly if an entry
         # already exists, but the code for SQLite always updates a temporary
         # table and merges into the main table later.
-        tablename = self.table[SUBFILE_DELIMITER.join((file, field))][-1]
+        tablename = self.table[SUBFILE_DELIMITER.join((file, field))]
         if self.high_segment[file] == segment or not self.first_chunk[file]:
             # select (index value, segment number, record count, key reference)
             # statement for (index value, segment number).  Execution returns
@@ -388,7 +388,7 @@ class Database(_databasedu.Database):
                 ",",
                 file,
                 "from",
-                self.table[SUBFILE_DELIMITER.join((file, field))][0],
+                self.table[SUBFILE_DELIMITER.join((file, field))],
                 "order by",
                 field,
                 ",",
@@ -443,7 +443,7 @@ class Database(_databasedu.Database):
         statement = " ".join(
             (
                 "drop table if exists",
-                self.table[SUBFILE_DELIMITER.join((file, field))][0],
+                self.table[SUBFILE_DELIMITER.join((file, field))],
             )
         )
         cursor = self.dbenv.cursor()
@@ -514,7 +514,7 @@ class Database(_databasedu.Database):
             return RecordsetSegmentList(item[1], None, records=item[3])
 
         assert file != field
-        secondary = self.table[SUBFILE_DELIMITER.join((file, field))][0]
+        secondary = self.table[SUBFILE_DELIMITER.join((file, field))]
         write_item_to_index = " ".join(
             (
                 "insert into",

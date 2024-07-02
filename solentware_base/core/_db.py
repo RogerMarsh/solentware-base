@@ -403,9 +403,9 @@ class Database(_database.Database):
             if file not in files:
                 continue
             fields = specification[SECONDARY]
-            self.table[file] = [dbe.DB(self.dbenv)]
+            self.table[file] = dbe.DB(self.dbenv)
             try:
-                self.table[file][0].open(
+                self.table[file].open(
                     self.file_name_for_database(file),
                     dbname=file,
                     dbtype=dbe.DB_RECNO,
@@ -445,10 +445,10 @@ class Database(_database.Database):
                 else:
                     access_method = dbe.DB_BTREE
                 secondary = SUBFILE_DELIMITER.join((file, field))
-                self.table[secondary] = [dbe.DB(self.dbenv)]
+                self.table[secondary] = dbe.DB(self.dbenv)
                 try:
-                    self.table[secondary][0].set_flags(dbe.DB_DUPSORT)
-                    self.table[secondary][0].open(
+                    self.table[secondary].set_flags(dbe.DB_DUPSORT)
+                    self.table[secondary].open(
                         self.file_name_for_database(secondary),
                         dbname=secondary,
                         dbtype=access_method,
@@ -468,10 +468,10 @@ class Database(_database.Database):
 
                     # Accept existing DB_BTREE database if DB_HASH was in the
                     # supplied specification for database.
-                    self.table[secondary] = [dbe.DB(self.dbenv)]
+                    self.table[secondary] = dbe.DB(self.dbenv)
                     try:
-                        self.table[secondary][0].set_flags(dbe.DB_DUPSORT)
-                        self.table[secondary][0].open(
+                        self.table[secondary].set_flags(dbe.DB_DUPSORT)
+                        self.table[secondary].open(
                             self.file_name_for_database(secondary),
                             dbname=secondary,
                             dbtype=dbe.DB_BTREE,
@@ -535,8 +535,7 @@ class Database(_database.Database):
         for file, specification in self.specification.items():
             if file in self.table:
                 if self.table[file] is not None:
-                    for dbo in self.table[file]:
-                        dbo.close()
+                    self.table[file].close()
                     self.table[file] = None
             if file in self.segment_table:
                 if self.segment_table[file] is not None:
@@ -550,8 +549,7 @@ class Database(_database.Database):
             for field in specification[SECONDARY]:
                 secondary = SUBFILE_DELIMITER.join((file, field))
                 if secondary in self.table:
-                    for dbo in self.table[secondary]:
-                        dbo.close()
+                    self.table[secondary].close()
                     self.table[secondary] = None
         for k, dbo in self.table.items():
             if dbo is not None:
@@ -580,8 +578,8 @@ class Database(_database.Database):
         """Insert key, or replace key, in table for file using value."""
         assert file in self.specification
         if key is None:
-            return self.table[file][0].append(value.encode(), txn=self.dbtxn)
-        self.table[file][0].put(key, value.encode(), txn=self.dbtxn)
+            return self.table[file].append(value.encode(), txn=self.dbtxn)
+        self.table[file].put(key, value.encode(), txn=self.dbtxn)
         return None
 
     def replace(self, file, key, oldvalue, newvalue):
@@ -591,7 +589,7 @@ class Database(_database.Database):
         """
         del oldvalue
         assert file in self.specification
-        self.table[file][0].put(key, newvalue.encode(), txn=self.dbtxn)
+        self.table[file].put(key, newvalue.encode(), txn=self.dbtxn)
 
     def delete(self, file, key, value):
         """Delete key from table for file.
@@ -601,7 +599,7 @@ class Database(_database.Database):
         del value
         assert file in self.specification
         try:
-            self.table[file][0].delete(key, txn=self.dbtxn)
+            self.table[file].delete(key, txn=self.dbtxn)
         except Exception:
             pass
 
@@ -610,7 +608,7 @@ class Database(_database.Database):
         assert file in self.specification
         if key is None:
             return None
-        record = self.table[file][0].get(key, txn=self.dbtxn)
+        record = self.table[file].get(key, txn=self.dbtxn)
         if record is None:
             return None
         return key, record.decode()
@@ -797,7 +795,7 @@ class Database(_database.Database):
     # Only used in one place, and it is extra work to get the data in_nosql.
     def get_high_record(self, file):
         """Return the high existing record number in table for file."""
-        cursor = self.table[file][0].cursor(txn=self.dbtxn)
+        cursor = self.table[file].cursor(txn=self.dbtxn)
         try:
             return cursor.last()
         finally:
@@ -830,7 +828,7 @@ class Database(_database.Database):
         """
         key = self.encode_record_selector(key)
         secondary = SUBFILE_DELIMITER.join((file, field))
-        cursor = self.table[secondary][0].cursor(txn=self.dbtxn)
+        cursor = self.table[secondary].cursor(txn=self.dbtxn)
         try:
             record = cursor.set_range(key)
             while record:
@@ -1003,7 +1001,7 @@ class Database(_database.Database):
         """
         key = self.encode_record_selector(key)
         secondary = SUBFILE_DELIMITER.join((file, field))
-        cursor = self.table[secondary][0].cursor(txn=self.dbtxn)
+        cursor = self.table[secondary].cursor(txn=self.dbtxn)
         try:
             record = cursor.set_range(key)
             while record:
@@ -1161,8 +1159,8 @@ class Database(_database.Database):
 
     def find_values(self, valuespec, file):
         """Yield values in range defined in valuespec in index named file."""
-        cursor = self.table[SUBFILE_DELIMITER.join((file, valuespec.field))][
-            0
+        cursor = self.table[
+            SUBFILE_DELIMITER.join((file, valuespec.field))
         ].cursor(txn=self.dbtxn)
         try:
             if valuespec.above_value and valuespec.below_value:
@@ -1417,7 +1415,7 @@ class Database(_database.Database):
         if keylike is None:
             return recordlist
         pattern = b".*?" + keylike
-        cursor = self.table[SUBFILE_DELIMITER.join((file, field))][0].cursor(
+        cursor = self.table[SUBFILE_DELIMITER.join((file, field))].cursor(
             txn=self.dbtxn
         )
         try:
@@ -1434,7 +1432,7 @@ class Database(_database.Database):
     def recordlist_key(self, file, field, key=None, cache_size=1):
         """Return RecordList on file containing records for field with key."""
         recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
-        cursor = self.table[SUBFILE_DELIMITER.join((file, field))][0].cursor(
+        cursor = self.table[SUBFILE_DELIMITER.join((file, field))].cursor(
             txn=self.dbtxn
         )
         try:
@@ -1459,7 +1457,7 @@ class Database(_database.Database):
         recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
         if keystart is None:
             return recordlist
-        cursor = self.table[SUBFILE_DELIMITER.join((file, field))][0].cursor(
+        cursor = self.table[SUBFILE_DELIMITER.join((file, field))].cursor(
             txn=self.dbtxn
         )
         try:
@@ -1485,7 +1483,7 @@ class Database(_database.Database):
         if le and lt:
             raise DatabaseError("Both 'le' and 'lt' given in key range")
         recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
-        cursor = self.table[SUBFILE_DELIMITER.join((file, field))][0].cursor(
+        cursor = self.table[SUBFILE_DELIMITER.join((file, field))].cursor(
             txn=self.dbtxn
         )
         try:
@@ -1521,7 +1519,7 @@ class Database(_database.Database):
     def recordlist_all(self, file, field, cache_size=1):
         """Return RecordList on file containing records for field."""
         recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
-        cursor = self.table[SUBFILE_DELIMITER.join((file, field))][0].cursor(
+        cursor = self.table[SUBFILE_DELIMITER.join((file, field))].cursor(
             txn=self.dbtxn
         )
         try:
@@ -1544,7 +1542,7 @@ class Database(_database.Database):
         is deleted.
 
         """
-        cursor = self.table[SUBFILE_DELIMITER.join((file, field))][0].cursor(
+        cursor = self.table[SUBFILE_DELIMITER.join((file, field))].cursor(
             txn=self.dbtxn
         )
         try:
@@ -1570,7 +1568,7 @@ class Database(_database.Database):
             # Delete segment references.
             # try:
             #    self.table[SUBFILE_DELIMITER.join((file, field))
-            #               ][0].delete(key, txn=self.dbtxn)
+            #               ].delete(key, txn=self.dbtxn)
             # except self._dbe.DBNotFoundError:
             #    pass
 
@@ -1593,7 +1591,7 @@ class Database(_database.Database):
         # an exception.
         #
         try:
-            self.table[SUBFILE_DELIMITER.join((file, field))][0].delete(
+            self.table[SUBFILE_DELIMITER.join((file, field))].delete(
                 key, txn=self.dbtxn
             )
         except self._dbe.DBNotFoundError:
@@ -1607,7 +1605,7 @@ class Database(_database.Database):
         # Delete existing segments for key
         self.unfile_records_under(file, field, key)
 
-        cursor = self.table[SUBFILE_DELIMITER.join((file, field))][0].cursor(
+        cursor = self.table[SUBFILE_DELIMITER.join((file, field))].cursor(
             txn=self.dbtxn
         )
         try:
@@ -1663,14 +1661,14 @@ class Database(_database.Database):
             return recordset.create_recordsetbase_cursor(internalcursor=True)
         if file == field:
             return CursorPrimary(
-                self.table[file][0],
+                self.table[file],
                 keyrange=keyrange,
                 transaction=self.dbtxn,
                 ebm=self.ebm_control[file].ebm_table,
                 engine=self._dbe,
             )
         return CursorSecondary(
-            self.table[SUBFILE_DELIMITER.join((file, field))][0],
+            self.table[SUBFILE_DELIMITER.join((file, field))],
             keyrange=keyrange,
             transaction=self.dbtxn,
             segment=self.segment_table[file],
@@ -1681,19 +1679,19 @@ class Database(_database.Database):
         return RecordsetCursor(
             recordset,
             transaction=self.dbtxn,
-            database=self.table[recordset.dbset][0],
+            database=self.table[recordset.dbset],
         )
 
     # Comment in chess_ui for make_position_analysis_data_source method, only
     # call, suggests is_database_file_active should not be needed.
     def is_database_file_active(self, file):
         """Return True if the DB object for file exists."""
-        return self.table[file][0] is not None
+        return self.table[file] is not None
 
     def get_table_connection(self, file):
         """Return main DB object for file."""
         if self.dbenv:
-            return self.table[file][0]
+            return self.table[file]
         return None
 
     def do_database_task(
@@ -2172,6 +2170,7 @@ class CursorSecondary(Cursor):
                 if record_number is not None:
                     return record[0].decode(), record_number
                 break
+        return None
 
     def last(self):
         """Return last record taking partial key into account."""
@@ -2393,6 +2392,7 @@ class CursorSecondary(Cursor):
             return None
         if record[0].startswith(partial_key):
             return self.set_current_segment(*record).last()
+        return None
 
     def refresh_recordset(self, instance=None):
         """Refresh records for datagrid access after database update.

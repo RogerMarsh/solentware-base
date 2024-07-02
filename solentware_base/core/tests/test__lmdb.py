@@ -904,10 +904,10 @@ class Database_open_database(DB, _Specification):
         )
         d.open_database(self.dbe_module)
         self.assertEqual(d.is_database_file_active("file1"), True)
-        x = d.table["file1"][0]
-        d.table["file1"][0] = None
+        x = d.table["file1"]
+        d.table["file1"] = None
         self.assertEqual(d.is_database_file_active("file1"), False)
-        d.table["file1"][0] = x
+        d.table["file1"] = x
 
 
 class DatabaseDir_open_database(DBDir, _Specification):
@@ -985,10 +985,10 @@ class Database_open_database_contexts(DB):
         ae(isinstance(sdt["___design"].datastore, dbem._Database), False)
 
         ae(isinstance(sdt["___control"].datastore, dbem._Database), False)
-        ae(sdt["file1"][0].datastore is None, True)
-        ae(sdt["file1_field1"][0].datastore is None, True)
-        ae(sdt["file2"][0].datastore is None, True)
-        ae(sdt["file2_field2"][0].datastore is None, True)
+        ae(sdt["file1"].datastore is None, True)
+        ae(sdt["file1_field1"].datastore is None, True)
+        ae(sdt["file2"].datastore is None, True)
+        ae(sdt["file2_field2"].datastore is None, True)
         ae(len(sdt), 6)
         ae(sst["file1"].datastore is None, True)
         ae(sst["file2"].datastore is None, True)
@@ -999,10 +999,10 @@ class Database_open_database_contexts(DB):
         sdb.open_database_contexts()
         ae(isinstance(sdt["___design"].datastore, dbem._Database), False)
         ae(isinstance(sdt["___control"].datastore, dbem._Database), True)
-        ae(isinstance(sdt["file1"][0].datastore, dbem._Database), True)
-        ae(isinstance(sdt["file1_field1"][0].datastore, dbem._Database), True)
-        ae(isinstance(sdt["file2"][0].datastore, dbem._Database), True)
-        ae(isinstance(sdt["file2_field2"][0].datastore, dbem._Database), True)
+        ae(isinstance(sdt["file1"].datastore, dbem._Database), True)
+        ae(isinstance(sdt["file1_field1"].datastore, dbem._Database), True)
+        ae(isinstance(sdt["file2"].datastore, dbem._Database), True)
+        ae(isinstance(sdt["file2_field2"].datastore, dbem._Database), True)
         ae(len(sdt), 6)
         ae(isinstance(sst["file1"].datastore, dbem._Database), True)
         ae(isinstance(sst["file2"].datastore, dbem._Database), True)
@@ -1027,10 +1027,10 @@ class Database_open_database_contexts(DB):
         ae(isinstance(sdt["___design"].datastore, dbem._Database), False)
 
         ae(isinstance(sdt["___control"].datastore, dbem._Database), True)
-        ae(sdt["file1"][0].datastore is None, True)
-        ae(sdt["file1_field1"][0].datastore is None, True)
-        ae(sdt["file2"][0].datastore is None, True)
-        ae(sdt["file2_field2"][0].datastore is None, True)
+        ae(sdt["file1"].datastore is None, True)
+        ae(sdt["file1_field1"].datastore is None, True)
+        ae(sdt["file2"].datastore is None, True)
+        ae(sdt["file2_field2"].datastore is None, True)
         ae(len(sdt), 6)
         ae(sst["file1"].datastore is None, True)
         ae(sst["file2"].datastore is None, True)
@@ -1055,10 +1055,10 @@ class Database_open_database_contexts(DB):
         ae(isinstance(sdt["___design"].datastore, dbem._Database), False)
 
         ae(isinstance(sdt["___control"].datastore, dbem._Database), True)
-        ae(sdt["file1"][0].datastore is None, True)
-        ae(sdt["file1_field1"][0].datastore is None, True)
-        ae(isinstance(sdt["file2"][0].datastore, dbem._Database), True)
-        ae(isinstance(sdt["file2_field2"][0].datastore, dbem._Database), True)
+        ae(sdt["file1"].datastore is None, True)
+        ae(sdt["file1_field1"].datastore is None, True)
+        ae(isinstance(sdt["file2"].datastore, dbem._Database), True)
+        ae(isinstance(sdt["file2_field2"].datastore, dbem._Database), True)
         ae(len(sdt), 6)
         ae(sst["file1"].datastore is None, True)
         ae(isinstance(sst["file2"].datastore, dbem._Database), True)
@@ -1377,7 +1377,7 @@ class Database_methods(_DBOpen):
         self.database.dbtxn.transaction.put(
             int(1).to_bytes(4, byteorder="big"),
             encode("Some value"),
-            db=self.database.table["file1"][0].datastore,
+            db=self.database.table["file1"].datastore,
         )
         values = b"\x40" + b"\x00" * (SegmentSize.db_segment_size_bytes - 1)
         self.database.dbtxn.transaction.put(
@@ -1650,9 +1650,7 @@ class Database_find_values(_DBOpen):
         sdb = self.database
         sdb.start_transaction()
         txn = sdb.dbtxn.transaction
-        txn.put(
-            b"d", encode("values"), db=sdb.table["file1_field1"][0].datastore
-        )
+        txn.put(b"d", encode("values"), db=sdb.table["file1_field1"].datastore)
         sdb.commit()
         self.valuespec = ValuesClause()
         self.valuespec.field = "field1"
@@ -1690,7 +1688,7 @@ class _Database_recordset(_DBOpen):
                 self.references.add((record))
                 self.segments[key] = s
         with self.database.dbtxn.transaction.cursor(
-            self.database.table["file1_field1"][0].datastore
+            self.database.table["file1_field1"].datastore
         ) as cursor:
             for e, k in enumerate(DATABASE_MAKE_RECORDSET_KEYS):
                 self.keyvalues[k] = e
@@ -1799,7 +1797,7 @@ class Database_make_recordset(_Database_recordset):
         key = encode(key)
         for db in (
             self.database.segment_table["file1"].datastore,
-            self.database.table["file1_field1"][0].datastore,
+            self.database.table["file1_field1"].datastore,
         ):
             with self.database.dbtxn.transaction.cursor(db) as cursor:
                 record = cursor.first()
@@ -1822,7 +1820,7 @@ class Database_make_recordset(_Database_recordset):
             if isinstance(key, int):
                 db = self.database.segment_table["file1"].datastore
             elif isinstance(key, str):
-                db = self.database.table["file1_field1"][0].datastore
+                db = self.database.table["file1_field1"].datastore
             else:
                 continue
             self.assertEqual(
@@ -1945,7 +1943,7 @@ class Database_make_recordset(_Database_recordset):
     def test_01_verify_setup_records(self):
         for db in (
             self.database.segment_table["file1"].datastore,
-            self.database.table["file1_field1"][0].datastore,
+            self.database.table["file1_field1"].datastore,
         ):
             with self.database.dbtxn.transaction.cursor(db) as cursor:
                 record = cursor.first()
@@ -2097,7 +2095,7 @@ class Database_populate_recordset(_Database_recordset):
 
     def test_12_populate_segment_02(self):
         with self.database.dbtxn.transaction.cursor(
-            self.database.table["file1_field1"][0].datastore
+            self.database.table["file1_field1"].datastore
         ) as cursor:
             while True:
                 if not cursor.next():
@@ -2124,7 +2122,7 @@ class Database_populate_recordset(_Database_recordset):
 
     def test_12_populate_segment_04(self):
         with self.database.dbtxn.transaction.cursor(
-            self.database.table["file1_field1"][0].datastore
+            self.database.table["file1_field1"].datastore
         ) as cursor:
             while True:
                 if not cursor.next():
@@ -2154,7 +2152,7 @@ class Database_populate_recordset(_Database_recordset):
 
     def test_12_populate_segment_06(self):
         with self.database.dbtxn.transaction.cursor(
-            self.database.table["file1_field1"][0].datastore
+            self.database.table["file1_field1"].datastore
         ) as cursor:
             while True:
                 if not cursor.next():
@@ -2604,7 +2602,7 @@ class Database_freed_record_number(_DBOpen):
             self.database.dbtxn.transaction.put(
                 i.to_bytes(4, byteorder="big"),
                 encode("value"),
-                db=self.database.table["file1"][0].datastore,
+                db=self.database.table["file1"].datastore,
             )
             self.database.add_record_to_ebm("file1", i)
         self.database.commit()
@@ -2774,7 +2772,7 @@ class Database_freed_record_number(_DBOpen):
         i = self.high_record
         for i in range(i, i + 129):
             with self.database.dbtxn.transaction.cursor(
-                self.database.table["file1"][0].datastore
+                self.database.table["file1"].datastore
             ) as cursor:
                 if cursor.last():
                     key = int.from_bytes(cursor.key(), byteorder="big") + 1
@@ -2783,7 +2781,7 @@ class Database_freed_record_number(_DBOpen):
             self.database.dbtxn.transaction.put(
                 key.to_bytes(4, byteorder="big"),
                 encode("value"),
-                db=self.database.table["file1"][0].datastore,
+                db=self.database.table["file1"].datastore,
             )
             self.database.add_record_to_ebm("file1", key)
         self.assertEqual(
@@ -2877,7 +2875,7 @@ class RecordsetCursor(_DBOpen):
             self.database.dbtxn.transaction.put(
                 i.to_bytes(4, byteorder="big"),
                 encode(str(i) + "Any value"),
-                db=self.database.table["file1"][0].datastore,
+                db=self.database.table["file1"].datastore,
             )
             self.database.add_record_to_ebm("file1", i)
         bits = b"\xff" + b"\xff" * (SegmentSize.db_segment_size_bytes - 1)
@@ -2913,7 +2911,7 @@ class RecordsetCursor(_DBOpen):
         self.database.commit()
         self.database.start_transaction()
         with self.database.dbtxn.transaction.cursor(
-            self.database.table["file1_field1"][0].datastore
+            self.database.table["file1_field1"].datastore
         ) as cursor:
             for e in range(len(segments)):
                 cursor.put(
@@ -2963,7 +2961,7 @@ class RecordsetCursor(_DBOpen):
         rc = _lmdb.RecordsetCursor(
             self.database.recordlist_key("file1", "field1", key=b"a_o"),
             transaction=self.database.dbtxn,
-            database=self.database.table["file1"][0],
+            database=self.database.table["file1"],
         )
         self.assertEqual(rc._get_record(4000), None)
         self.assertEqual(rc._get_record(120), None)

@@ -407,23 +407,23 @@ class Database(_database.Database):
             fields = sorted(specification[SECONDARY])
 
             if file in table_register:
-                self.table[file] = [str(table_register[file])]
+                self.table[file] = str(table_register[file])
             else:
                 high_table_number += 1
-                self.table[file] = [str(high_table_number)]
+                self.table[file] = str(high_table_number)
                 table_register[file] = high_table_number
 
             # Not sure what to store, if anything.  But the key should exist.
             # Maybe name and key which must agree with control file data?
-            if self.table[file][0] not in dbenv:
-                dbenv[self.table[file][0]] = repr({})
+            if self.table[file] not in dbenv:
+                dbenv[self.table[file]] = repr({})
 
             # The primary field is always field number 0.
             self.ebm_control[file] = ExistenceBitmapControl(
-                self.table[file][0], str(0), self
+                self.table[file], str(0), self
             )
             self.table_data[file] = SUBFILE_DELIMITER.join(
-                (self.table[file][0], str(0))
+                (self.table[file], str(0))
             )
             fieldprops = specification[FIELDS]
             if file not in field_register:
@@ -441,11 +441,9 @@ class Database(_database.Database):
                 # be indexed, should not be needed in _nosql; so follow the
                 # example of _db and put the self.index entries in self.table.
                 fieldkey = SUBFILE_DELIMITER.join((file, field))
-                self.table[fieldkey] = [
-                    SUBFILE_DELIMITER.join(
-                        (self.table[file][0], str(field_number))
-                    )
-                ]
+                self.table[fieldkey] = SUBFILE_DELIMITER.join(
+                    (self.table[file], str(field_number))
+                )
 
                 # Tree is needed only for ordered access to keys.
                 fieldname = specification[SECONDARY][field]
@@ -461,7 +459,7 @@ class Database(_database.Database):
                 # (Append SUBFILE_DELIMITER<value> to create database key.)
                 self.segment_table[fieldkey] = SUBFILE_DELIMITER.join(
                     (
-                        self.table[file][0],
+                        self.table[file],
                         str(field_number),
                         SEGMENT_KEY_SUFFIX,
                     )
@@ -472,7 +470,7 @@ class Database(_database.Database):
                 # appended to create database key.)
                 self.segment_records[fieldkey] = SUBFILE_DELIMITER.join(
                     (
-                        self.table[file][0],
+                        self.table[file],
                         str(field_number),
                         SEGMENT_VALUE_SUFFIX,
                     )
@@ -1257,7 +1255,7 @@ class Database(_database.Database):
         """Return RecordList on file containing records for field with key."""
         recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
         db = self.dbenv
-        key_root = self.table[SUBFILE_DELIMITER.join((file, field))][0]
+        key_root = self.table[SUBFILE_DELIMITER.join((file, field))]
         key_segment = SUBFILE_DELIMITER.join((key_root, SEGMENT_KEY_SUFFIX))
         # segment_records is not used, but populate_recordset does this
         # first without the try wrapper.  Not understood but left as it
@@ -2182,6 +2180,7 @@ class CursorSecondary(Cursor):
                         return key, record_number
                     return None
                 key = step()
+        return None
 
     def last(self):
         """Return last record taking partial key into account."""

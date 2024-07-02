@@ -361,14 +361,14 @@ class Database_open_database(_SQLite):
         self.assertEqual(
             self.database.table,
             {
-                "file1": ["file1"],
+                "file1": "file1",
                 "___control": "___control",
-                "file1_field1": ["file1_field1"],
-                "file2": ["file2"],
+                "file1_field1": "file1_field1",
+                "file2": "file2",
             },
         )
         self.assertEqual(
-            self.database.index, {"file1_field1": ["ixfile1_field1"]}
+            self.database.index, {"file1_field1": "ixfile1_field1"}
         )
 
         self.assertEqual(
@@ -400,13 +400,13 @@ class Database_open_database(_SQLite):
         self.assertEqual(
             self.database.table,
             {
-                "file1": ["file1"],
+                "file1": "file1",
                 "___control": "___control",
-                "file1_field1": ["file1_field1"],
+                "file1_field1": "file1_field1",
             },
         )
         self.assertEqual(
-            self.database.index, {"file1_field1": ["ixfile1_field1"]}
+            self.database.index, {"file1_field1": "ixfile1_field1"}
         )
         self.assertEqual(
             self.database.segment_table, {"file1": "file1__segment"}

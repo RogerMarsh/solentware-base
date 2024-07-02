@@ -1494,8 +1494,8 @@ class DPTFile:
             )
             if sizing_record_counts is None:
                 increase_record_counts = (
-                    self.calculate_table_b_increase(unused=(b_size - b_used)),
-                    self.calculate_table_d_increase(unused=(d_size - d_used)),
+                    self.calculate_table_b_increase(unused=b_size - b_used),
+                    self.calculate_table_d_increase(unused=d_size - d_used),
                 )
             else:
                 increase_record_counts = (
@@ -3232,7 +3232,7 @@ class _DPTFoundSet(_DPTRecordSet):
 def new_dptrecordlist(obj, recordset):
     """Return a _DPTRecordList for foundset with same file context as obj."""
 
-    class Empty_DPTRecordList(_DPTRecordList):
+    class _EmptyDPTRecordList(_DPTRecordList):
         """Subclass which does not invoke superclass __init__()."""
 
         def __init__(self, recordset):
@@ -3241,7 +3241,7 @@ def new_dptrecordlist(obj, recordset):
             self._primary = obj._primary
             self.recordset = recordset
 
-    new_recordlist = Empty_DPTRecordList(recordset)
+    new_recordlist = _EmptyDPTRecordList(recordset)
     new_recordlist.__class__ = _DPTRecordList
     return new_recordlist
 
@@ -3249,7 +3249,7 @@ def new_dptrecordlist(obj, recordset):
 def new_dptfoundset(obj, recordset):
     """Return a _DPTFoundSet for foundset with same file context as obj."""
 
-    class Empty_DPTFoundSet(_DPTFoundSet):
+    class _EmptyDPTFoundSet(_DPTFoundSet):
         """Subclass which does not invoke superclass __init__()."""
 
         def __init__(self, recordset):
@@ -3258,6 +3258,6 @@ def new_dptfoundset(obj, recordset):
             self._primary = obj._primary
             self.recordset = recordset
 
-    new_foundset = Empty_DPTFoundSet(recordset)
+    new_foundset = _EmptyDPTFoundSet(recordset)
     new_foundset.__class__ = _DPTFoundSet
     return new_foundset

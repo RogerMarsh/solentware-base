@@ -516,7 +516,7 @@ class Database(_database.Database):
             )
             self.table[file] = [None]
             try:
-                self.table[file][0] = tcl_tk_call(tuple(command))
+                self.table[file] = tcl_tk_call(tuple(command))
             except TclError:
                 self.table[file] = None
                 raise
@@ -582,7 +582,7 @@ class Database(_database.Database):
                 )
                 self.table[secondary] = [None]
                 try:
-                    self.table[secondary][0] = tcl_tk_call(tuple(command))
+                    self.table[secondary] = tcl_tk_call(tuple(command))
                 except TclError as exc:
                     if not str(exc).endswith(
                         "".join(
@@ -612,7 +612,7 @@ class Database(_database.Database):
                     ]
                     self.table[secondary] = [None]
                     try:
-                        self.table[secondary][0] = tcl_tk_call(tuple(command))
+                        self.table[secondary] = tcl_tk_call(tuple(command))
                     except:
                         self.table[secondary] = None
                         raise
@@ -696,8 +696,7 @@ class Database(_database.Database):
         for file, specification in self.specification.items():
             if file in self.table:
                 if self.table[file] is not None:
-                    for dbo in self.table[file]:
-                        tcl_tk_call((dbo, "close"))
+                    tcl_tk_call((self.table[file], "close"))
                     self.table[file] = None
             if file in self.segment_table:
                 if self.segment_table[file] is not None:
@@ -714,8 +713,7 @@ class Database(_database.Database):
                     # careless about deleting closed secondary database DB
                     # objects in deferred update mode.  Exceptions occur
                     # here if that is allowed to happen with the Tcl API.
-                    for dbo in self.table[secondary]:
-                        tcl_tk_call((dbo, "close"))
+                    tcl_tk_call((self.table[secondary], "close"))
                     self.table[secondary] = None
         for k, dbo in self.table.items():
             if dbo is not None:
@@ -748,7 +746,7 @@ class Database(_database.Database):
     def put(self, file, key, value):
         """Insert key, or replace key, in table for file using value."""
         assert file in self.specification
-        command = [self.table[file][0], "put"]
+        command = [self.table[file], "put"]
         if key is None:
             command.append("-append")
         if self.dbtxn:
@@ -768,7 +766,7 @@ class Database(_database.Database):
         """
         del oldvalue
         assert file in self.specification
-        command = [self.table[file][0], "put"]
+        command = [self.table[file], "put"]
         if self.dbtxn:
             command.extend(["-txn", self.dbtxn])
         command.extend([key, newvalue.encode()])
@@ -781,7 +779,7 @@ class Database(_database.Database):
         """
         assert file in self.specification
         del value
-        command = [self.table[file][0], "del"]
+        command = [self.table[file], "del"]
         if self.dbtxn:
             command.extend(["-txn", self.dbtxn])
         command.append(key)
@@ -795,7 +793,7 @@ class Database(_database.Database):
         assert file in self.specification
         if key is None:
             return None
-        command = [self.table[file][0], "get"]
+        command = [self.table[file], "get"]
         if self.dbtxn:
             command.extend(["-txn", self.dbtxn])
         command.append(key)
@@ -1018,7 +1016,7 @@ class Database(_database.Database):
     # Only used in one place, and it is extra work to get the data in_nosql.
     def get_high_record(self, file):
         """Return the high existing record number in table for file."""
-        command = [self.table[file][0], "cursor"]
+        command = [self.table[file], "cursor"]
         if self.dbtxn:
             command.extend(["-txn", self.dbtxn])
         cursor = tcl_tk_call(tuple(command))
@@ -1060,7 +1058,7 @@ class Database(_database.Database):
         """
         key = self.encode_record_selector(key)
         secondary = SUBFILE_DELIMITER.join((file, field))
-        command = [self.table[secondary][0], "cursor"]
+        command = [self.table[secondary], "cursor"]
         if self.dbtxn:
             command.extend(["-txn", self.dbtxn])
         cursor = tcl_tk_call(tuple(command))
@@ -1283,7 +1281,7 @@ class Database(_database.Database):
         """
         key = self.encode_record_selector(key)
         secondary = SUBFILE_DELIMITER.join((file, field))
-        command = [self.table[secondary][0], "cursor"]
+        command = [self.table[secondary], "cursor"]
         if self.dbtxn:
             command.extend(["-txn", self.dbtxn])
         cursor = tcl_tk_call(tuple(command))
@@ -1474,7 +1472,7 @@ class Database(_database.Database):
     def find_values(self, valuespec, file):
         """Yield values in range defined in valuespec in index named file."""
         command = [
-            self.table[SUBFILE_DELIMITER.join((file, valuespec.field))][0],
+            self.table[SUBFILE_DELIMITER.join((file, valuespec.field))],
             "cursor",
         ]
         if self.dbtxn:
@@ -1797,7 +1795,7 @@ class Database(_database.Database):
             return recordlist
         pattern = b".*?" + keylike
         command = [
-            self.table[SUBFILE_DELIMITER.join((file, field))][0],
+            self.table[SUBFILE_DELIMITER.join((file, field))],
             "cursor",
         ]
         if self.dbtxn:
@@ -1820,7 +1818,7 @@ class Database(_database.Database):
         if key is None:
             return recordlist
         command = [
-            self.table[SUBFILE_DELIMITER.join((file, field))][0],
+            self.table[SUBFILE_DELIMITER.join((file, field))],
             "cursor",
         ]
         if self.dbtxn:
@@ -1849,7 +1847,7 @@ class Database(_database.Database):
         if keystart is None:
             return recordlist
         command = [
-            self.table[SUBFILE_DELIMITER.join((file, field))][0],
+            self.table[SUBFILE_DELIMITER.join((file, field))],
             "cursor",
         ]
         if self.dbtxn:
@@ -1880,7 +1878,7 @@ class Database(_database.Database):
             raise DatabaseError("Both 'le' and 'lt' given in key range")
         recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
         command = [
-            self.table[SUBFILE_DELIMITER.join((file, field))][0],
+            self.table[SUBFILE_DELIMITER.join((file, field))],
             "cursor",
         ]
         if self.dbtxn:
@@ -1924,7 +1922,7 @@ class Database(_database.Database):
         """Return RecordList on file containing records for field."""
         recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
         command = [
-            self.table[SUBFILE_DELIMITER.join((file, field))][0],
+            self.table[SUBFILE_DELIMITER.join((file, field))],
             "cursor",
         ]
         if self.dbtxn:
@@ -1952,7 +1950,7 @@ class Database(_database.Database):
 
         """
         command = [
-            self.table[SUBFILE_DELIMITER.join((file, field))][0],
+            self.table[SUBFILE_DELIMITER.join((file, field))],
             "cursor",
         ]
         if self.dbtxn:
@@ -1989,7 +1987,7 @@ class Database(_database.Database):
             # Delete segment references.
             # try:
             #    self.table[SUBFILE_DELIMITER.join((file, field))
-            #               ][0].delete(key, txn=self.dbtxn)
+            #               ].delete(key, txn=self.dbtxn)
             # except self._dbe.DBNotFoundError:
             #    pass
 
@@ -2011,7 +2009,7 @@ class Database(_database.Database):
         # not displayed, and displaying a different record does not result in
         # an exception.
         #
-        command = [self.table[SUBFILE_DELIMITER.join((file, field))][0], "del"]
+        command = [self.table[SUBFILE_DELIMITER.join((file, field))], "del"]
         if self.dbtxn:
             command.extend(["-txn", self.dbtxn])
         command.append(key)
@@ -2026,7 +2024,7 @@ class Database(_database.Database):
         self.unfile_records_under(file, field, key)
 
         command = [
-            self.table[SUBFILE_DELIMITER.join((file, field))][0],
+            self.table[SUBFILE_DELIMITER.join((file, field))],
             "cursor",
         ]
         if self.dbtxn:
@@ -2094,14 +2092,14 @@ class Database(_database.Database):
             return recordset.create_recordsetbase_cursor(internalcursor=True)
         if file == field:
             return CursorPrimary(
-                self.table[file][0],
+                self.table[file],
                 keyrange=keyrange,
                 transaction=self.dbtxn,
                 ebm=self.ebm_control[file].ebm_table,
                 engine=self._dbe,
             )
         return CursorSecondary(
-            self.table[SUBFILE_DELIMITER.join((file, field))][0],
+            self.table[SUBFILE_DELIMITER.join((file, field))],
             keyrange=keyrange,
             transaction=self.dbtxn,
             segment=self.segment_table[file],
@@ -2113,19 +2111,19 @@ class Database(_database.Database):
         return RecordsetCursor(
             recordset,
             transaction=self.dbtxn,
-            database=self.table[recordset.dbset][0],
+            database=self.table[recordset.dbset],
         )
 
     # Comment in chess_ui for make_position_analysis_data_source method, only
     # call, suggests is_database_file_active should not be needed.
     def is_database_file_active(self, file):
         """Return True if the DB object for file exists."""
-        return self.table[file][0] is not None
+        return self.table[file] is not None
 
     def get_table_connection(self, file):
         """Return main DB object for file."""
         if self.dbenv:
-            return self.table[file][0]
+            return self.table[file]
         return None
 
     def do_database_task(
@@ -2647,6 +2645,7 @@ class CursorSecondary(Cursor):
                 if record_number is not None:
                     return record[0].decode(), record_number
                 break
+        return None
 
     def last(self):
         """Return last record taking partial key into account."""
@@ -2878,6 +2877,7 @@ class CursorSecondary(Cursor):
             return None
         if record[0].startswith(partial_key):
             return self.set_current_segment(*record).last()
+        return None
 
     def refresh_recordset(self, instance=None):
         """Refresh records for datagrid access after database update.

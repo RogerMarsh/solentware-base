@@ -47,9 +47,7 @@ class Tree:
         self.file = file
         self.field = field
         self.database = database
-        self.key_root = database.table[SUBFILE_DELIMITER.join((file, field))][
-            0
-        ]
+        self.key_root = database.table[SUBFILE_DELIMITER.join((file, field))]
         self.key_segment = SUBFILE_DELIMITER.join(
             (self.key_root, SEGMENT_KEY_SUFFIX)
         )
