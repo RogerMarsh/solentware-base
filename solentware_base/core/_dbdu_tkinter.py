@@ -20,7 +20,6 @@ from .recordset import (
     RecordsetSegmentList,
 )
 from . import _databasedu
-from . import merge
 
 
 class DatabaseError(Exception):
@@ -97,11 +96,6 @@ class Database(_databasedu.Database):
             self._write_existence_bit_map(file, segment)
             for secondary in self.specification[file][SECONDARY]:
                 self.sort_and_write(file, secondary, segment)
-                # In Tcl API the database handles opened in sort_and_write
-                # must be closed explicitly to avoid a crash, after updates
-                # have been completed, when closing the environment.
-                tablename = SUBFILE_DELIMITER.join((file, secondary))
-                tcl_tk_call((self.table[tablename], "close"))
                 self.merge(file, secondary)
 
     def set_defer_update(self):
@@ -525,15 +519,15 @@ class Database(_databasedu.Database):
             command.extend(["-txn", self.dbtxn])
         tcl_tk_call(tuple(command))
 
-    def merge_import(self, index_directory, file, field, commit_limit):
-        """Merge sorted files in index_derectory and write to database.
+    def merge_writer(self, file, field):
+        """Return a Writer instance for the field index on table file.
 
-        Yield count of items written to index after commits done when
-        commit_limit items have been added since previous yield.
+        Call the write() method with object returned by next_sorted_item
+        method.
 
         """
 
-        def make_segment_from_high():
+        def make_segment_from_high(high, get_segment_value):
             if high[2] == b"\x00\x01":
                 return RecordsetSegmentInt(
                     int.from_bytes(high[1], byteorder="big"),
@@ -558,7 +552,7 @@ class Database(_databasedu.Database):
                 records=bytestring_records,
             )
 
-        def make_segment_from_item():
+        def make_segment_from_item(item):
             if item[2] == b"\x00\x01":
                 return RecordsetSegmentInt(
                     int.from_bytes(item[1], byteorder="big"),
@@ -577,7 +571,7 @@ class Database(_databasedu.Database):
                 records=item[3],
             )
 
-        def read_high_item_in_index():
+        def read_high_item_in_index(get_last_record_in_index):
             record = tcl_tk_call(tuple(get_last_record_in_index))
             assert len(record) == 1
             value, segment = record[0]
@@ -597,153 +591,154 @@ class Database(_databasedu.Database):
         table = self.table[SUBFILE_DELIMITER.join((file, field))]
         segment_table = self.segment_table[file]
 
-        # Seems necessary to prevent UnboundLocalError for cursor in
-        # 'close cursor' call at end of method.
-        # This method originally did one potentially huge transaction.
-        cursor = None
+        class Writer:
 
-        if self.dbtxn is None:
-            cursor = tcl_tk_call(tuple([table, "cursor"]))
-            write_item_to_index = [cursor, "put", "-keylast"]
-            delete_index_item = [cursor, "del"]
-            get_last_record_in_index = [cursor, "get", "-last"]
-            write_segment_value = [segment_table, "put", "-append"]
-            get_segment_value = [segment_table, "get"]
-            replace_segment_value = [segment_table, "put"]
-        merger = merge.Merge(index_directory)
-        prev_segment = None
-        prev_key = None
-        for commit_count, item in enumerate(merger.sorter()):
-            if not commit_count % commit_limit:
-                if prev_key is not None:
-                    tcl_tk_call((cursor, "close"))
-                    self.commit()
-                    self.deferred_update_housekeeping()
-                    yield commit_count
-                    self.start_transaction()
-                if self.dbtxn is not None:
-                    cursor = tcl_tk_call(
-                        tuple([table, "cursor", "-txn", self.dbtxn])
-                    )
-                    write_item_to_index = [cursor, "put", "-keylast"]
-                    delete_index_item = [cursor, "del"]
-                    get_last_record_in_index = [cursor, "get", "-last"]
-                    write_segment_value = [
-                        segment_table,
-                        "put",
-                        "-append",
-                        "-txn",
-                        self.dbtxn,
+            def __init__(self, database):
+                self.prev_segment = None
+                self.prev_key = None
+                self.database = database
+                self.transaction = database.dbtxn
+                if self.transaction is None:
+                    self.cursor = tcl_tk_call(tuple([table, "cursor"]))
+                    self.write_item_to_index = [self.cursor, "put", "-keylast"]
+                    self.delete_index_item = [self.cursor, "del"]
+                    self.get_last_record_in_index = [
+                        self.cursor, "get", "-last"
                     ]
-                    get_segment_value = [
-                        segment_table,
-                        "get",
-                        "-txn",
-                        self.dbtxn,
+                    self.write_segment_value = [
+                        segment_table, "put", "-append"
                     ]
-                    replace_segment_value = [
-                        segment_table,
-                        "put",
-                        "-txn",
-                        self.dbtxn,
-                    ]
-            assert len(item) == 5
-            segment = item[1]
-            if prev_segment != segment:
-                prev_segment = segment
-                prev_key = item[0]
-                item_type = item.pop(2)
-                if item_type == EXISTING_SEGMENT_REFERENCE:
+                    self.get_segment_value = [segment_table, "get"]
+                    self.replace_segment_value = [segment_table, "put"]
+                else:
+                    self.make_new_cursor()
+
+            def make_new_cursor(self):
+                if self.transaction is None:
+                    return
+                self.cursor = tcl_tk_call(
+                    tuple([table, "cursor", "-txn", self.transaction])
+                )
+                self.write_item_to_index = [self.cursor, "put", "-keylast"]
+                self.delete_index_item = [self.cursor, "del"]
+                self.get_last_record_in_index = [self.cursor, "get", "-last"]
+                self.write_segment_value = [
+                    segment_table, "put", "-append", "-txn", self.transaction
+                ]
+                self.get_segment_value = [
+                    segment_table, "get", "-txn", self.transaction
+                ]
+                self.replace_segment_value = [
+                    segment_table, "put", "-txn", self.transaction
+                ]
+
+            def close_cursor(self):
+                tcl_tk_call((self.cursor, "close"))
+
+            def write(self, item):
+                assert len(item) == 5
+                segment = item[1]
+                if self.prev_segment != segment:
+                    self.prev_segment = segment
+                    self.prev_key = item[0]
+                    item_type = item.pop(2)
+                    if item_type == EXISTING_SEGMENT_REFERENCE:
+                        tcl_tk_call(
+                            tuple(
+                                self.write_item_to_index
+                                + [item[0], b"".join(item[1:])]
+                            )
+                        )
+                        assert len(item) == 4
+                        return
+                    if int.from_bytes(item[-2], byteorder="big") > 1:
+                        item[-1] = tcl_tk_call(
+                            tuple(self.write_segment_value + [item[-1]])
+                        ).to_bytes(4, byteorder="big")
+                        assert len(item) == 4
+                    else:
+                        item.pop(2)
+                        assert len(item) == 3
                     tcl_tk_call(
                         tuple(
-                            write_item_to_index + [item[0], b"".join(item[1:])]
+                            self.write_item_to_index
+                            + [item[0], b"".join(item[1:])]
+                        )
+                    )
+                    assert item_type == NEW_SEGMENT_CONTENT
+                    return
+                if self.prev_key == item[0]:
+                    assert item[2] == NEW_SEGMENT_CONTENT
+                    del item[2]
+                    high = read_high_item_in_index(
+                        self.get_last_record_in_index
+                    )
+                    existing_segment = make_segment_from_high(
+                        high, self.get_segment_value
+                    )
+                    new_segment = make_segment_from_item(item)
+                    new_segment |= existing_segment
+                    new_segment.normalize()
+                    item[-2] = self.encode_number_for_sequential_file_dump(
+                        new_segment.count_records(), 2
+                    )
+                    if int.from_bytes(high[-2], byteorder="big") == 1:
+                        item[-1] = tcl_tk_call(
+                            tuple(self.write_segment_value + [item[-1]])
+                        ).to_bytes(4, byteorder="big")
+                        tcl_tk_call(tuple(self.delete_index_item))
+                        tcl_tk_call(
+                            tuple(
+                                self.write_item_to_index
+                                + [item[0], b"".join(item[1:])]
+                            )
+                        )
+                    else:
+                        tcl_tk_call(
+                            tuple(
+                                self.replace_segment_value
+                                + [
+                                    int.from_bytes(high[-1], "big"),
+                                    new_segment.tobytes(),
+                                ]
+                            )
+                        )
+                        tcl_tk_call(tuple(self.delete_index_item))
+                        item[-1] = high[-1]
+                        tcl_tk_call(
+                            tuple(
+                                self.write_item_to_index
+                                + [item[0], b"".join(item[1:])]
+                            )
+                        )
+                    assert len(item) == 4
+                    return
+                item_type = item.pop(2)
+                if item_type == EXISTING_SEGMENT_REFERENCE:
+                    self.prev_key = item[0]
+                    tcl_tk_call(
+                        tuple(
+                            self.write_item_to_index
+                            + [item[0], b"".join(item[1:])]
                         )
                     )
                     assert len(item) == 4
-                    continue
+                    return
                 if int.from_bytes(item[-2], byteorder="big") > 1:
                     item[-1] = tcl_tk_call(
-                        tuple(write_segment_value + [item[-1]])
+                        tuple(self.write_segment_value + [item[-1]])
                     ).to_bytes(4, byteorder="big")
                     assert len(item) == 4
                 else:
                     item.pop(2)
                     assert len(item) == 3
                 tcl_tk_call(
-                    tuple(write_item_to_index + [item[0], b"".join(item[1:])])
+                    tuple(
+                        self.write_item_to_index
+                        + [item[0], b"".join(item[1:])]
+                    )
                 )
                 assert item_type == NEW_SEGMENT_CONTENT
-                continue
-            if prev_key == item[0]:
-                assert item[2] == NEW_SEGMENT_CONTENT
-                del item[2]
-                high = read_high_item_in_index()
-                existing_segment = make_segment_from_high()
-                new_segment = make_segment_from_item()
-                new_segment |= existing_segment
-                new_segment.normalize()
-                item[-2] = self.encode_number_for_sequential_file_dump(
-                    new_segment.count_records(), 2
-                )
-                if int.from_bytes(high[-2], byteorder="big") == 1:
-                    item[-1] = tcl_tk_call(
-                        tuple(write_segment_value + [item[-1]])
-                    ).to_bytes(4, byteorder="big")
-                    tcl_tk_call(tuple(delete_index_item))
-                    tcl_tk_call(
-                        tuple(
-                            write_item_to_index + [item[0], b"".join(item[1:])]
-                        )
-                    )
-                else:
-                    tcl_tk_call(
-                        tuple(
-                            replace_segment_value
-                            + [
-                                int.from_bytes(high[-1], "big"),
-                                new_segment.tobytes(),
-                            ]
-                        )
-                    )
-                    tcl_tk_call(tuple(delete_index_item))
-                    item[-1] = high[-1]
-                    tcl_tk_call(
-                        tuple(
-                            write_item_to_index + [item[0], b"".join(item[1:])]
-                        )
-                    )
-                assert len(item) == 4
-                continue
-            item_type = item.pop(2)
-            if item_type == EXISTING_SEGMENT_REFERENCE:
-                prev_key = item[0]
-                tcl_tk_call(
-                    tuple(write_item_to_index + [item[0], b"".join(item[1:])])
-                )
-                assert len(item) == 4
-                continue
-            if int.from_bytes(item[-2], byteorder="big") > 1:
-                item[-1] = tcl_tk_call(
-                    tuple(write_segment_value + [item[-1]])
-                ).to_bytes(4, byteorder="big")
-                assert len(item) == 4
-            else:
-                item.pop(2)
-                assert len(item) == 3
-            tcl_tk_call(
-                tuple(write_item_to_index + [item[0], b"".join(item[1:])])
-            )
-            assert item_type == NEW_SEGMENT_CONTENT
-            continue
-        # Seems necessary to prevent UnboundLocalError for cursor.
-        # Prevent attempt to close 'None', the cursor binding present to
-        # avoid binding cursor only within an 'if' or 'for' statement.
-        # If self.dbtxn is not None and the 'merger.sorter()' iterator
-        # returns no items then cursor will still be bound to None.
-        if cursor is not None:
-            tcl_tk_call((cursor, "close"))
+                return
 
-        if self.dbtxn is not None:
-            self.commit()
-            self.deferred_update_housekeeping()
-            self.start_transaction()
+        return Writer(self)

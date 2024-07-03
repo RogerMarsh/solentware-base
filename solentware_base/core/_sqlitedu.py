@@ -20,7 +20,6 @@ from .constants import (
 )
 from .segmentsize import SegmentSize
 from . import _databasedu
-from . import merge
 from .recordset import (
     RecordsetSegmentBitarray,
     RecordsetSegmentInt,
@@ -494,15 +493,15 @@ class Database(_databasedu.Database):
         finally:
             cursor.close()
 
-    def merge_import(self, index_directory, file, field, commit_limit):
-        """Merge sorted files in index_derectory and write to database.
+    def merge_writer(self, file, field):
+        """Return a Writer instance for the field index on table file.
 
-        Yield count of items written to index after commits done when
-        commit_limit items have been added since previous yield.
+        Call the write() method with object returned by next_sorted_item
+        method.
 
         """
 
-        def make_segment_from_item():
+        def make_segment_from_item(item):
             if item[2] == 1:
                 return RecordsetSegmentInt(
                     item[1],
@@ -510,7 +509,9 @@ class Database(_databasedu.Database):
                     records=item[3].to_bytes(2, byteorder="big"),
                 )
             if len(item[3]) == SegmentSize.db_segment_size_bytes:
-                return RecordsetSegmentBitarray(item[1], None, records=item[3])
+                return RecordsetSegmentBitarray(
+                    item[1], None, records=item[3]
+                )
             return RecordsetSegmentList(item[1], None, records=item[3])
 
         assert file != field
@@ -608,78 +609,94 @@ class Database(_databasedu.Database):
                 "where rowid == ?",
             )
         )
-        merger = merge.Merge(index_directory)
-        prev_segment = None
-        prev_key = None
-        cursor = self.dbenv.cursor()
-        for commit_count, item in enumerate(merger.sorter()):
-            if not commit_count % commit_limit:
-                if prev_key is not None:
-                    self.commit()
-                    self.deferred_update_housekeeping()
-                    yield commit_count
-                    self.start_transaction()
-            assert len(item) == 5
-            segment = item[1]
-            if prev_segment != segment:
-                prev_segment = segment
-                prev_key = item[0]
+
+        class Writer:
+
+            def __init__(self, database):
+                self.prev_segment = None
+                self.prev_key = None
+                self.database = database
+                self.cursor = database.dbenv.cursor()
+
+            # Compatibility with _dbdu, _dbdu_tkinter, and _lmdbdu modules.
+            def make_new_cursor(self):
+                pass
+
+            # Compatibility with _dbdu, and _dbdu_tkinter.
+            def close_cursor(self):
+                pass
+
+            def write(self, item):
+                assert len(item) == 5
+                segment = item[1]
+                if self.prev_segment != segment:
+                    self.prev_segment = segment
+                    self.prev_key = item[0]
+                    item_type = item.pop(2)
+                    if item_type == EXISTING_SEGMENT_REFERENCE:
+                        self.cursor.execute(write_item_to_index, item)
+                        assert len(item) == 4
+                        return
+                    if item[-2] > 1:
+                        self.cursor.execute(
+                            insert_segment_records, (item[-1],)
+                        )
+                        item[-1] = self.cursor.execute(
+                            last_inserted_row
+                        ).fetchone()[0]
+                    self.cursor.execute(write_item_to_index, item)
+                    assert item_type == NEW_SEGMENT_CONTENT
+                    assert len(item) == 4
+                    return
+                if self.prev_key == item[0]:
+                    assert item[2] == NEW_SEGMENT_CONTENT
+                    del item[2]
+                    high = self.cursor.execute(
+                        read_high_item_in_index
+                    ).fetchone()
+                    new_segment = make_segment_from_item(item)
+                    new_segment |= self.database.populate_segment(high, file)
+                    new_segment.normalize()
+                    if high[2] == 1:
+                        self.cursor.execute(
+                            insert_segment_records, (new_segment.tobytes(),)
+                        )
+                        self.cursor.execute(
+                            replace_index_item,
+                            (
+                                new_segment.count_records(),
+                                self.cursor.execute(
+                                    last_inserted_row
+                                ).fetchone()[0],
+                                high[0],
+                                high[1],
+                            ),
+                        )
+                    else:
+                        self.cursor.execute(
+                            set_segment_records,
+                            (new_segment.tobytes(), high[3]),
+                        )
+                        self.cursor.execute(
+                            replace_index_count,
+                            (new_segment.count_records(), high[0], high[1]),
+                        )
+                    assert len(item) == 4
+                    return
                 item_type = item.pop(2)
                 if item_type == EXISTING_SEGMENT_REFERENCE:
-                    cursor.execute(write_item_to_index, item)
+                    self.prev_key = item[0]
+                    self.cursor.execute(write_item_to_index, item)
                     assert len(item) == 4
-                    continue
-                if item[-2] > 1:
-                    cursor.execute(insert_segment_records, (item[-1],))
-                    item[-1] = cursor.execute(last_inserted_row).fetchone()[0]
-                cursor.execute(write_item_to_index, item)
+                    return
+                if item[2] > 1:
+                    self.cursor.execute(insert_segment_records, (item[3],))
+                    item[3] = self.cursor.execute(
+                        last_inserted_row
+                    ).fetchone()[0]
+                self.cursor.execute(write_item_to_index, item)
                 assert item_type == NEW_SEGMENT_CONTENT
                 assert len(item) == 4
-                continue
-            if prev_key == item[0]:
-                assert item[2] == NEW_SEGMENT_CONTENT
-                del item[2]
-                high = cursor.execute(read_high_item_in_index).fetchone()
-                new_segment = make_segment_from_item()
-                new_segment |= self.populate_segment(high, file)
-                new_segment.normalize()
-                if high[2] == 1:
-                    cursor.execute(
-                        insert_segment_records, (new_segment.tobytes(),)
-                    )
-                    cursor.execute(
-                        replace_index_item,
-                        (
-                            new_segment.count_records(),
-                            cursor.execute(last_inserted_row).fetchone()[0],
-                            high[0],
-                            high[1],
-                        ),
-                    )
-                else:
-                    cursor.execute(
-                        set_segment_records, (new_segment.tobytes(), high[3])
-                    )
-                    cursor.execute(
-                        replace_index_count,
-                        (new_segment.count_records(), high[0], high[1]),
-                    )
-                assert len(item) == 4
-                continue
-            item_type = item.pop(2)
-            if item_type == EXISTING_SEGMENT_REFERENCE:
-                prev_key = item[0]
-                cursor.execute(write_item_to_index, item)
-                assert len(item) == 4
-                continue
-            if item[2] > 1:
-                cursor.execute(insert_segment_records, (item[3],))
-                item[3] = cursor.execute(last_inserted_row).fetchone()[0]
-            cursor.execute(write_item_to_index, item)
-            assert item_type == NEW_SEGMENT_CONTENT
-            assert len(item) == 4
-            continue
-        if prev_key is not None:
-            self.commit()
-            self.deferred_update_housekeeping()
-            self.start_transaction()
+                return
+
+        return Writer(self)

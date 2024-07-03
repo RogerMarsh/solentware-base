@@ -13,6 +13,7 @@ from . import _database
 from .segmentsize import SegmentSize
 from .constants import SECONDARY
 from .bytebit import Bitarray
+from . import merge
 
 
 class DatabaseduError(Exception):
@@ -236,3 +237,35 @@ class Database(_database.Database):
             ]
         else:
             self._int_to_bytes = None
+
+    def merge_import(self, index_directory, file, field, commit_limit):
+        """Yield count of sorted items written to an index at intervals.
+
+        Sorted items from files in index_directory are written to index
+        field in file, and the count of items added is yielded every
+        commit_limit items.
+
+        """
+        writer = self.merge_writer(file, field)
+        merger = merge.Merge(index_directory)
+        commit_count = None
+        for commit_count, item in enumerate(merger.sorter()):
+            if not commit_count % commit_limit:
+                if commit_count:
+                    self.commit()
+                    self.deferred_update_housekeeping()
+                    yield commit_count
+                    self.start_transaction()
+                    writer.make_new_cursor()
+            writer.write(item)
+        writer.close_cursor()
+        if commit_count is not None:
+            self.commit()
+            self.deferred_update_housekeeping()
+            self.start_transaction()
+
+    def next_sorted_item(self, index_directory):
+        """Yield sorted items from files in index_directory."""
+        merger = merge.Merge(index_directory)
+        for item in merger.sorter():
+            yield item
