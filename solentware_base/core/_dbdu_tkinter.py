@@ -101,8 +101,7 @@ class Database(_databasedu.Database):
                 # must be closed explicitly to avoid a crash, after updates
                 # have been completed, when closing the environment.
                 tablename = SUBFILE_DELIMITER.join((file, secondary))
-                for obj in self.table[tablename][1:]:
-                    tcl_tk_call((obj, "close"))
+                tcl_tk_call((self.table[tablename], "close"))
                 self.merge(file, secondary)
 
     def set_defer_update(self):
