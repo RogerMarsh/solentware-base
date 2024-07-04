@@ -17,7 +17,6 @@ from .recordset import (
     RecordsetSegmentList,
 )
 from . import _databasedu
-from . import merge
 
 
 class DatabaseError(Exception):
@@ -556,6 +555,7 @@ class Database(_databasedu.Database):
         datastore = self.segment_table[file].datastore
 
         class Writer:
+            """Write index entries to database."""
 
             def __init__(self, database):
                 self.prev_segment = None
@@ -566,15 +566,19 @@ class Database(_databasedu.Database):
                 self.segment_cursor = self.transaction.cursor(db=datastore)
 
             def make_new_cursor(self):
-                self.transaction = database.dbtxn.transaction
+                """Create a cursor on the assumed new transaction."""
+                self.transaction = self.database.dbtxn.transaction
                 self.cursor = self.transaction.cursor(table)
                 self.segment_cursor = self.transaction.cursor(db=datastore)
 
-            # Compatibility with _dbdu, and _dbdu_tkinter.
             def close_cursor(self):
-                pass
+                """Do nothing.
+
+                Present for compatibility with _dbdu, and _dbdu_tkinter.
+                """
 
             def write(self, item):
+                """Write item to index on database."""
                 assert len(item) == 5
                 segment = item[1]
                 if self.prev_segment != segment:
@@ -606,7 +610,9 @@ class Database(_databasedu.Database):
                     new_segment = make_segment_from_item(item)
                     new_segment |= existing_segment
                     new_segment.normalize()
-                    item[-2] = self.encode_number_for_sequential_file_dump(
+                    item[
+                        -2
+                    ] = self.database.encode_number_for_sequential_file_dump(
                         new_segment.count_records(), 2
                     )
                     if int.from_bytes(item[-2], byteorder="big") == 1:
@@ -627,7 +633,7 @@ class Database(_databasedu.Database):
                     return
                 item_type = item.pop(2)
                 if item_type == EXISTING_SEGMENT_REFERENCE:
-                    prev_key = item[0]
+                    self.prev_key = item[0]
                     self.cursor.put(item[0], b"".join(item[1:]))
                     assert len(item) == 4
                     return

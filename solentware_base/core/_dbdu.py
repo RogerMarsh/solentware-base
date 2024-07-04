@@ -435,7 +435,7 @@ class Database(_databasedu.Database):
 
         """
 
-        def make_segment_from_high(high):
+        def make_segment_from_high(high, transaction):
             if high[2] == b"\x00\x01":
                 return RecordsetSegmentInt(
                     int.from_bytes(high[1], byteorder="big"),
@@ -443,7 +443,7 @@ class Database(_databasedu.Database):
                     records=high[3],
                 )
             bytestring_records = segment_table.get(
-                int.from_bytes(high[3], byteorder="big"), txn=dbtxn
+                int.from_bytes(high[3], byteorder="big"), txn=transaction
             )
             if len(bytestring_records) == SegmentSize.db_segment_size_bytes:
                 return RecordsetSegmentBitarray(
@@ -498,6 +498,7 @@ class Database(_databasedu.Database):
         segment_table = self.segment_table[file]
 
         class Writer:
+            """Write index entries to database."""
 
             def __init__(self, database):
                 self.prev_segment = None
@@ -506,14 +507,21 @@ class Database(_databasedu.Database):
                 self.cursor = table.cursor(txn=self.database.dbtxn)
 
             def make_new_cursor(self):
+                """Create a cursor on the assumed new transaction.
+
+                The existing cursor is retained for no transaction.
+
+                """
                 if self.transaction is None:
                     return
                 self.cursor = table.cursor(txn=self.database.dbtxn)
 
             def close_cursor(self):
+                """Close the cursor open on the index."""
                 self.cursor.close()
 
             def write(self, item):
+                """Write item to index on database."""
                 assert len(item) == 5
                 segment = item[1]
                 if self.prev_segment != segment:
@@ -539,11 +547,15 @@ class Database(_databasedu.Database):
                     assert item[2] == NEW_SEGMENT_CONTENT
                     del item[2]
                     high = read_high_item_in_index(self.cursor)
-                    existing_segment = make_segment_from_high(high)
+                    existing_segment = make_segment_from_high(
+                        high, self.database.dbtxn
+                    )
                     new_segment = make_segment_from_item(item)
                     new_segment |= existing_segment
                     new_segment.normalize()
-                    item[-2] = self.encode_number_for_sequential_file_dump(
+                    item[
+                        -2
+                    ] = self.database.encode_number_for_sequential_file_dump(
                         new_segment.count_records(), 2
                     )
                     if int.from_bytes(high[-2], byteorder="big") == 1:

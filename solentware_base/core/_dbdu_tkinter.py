@@ -592,6 +592,7 @@ class Database(_databasedu.Database):
         segment_table = self.segment_table[file]
 
         class Writer:
+            """Write index entries to database."""
 
             def __init__(self, database):
                 self.prev_segment = None
@@ -603,10 +604,14 @@ class Database(_databasedu.Database):
                     self.write_item_to_index = [self.cursor, "put", "-keylast"]
                     self.delete_index_item = [self.cursor, "del"]
                     self.get_last_record_in_index = [
-                        self.cursor, "get", "-last"
+                        self.cursor,
+                        "get",
+                        "-last",
                     ]
                     self.write_segment_value = [
-                        segment_table, "put", "-append"
+                        segment_table,
+                        "put",
+                        "-append",
                     ]
                     self.get_segment_value = [segment_table, "get"]
                     self.replace_segment_value = [segment_table, "put"]
@@ -614,6 +619,11 @@ class Database(_databasedu.Database):
                     self.make_new_cursor()
 
             def make_new_cursor(self):
+                """Create a cursor on the assumed new transaction.
+
+                The existing cursor is retained for no transaction.
+
+                """
                 if self.transaction is None:
                     return
                 self.cursor = tcl_tk_call(
@@ -623,19 +633,31 @@ class Database(_databasedu.Database):
                 self.delete_index_item = [self.cursor, "del"]
                 self.get_last_record_in_index = [self.cursor, "get", "-last"]
                 self.write_segment_value = [
-                    segment_table, "put", "-append", "-txn", self.transaction
+                    segment_table,
+                    "put",
+                    "-append",
+                    "-txn",
+                    self.transaction,
                 ]
                 self.get_segment_value = [
-                    segment_table, "get", "-txn", self.transaction
+                    segment_table,
+                    "get",
+                    "-txn",
+                    self.transaction,
                 ]
                 self.replace_segment_value = [
-                    segment_table, "put", "-txn", self.transaction
+                    segment_table,
+                    "put",
+                    "-txn",
+                    self.transaction,
                 ]
 
             def close_cursor(self):
+                """Close the cursor open on the index."""
                 tcl_tk_call((self.cursor, "close"))
 
             def write(self, item):
+                """Write item to index on database."""
                 assert len(item) == 5
                 segment = item[1]
                 if self.prev_segment != segment:
@@ -679,7 +701,9 @@ class Database(_databasedu.Database):
                     new_segment = make_segment_from_item(item)
                     new_segment |= existing_segment
                     new_segment.normalize()
-                    item[-2] = self.encode_number_for_sequential_file_dump(
+                    item[
+                        -2
+                    ] = self.database.encode_number_for_sequential_file_dump(
                         new_segment.count_records(), 2
                     )
                     if int.from_bytes(high[-2], byteorder="big") == 1:

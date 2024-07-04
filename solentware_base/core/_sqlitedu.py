@@ -509,9 +509,7 @@ class Database(_databasedu.Database):
                     records=item[3].to_bytes(2, byteorder="big"),
                 )
             if len(item[3]) == SegmentSize.db_segment_size_bytes:
-                return RecordsetSegmentBitarray(
-                    item[1], None, records=item[3]
-                )
+                return RecordsetSegmentBitarray(item[1], None, records=item[3])
             return RecordsetSegmentList(item[1], None, records=item[3])
 
         assert file != field
@@ -611,6 +609,7 @@ class Database(_databasedu.Database):
         )
 
         class Writer:
+            """Write index entries to database."""
 
             def __init__(self, database):
                 self.prev_segment = None
@@ -618,15 +617,21 @@ class Database(_databasedu.Database):
                 self.database = database
                 self.cursor = database.dbenv.cursor()
 
-            # Compatibility with _dbdu, _dbdu_tkinter, and _lmdbdu modules.
             def make_new_cursor(self):
-                pass
+                """Do nothing.
 
-            # Compatibility with _dbdu, and _dbdu_tkinter.
+                Present for compatibility with _dbdu, _dbdu_tkinter, and
+                _lmdbdu.
+                """
+
             def close_cursor(self):
-                pass
+                """Do nothing.
+
+                Present for compatibility with _dbdu, and _dbdu_tkinter.
+                """
 
             def write(self, item):
+                """Write item to index on database."""
                 assert len(item) == 5
                 segment = item[1]
                 if self.prev_segment != segment:
