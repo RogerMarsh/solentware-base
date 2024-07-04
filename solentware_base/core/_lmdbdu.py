@@ -629,6 +629,7 @@ class Database(_databasedu.Database):
                             db=datastore,
                         )
                         self.cursor.delete()
+                        item[-1] = high[-1]
                         self.cursor.put(item[0], b"".join(item[1:]))
                     assert len(item) == 4
                     return
