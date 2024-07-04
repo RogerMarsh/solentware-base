@@ -627,7 +627,8 @@ class Database(_databasedu.Database):
             def close_cursor(self):
                 """Do nothing.
 
-                Present for compatibility with _dbdu, and _dbdu_tkinter.
+                Present for compatibility with _dbdu, _dbdu_tkinter, and
+                _lmdbdu.
                 """
 
             def write(self, item):

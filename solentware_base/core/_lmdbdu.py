@@ -561,21 +561,22 @@ class Database(_databasedu.Database):
                 self.prev_segment = None
                 self.prev_key = None
                 self.database = database
-                self.transaction = database.dbtxn.transaction
-                self.cursor = self.transaction.cursor(table)
-                self.segment_cursor = self.transaction.cursor(db=datastore)
+                self.cursor = self.database.dbtxn.transaction.cursor(table)
+                self.segment_cursor = self.database.dbtxn.transaction.cursor(
+                    db=datastore
+                )
 
             def make_new_cursor(self):
-                """Create a cursor on the assumed new transaction."""
-                self.transaction = self.database.dbtxn.transaction
-                self.cursor = self.transaction.cursor(table)
-                self.segment_cursor = self.transaction.cursor(db=datastore)
+                """Create cursors on the assumed new transaction."""
+                self.cursor = self.database.dbtxn.transaction.cursor(table)
+                self.segment_cursor = self.database.dbtxn.transaction.cursor(
+                    db=datastore
+                )
 
             def close_cursor(self):
-                """Do nothing.
-
-                Present for compatibility with _dbdu, and _dbdu_tkinter.
-                """
+                """Close the cursors open on the index."""
+                self.cursor.close()
+                self.segment_cursor.close()
 
             def write(self, item):
                 """Write item to index on database."""
@@ -605,7 +606,7 @@ class Database(_databasedu.Database):
                     del item[2]
                     high = read_high_item_in_index(self.cursor)
                     existing_segment = make_segment_from_high(
-                        high, self.transaction
+                        high, self.database.dbtxn.transaction
                     )
                     new_segment = make_segment_from_item(item)
                     new_segment |= existing_segment
@@ -622,7 +623,7 @@ class Database(_databasedu.Database):
                         self.cursor.delete()
                         self.cursor.put(item[0], b"".join(item[1:]))
                     else:
-                        self.transaction.put(
+                        self.database.dbtxn.transaction.put(
                             high[-1],
                             new_segment.tobytes(),
                             db=datastore,

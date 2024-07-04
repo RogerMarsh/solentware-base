@@ -512,7 +512,7 @@ class Database(_databasedu.Database):
                 The existing cursor is retained for no transaction.
 
                 """
-                if self.transaction is None:
+                if self.database.dbtxn is None:
                     return
                 self.cursor = table.cursor(txn=self.database.dbtxn)
 

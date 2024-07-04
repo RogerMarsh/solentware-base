@@ -252,6 +252,7 @@ class Database(_database.Database):
         for commit_count, item in enumerate(merger.sorter()):
             if not commit_count % commit_limit:
                 if commit_count:
+                    writer.close_cursor()
                     self.commit()
                     self.deferred_update_housekeeping()
                     yield commit_count

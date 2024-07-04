@@ -598,8 +598,7 @@ class Database(_databasedu.Database):
                 self.prev_segment = None
                 self.prev_key = None
                 self.database = database
-                self.transaction = database.dbtxn
-                if self.transaction is None:
+                if self.database.dbtxn is None:
                     self.cursor = tcl_tk_call(tuple([table, "cursor"]))
                     self.write_item_to_index = [self.cursor, "put", "-keylast"]
                     self.delete_index_item = [self.cursor, "del"]
@@ -624,10 +623,10 @@ class Database(_databasedu.Database):
                 The existing cursor is retained for no transaction.
 
                 """
-                if self.transaction is None:
+                if self.database.dbtxn is None:
                     return
                 self.cursor = tcl_tk_call(
-                    tuple([table, "cursor", "-txn", self.transaction])
+                    tuple([table, "cursor", "-txn", self.database.dbtxn])
                 )
                 self.write_item_to_index = [self.cursor, "put", "-keylast"]
                 self.delete_index_item = [self.cursor, "del"]
@@ -637,19 +636,19 @@ class Database(_databasedu.Database):
                     "put",
                     "-append",
                     "-txn",
-                    self.transaction,
+                    self.database.dbtxn,
                 ]
                 self.get_segment_value = [
                     segment_table,
                     "get",
                     "-txn",
-                    self.transaction,
+                    self.database.dbtxn,
                 ]
                 self.replace_segment_value = [
                     segment_table,
                     "put",
                     "-txn",
-                    self.transaction,
+                    self.database.dbtxn,
                 ]
 
             def close_cursor(self):
