@@ -1330,7 +1330,7 @@ class Database_make_recordset(_SQLiteOpen):
         ss = " ".join(
             (
                 "select field1 , Segment , RecordCount , file1 from",
-                'file1_field1 where field1 == "one" and Segment == 0',
+                "file1_field1 where field1 == 'one' and Segment == 0",
             )
         )
         s = self.database.populate_segment(
@@ -1349,7 +1349,7 @@ class Database_make_recordset(_SQLiteOpen):
         ss = " ".join(
             (
                 "select field1 , Segment , RecordCount , file1 from",
-                'file1_field1 where field1 == "tww" and Segment == 0',
+                "file1_field1 where field1 == 'tww' and Segment == 0",
             )
         )
         s = self.database.populate_segment(
@@ -1369,7 +1369,7 @@ class Database_make_recordset(_SQLiteOpen):
         ss = " ".join(
             (
                 "select field1 , Segment , RecordCount , file1 from",
-                'file1_field1 where field1 == "c_o" and Segment == 0',
+                "file1_field1 where field1 == 'c_o' and Segment == 0",
             )
         )
         s = self.database.populate_segment(
