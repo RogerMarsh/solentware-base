@@ -12,7 +12,7 @@ A record number database is seen as a set of fixed size segments, and an existen
 
 Where an index value refers to many records in a segment these references are encoded as a bitmap or a list of record numbers, in a single <index value> : <bitmap or list> record, rather than as many <index value> : <record number> records.  When 'many' is small a list is favoured to save the space needed for large numbers of unset bits.
 
-The interfaces provided by the apsw, berkeleydb, bsddb3, dptdb, and sqlite3, Python modules are supported.
+The interfaces provided by the apsw, berkeleydb, bsddb3, dptdb, lmdb, and sqlite3, Python modules are supported.
 
 The interfaces provided by the dbm.gnu, dbm.ndbm, unqlite, and vedis, Python modules are available for experiment.
 
