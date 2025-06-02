@@ -152,8 +152,10 @@ class Find:
         for segment in recordset.rs_segments.values():
             j = segment.first()
             while j:
-                instance.load_record(j)
-                yield j[0], instance.value
+                instance.load_record(
+                    self._db.get_primary_record(self._dbset, j[1])
+                )
+                yield j[1], instance.value
                 j = segment.next()
 
     def non_index_condition(self, obj, record_number, record):
