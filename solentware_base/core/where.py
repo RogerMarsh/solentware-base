@@ -36,7 +36,6 @@ particularly the last of these.
 """
 
 import re
-import sre_constants
 from tkinter import simpledialog
 
 from .constants import SECONDARY
@@ -505,7 +504,7 @@ class Where:
         if token_lower not in KEYWORDS:
             try:
                 re.compile(token, flags=re.IGNORECASE | re.DOTALL)
-            except sre_constants.error:
+            except re.error:
                 return self.error(token)
             self.node.value = token
             return self._set_and_or_nor_rightp__single_condition
