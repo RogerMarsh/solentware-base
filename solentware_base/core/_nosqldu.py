@@ -121,9 +121,9 @@ class Database(_databasedu.Database):
         ebmc = self.ebm_control[file]
         tes = ebmc.table_ebm_segments
         insertion_point = bisect_right(tes, segment)
-        self.dbenv[
-            SUBFILE_DELIMITER.join((ebmc.ebm_table, str(segment)))
-        ] = repr(self.existence_bit_maps[file][segment].tobytes())
+        self.dbenv[SUBFILE_DELIMITER.join((ebmc.ebm_table, str(segment)))] = (
+            repr(self.existence_bit_maps[file][segment].tobytes())
+        )
         if not (tes and tes[insertion_point - 1] == segment):
             tes.insert(insertion_point, segment)
             self.dbenv[ebmc.ebm_table] = repr(tes)

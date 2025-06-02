@@ -151,9 +151,9 @@ class Database(_database.Database):
             if values[-1] != record_number:
                 values.append(record_number)
                 if len(values) > SegmentSize.db_upper_conversion_limit:
-                    vsk = value_segments[
-                        key
-                    ] = SegmentSize.empty_bitarray.copy()
+                    vsk = value_segments[key] = (
+                        SegmentSize.empty_bitarray.copy()
+                    )
                     for j in values:
                         vsk[j] = True
                     vsk[record_number] = True

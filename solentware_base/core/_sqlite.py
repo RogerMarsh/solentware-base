@@ -991,9 +991,12 @@ class Database(_database.Database):
                     update_count_and_reference,
                     (
                         count,
-                        record_number % (segment * SegmentSize.db_segment_size)
-                        if segment
-                        else record_number,
+                        (
+                            record_number
+                            % (segment * SegmentSize.db_segment_size)
+                            if segment
+                            else record_number
+                        ),
                         key,
                         segment,
                     ),
@@ -1595,9 +1598,11 @@ class Database(_database.Database):
         values = (
             b"".join(
                 (
-                    keystart.encode()
-                    if isinstance(keystart, str)
-                    else keystart,
+                    (
+                        keystart.encode()
+                        if isinstance(keystart, str)
+                        else keystart
+                    ),
                     b"*",
                 )
             ),

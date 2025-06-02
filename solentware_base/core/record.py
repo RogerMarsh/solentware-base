@@ -547,9 +547,11 @@ class Record:
             record = database.get_primary_record(
                 dbset,
                 # database.decode_as_primary_key(dbset, newrecord.srkey))
-                database.decode_record_number(newrecord.srkey)
-                if isinstance(newrecord.srkey, int)
-                else newrecord.srkey,
+                (
+                    database.decode_record_number(newrecord.srkey)
+                    if isinstance(newrecord.srkey, int)
+                    else newrecord.srkey
+                ),
             )
             if record is None:
                 database.put_instance(dbset, newrecord)

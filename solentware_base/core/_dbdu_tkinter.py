@@ -700,10 +700,10 @@ class Database(_databasedu.Database):
                     new_segment = make_segment_from_item(item)
                     new_segment |= existing_segment
                     new_segment.normalize()
-                    item[
-                        -2
-                    ] = self.database.encode_number_for_sequential_file_dump(
-                        new_segment.count_records(), 2
+                    item[-2] = (
+                        self.database.encode_number_for_sequential_file_dump(
+                            new_segment.count_records(), 2
+                        )
                     )
                     if int.from_bytes(high[-2], byteorder="big") == 1:
                         item[-1] = tcl_tk_call(

@@ -56,10 +56,10 @@ if __name__ == "__main__":
                 key = line
                 continue
             if len(key) == 8:
-                r[
-                    int.from_bytes(binascii.unhexlify(key), byteorder="big")
-                ] = binascii.unhexlify(line.encode("iso-8859-1")).decode(
-                    "iso-8859-1"
+                r[int.from_bytes(binascii.unhexlify(key), byteorder="big")] = (
+                    binascii.unhexlify(line.encode("iso-8859-1")).decode(
+                        "iso-8859-1"
+                    )
                 )
             else:
                 r[int(key) - 1] = line

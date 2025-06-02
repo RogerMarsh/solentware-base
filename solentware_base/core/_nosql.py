@@ -108,9 +108,9 @@ class Database(_database.Database):
                     continue
                 for fieldattr in NOSQL_FIELDATTS:
                     if fieldattr not in filedesc[FIELDS][fieldname]:
-                        filedesc[FIELDS][fieldname][
-                            fieldattr
-                        ] = SECONDARY_FIELDATTS[fieldattr]
+                        filedesc[FIELDS][fieldname][fieldattr] = (
+                            SECONDARY_FIELDATTS[fieldattr]
+                        )
         self.specification = specification
         self.segment_size_bytes = segment_size_bytes
         self.dbenv = None

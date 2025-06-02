@@ -183,9 +183,9 @@ class _Database(unittest.TestCase):
                 _data_generator.populate(
                     self.database,
                     dg,
-                    transaction=True
-                    if dbe_module in {berkeleydb, bsddb3}
-                    else False,
+                    transaction=(
+                        True if dbe_module in {berkeleydb, bsddb3} else False
+                    ),
                 )
             finally:
                 self.database.close_database()
