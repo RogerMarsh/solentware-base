@@ -21,6 +21,10 @@ def adjust(expected_answer):
         return expected_answer
 
 
+def wtokens(w):
+    return [t[1] for t in w.tokens]
+
+
 class WhereTC(unittest.TestCase):
     def setUp(self):
         pass
@@ -41,8 +45,8 @@ class WhereTC(unittest.TestCase):
 
     def test____module_constants(self):
         constants = (
-            (where.DOUBLE_QUOTE_STRING, '".*?"'),
-            (where.SINGLE_QUOTE_STRING, "'.*?'"),
+            (where.DOUBLE_QUOTE_STRING, r'"[^\\"]*(?:\\.[^\\"]*)*"'),
+            (where.SINGLE_QUOTE_STRING, r"'[^\\']*(?:\\.[^\\']*)*'"),
             (where.LEFT_PARENTHESIS, "("),
             (where.RIGHT_PARENTHESIS, ")"),
             (where.OR, "or"),
@@ -67,7 +71,7 @@ class WhereTC(unittest.TestCase):
             (where.BEFORE, "before"),
             (where.STARTS, "starts"),
             (where.PRESENT, "present"),
-            (where.STRING, ".+?"),
+            (where.STRING, r"\w+|\s+|[^\w\s()'\"]+\""),
             (where.LEADING_SPACE, r"(?<=\s)"),
             (where.TRAILING_SPACE, r"(?=\s)"),
         )
@@ -176,9 +180,9 @@ class WhereTC(unittest.TestCase):
                         (where.LEADING_SPACE, where.TRAILING_SPACE)
                     ),
                     where.PRESENT.join((where.LEADING_SPACE, r"(?=\s|\)|\Z)")),
-                    where.STRING,
+                    where.STRING.join("()"),
                 )
-            ).join(("(", ")")),
+            ),
         )
 
     def test___init__(self):
@@ -280,8 +284,12 @@ class Where_MethodsTC(unittest.TestCase):
     def test__set_num_alpha_condition_is_01(self):
         w = self.w
         w._not = True
-        self.assertEqual(w._set_num_alpha_condition("is"), False)
-        self._w(w.node, left=w.node.left)
+        self.assertRaisesRegex(
+            where.WhereError,
+            "Unable to process token 'is'$",
+            w._set_num_alpha_condition,
+            *("is",),
+        )
 
     def test__set_num_alpha_condition_is_02(self):
         w = self.w
@@ -323,13 +331,21 @@ class Where_MethodsTC(unittest.TestCase):
 
     def test__set_condition_keyword(self):
         w = self.w
-        self.assertEqual(w._set_condition("or"), False)
-        self._w(w.node, left=w.node.left)
+        self.assertRaisesRegex(
+            where.WhereError,
+            "Unable to process token 'or'$",
+            w._set_condition,
+            *("or",),
+        )
 
     def test__set_condition_anything_else(self):
         w = self.w
-        self.assertEqual(w._set_condition("some value"), False)
-        self._w(w.node, left=w.node.left)
+        self.assertRaisesRegex(
+            where.WhereError,
+            "Unable to process token 'some value'$",
+            w._set_condition,
+            *("some value",),
+        )
 
     def test__set_second_condition(self):
         w = self.w
@@ -339,13 +355,21 @@ class Where_MethodsTC(unittest.TestCase):
 
     def test__set_second_condition_keyword(self):
         w = self.w
-        self.assertEqual(w._set_second_condition("or"), False)
-        self._w(w.node, left=w.node.left)
+        self.assertRaisesRegex(
+            where.WhereError,
+            "Unable to process token 'or'$",
+            w._set_second_condition,
+            *("or",),
+        )
 
     def test__set_second_condition_anything_else(self):
         w = self.w
-        self.assertEqual(w._set_second_condition("some value"), False)
-        self._w(w.node, left=w.node.left)
+        self.assertRaisesRegex(
+            where.WhereError,
+            "Unable to process token 'some value'$",
+            w._set_second_condition,
+            *("some value",),
+        )
 
     def test__set_not_value(self):
         # Other tests in test__set_value.
@@ -355,8 +379,10 @@ class Where_MethodsTC(unittest.TestCase):
 
     def test__set_value_01(self):
         w = self.w
-        self.assertEqual(w._set_value("and"), False)
-        self._w(w.node, left=w.node.left)
+        self.assertEqual(
+            w._set_value("and"), w._set_and_or_nor_rightp__single_condition
+        )
+        self._w(w.node, left=w.node.left, value="and")
 
     def test__set_value_02(self):
         w = self.w
@@ -367,8 +393,8 @@ class Where_MethodsTC(unittest.TestCase):
 
     def test__set_first_value_01(self):
         w = self.w
-        self.assertEqual(w._set_first_value("and"), False)
-        self._w(w.node, left=w.node.left)
+        self.assertEqual(w._set_first_value("and"), w._set_second_condition)
+        self._w(w.node, left=w.node.left, value="and")
 
     def test__set_first_value_02(self):
         w = self.w
@@ -377,8 +403,11 @@ class Where_MethodsTC(unittest.TestCase):
 
     def test__set_second_value_01(self):
         w = self.w
-        self.assertEqual(w._set_second_value("and"), False)
-        self._w(w.node, left=w.node.left)
+        self.assertEqual(
+            w._set_second_value("and"),
+            w._set_and_or_nor_rightp__single_condition,
+        )
+        self._w(w.node, left=w.node.left, value=(None, "and"))
 
     def test__set_second_value_02(self):
         w = self.w
@@ -533,7 +562,7 @@ class Where_MethodsTC(unittest.TestCase):
             where.WhereError,
             "No unmatched left-parentheses$",
             w._set_rightp,
-            *(")",)
+            *(")",),
         )
 
     def test__set_rightp__rightp_02(self):
@@ -554,13 +583,21 @@ class Where_MethodsTC(unittest.TestCase):
 
     def test__set_rightp__keyword(self):
         w = self.w
-        self.assertEqual(w._set_rightp("below"), False)
-        self._w(w.node, left=w.node.left)
+        self.assertRaisesRegex(
+            where.WhereError,
+            "Unable to process token 'below'$",
+            w._set_rightp,
+            *("below",),
+        )
 
     def test__set_rightp__value(self):
         w = self.w
-        self.assertEqual(w._set_rightp("value"), False)
-        self._w(w.node, left=w.node.left)
+        self.assertRaisesRegex(
+            where.WhereError,
+            "Unable to process token 'value'$",
+            w._set_rightp,
+            *("value",),
+        )
 
     def test__set_and_or_nor_rightp__boolean(self):
         w = self.w
@@ -615,8 +652,12 @@ class Where_MethodsTC(unittest.TestCase):
     def test__set_leftp_condition__is_01(self):
         w = self.w
         w._not = True
-        self.assertEqual(w._set_leftp_condition("is"), False)
-        self._w(w.node, left=w.node.left)
+        self.assertRaisesRegex(
+            where.WhereError,
+            "Unable to process token 'is'$",
+            w._set_leftp_condition,
+            *("is",),
+        )
 
     def test__set_leftp_condition__is_02(self):
         w = self.w
@@ -658,13 +699,21 @@ class Where_MethodsTC(unittest.TestCase):
 
     def test__set_leftp_condition__keywords(self):
         w = self.w
-        self.assertEqual(w._set_leftp_condition("not"), False)
-        self._w(w.node, left=w.node.left)
+        self.assertRaisesRegex(
+            where.WhereError,
+            "Unable to process token 'not'$",
+            w._set_leftp_condition,
+            *("not",),
+        )
 
     def test__set_leftp_condition__value(self):
         w = self.w
-        self.assertEqual(w._set_leftp_condition("value"), False)
-        self._w(w.node, left=w.node.left)
+        self.assertRaisesRegex(
+            where.WhereError,
+            "Unable to process token 'value'$",
+            w._set_leftp_condition,
+            *("value",),
+        )
 
     def test__set_field_or_value__boolean(self):
         w = self.w
@@ -675,8 +724,12 @@ class Where_MethodsTC(unittest.TestCase):
     def test__set_field_or_value__is_01(self):
         w = self.w
         w._not = True
-        self.assertEqual(w._set_field_or_value("is"), False)
-        self._w(w.node, left=w.node.left)
+        self.assertRaisesRegex(
+            where.WhereError,
+            "Unable to process token 'is'$",
+            w._set_field_or_value,
+            *("is",),
+        )
 
     def test__set_field_or_value__is_02(self):
         w = self.w
@@ -711,13 +764,21 @@ class Where_MethodsTC(unittest.TestCase):
 
     def test__set_field_or_value__keyword(self):
         w = self.w
-        self.assertEqual(w._set_field_or_value("not"), False)
-        self._w(w.node, left=w.node.left)
+        self.assertRaisesRegex(
+            where.WhereError,
+            "Unable to process token 'not'$",
+            w._set_field_or_value,
+            *("not",),
+        )
 
     def test__set_field_or_value__value(self):
         w = self.w
-        self.assertEqual(w._set_field_or_value("value"), False)
-        self._w(w.node, left=w.node.left)
+        self.assertRaisesRegex(
+            where.WhereError,
+            "Unable to process token 'value'$",
+            w._set_field_or_value,
+            *("value",),
+        )
 
 
 class Where_errorTC(unittest.TestCase):
@@ -744,22 +805,6 @@ class Where_errorTC(unittest.TestCase):
             ),
         )
 
-    def test_error_keyword(self):
-        w = self.w
-        self.assertEqual(w.error("above"), False)
-        self.assertIsInstance(w._error_information, where.WhereStatementError)
-        self.assertEqual(w._error_information._statement, "")
-        self.assertEqual(w._error_information._tokens, None)
-        self.assertEqual(w._error_information._fields, None)
-
-    def test_error_value(self):
-        w = self.w
-        self.assertEqual(w.error("bad data"), False)
-        self.assertIsInstance(w._error_information, where.WhereStatementError)
-        self.assertEqual(w._error_information._statement, "")
-        self.assertEqual(w._error_information._tokens, None)
-        self.assertEqual(w._error_information._fields, None)
-
 
 class Where_lex_phraseTC(unittest.TestCase):
     def setUp(self):
@@ -771,97 +816,99 @@ class Where_lex_phraseTC(unittest.TestCase):
     def test__no_keywords(self):
         w = where.Where('"this statement has no keywords"')
         w.lex()
-        self.assertEqual(w.tokens, ["this statement has no keywords"])
+        self.assertEqual(wtokens(w), ["this statement has no keywords"])
 
     def test__no_keywords_mixed(self):
         w = where.Where('this" "Statement" "has" "no" "keYWOrds')
         w.lex()
-        self.assertEqual(w.tokens, ["this Statement has no keYWOrds"])
+        self.assertEqual(wtokens(w), ["this Statement has no keYWOrds"])
 
     def test_is_upper(self):
         w = where.Where("fieldname IS value")
         w.lex()
-        self.assertEqual(w.tokens, ["fieldname", "is", "value"])
+        self.assertEqual(wtokens(w), ["fieldname", "is", "value"])
 
     def test_non_keywords_mixed(self):
         w = where.Where("fieLdnAme is VALUE")
         w.lex()
-        self.assertEqual(w.tokens, ["fieLdnAme", "is", "VALUE"])
+        self.assertEqual(wtokens(w), ["fieLdnAme", "is", "VALUE"])
 
     def test_like_mixed(self):
         w = where.Where("fieldname lIKe pattern")
         w.lex()
-        self.assertEqual(w.tokens, ["fieldname", "like", "pattern"])
+        self.assertEqual(wtokens(w), ["fieldname", "like", "pattern"])
 
     def test_parentheses(self):
         w = where.Where("('some text')")
         w.lex()
-        self.assertEqual(w.tokens, ["(", "some text", ")"])
+        self.assertEqual(wtokens(w), ["(", "some text", ")"])
 
     def test_is(self):
         w = where.Where("fieldname is value")
         w.lex()
-        self.assertEqual(w.tokens, ["fieldname", "is", "value"])
+        self.assertEqual(wtokens(w), ["fieldname", "is", "value"])
 
     def test_like(self):
         w = where.Where("fieldname like pattern")
         w.lex()
-        self.assertEqual(w.tokens, ["fieldname", "like", "pattern"])
+        self.assertEqual(wtokens(w), ["fieldname", "like", "pattern"])
 
     def test_present(self):
         w = where.Where("fieldname present")
         w.lex()
-        self.assertEqual(w.tokens, ["fieldname", "present"])
+        self.assertEqual(wtokens(w), ["fieldname", "present"])
 
     def test_alpha_eq(self):
         w = where.Where("floor alpha eq basement")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "alpha", "eq", "basement"])
+        self.assertEqual(wtokens(w), ["floor", "alpha", "eq", "basement"])
 
     def test_alpha_ne(self):
         w = where.Where("floor alpha ne first")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "alpha", "ne", "first"])
+        self.assertEqual(wtokens(w), ["floor", "alpha", "ne", "first"])
 
     def test_alpha_gt(self):
         w = where.Where("floor alpha gt ground")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "alpha", "gt", "ground"])
+        self.assertEqual(wtokens(w), ["floor", "alpha", "gt", "ground"])
 
     def test_alpha_lt(self):
         w = where.Where('"houses in street" alpha lt "thirty three"')
         w.lex()
         self.assertEqual(
-            w.tokens, ["houses in street", "alpha", "lt", "thirty three"]
+            wtokens(w), ["houses in street", "alpha", "lt", "thirty three"]
         )
 
     def test_alpha_le(self):
         w = where.Where("floor alpha le third")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "alpha", "le", "third"])
+        self.assertEqual(wtokens(w), ["floor", "alpha", "le", "third"])
 
     def test_alpha_ge(self):
         w = where.Where("floor alpha ge second")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "alpha", "ge", "second"])
+        self.assertEqual(wtokens(w), ["floor", "alpha", "ge", "second"])
 
     def test_alpha_before(self):
         w = where.Where('"house room" alpha before attic')
         w.lex()
-        self.assertEqual(w.tokens, ["house room", "alpha", "before", "attic"])
+        self.assertEqual(
+            wtokens(w), ["house room", "alpha", "before", "attic"]
+        )
 
     def test_alpha_after(self):
         w = where.Where('"house room" alpha after "the ground floor"')
         w.lex()
         self.assertEqual(
-            w.tokens, ["house room", "alpha", "after", "the ground floor"]
+            wtokens(w), ["house room", "alpha", "after", "the ground floor"]
         )
 
     def test_alpha_from_to(self):
         w = where.Where('"house room" alpha from "the floor" to "the roof"')
         w.lex()
         self.assertEqual(
-            w.tokens,
+            wtokens(w),
             ["house room", "alpha", "from", "the floor", "to", "the roof"],
         )
 
@@ -869,7 +916,7 @@ class Where_lex_phraseTC(unittest.TestCase):
         w = where.Where('"house room" alpha from "the floor" below "the roof"')
         w.lex()
         self.assertEqual(
-            w.tokens,
+            wtokens(w),
             ["house room", "alpha", "from", "the floor", "below", "the roof"],
         )
 
@@ -877,7 +924,7 @@ class Where_lex_phraseTC(unittest.TestCase):
         w = where.Where('"house room" alpha above "the floor" to "the roof"')
         w.lex()
         self.assertEqual(
-            w.tokens,
+            wtokens(w),
             ["house room", "alpha", "above", "the floor", "to", "the roof"],
         )
 
@@ -887,59 +934,59 @@ class Where_lex_phraseTC(unittest.TestCase):
         )
         w.lex()
         self.assertEqual(
-            w.tokens,
+            wtokens(w),
             ["house room", "alpha", "above", "the floor", "below", "the roof"],
         )
 
     def test_num_eq(self):
         w = where.Where("floor num eq basement")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "num", "eq", "basement"])
+        self.assertEqual(wtokens(w), ["floor", "num", "eq", "basement"])
 
     def test_num_ne(self):
         w = where.Where("floor num ne first")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "num", "ne", "first"])
+        self.assertEqual(wtokens(w), ["floor", "num", "ne", "first"])
 
     def test_num_gt(self):
         w = where.Where("floor num gt ground")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "num", "gt", "ground"])
+        self.assertEqual(wtokens(w), ["floor", "num", "gt", "ground"])
 
     def test_num_lt(self):
         w = where.Where('houses" in "street num lt "thirty three"')
         w.lex()
         self.assertEqual(
-            w.tokens, ["houses in street", "num", "lt", "thirty three"]
+            wtokens(w), ["houses in street", "num", "lt", "thirty three"]
         )
 
     def test_num_le(self):
         w = where.Where("floor num le third")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "num", "le", "third"])
+        self.assertEqual(wtokens(w), ["floor", "num", "le", "third"])
 
     def test_num_ge(self):
         w = where.Where("floor num ge second")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "num", "ge", "second"])
+        self.assertEqual(wtokens(w), ["floor", "num", "ge", "second"])
 
     def test_num_before(self):
         w = where.Where('"house room" num before attic')
         w.lex()
-        self.assertEqual(w.tokens, ["house room", "num", "before", "attic"])
+        self.assertEqual(wtokens(w), ["house room", "num", "before", "attic"])
 
     def test_num_after(self):
         w = where.Where('"house "room num after the" "ground" "floor')
         w.lex()
         self.assertEqual(
-            w.tokens, ["house room", "num", "after", "the ground floor"]
+            wtokens(w), ["house room", "num", "after", "the ground floor"]
         )
 
     def test_num_from_to(self):
         w = where.Where('house" room" num from "the floor" to "the roof"')
         w.lex()
         self.assertEqual(
-            w.tokens,
+            wtokens(w),
             ["house room", "num", "from", "the floor", "to", "the roof"],
         )
 
@@ -947,7 +994,7 @@ class Where_lex_phraseTC(unittest.TestCase):
         w = where.Where('"house room" num from "the "floor below the" roof"')
         w.lex()
         self.assertEqual(
-            w.tokens,
+            wtokens(w),
             ["house room", "num", "from", "the floor", "below", "the roof"],
         )
 
@@ -955,7 +1002,7 @@ class Where_lex_phraseTC(unittest.TestCase):
         w = where.Where('"house room" num above "the floor" to "the roof"')
         w.lex()
         self.assertEqual(
-            w.tokens,
+            wtokens(w),
             ["house room", "num", "above", "the floor", "to", "the roof"],
         )
 
@@ -963,138 +1010,146 @@ class Where_lex_phraseTC(unittest.TestCase):
         w = where.Where('"house room" num above "the floor" below "the roof"')
         w.lex()
         self.assertEqual(
-            w.tokens,
+            wtokens(w),
             ["house room", "num", "above", "the floor", "below", "the roof"],
         )
 
     def test_eq(self):
         w = where.Where("floor eq basement")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "eq", "basement"])
+        self.assertEqual(wtokens(w), ["floor", "eq", "basement"])
 
     def test_ne(self):
         w = where.Where("floor ne first")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "ne", "first"])
+        self.assertEqual(wtokens(w), ["floor", "ne", "first"])
 
     def test_gt(self):
         w = where.Where("floor gt ground")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "gt", "ground"])
+        self.assertEqual(wtokens(w), ["floor", "gt", "ground"])
 
     def test_lt(self):
         w = where.Where('"houses in street" lt "thirty three"')
         w.lex()
-        self.assertEqual(w.tokens, ["houses in street", "lt", "thirty three"])
+        self.assertEqual(
+            wtokens(w), ["houses in street", "lt", "thirty three"]
+        )
 
     def test_le(self):
         w = where.Where("floor le third")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "le", "third"])
+        self.assertEqual(wtokens(w), ["floor", "le", "third"])
 
     def test_ge(self):
         w = where.Where("floor ge second")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "ge", "second"])
+        self.assertEqual(wtokens(w), ["floor", "ge", "second"])
 
     def test_before(self):
         w = where.Where('"house room" before attic')
         w.lex()
-        self.assertEqual(w.tokens, ["house room", "before", "attic"])
+        self.assertEqual(wtokens(w), ["house room", "before", "attic"])
 
     def test_after(self):
         w = where.Where('"house room" after "the ground floor"')
         w.lex()
-        self.assertEqual(w.tokens, ["house room", "after", "the ground floor"])
+        self.assertEqual(
+            wtokens(w), ["house room", "after", "the ground floor"]
+        )
 
     def test_from_to(self):
         w = where.Where('"house room" from "the floor" to "the roof"')
         w.lex()
         self.assertEqual(
-            w.tokens, ["house room", "from", "the floor", "to", "the roof"]
+            wtokens(w), ["house room", "from", "the floor", "to", "the roof"]
         )
 
     def test_from_below(self):
         w = where.Where('"house room" from "the floor" below "the roof"')
         w.lex()
         self.assertEqual(
-            w.tokens, ["house room", "from", "the floor", "below", "the roof"]
+            wtokens(w),
+            ["house room", "from", "the floor", "below", "the roof"],
         )
 
     def test_above_to(self):
         w = where.Where('"house room" above "the floor" to "the roof"')
         w.lex()
         self.assertEqual(
-            w.tokens, ["house room", "above", "the floor", "to", "the roof"]
+            wtokens(w), ["house room", "above", "the floor", "to", "the roof"]
         )
 
     def test_above_below(self):
         w = where.Where('"house room" above "the floor" below "the roof"')
         w.lex()
         self.assertEqual(
-            w.tokens, ["house room", "above", "the floor", "below", "the roof"]
+            wtokens(w),
+            ["house room", "above", "the floor", "below", "the roof"],
         )
 
     def test_is_not(self):
         w = where.Where("fieldname is not value")
         w.lex()
-        self.assertEqual(w.tokens, ["fieldname", "is", "not", "value"])
+        self.assertEqual(wtokens(w), ["fieldname", "is", "not", "value"])
 
     def test_not_like(self):
         w = where.Where("fieldname not like pattern")
         w.lex()
-        self.assertEqual(w.tokens, ["fieldname", "not", "like", "pattern"])
+        self.assertEqual(wtokens(w), ["fieldname", "not", "like", "pattern"])
 
     def test_not_present(self):
         w = where.Where("fieldname not present")
         w.lex()
-        self.assertEqual(w.tokens, ["fieldname", "not", "present"])
+        self.assertEqual(wtokens(w), ["fieldname", "not", "present"])
 
     def test_not_alpha_eq(self):
         w = where.Where("floor not alpha eq basement")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "not", "alpha", "eq", "basement"])
+        self.assertEqual(
+            wtokens(w), ["floor", "not", "alpha", "eq", "basement"]
+        )
 
     def test_not_alpha_ne(self):
         w = where.Where("floor not alpha ne first")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "not", "alpha", "ne", "first"])
+        self.assertEqual(wtokens(w), ["floor", "not", "alpha", "ne", "first"])
 
     def test_not_alpha_gt(self):
         w = where.Where("floor not alpha gt ground")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "not", "alpha", "gt", "ground"])
+        self.assertEqual(wtokens(w), ["floor", "not", "alpha", "gt", "ground"])
 
     def test_not_alpha_lt(self):
         w = where.Where('"houses in street" not alpha lt "thirty three"')
         w.lex()
         self.assertEqual(
-            w.tokens,
+            wtokens(w),
             ["houses in street", "not", "alpha", "lt", "thirty three"],
         )
 
     def test_not_alpha_le(self):
         w = where.Where("floor not alpha le third")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "not", "alpha", "le", "third"])
+        self.assertEqual(wtokens(w), ["floor", "not", "alpha", "le", "third"])
 
     def test_not_alpha_ge(self):
         w = where.Where("floor not alpha ge second")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "not", "alpha", "ge", "second"])
+        self.assertEqual(wtokens(w), ["floor", "not", "alpha", "ge", "second"])
 
     def test_not_alpha_before(self):
         w = where.Where('"house room" not alpha before attic')
         w.lex()
         self.assertEqual(
-            w.tokens, ["house room", "not", "alpha", "before", "attic"]
+            wtokens(w), ["house room", "not", "alpha", "before", "attic"]
         )
 
     def test_not_alpha_after(self):
         w = where.Where('"house room" not alpha after "the ground floor"')
         w.lex()
         self.assertEqual(
-            w.tokens,
+            wtokens(w),
             ["house room", "not", "alpha", "after", "the ground floor"],
         )
 
@@ -1104,7 +1159,7 @@ class Where_lex_phraseTC(unittest.TestCase):
         )
         w.lex()
         self.assertEqual(
-            w.tokens,
+            wtokens(w),
             [
                 "house room",
                 "not",
@@ -1122,7 +1177,7 @@ class Where_lex_phraseTC(unittest.TestCase):
         )
         w.lex()
         self.assertEqual(
-            w.tokens,
+            wtokens(w),
             [
                 "house room",
                 "not",
@@ -1140,7 +1195,7 @@ class Where_lex_phraseTC(unittest.TestCase):
         )
         w.lex()
         self.assertEqual(
-            w.tokens,
+            wtokens(w),
             [
                 "house room",
                 "not",
@@ -1158,7 +1213,7 @@ class Where_lex_phraseTC(unittest.TestCase):
         )
         w.lex()
         self.assertEqual(
-            w.tokens,
+            wtokens(w),
             [
                 "house room",
                 "not",
@@ -1173,54 +1228,56 @@ class Where_lex_phraseTC(unittest.TestCase):
     def test_not_num_eq(self):
         w = where.Where("floor not num eq basement")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "not", "num", "eq", "basement"])
+        self.assertEqual(wtokens(w), ["floor", "not", "num", "eq", "basement"])
 
     def test_not_num_ne(self):
         w = where.Where("floor not num ne first")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "not", "num", "ne", "first"])
+        self.assertEqual(wtokens(w), ["floor", "not", "num", "ne", "first"])
 
     def test_not_num_gt(self):
         w = where.Where("floor not num gt ground")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "not", "num", "gt", "ground"])
+        self.assertEqual(wtokens(w), ["floor", "not", "num", "gt", "ground"])
 
     def test_not_num_lt(self):
         w = where.Where('"houses in street" not num lt "thirty three"')
         w.lex()
         self.assertEqual(
-            w.tokens, ["houses in street", "not", "num", "lt", "thirty three"]
+            wtokens(w),
+            ["houses in street", "not", "num", "lt", "thirty three"],
         )
 
     def test_not_num_le(self):
         w = where.Where("floor not num le third")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "not", "num", "le", "third"])
+        self.assertEqual(wtokens(w), ["floor", "not", "num", "le", "third"])
 
     def test_not_num_ge(self):
         w = where.Where("floor not num ge second")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "not", "num", "ge", "second"])
+        self.assertEqual(wtokens(w), ["floor", "not", "num", "ge", "second"])
 
     def test_not_num_before(self):
         w = where.Where('"house room" not num before attic')
         w.lex()
         self.assertEqual(
-            w.tokens, ["house room", "not", "num", "before", "attic"]
+            wtokens(w), ["house room", "not", "num", "before", "attic"]
         )
 
     def test_not_num_after(self):
         w = where.Where('"house room" not num after "the ground floor"')
         w.lex()
         self.assertEqual(
-            w.tokens, ["house room", "not", "num", "after", "the ground floor"]
+            wtokens(w),
+            ["house room", "not", "num", "after", "the ground floor"],
         )
 
     def test_not_num_from_to(self):
         w = where.Where('"house room" not num from "the floor" to "the roof"')
         w.lex()
         self.assertEqual(
-            w.tokens,
+            wtokens(w),
             [
                 "house room",
                 "not",
@@ -1238,7 +1295,7 @@ class Where_lex_phraseTC(unittest.TestCase):
         )
         w.lex()
         self.assertEqual(
-            w.tokens,
+            wtokens(w),
             [
                 "house room",
                 "not",
@@ -1254,7 +1311,7 @@ class Where_lex_phraseTC(unittest.TestCase):
         w = where.Where('"house room" not num above "the floor" to "the roof"')
         w.lex()
         self.assertEqual(
-            w.tokens,
+            wtokens(w),
             [
                 "house room",
                 "not",
@@ -1272,7 +1329,7 @@ class Where_lex_phraseTC(unittest.TestCase):
         )
         w.lex()
         self.assertEqual(
-            w.tokens,
+            wtokens(w),
             [
                 "house room",
                 "not",
@@ -1287,52 +1344,52 @@ class Where_lex_phraseTC(unittest.TestCase):
     def test_not_eq(self):
         w = where.Where("floor not eq basement")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "not", "eq", "basement"])
+        self.assertEqual(wtokens(w), ["floor", "not", "eq", "basement"])
 
     def test_not_ne(self):
         w = where.Where("floor not ne first")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "not", "ne", "first"])
+        self.assertEqual(wtokens(w), ["floor", "not", "ne", "first"])
 
     def test_not_gt(self):
         w = where.Where("floor not gt ground")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "not", "gt", "ground"])
+        self.assertEqual(wtokens(w), ["floor", "not", "gt", "ground"])
 
     def test_not_lt(self):
         w = where.Where('"houses in street" not lt "thirty three"')
         w.lex()
         self.assertEqual(
-            w.tokens, ["houses in street", "not", "lt", "thirty three"]
+            wtokens(w), ["houses in street", "not", "lt", "thirty three"]
         )
 
     def test_not_le(self):
         w = where.Where("floor not le third")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "not", "le", "third"])
+        self.assertEqual(wtokens(w), ["floor", "not", "le", "third"])
 
     def test_not_ge(self):
         w = where.Where("floor not ge second")
         w.lex()
-        self.assertEqual(w.tokens, ["floor", "not", "ge", "second"])
+        self.assertEqual(wtokens(w), ["floor", "not", "ge", "second"])
 
     def test_not_before(self):
         w = where.Where('"house room" not before attic')
         w.lex()
-        self.assertEqual(w.tokens, ["house room", "not", "before", "attic"])
+        self.assertEqual(wtokens(w), ["house room", "not", "before", "attic"])
 
     def test_not_after(self):
         w = where.Where('"house room" not after "the ground floor"')
         w.lex()
         self.assertEqual(
-            w.tokens, ["house room", "not", "after", "the ground floor"]
+            wtokens(w), ["house room", "not", "after", "the ground floor"]
         )
 
     def test_not_from_to(self):
         w = where.Where('"house room" not from "the floor" to "the roof"')
         w.lex()
         self.assertEqual(
-            w.tokens,
+            wtokens(w),
             ["house room", "not", "from", "the floor", "to", "the roof"],
         )
 
@@ -1340,7 +1397,7 @@ class Where_lex_phraseTC(unittest.TestCase):
         w = where.Where('"house room" not from "the floor" below "the roof"')
         w.lex()
         self.assertEqual(
-            w.tokens,
+            wtokens(w),
             ["house room", "not", "from", "the floor", "below", "the roof"],
         )
 
@@ -1348,7 +1405,7 @@ class Where_lex_phraseTC(unittest.TestCase):
         w = where.Where('"house room" not above "the floor" to "the roof"')
         w.lex()
         self.assertEqual(
-            w.tokens,
+            wtokens(w),
             ["house room", "not", "above", "the floor", "to", "the roof"],
         )
 
@@ -1356,7 +1413,7 @@ class Where_lex_phraseTC(unittest.TestCase):
         w = where.Where('"house room" not above "the floor" below "the roof"')
         w.lex()
         self.assertEqual(
-            w.tokens,
+            wtokens(w),
             ["house room", "not", "above", "the floor", "below", "the roof"],
         )
 
@@ -5068,14 +5125,18 @@ class Where_validateTC(unittest.TestCase):
         self.assertIsInstance(
             self._validate("f5 ex d"), where.WhereStatementError
         )  # ['f5 ex d'])
-        self.assertIsInstance(
-            self._validate("f5 ex as and f5 like at or f2 is d", 1),
-            where.WhereStatementError,
-        )  # ['f5 ex as'])
-        self.assertIsInstance(
-            self._validate("f5 eq as ant f5 like at or f2 is d", 3),
-            where.WhereStatementError,
-        )  # ['f5', 'eq', 'as ant f5'])
+        self.assertRaisesRegex(
+            where.WhereError,
+            "Unable to process token 'and'$",
+            self._validate,
+            *("f5 ex as and f5 like at or f2 is d", 1),
+        )
+        self.assertRaisesRegex(
+            where.WhereError,
+            "Unable to process token 'like'$",
+            self._validate,
+            *("f5 eq as ant f5 like at or f2 is d", 3),
+        )
         self.assertEqual(
             self._validate("f5 eq as and (f2 is d or f5 like at)"), None
         )
