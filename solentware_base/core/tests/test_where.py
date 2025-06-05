@@ -71,7 +71,7 @@ class WhereTC(unittest.TestCase):
             (where.BEFORE, "before"),
             (where.STARTS, "starts"),
             (where.PRESENT, "present"),
-            (where.STRING, r"\w+|\s+|[^\w\s()'\"]+\""),
+            (where.STRING, r"\w+|\s+|[^\w\s()'\"]+|['\"]"),
             (where.LEADING_SPACE, r"(?<=\s)"),
             (where.TRAILING_SPACE, r"(?=\s)"),
         )

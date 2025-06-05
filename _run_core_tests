@@ -39,5 +39,5 @@ python$1 -m solentware_base.core.tests.test_recordset_list
 python$1 -m solentware_base.core.tests.test_recordset_wrappers
 python$1 -m solentware_base.core.tests.test_segmentsize
 python$1 -m solentware_base.core.tests.test_tree
-#python$1 -m solentware_base.core.tests.test_where
+python$1 -m solentware_base.core.tests.test_where
 python$1 -m solentware_base.core.tests.test_wherevalues

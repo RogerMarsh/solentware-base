@@ -66,7 +66,7 @@ BELOW = "below"
 BEFORE = "before"
 STARTS = "starts"
 PRESENT = "present"
-STRING = r"\w+|\s+|[^\w\s()'\"]+|\""
+STRING = r"\w+|\s+|[^\w\s()'\"]+|['\"]"
 
 LEADING_SPACE = r"(?<=\s)"
 TRAILING_SPACE = r"(?=\s)"
@@ -181,9 +181,7 @@ class Where:
             word = item.group()
             if word.lower() in KEYWORDS:
                 if strings:
-                    tokens.append(
-                        "".join([_trim(s) for s in strings if s]).strip()
-                    )
+                    tokens.append("".join(_trim(strings)))
                     strings.clear()
                     items.append(tuple(string_items))
                     string_items.clear()
@@ -193,7 +191,7 @@ class Where:
                 strings.append(word)
                 string_items.append(item)
         if strings:
-            tokens.append("".join([_trim(s) for s in strings if s]).strip())
+            tokens.append("".join(_trim(strings)))
             strings.clear()
             items.append(tuple(string_items))
             string_items.clear()
@@ -1128,15 +1126,18 @@ class WhereConstraint:
         self.pending = False
 
 
-def _trim(string):
-    """Return string with one leading and trailing ' or " removed.
+def _trim(strings):
+    """Return trimmed copy of strings.
 
-    The two quote characters allow values containing spaces.
+    The first item has leading whitespace removed.
+    The last item has trailing whitespace removed.
+    One leading and one trailing ' or " is removed from all items longer
+    than one character.
 
     """
-    if len(string) > 1 and string[0] in "'\"":
-        return string[1:-1]
-    return string
+    strings[0] = strings[0].lstrip()
+    strings[-1] = strings[-1].rstrip()
+    return [s[1:-1] if len(s) > 1 and s[0] in "'\"" else s for s in strings]
 
 
 class WhereStatementError:
