@@ -40,8 +40,8 @@ from tkinter import simpledialog
 
 from .constants import SECONDARY
 
-DOUBLE_QUOTE_STRING = '".*?"'
-SINGLE_QUOTE_STRING = "'.*?'"
+DOUBLE_QUOTE_STRING = r'"[^\\"]*(?:\\.[^\\"]*)*"'
+SINGLE_QUOTE_STRING = r"'[^\\']*(?:\\.[^\\']*)*'"
 LEFT_PARENTHESIS = "("
 RIGHT_PARENTHESIS = ")"
 OR = "or"
@@ -66,7 +66,7 @@ BELOW = "below"
 BEFORE = "before"
 STARTS = "starts"
 PRESENT = "present"
-STRING = ".+?"
+STRING = r"\w+|\s+|[^\w\s()'\"]+|\""
 
 LEADING_SPACE = r"(?<=\s)"
 TRAILING_SPACE = r"(?=\s)"
@@ -101,9 +101,9 @@ WHERE_RE = re.compile(
             BEFORE.join((LEADING_SPACE, TRAILING_SPACE)),
             STARTS.join((LEADING_SPACE, TRAILING_SPACE)),
             PRESENT.join((LEADING_SPACE, r"(?=\s|\)|\Z)")),
-            STRING,
+            STRING.join("()"),
         )
-    ).join(("(", ")")),
+    ),
     flags=re.IGNORECASE | re.DOTALL,
 )
 
@@ -174,26 +174,43 @@ class Where:
     def lex(self):
         """Split instance's statement into tokens."""
         tokens = []
+        items = []
         strings = []
-        for word in WHERE_RE.split(self.statement):
+        string_items = []
+        for item in WHERE_RE.finditer(self.statement):
+            word = item.group()
             if word.lower() in KEYWORDS:
                 if strings:
-                    tokens.append("".join([_trim(s) for s in strings if s]))
+                    tokens.append(
+                        "".join([_trim(s) for s in strings if s]).strip()
+                    )
                     strings.clear()
+                    items.append(tuple(string_items))
+                    string_items.clear()
                 tokens.append(word.lower())
-            elif word.strip():
-                strings.append(word.strip())
+                items.append((item,))
+            elif word:
+                strings.append(word)
+                string_items.append(item)
         if strings:
-            tokens.append("".join([_trim(s) for s in strings if s]))
+            tokens.append("".join([_trim(s) for s in strings if s]).strip())
             strings.clear()
-        self.tokens = tokens
+            items.append(tuple(string_items))
+            string_items.clear()
+        self.tokens = [
+            (i, t)
+            for i, t in zip(items, tokens)
+            if t != "" or None in [j.group(1) for j in i]
+        ]
 
     def parse(self):
         """Parse instance's tokens to create node structure to do query."""
         self.node = WhereClause()
         state = self._set_field_not_leftp_start
         for i, token in enumerate(self.tokens):
-            state = state(token)
+            # May need to be 'state = state(token)' with the <state>
+            # methods influenced by token[0] if appropriate.
+            state = state(token[1])
             if not state:
                 self._error_information.tokens = self.tokens[: i + 1]
                 break
@@ -391,10 +408,10 @@ class Where:
         if token_lower == LEFT_PARENTHESIS:
             self._first_token_left_parenthesis(token)
             return self._set_field_not_leftp
-        if token_lower not in KEYWORDS:
-            self._first_token_field(token)
-            return self._set_not_num_alpha_condition
-        return self.error(token)
+        if token_lower in KEYWORDS:
+            self.raise_where_error(token)
+        self._first_token_field(token)
+        return self._set_not_num_alpha_condition
 
     def _set_field_leftp(self, token):
         """Expect fieldname, or '(', after 'not'."""
@@ -402,11 +419,11 @@ class Where:
         if token_lower == LEFT_PARENTHESIS:
             self._boolean_left_parenthesis(token)
             return self._set_field_not_leftp
-        if token_lower not in KEYWORDS:
-            self._deferred_not_phrase()
-            self.node.field = token
-            return self._set_not_num_alpha_condition
-        return self.error(token)
+        if token_lower in KEYWORDS:
+            self.raise_where_error(token)
+        self._deferred_not_phrase()
+        self.node.field = token
+        return self._set_not_num_alpha_condition
 
     def _set_field_not_leftp(self, token):
         """Expect fieldname, 'not', or '(', after '(' or boolean."""
@@ -417,11 +434,11 @@ class Where:
         if token_lower == LEFT_PARENTHESIS:
             self._boolean_left_parenthesis(token)
             return self._set_field_not_leftp
-        if token_lower not in KEYWORDS:
-            self._deferred_not_phrase()
-            self.node.field = token
-            return self._set_not_num_alpha_condition
-        return self.error(token)
+        if token_lower in KEYWORDS:
+            self.raise_where_error(token)
+        self._deferred_not_phrase()
+        self.node.field = token
+        return self._set_not_num_alpha_condition
 
     def _set_not_num_alpha_condition(self, token):
         """Expect 'not', 'num', 'alpha', or a condition, after fieldname."""
@@ -439,7 +456,7 @@ class Where:
             # for the token_lower == NOT case because 'is' is never
             # preceded by 'not'.
             if self._not:
-                return self.error(token)
+                self.raise_where_error(token)
             self.node.condition = token_lower
             return self._set_not_value
 
@@ -472,7 +489,8 @@ class Where:
             self._deferred_not_condition()
             self.node.condition = token_lower
             return self._set_first_value
-        return self.error(token)
+        self.raise_where_error(token)
+        return None
 
     def _set_second_condition(self, token):
         """Expect second condition after first value of double condition."""
@@ -480,7 +498,8 @@ class Where:
         if token_lower in SECOND_CONDITIONS:
             self.node.condition = self.node.condition, token_lower
             return self._set_second_value
-        return self.error(token)
+        self.raise_where_error(token)
+        return None
 
     def _set_not_value(self, token):
         """Expect 'not', or a value, after a condition."""
@@ -492,39 +511,37 @@ class Where:
 
     def _set_value(self, token):
         """Expect value after single condition."""
-        token_lower = token.lower()
-        if token_lower not in KEYWORDS:
-            self.node.value = token
-            return self._set_and_or_nor_rightp__single_condition
-        return self.error(token)
+        self.node.value = token
+        return self._set_and_or_nor_rightp__single_condition
 
     def _set_value_like(self, token):
         """Expect value, a regular expression, after like."""
-        token_lower = token.lower()
-        if token_lower not in KEYWORDS:
-            try:
-                re.compile(token, flags=re.IGNORECASE | re.DOTALL)
-            except re.error:
-                return self.error(token)
-            self.node.value = token
-            return self._set_and_or_nor_rightp__single_condition
-        return self.error(token)
+        try:
+            re.compile(token)
+        except re.error as exc:
+            raise WhereError(
+                "".join(
+                    (
+                        "Problem with 'like' argument\n\n'",
+                        token,
+                        "'\n\nThe reported regular expression ",
+                        "error is\n\n",
+                        str(exc),
+                    )
+                )
+            ) from exc
+        self.node.value = token
+        return self._set_and_or_nor_rightp__single_condition
 
     def _set_first_value(self, token):
         """Expect first value after first condition in double condition."""
-        token_lower = token.lower()
-        if token_lower not in KEYWORDS:
-            self.node.value = token
-            return self._set_second_condition
-        return self.error(token)
+        self.node.value = token
+        return self._set_second_condition
 
     def _set_second_value(self, token):
         """Expect second value after second condition in double condition."""
-        token_lower = token.lower()
-        if token_lower not in KEYWORDS:
-            self.node.value = self.node.value, token
-            return self._set_and_or_nor_rightp__single_condition
-        return self.error(token)
+        self.node.value = self.node.value, token
+        return self._set_and_or_nor_rightp__single_condition
 
     def _set_and_or_nor_rightp__single_condition(self, token):
         """Expect boolean or rightp after value in single condition phrase.
@@ -588,7 +605,8 @@ class Where:
                 raise WhereError("No unmatched left-parentheses")
             self.node = self.node.up
             return self._set_and_or_nor_rightp
-        return self.error(token)
+        self.raise_where_error(token)
+        return None
 
     def _set_field_leftp_not_condition(self, token):
         """Expect fieldname, '(', 'not', or condition after rightp."""
@@ -601,11 +619,11 @@ class Where:
     def _set_field_leftp_condition(self, token):
         """Expect fieldname, '(', or condition after rightp 'not'."""
         token_lower = token.lower()
-        if token_lower not in KEYWORDS:
-            self._deferred_not_phrase()
-            self.node.field = token
-            return self._set_not_num_alpha_condition
-        return self._set_leftp_condition(token)
+        if token_lower in KEYWORDS:
+            return self._set_leftp_condition(token)
+        self._deferred_not_phrase()
+        self.node.field = token
+        return self._set_not_num_alpha_condition
 
     def _set_field_leftp_not_condition_value(self, token):
         """Expect fieldname, '(', 'not', condition, or value, after rightp."""
@@ -618,10 +636,10 @@ class Where:
     def _set_field_leftp_condition_value(self, token):
         """Expect fieldname, '(', condition, or value, after rightp 'not'."""
         token_lower = token.lower()
-        if token_lower not in KEYWORDS:
-            self._f_or_v = token
-            return self._set_field_or_value__not
-        return self._set_leftp_condition(token)
+        if token_lower in KEYWORDS:
+            return self._set_leftp_condition(token)
+        self._f_or_v = token
+        return self._set_field_or_value__not
 
     def _set_field_or_value__not(self, token):
         """Expect keyword to interpret previous token as field or value."""
@@ -656,7 +674,7 @@ class Where:
             # for the token_lower == NOT case because 'is' is never
             # preceded by 'not'.
             if self._not:
-                return self.error(token)
+                self.raise_where_error(token)
             self._field_condition(token_lower)
             return self._set_not_value
 
@@ -679,7 +697,8 @@ class Where:
             self._field_condition(token_lower)
             self._alphanum_condition(token_lower)
             return self._set_condition
-        return self.error(token)
+        self.raise_where_error(token)
+        return None
 
     # Why is this not the same as _set_num_alpha_condition?
     # Perhaps the question should be the other way round!
@@ -698,7 +717,7 @@ class Where:
             # for the token_lower == NOT case because 'is' is never
             # preceded by 'not'.
             if self._not:
-                return self.error(token)
+                self.raise_where_error(token)
             self.node.condition = token_lower
             return self._set_not_value
 
@@ -726,14 +745,12 @@ class Where:
             self._copy_pre_alphanumeric()
             self._alphanum_condition(token_lower)
             return self._set_condition
-        return self.error(token)
+        self.raise_where_error(token)
+        return None
 
-    # Returning False always cannot possibly be correct, surely?
-    def error(self, token):
-        """Return False."""
-        if token.lower() in KEYWORDS:
-            return False
-        return False
+    def raise_where_error(self, token):
+        """Raise WhereError exception."""
+        raise WhereError(token.join(("Unable to process token '", "'")))
 
     def _deferred_not_condition(self):
         """Nearest 'not' to left inverts a condition such as 'eq'."""
@@ -1117,7 +1134,7 @@ def _trim(string):
     The two quote characters allow values containing spaces.
 
     """
-    if string[0] in "'\"":
+    if len(string) > 1 and string[0] in "'\"":
         return string[1:-1]
     return string
 
