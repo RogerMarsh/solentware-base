@@ -1,13 +1,10 @@
 # './_run_tests' will do
-# 'python -m solentware_base.tests.test_<modulename>' for each modulename in
-# directory.
+# 'python -m solentware_base.tests.test_<modulename>' for the
+# modules which do tests other than those for the db tcl interface
+# via tkinter.
 # './_run_tests 3.7' will do
-# 'python3.7 -m solentware_base.tests.test_<modulename>' for each modulename
-# in directory.
-# './_run_tests 3.9 LD_PRELOAD=/usr/local/lib/libtcl86.so.1.12' will preload
-# the named library before running the tests for the tkinter Tcl API.
-# See ports@openbsd.org thread 'Python access to Berkeley DB' started
-# December 2022 for details.
+# 'python3.7 -m solentware_base.tests.test_<modulename>' for
+# these modules.
 python$1 -m solentware_base.tests.test___deferred_update
 python$1 -m solentware_base.tests.test___do_database_tasks
 python$1 -m solentware_base.tests.test___update
@@ -30,7 +27,3 @@ python$1 -m solentware_base.tests.test_unqlite_database
 python$1 -m solentware_base.tests.test_unqlitedu_database
 python$1 -m solentware_base.tests.test_vedis_database
 python$1 -m solentware_base.tests.test_vedisdu_database
-# Do the tests which might need the library preload last.
-export $2
-python$1 -m solentware_base.tests.test_db_tkinter_database
-python$1 -m solentware_base.tests.test_db_tkinterdu_database

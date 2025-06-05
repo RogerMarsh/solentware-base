@@ -1,0 +1,17 @@
+# './_run_db_tkinter_tests LD_PRELOAD=/usr/local/lib/libtcl86.so.1.12'
+# will do
+# 'python -m solentware_base.core.tests.test_<modulename>' for the
+# modules which use the db tcl interface via tkinter.
+# './_run_db_tkinter_tests 3.9 LD_PRELOAD=/usr/local/lib/libtcl86.so.1.12'
+# will do
+# 'python3.9 -m solentware_base.core.tests.test_<modulename>' for
+# these modules.
+# The named library will be preloaded before running tests.
+# See ports@openbsd.org thread 'Python access to Berkeley DB' started
+# December 2022 for details.
+export $2
+python$1 -m solentware_base.core.tests.test__db_tkinter
+python$1 -m solentware_base.core.tests.test__db_tkinter_cursor
+python$1 -m solentware_base.core.tests.test__dbdu_tkinter
+python$1 -m solentware_base.tests.test_db_tkinter_database
+python$1 -m solentware_base.tests.test_db_tkinterdu_database
