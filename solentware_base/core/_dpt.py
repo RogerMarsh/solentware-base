@@ -849,14 +849,14 @@ class Database(_database.Database):
                 dptapi.APIFieldValue(""),
             )
         )
-        matcher = re.compile(".*?" + keylike, flags=re.IGNORECASE | re.DOTALL)
+        matcher = re.compile(keylike)
         dvcursor = dptfile.table_connection.OpenDirectValueCursor(
             dptapi.APIFindValuesSpecification(dptfile.secondary[field])
         )
         dvcursor.GotoFirst()
         while dvcursor.Accessible():
             value = dvcursor.GetCurrentValue()
-            if matcher.match(value.ExtractString()):
+            if matcher.search(value.ExtractString()):
                 vfs = _DPTFoundSet(
                     dptfile,
                     dptfile.table_connection.FindRecords(
@@ -961,9 +961,9 @@ class Database(_database.Database):
 
         cache_size is not relevant to DPT.
         """
-        if ge and gt:
+        if isinstance(ge, str) and isinstance(gt, str):
             raise DatabaseError("Both 'ge' and 'gt' given in key range")
-        if le and lt:
+        if isinstance(le, str) and isinstance(lt, str):
             raise DatabaseError("Both 'le' and 'lt' given in key range")
         if ge is None and gt is None and le is None and lt is None:
             return self.recordlist_all(file, field, cache_size=cache_size)
@@ -975,8 +975,8 @@ class Database(_database.Database):
                 dptfile.table_connection.FindRecords(
                     dptapi.APIFindSpecification(
                         dptfile.secondary[field],
-                        dptapi.FD_GE if ge else dptapi.FD_GT,
-                        dptapi.APIFieldValue(ge or gt),
+                        dptapi.FD_GE if ge is not None else dptapi.FD_GT,
+                        dptapi.APIFieldValue(ge or gt or ""),
                     )
                 ),
             )
@@ -986,24 +986,32 @@ class Database(_database.Database):
                 dptfile.table_connection.FindRecords(
                     dptapi.APIFindSpecification(
                         dptfile.secondary[field],
-                        dptapi.FD_LE if le else dptapi.FD_LT,
-                        dptapi.APIFieldValue(le or lt),
+                        dptapi.FD_LE if le is not None else dptapi.FD_LT,
+                        dptapi.APIFieldValue(le or lt or ""),
                     )
                 ),
             )
         else:
             if ge:
-                range_ = dptapi.FD_RANGE_GE_LE if le else dptapi.FD_RANGE_GE_LT
+                range_ = (
+                    dptapi.FD_RANGE_GE_LE
+                    if le is not None
+                    else dptapi.FD_RANGE_GE_LT
+                )
             else:
-                range_ = dptapi.FD_RANGE_GT_LE if le else dptapi.FD_RANGE_GT_LT
+                range_ = (
+                    dptapi.FD_RANGE_GT_LE
+                    if le is not None
+                    else dptapi.FD_RANGE_GT_LT
+                )
             foundset = _DPTFoundSet(
                 dptfile,
                 dptfile.table_connection.FindRecords(
                     dptapi.APIFindSpecification(
                         dptfile.secondary[field],
                         range_,
-                        dptapi.APIFieldValue(ge or gt),
-                        dptapi.APIFieldValue(le or lt),
+                        dptapi.APIFieldValue(ge or gt or ""),
+                        dptapi.APIFieldValue(le or lt or ""),
                     )
                 ),
             )

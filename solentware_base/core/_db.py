@@ -1414,7 +1414,7 @@ class Database(_database.Database):
         recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
         if keylike is None:
             return recordlist
-        pattern = b".*?" + keylike
+        matcher = re.compile(keylike)
         cursor = self.table[SUBFILE_DELIMITER.join((file, field))].cursor(
             txn=self.dbtxn
         )
@@ -1422,7 +1422,7 @@ class Database(_database.Database):
             record = cursor.first()
             while record:
                 key, value = record
-                if re.match(pattern, key, flags=re.IGNORECASE | re.DOTALL):
+                if matcher.search(key):
                     self.populate_recordset_segment(recordlist, value)
                 record = cursor.next()
         finally:
@@ -1478,9 +1478,9 @@ class Database(_database.Database):
 
         Keys are in range set by combinations of ge, gt, le, and lt.
         """
-        if ge and gt:
+        if isinstance(ge, bytes) and isinstance(gt, bytes):
             raise DatabaseError("Both 'ge' and 'gt' given in key range")
-        if le and lt:
+        if isinstance(le, bytes) and isinstance(lt, bytes):
             raise DatabaseError("Both 'le' and 'lt' given in key range")
         recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
         cursor = self.table[SUBFILE_DELIMITER.join((file, field))].cursor(
@@ -1490,7 +1490,7 @@ class Database(_database.Database):
             if ge is None and gt is None:
                 record = cursor.first()
             else:
-                record = cursor.set_range(ge or gt)
+                record = cursor.set_range(ge or gt or b"")
             if gt:
                 while record:
                     if record[0] > gt:

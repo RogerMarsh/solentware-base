@@ -1793,7 +1793,7 @@ class Database(_database.Database):
         recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
         if keylike is None:
             return recordlist
-        pattern = b".*?" + keylike
+        matcher = re.compile(keylike)
         command = [
             self.table[SUBFILE_DELIMITER.join((file, field))],
             "cursor",
@@ -1805,7 +1805,7 @@ class Database(_database.Database):
             record = tcl_tk_call((cursor, "get", "-first"))
             while record:
                 key, value = record[0]
-                if re.match(pattern, key, flags=re.IGNORECASE | re.DOTALL):
+                if matcher.search(key):
                     self.populate_recordset_segment(recordlist, value)
                 record = tcl_tk_call((cursor, "get", "-next"))
         finally:
@@ -1872,9 +1872,9 @@ class Database(_database.Database):
 
         Keys are in range set by combinations of ge, gt, le, and lt.
         """
-        if ge and gt:
+        if isinstance(ge, str) and isinstance(gt, str):
             raise DatabaseError("Both 'ge' and 'gt' given in key range")
-        if le and lt:
+        if isinstance(le, str) and isinstance(lt, str):
             raise DatabaseError("Both 'le' and 'lt' given in key range")
         recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
         command = [
@@ -1888,7 +1888,9 @@ class Database(_database.Database):
             if ge is None and gt is None:
                 record = tcl_tk_call((cursor, "get", "-first"))
             else:
-                record = tcl_tk_call((cursor, "get", "-set_range", ge or gt))
+                record = tcl_tk_call(
+                    (cursor, "get", "-set_range", ge or gt or "")
+                )
             if gt:
                 while record:
                     record0 = record[0]

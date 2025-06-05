@@ -1491,12 +1491,12 @@ class Database(_database.Database):
             )
         )
         db_segment_size_bytes = SegmentSize.db_segment_size_bytes
-        matcher = re.compile(".*?" + keylike, flags=re.IGNORECASE | re.DOTALL)
+        matcher = re.compile(keylike)
         get_segment_records = self.get_segment_records
         cursor = self.dbenv.cursor()
         try:
             for record in cursor.execute(statement):
-                if not matcher.match(record[0]):
+                if not matcher.search(record[0]):
                     continue
                 if record[2] == 1:
                     segment = RecordsetSegmentInt(
@@ -1643,14 +1643,22 @@ class Database(_database.Database):
 
         Keys are in range set by combinations of ge, gt, le, and lt.
         """
-        if ge and gt:
+        if isinstance(ge, str) and isinstance(gt, str):
             raise DatabaseError("Both 'ge' and 'gt' given in key range")
-        if le and lt:
+        if isinstance(le, str) and isinstance(lt, str):
             raise DatabaseError("Both 'le' and 'lt' given in key range")
         if ge is None and gt is None and le is None and lt is None:
             return self.recordlist_all(file, field, cache_size=cache_size)
-        highop = "<" if lt else "<=" if le else None
-        lowop = ">" if gt else ">=" if ge else None
+        highop = (
+            "<"
+            if isinstance(lt, str)
+            else "<=" if isinstance(le, str) else None
+        )
+        lowop = (
+            ">"
+            if isinstance(gt, str)
+            else ">=" if isinstance(ge, str) else None
+        )
         recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
         if highop is None:
             statement = " ".join(
@@ -1671,7 +1679,7 @@ class Database(_database.Database):
                     "?",
                 )
             )
-            values = (ge or gt,)
+            values = (ge or gt or "",)
         elif lowop is None:
             statement = " ".join(
                 (
@@ -1691,7 +1699,7 @@ class Database(_database.Database):
                     "?",
                 )
             )
-            values = (le or lt,)
+            values = (le or lt or "",)
         else:
             statement = " ".join(
                 (
@@ -1714,7 +1722,7 @@ class Database(_database.Database):
                     "?",
                 )
             )
-            values = ge or gt, le or lt
+            values = (ge or gt or "", le or lt or "")
         db_segment_size_bytes = SegmentSize.db_segment_size_bytes
         get_segment_records = self.get_segment_records
         cursor = self.dbenv.cursor()

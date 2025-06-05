@@ -1229,7 +1229,7 @@ class Database(_database.Database):
         recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
         if keylike is None:
             return recordlist
-        matcher = re.compile(".*?" + keylike, flags=re.IGNORECASE | re.DOTALL)
+        matcher = re.compile(keylike)
         db = self.dbenv
         fieldtree = self.trees[SUBFILE_DELIMITER.join((file, field))]
         cursor = tree.Cursor(fieldtree)
@@ -1238,7 +1238,7 @@ class Database(_database.Database):
                 k = cursor.next()
                 if k is None:
                     break
-                if not matcher.match(k):
+                if not matcher.search(k):
                     continue
                 self.populate_recordset(
                     recordlist,
@@ -1322,9 +1322,9 @@ class Database(_database.Database):
                     ("'", field, "' field in '", file, "' file is not ordered")
                 )
             )
-        if ge and gt:
+        if isinstance(ge, str) and isinstance(gt, str):
             raise DatabaseError("Both 'ge' and 'gt' given in key range")
-        if le and lt:
+        if isinstance(le, str) and isinstance(lt, str):
             raise DatabaseError("Both 'le' and 'lt' given in key range")
         recordlist = RecordList(dbhome=self, dbset=file, cache_size=cache_size)
         db = self.dbenv
@@ -1334,7 +1334,7 @@ class Database(_database.Database):
             if ge is None and gt is None:
                 k = cursor.first()
             else:
-                k = cursor.nearest(ge or gt)
+                k = cursor.nearest(ge or gt or "")
             if gt:
                 while k is not None:
                     if k > gt:
