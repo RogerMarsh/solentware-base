@@ -671,11 +671,11 @@ class Database_methods(_DBOpen):
             TypeError,
             "".join(
                 (
-                    r"get_high_record\(\) missing 1 required ",
+                    r"get_high_record_number\(\) missing 1 required ",
                     "positional argument: 'file'$",
                 )
             ),
-            self.database.get_high_record,
+            self.database.get_high_record_number,
         )
         self.assertRaisesRegex(
             TypeError,
@@ -752,7 +752,7 @@ class Database_methods(_DBOpen):
         self.assertEqual(self.database.add_record_to_ebm("file1", 4), (0, 4))
 
     def test_08_get_high_record(self):
-        self.assertEqual(self.database.get_high_record("file1"), None)
+        self.assertEqual(self.database.get_high_record_number("file1"), None)
 
     def test_14_recordset_record_number(self):
         self.assertIsInstance(
@@ -1804,9 +1804,9 @@ class Database_freed_record_number(_DBOpen):
                 "file1",
                 db_tcl.tcl_tk_call(tuple(command)),
             )
-        self.high_record = self.database.get_high_record("file1")[0]
+        self.high_record = self.database.get_high_record_number("file1")[0]
         self.database.ebm_control["file1"].segment_count = divmod(
-            self.high_record[0], SegmentSize.db_segment_size
+            self.high_record, SegmentSize.db_segment_size
         )[0]
 
     def tearDown(self):
@@ -1830,7 +1830,7 @@ class Database_freed_record_number(_DBOpen):
                 (
                     r"note_freed_record_number_segment\(\) missing 4 ",
                     "required positional arguments: 'dbset', 'segment', ",
-                    "'record_number_in_segment', and 'high_record'$",
+                    "'record_number_in_segment', and 'high_record_number'$",
                 )
             ),
             self.database.note_freed_record_number_segment,
@@ -1982,7 +1982,7 @@ class Database_freed_record_number(_DBOpen):
         if self.database.dbtxn:
             command.extend(["-txn", self.database.dbtxn])
         command.append(encode("value"))
-        i = self.high_record[0]
+        i = self.high_record
         for i in range(i, i + 129):
             self.database.add_record_to_ebm(
                 "file1",
@@ -1992,9 +1992,9 @@ class Database_freed_record_number(_DBOpen):
             len(self.database.ebm_control["file1"].freed_record_number_pages),
             1,
         )
-        self.high_record = self.database.get_high_record("file1")[0]
+        self.high_record = self.database.get_high_record_number("file1")[0]
         self.database.ebm_control["file1"].segment_count = divmod(
-            self.high_record[0], SegmentSize.db_segment_size
+            self.high_record, SegmentSize.db_segment_size
         )[0]
         rn = self.database.get_lowest_freed_record_number("file1")
         self.assertEqual(rn, 380)
@@ -2039,7 +2039,7 @@ class Database_empty_freed_record_number(_DBOpen):
         # ] = _db_tkinter.ExistenceBitmapControl(
         #    "file1", self.database, dbe_module.db, dbe_module.db.DB_CREATE
         # )
-        self.high_record = self.database.get_high_record("file1")
+        self.high_record = self.database.get_high_record_number("file1")
 
     def test_01(self):
         self.assertEqual(
@@ -2052,7 +2052,7 @@ class Database_empty_freed_record_number(_DBOpen):
             self.database.ebm_control["file1"].freed_record_number_pages, None
         )
         self.assertEqual(
-            self.database.get_high_record("file1"), self.high_record
+            self.database.get_high_record_number("file1"), self.high_record
         )
 
 

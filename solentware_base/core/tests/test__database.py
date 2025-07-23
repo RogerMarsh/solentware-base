@@ -398,7 +398,7 @@ class Database_01(unittest.TestCase):
 class Database_02_empty_instance(unittest.TestCase):
     def setUp(self):
         class D(_database.Database):
-            def get_high_record(self, dbset):
+            def get_high_record_number(self, dbset):
                 return 50000
 
             def delete(self, dbset, key, srvalue):
@@ -480,7 +480,7 @@ class Database_03_delete_instance(unittest.TestCase):
             deletecallbacks["field5"] = field5_delete_callback
 
         class D(_database.Database):
-            def get_high_record(self, dbset):
+            def get_high_record_number(self, dbset):
                 return 50000
 
             def delete(self, dbset, key, srvalue):
@@ -556,7 +556,7 @@ class Database_04_edit_instance(unittest.TestCase):
             putcallbacks["fieldb"] = fieldb_put_callback
 
         class D(_database.Database):
-            def get_high_record(self, dbset):
+            def get_high_record_number(self, dbset):
                 return 50000
 
             def delete(self, dbset, key, srvalue):
@@ -665,7 +665,7 @@ class _Database_05_put_instance(unittest.TestCase):
             putcallbacks["field5"] = field5_put_callback
 
         class _D(_database.Database):
-            def get_high_record(self, dbset):
+            def get_high_record_number(self, dbset):
                 return 50000
 
             def encode_record_number(self, key):
@@ -760,7 +760,7 @@ class Database_06_subclass_methods(unittest.TestCase):
             # Define stub methods expected in _db.Database and
             # _sqlite.Database, but only test is existence by comparison
             # of dir()s.
-            def get_high_record(self, dbset):
+            def get_high_record_number(self, dbset):
                 return 50000
 
             def delete(self, dbset, key, srvalue):

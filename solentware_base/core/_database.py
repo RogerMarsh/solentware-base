@@ -81,7 +81,7 @@ class Database:
         """
         deletekey = instance.key.pack()
         instance.set_packed_value_and_indexes()
-        high_record = self.get_high_record(dbset)
+        high_record = self.get_high_record_number(dbset)
         self.delete(dbset, deletekey, instance.srvalue)
         instance.srkey = self.encode_record_number(deletekey)
         srindex = instance.srindex

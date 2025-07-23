@@ -604,11 +604,11 @@ class Database_methods(_SQLiteOpen):
             TypeError,
             "".join(
                 (
-                    r"get_high_record\(\) missing 1 required ",
+                    r"get_high_record_number\(\) missing 1 required ",
                     "positional argument: 'file'$",
                 )
             ),
-            self.database.get_high_record,
+            self.database.get_high_record_number,
         )
         self.assertRaisesRegex(
             TypeError,
@@ -725,7 +725,7 @@ class Database_methods(_SQLiteOpen):
         self.assertEqual(self.database.add_record_to_ebm("file1", 4), (0, 4))
 
     def test_08_get_high_record(self):
-        self.assertEqual(self.database.get_high_record("file1"), None)
+        self.assertEqual(self.database.get_high_record_number("file1"), None)
 
     def test_09_get_segment_records(self):
         self.database.insert_segment_records((12,), "file1")
@@ -1664,9 +1664,9 @@ class Database_freed_record_number(_SQLiteOpen):
             )
             self.database.add_record_to_ebm("file1", i + 1)
         cursor.close()
-        self.high_record = self.database.get_high_record("file1")
+        self.high_record = self.database.get_high_record_number("file1")
         self.database.ebm_control["file1"].segment_count = divmod(
-            self.high_record[0], SegmentSize.db_segment_size
+            self.high_record, SegmentSize.db_segment_size
         )[0]
 
     def test_01(self):
@@ -1686,7 +1686,7 @@ class Database_freed_record_number(_SQLiteOpen):
                 (
                     r"note_freed_record_number_segment\(\) missing 4 ",
                     "required positional arguments: 'dbset', 'segment', ",
-                    "'record_number_in_segment', and 'high_record'$",
+                    "'record_number_in_segment', and 'high_record_number'$",
                 )
             ),
             self.database.note_freed_record_number_segment,
@@ -1786,7 +1786,7 @@ class Database_freed_record_number(_SQLiteOpen):
         )
         rn = self.database.get_lowest_freed_record_number("file1")
         self.assertEqual(rn, None)
-        i = self.high_record[0]
+        i = self.high_record
         cursor = self.database.dbenv.cursor()
         for i in range(i, i + 129):
             cursor.execute(
@@ -1798,9 +1798,9 @@ class Database_freed_record_number(_SQLiteOpen):
             len(self.database.ebm_control["file1"].freed_record_number_pages),
             1,
         )
-        self.high_record = self.database.get_high_record("file1")
+        self.high_record = self.database.get_high_record_number("file1")
         self.database.ebm_control["file1"].segment_count = divmod(
-            self.high_record[0], SegmentSize.db_segment_size
+            self.high_record, SegmentSize.db_segment_size
         )[0]
         rn = self.database.get_lowest_freed_record_number("file1")
         self.assertEqual(rn, 380)
@@ -1832,7 +1832,7 @@ class Database_freed_record_number(_SQLiteOpen):
 class Database_empty_freed_record_number(_SQLiteOpen):
     def setUp(self):
         super().setUp()
-        self.high_record = self.database.get_high_record("file1")
+        self.high_record = self.database.get_high_record_number("file1")
 
     def test_01(self):
         self.assertEqual(
@@ -1845,7 +1845,7 @@ class Database_empty_freed_record_number(_SQLiteOpen):
             self.database.ebm_control["file1"].freed_record_number_pages, None
         )
         self.assertEqual(
-            self.database.get_high_record("file1"), self.high_record
+            self.database.get_high_record_number("file1"), self.high_record
         )
 
 

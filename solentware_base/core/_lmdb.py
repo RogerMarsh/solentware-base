@@ -743,10 +743,8 @@ class Database(_database.Database):
             )
         return None
 
-    # high_record will become high_record_number to fit changed
-    # get_high_record.
     def note_freed_record_number_segment(
-        self, dbset, segment, record_number_in_segment, high_record
+        self, dbset, segment, record_number_in_segment, high_record_number
     ):
         """Add existence bitmap segment to list with spare record numbers.
 
@@ -756,7 +754,9 @@ class Database(_database.Database):
         """
         del record_number_in_segment
         try:
-            high_segment = divmod(high_record, SegmentSize.db_segment_size)[0]
+            high_segment = divmod(
+                high_record_number, SegmentSize.db_segment_size
+            )[0]
         except TypeError:
             # Implies attempt to delete record from empty database.
             # The delete method will have raised an exception if appropriate.
@@ -844,9 +844,7 @@ class Database(_database.Database):
         )
         return segment, record_number
 
-    # Change to return just the record number, and the name to fit.
-    # Only used in one place, and it is extra work to get the data in_nosql.
-    def get_high_record(self, file):
+    def get_high_record_number(self, file):
         """Return the high existing record number in table for file."""
         with self.dbtxn.transaction.cursor(
             self.table[file].datastore

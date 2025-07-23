@@ -502,7 +502,7 @@ class Database_freed_record_number(_DBOpen):
                     encode("value"), txn=self.database.dbtxn
                 ),
             )
-        self.high_record = self.database.get_high_record("file1")
+        self.high_record = self.database.get_high_record_number("file1")
         self.database.ebm_control["file1"].segment_count = divmod(
             self.high_record[0], SegmentSize.db_segment_size
         )[0]
@@ -521,7 +521,7 @@ class Database_empty_freed_record_number(_DBOpen):
             self.dbe_module.db,
             self.dbe_module.db.DB_CREATE,
         )
-        self.high_record = self.database.get_high_record("file1")
+        self.high_record = self.database.get_high_record_number("file1")
 
 
 class RecordsetCursor(_DBOpen):
