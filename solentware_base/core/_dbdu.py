@@ -21,7 +21,7 @@ from .recordset import (
 from . import _databasedu
 
 
-class DatabaseError(Exception):
+class DatabaseError(_databasedu.DatabaseduError):
     """Exception for Database class."""
 
 

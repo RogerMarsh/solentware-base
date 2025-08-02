@@ -26,7 +26,7 @@ from . import _databasedu
 from .recordset import RecordsetSegmentList
 
 
-class DatabaseError(Exception):
+class DatabaseError(_databasedu.DatabaseduError):
     """Exception for Database class."""
 
 

@@ -24,6 +24,10 @@ from .recordset import (
 )
 
 
+class DatabaseError(Exception):
+    """Exception for Database class."""
+
+
 class DataSourceCursorError(Exception):
     """Exception for database-specific DataSourceCursor setting."""
 

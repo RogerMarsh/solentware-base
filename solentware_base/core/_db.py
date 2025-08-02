@@ -63,7 +63,7 @@ _openbsd_platform = sys.platform.startswith("openbsd")
 del sys
 
 
-class DatabaseError(Exception):
+class DatabaseError(_database.DatabaseError):
     """Exception for Database class."""
 
 

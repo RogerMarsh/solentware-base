@@ -63,7 +63,7 @@ FILE_PARAMETER_LIST = (
 SegmentSize.db_segment_size_bytes = TABLE_B_SIZE
 
 
-class DatabaseError(Exception):
+class DatabaseError(_database.DatabaseError):
     """Raise when an exceptional case is encountered in Database class."""
 
 

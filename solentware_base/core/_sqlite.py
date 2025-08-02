@@ -47,7 +47,7 @@ from .recordset import (
 )
 
 
-class DatabaseError(Exception):
+class DatabaseError(_database.DatabaseError):
     """Exception for Database class."""
 
 

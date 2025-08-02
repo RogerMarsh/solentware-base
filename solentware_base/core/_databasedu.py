@@ -16,7 +16,7 @@ from .bytebit import Bitarray
 from . import merge
 
 
-class DatabaseduError(Exception):
+class DatabaseduError(_database.DatabaseError):
     """Exception for Database class."""
 
 
