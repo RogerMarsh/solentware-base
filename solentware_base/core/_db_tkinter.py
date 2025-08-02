@@ -713,7 +713,10 @@ class Database(_database.Database):
                     # careless about deleting closed secondary database DB
                     # objects in deferred update mode.  Exceptions occur
                     # here if that is allowed to happen with the Tcl API.
-                    tcl_tk_call((self.table[secondary], "close"))
+                    try:
+                        tcl_tk_call((self.table[secondary], "close"))
+                    except AttributeError:
+                        pass
                     self.table[secondary] = None
         for k, dbo in self.table.items():
             if dbo is not None:

@@ -26,6 +26,7 @@ Sometimes a unit test will have an attempt at exhaustive testing too.
 import unittest
 import os
 from ast import literal_eval
+import shutil
 
 try:
     import unqlite
@@ -551,6 +552,30 @@ class Database_open_database(_NoSQL):
         )
         for v in self.database.ebm_control.values():
             self.assertIsInstance(v, _nosql.ExistenceBitmapControl)
+
+
+# Memory databases cannot be used for these tests.
+class Database_add_field_to_existing_database(_NoSQL):
+
+    def test_13_add_field_to_open_database(self):
+        folder = "aaaa"
+        database = self._D({"file1": {"field1"}}, folder=folder)
+        database.open_database(*self._oda)
+        database.close_database()
+        database = None
+        database = self._D({"file1": {"field1", "newfield"}}, folder=folder)
+        self.assertRaisesRegex(
+            filespec.FileSpecError,
+            "".join(
+                (
+                    "Specification does not have same fields for each ",
+                    "file as defined in this FileSpec$",
+                )
+            ),
+            database.open_database,
+            *(*self._oda,),
+        )
+        shutil.rmtree(folder)
 
 
 # Memory databases are used for these tests.
@@ -2780,6 +2805,7 @@ if __name__ == "__main__":
         runner().run(loader(Database_transaction_methods))
         runner().run(loader(DatabaseInstance))
         runner().run(loader(Database_open_database))
+        runner().run(loader(Database_add_field_to_existing_database))
         runner().run(loader(Database_do_database_task))
         runner().run(loader(DatabaseTransactions))
         runner().run(loader(Database_put_replace_delete))

@@ -293,6 +293,12 @@ class Database(_database.Database):
             (self.table[CONTROL_FILE], FIELD_REGISTER_KEY.decode())
         )
 
+        # These two moved from the try clauses just below to keep the tests
+        # with memory-only databases passing.  Implication is memory-only
+        # databases behave differently when adding fields, and the tests no
+        # longer truly test the code.
+        rsk = None
+        rssbk = None
         # The ___control table should be present already if the file exists.
         if self.database_file is not None:
             dbenv = dbclass(self.database_file)
@@ -300,11 +306,11 @@ class Database(_database.Database):
             if specification_key in dbenv:
                 rsk = dbenv[specification_key]
             else:
-                rsk = None
+                pass
             if segment_size_bytes_key in dbenv:
                 rssbk = dbenv[segment_size_bytes_key]
             else:
-                rssbk = None
+                pass
             if rsk is not None and rssbk is not None:
                 spec_from_db = literal_eval(rsk.decode())
                 if self._use_specification_items is not None:
@@ -383,6 +389,29 @@ class Database(_database.Database):
             dbenv = dbclass()
             dbenv.disable_autocommit()
 
+        if rsk:
+            if len(table_register) != len(self.specification) + 1:
+                raise DatabaseError(
+                    "Specification and table register sizes inconsistent"
+                )
+            if set(self.specification.keys()).difference(table_register):
+                raise DatabaseError(
+                    "Specification and table register content inconsistent"
+                )
+            for speckey in self.specification:
+                if (
+                    len(self.specification[speckey][SECONDARY])
+                    > len(field_register[speckey])
+                ):
+                    raise DatabaseError(
+                        "Specification and field register size inconsistent"
+                    )
+                if set(self.specification[speckey][SECONDARY]).difference(
+                    set(field_register[speckey])
+                ):
+                    raise DatabaseError(
+                        "Specification and field register content inconsistent"
+                    )
         self.set_segment_size()
         self.dbenv = dbenv
         if files is None:

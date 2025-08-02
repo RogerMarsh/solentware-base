@@ -549,7 +549,10 @@ class Database(_database.Database):
             for field in specification[SECONDARY]:
                 secondary = SUBFILE_DELIMITER.join((file, field))
                 if secondary in self.table:
-                    self.table[secondary].close()
+                    try:
+                        self.table[secondary].close()
+                    except AttributeError:
+                        pass
                     self.table[secondary] = None
         for k, dbo in self.table.items():
             if dbo is not None:

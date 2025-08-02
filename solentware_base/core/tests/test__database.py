@@ -945,6 +945,7 @@ class Database_06_subclass_methods(unittest.TestCase):
                     "set_segment_records",
                     "insert_segment_records",
                     "SegmentSizeError",
+                    "_raise_if_no_object",
                 )
             ),
         )

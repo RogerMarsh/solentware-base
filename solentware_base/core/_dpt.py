@@ -1292,6 +1292,11 @@ class DPTFile:
         # Open the file for normal use.
         self.open_existing_file(dbenv)
 
+        # Check requested fields exist.
+        # A RuntimeError is raised by GetFieldAtts() if field does not exist.
+        for field in self.fields:
+            self.opencontext.GetFieldAtts(field)
+
         # Permanent instances for efficient file updates.
         self.fieldvalue = dptapi.APIFieldValue()
         self._putrecordcopy = dptapi.APIStoreRecordTemplate()

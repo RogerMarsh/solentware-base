@@ -6,6 +6,7 @@
 
 import unittest
 import os
+import shutil
 
 try:
     import berkeleydb
@@ -506,6 +507,35 @@ class Database_open_database(_DB):
                 c += 1
                 o.add(v)
         self.assertEqual(c, len(o))
+
+
+# Memory databases cannot be used for these tests.
+class Database_add_field_to_existing_database(_DB):
+
+    def test_13_add_field_to_open_database(self):
+        folder = "aaaa"
+        database = self._D({"file1": {"field1"}}, folder=folder)
+        database.open_database(dbe_module.db)
+        self.assertEqual(
+            set(database.table.keys()),
+            set(["___control", "file1", "file1_field1"]),
+        )
+        database.close_database()
+        database.specification["file1"]["secondary"]["Newfield"] = None
+        database.specification["file1"]["fields"]["Newfield"] = {}
+        self.assertRaisesRegex(
+            filespec.FileSpecError,
+            "".join(
+                (
+                    "Specification does not have same fields for each ",
+                    "file as defined in this FileSpec$",
+                )
+            ),
+            database.open_database,
+            *(dbe_module.db,),
+        )
+        self.assertEqual(set(database.table.keys()), set([]))
+        shutil.rmtree(folder)
 
 
 # Memory databases are used for these tests.
@@ -2115,6 +2145,7 @@ if __name__ == "__main__":
         runner().run(loader(Database_transaction_methods))
         runner().run(loader(DatabaseInstance))
         runner().run(loader(Database_open_database))
+        runner().run(loader(Database_add_field_to_existing_database))
         runner().run(loader(Database_do_database_task))
         runner().run(loader(DatabaseTransactions))
         runner().run(loader(Database_put_replace_delete))

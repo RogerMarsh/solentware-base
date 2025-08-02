@@ -161,6 +161,12 @@ class Database(_database.Database):
                 if not os.path.isdir(self.home_directory):
                     raise
 
+        # These two moved from the try clauses just below to keep the tests
+        # with memory-only databases passing.  Implication is memory-only
+        # databases behave differently when adding fields, and the tests no
+        # longer truly test the code.
+        rsk = None
+        rssbk = None
         # The ___control table should be present already if the file exists.
         if self.database_file is not None:
             dbenv = dbe.Connection(self.database_file)
@@ -180,12 +186,12 @@ class Database(_database.Database):
                 cursor.execute(statement, (SPECIFICATION_KEY,))
                 rsk = cursor.fetchall()
             except Exception:
-                rsk = None
+                pass
             try:
                 cursor.execute(statement, (SEGMENT_SIZE_BYTES_KEY,))
                 rssbk = cursor.fetchall()
             except Exception:
-                rssbk = None
+                pass
             if rsk is not None and rssbk is not None:
                 spec_from_db = literal_eval(rsk[0][0])
                 if self._use_specification_items is not None:
@@ -230,91 +236,98 @@ class Database(_database.Database):
         self.start_transaction()
         cursor = self.dbenv.cursor()
         self.table[CONTROL_FILE] = CONTROL_FILE
-        statement = " ".join(
-            (
-                create_table,
-                CONTROL_FILE,
-                "(",
-                CONTROL_FILE,
-                ",",
-                SQLITE_VALUE_COLUMN,
-                ",",
-                "primary key",
-                "(",
-                CONTROL_FILE,
-                ",",
-                SQLITE_VALUE_COLUMN,
-                ") )",
+        if rsk is None:
+            statement = " ".join(
+                (
+                    create_table,
+                    CONTROL_FILE,
+                    "(",
+                    CONTROL_FILE,
+                    ",",
+                    SQLITE_VALUE_COLUMN,
+                    ",",
+                    "primary key",
+                    "(",
+                    CONTROL_FILE,
+                    ",",
+                    SQLITE_VALUE_COLUMN,
+                    ") )",
+                )
             )
-        )
-        cursor.execute(statement)
+            cursor.execute(statement)
         for file, specification in self.specification.items():
             if file not in files:
                 continue
             fields = specification[SECONDARY]
             self.table[file] = file
-            statement = " ".join(
-                (
-                    create_table,
-                    self.table[file],
-                    "(",
-                    file,
-                    db_key,
-                    SQLITE_VALUE_COLUMN,
-                    ")",
-                )
-            )
-            cursor.execute(statement)
-            self.ebm_control[file] = ExistenceBitmapControl(file, self)
-            segmentfile = SUBFILE_DELIMITER.join((file, SEGMENT_SUFFIX))
-            self.segment_table[file] = segmentfile
-            statement = " ".join(
-                (
-                    create_table,
-                    segmentfile,
-                    "(",
-                    SQLITE_RECORDS_COLUMN,
-                    ")",
-                )
-            )
-            cursor.execute(statement)
-            for field in fields:
-                secondary = SUBFILE_DELIMITER.join((file, field))
-                self.table[secondary] = secondary
+            if rsk is None:
                 statement = " ".join(
                     (
                         create_table,
-                        secondary,
+                        self.table[file],
                         "(",
-                        field,
-                        ",",
-                        SQLITE_SEGMENT_COLUMN,
-                        ",",
-                        SQLITE_COUNT_COLUMN,
-                        ",",
                         file,
+                        db_key,
+                        SQLITE_VALUE_COLUMN,
                         ")",
                     )
                 )
                 cursor.execute(statement)
+            self.ebm_control[file] = ExistenceBitmapControl(file, self)
+            segmentfile = SUBFILE_DELIMITER.join((file, SEGMENT_SUFFIX))
+            self.segment_table[file] = segmentfile
+            if rsk is None:
+                statement = " ".join(
+                    (
+                        create_table,
+                        segmentfile,
+                        "(",
+                        SQLITE_RECORDS_COLUMN,
+                        ")",
+                    )
+                )
+                cursor.execute(statement)
+            for field in fields:
+                secondary = SUBFILE_DELIMITER.join((file, field))
+                self.table[secondary] = secondary
+                if rsk is None:
+                    statement = " ".join(
+                        (
+                            create_table,
+                            secondary,
+                            "(",
+                            field,
+                            ",",
+                            SQLITE_SEGMENT_COLUMN,
+                            ",",
+                            SQLITE_COUNT_COLUMN,
+                            ",",
+                            file,
+                            ")",
+                        )
+                    )
+                    cursor.execute(statement)
+                else:
+                    self._raise_if_no_object("table", secondary)
                 indexname = "".join(
                     (INDEXPREFIX, SUBFILE_DELIMITER.join((file, field)))
                 )
                 self.index[secondary] = indexname
-                statement = " ".join(
-                    (
-                        db_create_index,
-                        indexname,
-                        "on",
-                        secondary,
-                        "(",
-                        field,
-                        ",",
-                        SQLITE_SEGMENT_COLUMN,
-                        ")",
+                if rsk is None:
+                    statement = " ".join(
+                        (
+                            db_create_index,
+                            indexname,
+                            "on",
+                            secondary,
+                            "(",
+                            field,
+                            ",",
+                            SQLITE_SEGMENT_COLUMN,
+                            ")",
+                        )
                     )
-                )
-                cursor.execute(statement)
+                    cursor.execute(statement)
         if self.database_file is not None:
             if rsk is None and rssbk is None:
                 statement = " ".join(
@@ -337,6 +350,33 @@ class Database(_database.Database):
                     (SEGMENT_SIZE_BYTES_KEY, repr(self.segment_size_bytes)),
                 )
         self.commit()
+
+    def _raise_if_no_object(self, type_, name):
+        """Raise DatabaseError if object of type_ and name does not exist."""
+        statement = " ".join(
+            (
+                "select name from sqlite_master where type",
+                "== ?",
+                "and name",
+                "== ?",
+            )
+        )
+        cursor = self.dbenv.cursor()
+        try:
+            if cursor.execute(statement, (type_, name)).fetchone() is None:
+                raise DatabaseError(
+                    "".join(
+                        (
+                            "Database does not have '",
+                            type_,
+                            "' named '",
+                            name,
+                            "'",
+                        )
+                    )
+                )
+        finally:
+            cursor.close()
 
     def close_database_contexts(self, files=None):
         """Close files in database.

@@ -297,7 +297,8 @@ class _Datastore_open_datastore(_Module, EnvironmentExistsOneDb):
         # Fails in Python3.9 with FreeBSD port py39-lmdb: no attribute.
         # Ok in Python3.10 on FreeBSD with pip ... --user install.
         # Ok in Python3.10 on OpenBSD with pip ... --user install.
-        self.assertIsInstance(store._datastore, self.dbe_module._Database)
+        # self.assertEqual(store._datastore, self.dbe_module._Database)
+        self.assertEqual(store._datastore is None, False)
         self.assertEqual(
             sorted(store.__dict__.keys()),
             sorted(("_name", "_flags", "_datastore")),
@@ -313,9 +314,20 @@ class _Datastore_open_datastore(_Module, EnvironmentExistsOneDb):
         # Fails in Python3.9 with FreeBSD port py39-lmdb: message mismatch.
         # Ok in Python3.10 on FreeBSD with pip ... --user install.
         # Ok in Python3.10 on OpenBSD with pip ... --user install.
+        # Dated 2025-08-01.
+        # Part of the exception message may be enclosed in "b''", possibly
+        # aligned with the datastore objects being lmdb.cffi._Database or
+        # lmdb._Database instances.
         self.assertRaisesRegex(
             self.dbe_module.DbsFullError,
-            "mdb_dbi_open: MDB_DBS_FULL: Environment maxdbs limit reached$",
+            "".join(
+                (
+                    r"mdb_dbi_open: (?:b')?MDB_DBS_FULL: Environment ",
+                    r"maxdbs limit reached(?:' ",
+                    r"\(Please use a larger Environment\(max_dbs=\) ",
+                    r"parameter\))?$",
+                )
+            ),
             spare.open_datastore,
             *(self.env,),
         )
@@ -385,7 +397,8 @@ class _Datastore_close_datastore(_Module, EnvironmentExistsOneDb):
         # Fails in Python3.9 with FreeBSD port py39-lmdb: no attribute.
         # Ok in Python3.10 on FreeBSD with pip ... --user install.
         # Ok in Python3.10 on OpenBSD with pip ... --user install.
-        self.assertIsInstance(store._datastore, self.dbe_module._Database)
+        # self.assertIsInstance(store._datastore, self.dbe_module._Database)
+        self.assertEqual(store._datastore is None, False)
 
     def test_01_release_datastore_handle_03(self):
         self.env = self.dbe_module.open(HOME_DATA, subdir=False, max_dbs=1)
@@ -399,9 +412,20 @@ class _Datastore_close_datastore(_Module, EnvironmentExistsOneDb):
         # Fails in Python3.9 with FreeBSD port py39-lmdb: message mismatch.
         # Ok in Python3.10 on FreeBSD with pip ... --user install.
         # Ok in Python3.10 on OpenBSD with pip ... --user install.
+        # Dated 2025-08-01.
+        # Part of the exception message may be enclosed in "b''", possibly
+        # aligned with the datastore objects being lmdb.cffi._Database or
+        # lmdb._Database instances.
         self.assertRaisesRegex(
             self.dbe_module.DbsFullError,
-            "mdb_dbi_open: MDB_DBS_FULL: Environment maxdbs limit reached$",
+            "".join(
+                (
+                    r"mdb_dbi_open: (?:b')?MDB_DBS_FULL: Environment ",
+                    r"maxdbs limit reached(?:' ",
+                    r"\(Please use a larger Environment\(max_dbs=\) ",
+                    r"parameter\))?$",
+                )
+            ),
             spare.open_datastore,
             *(self.env,),
         )
@@ -910,6 +934,27 @@ class Database_open_database(DB, _Specification):
         d.table["file1"] = x
 
 
+class Database_add_field_to_existing_database(DB, _Specification):
+
+    def test_13_add_field_to_open_database(self):
+        self.set_specification(specification={"file1": {"field1"}})
+        self.database.open_database(self.dbe_module)
+        self.check_specification()
+        self.assertEqual(self.specification, {"file1": {"field1"}})
+        self.assertEqual(
+            set(self.database.table.keys()),
+            set(["___design", "___control", "file1", "file1_field1"]),
+        )
+        self.database.close_database()
+        self.specification["file1"].add("newfield")
+        self.database.open_database(self.dbe_module)
+        self.assertEqual(self.specification, {"file1": {"newfield", "field1"}})
+        self.assertEqual(
+            set(self.database.table.keys()),
+            set(["___design", "___control", "file1", "file1_field1"]),
+        )
+
+
 class DatabaseDir_open_database(DBDir, _Specification):
     def test_06_open_database_dir(self):
         self.set_specification(specification={"file1": {"field1"}})
@@ -982,9 +1027,14 @@ class Database_open_database_contexts(DB):
         # Fails in Python3.9 with FreeBSD port py39-lmdb: no attribute.
         # Ok in Python3.10 on FreeBSD with pip ... --user install.
         # Ok in Python3.10 on OpenBSD with pip ... --user install.
-        ae(isinstance(sdt["___design"].datastore, dbem._Database), False)
+        # Dated 2025-08-01.
+        # The object is either a lmdb.cffi._Database instance or a
+        # dbem._Database object.
+        # This and all other similar tests are changed to 'is None' tests.
+        #ae(isinstance(sdt["___design"].datastore, dbem._Database), False)
 
-        ae(isinstance(sdt["___control"].datastore, dbem._Database), False)
+        ae(sdt["___design"].datastore is None, True)
+        ae(sdt["___control"].datastore is None, True)
         ae(sdt["file1"].datastore is None, True)
         ae(sdt["file1_field1"].datastore is None, True)
         ae(sdt["file2"].datastore is None, True)
@@ -997,18 +1047,18 @@ class Database_open_database_contexts(DB):
         ae(sec["file2"].ebm_table.datastore is None, True)
         ae(len(sst), 2)
         sdb.open_database_contexts()
-        ae(isinstance(sdt["___design"].datastore, dbem._Database), False)
-        ae(isinstance(sdt["___control"].datastore, dbem._Database), True)
-        ae(isinstance(sdt["file1"].datastore, dbem._Database), True)
-        ae(isinstance(sdt["file1_field1"].datastore, dbem._Database), True)
-        ae(isinstance(sdt["file2"].datastore, dbem._Database), True)
-        ae(isinstance(sdt["file2_field2"].datastore, dbem._Database), True)
+        ae(sdt["___design"].datastore is None, True)
+        ae(sdt["___control"].datastore is None, False)
+        ae(sdt["file1"].datastore is None, False)
+        ae(sdt["file1_field1"].datastore is None, False)
+        ae(sdt["file2"].datastore is None, False)
+        ae(sdt["file2_field2"].datastore is None, False)
         ae(len(sdt), 6)
-        ae(isinstance(sst["file1"].datastore, dbem._Database), True)
-        ae(isinstance(sst["file2"].datastore, dbem._Database), True)
+        ae(sst["file1"].datastore is None, False)
+        ae(sst["file2"].datastore is None, False)
         ae(len(sec), 2)
-        ae(isinstance(sec["file1"].ebm_table.datastore, dbem._Database), True)
-        ae(isinstance(sec["file2"].ebm_table.datastore, dbem._Database), True)
+        ae(sec["file1"].ebm_table.datastore is None, False)
+        ae(sec["file2"].ebm_table.datastore is None, False)
         ae(len(sst), 2)
 
     def test_02_open_database_contexts_no_files_01(self):
@@ -1024,9 +1074,10 @@ class Database_open_database_contexts(DB):
         # Fails in Python3.9 with FreeBSD port py39-lmdb: no attribute.
         # Ok in Python3.10 on FreeBSD with pip ... --user install.
         # Ok in Python3.10 on OpenBSD with pip ... --user install.
-        ae(isinstance(sdt["___design"].datastore, dbem._Database), False)
+        # ae(isinstance(sdt["___design"].datastore, dbem._Database), False)
+        ae(sdt["___design"].datastore is None, True)
 
-        ae(isinstance(sdt["___control"].datastore, dbem._Database), True)
+        ae(sdt["___control"].datastore is None, False)
         ae(sdt["file1"].datastore is None, True)
         ae(sdt["file1_field1"].datastore is None, True)
         ae(sdt["file2"].datastore is None, True)
@@ -1052,19 +1103,20 @@ class Database_open_database_contexts(DB):
         # Fails in Python3.9 with FreeBSD port py39-lmdb: no attribute.
         # Ok in Python3.10 on FreeBSD with pip ... --user install.
         # Ok in Python3.10 on OpenBSD with pip ... --user install.
-        ae(isinstance(sdt["___design"].datastore, dbem._Database), False)
+        # ae(isinstance(sdt["___design"].datastore, dbem._Database), False)
+        ae(sdt["___design"].datastore is None, True)
 
-        ae(isinstance(sdt["___control"].datastore, dbem._Database), True)
+        ae(sdt["___control"].datastore is None, False)
         ae(sdt["file1"].datastore is None, True)
         ae(sdt["file1_field1"].datastore is None, True)
-        ae(isinstance(sdt["file2"].datastore, dbem._Database), True)
-        ae(isinstance(sdt["file2_field2"].datastore, dbem._Database), True)
+        ae(sdt["file2"].datastore is None, False)
+        ae(sdt["file2_field2"].datastore is None, False)
         ae(len(sdt), 6)
         ae(sst["file1"].datastore is None, True)
-        ae(isinstance(sst["file2"].datastore, dbem._Database), True)
+        ae(sst["file2"].datastore is None, False)
         ae(len(sec), 2)
         ae(sec["file1"].ebm_table.datastore is None, True)
-        ae(isinstance(sec["file2"].ebm_table.datastore, dbem._Database), True)
+        ae(sec["file2"].ebm_table.datastore is None, False)
         ae(len(sst), 2)
 
 
@@ -2429,13 +2481,18 @@ class Database_file_records(_Database_recordset):
     # This test is added dealing with issue 8 (Github) on set_range_dup.
     # It is not clear silently ignoring the delete for key b"" is ever or
     # always the correct action, so let the exception happen.
+    # Dated 2025-08-01.
+    # Part of the exception message may be enclosed in "b''", possibly
+    # aligned with the datastore objects being lmdb.cffi._Database or
+    # lmdb._Database instances.
     def test_47_unfile_records_under_03(self):
         self.assertRaisesRegex(
             lmdb.BadValsizeError,
             "".join(
                 (
-                    r"mdb_del: MDB_BAD_VALSIZE: Unsupported size of key/DB ",
-                    "name/data, or wrong DUPFIXED size$",
+                    r"mdb_del: (?:b')?MDB_BAD_VALSIZE: Unsupported size ",
+                    "of key/DB ",
+                    "name/data, or wrong DUPFIXED size(?:')?$",
                 )
             ),
             self.database.unfile_records_under,
@@ -2481,14 +2538,19 @@ class Database_file_records(_Database_recordset):
 
     # The first thing file_records_under() does is call unfile_records_under().
     # Assume the task is to file whatever is under key b'one' as b"" too.
+    # Dated 2025-08-01.
+    # Part of the exception message may be enclosed in "b''", possibly
+    # aligned with the datastore objects being lmdb.cffi._Database or
+    # lmdb._Database instances.
     def test_49_file_records_under_08(self):
         rs = self.database.recordlist_key("file1", "field1", key=b"one")
         self.assertRaisesRegex(
             lmdb.BadValsizeError,
             "".join(
                 (
-                    r"mdb_del: MDB_BAD_VALSIZE: Unsupported size of key/DB ",
-                    "name/data, or wrong DUPFIXED size$",
+                    r"mdb_del: (?:b')?MDB_BAD_VALSIZE: Unsupported size ",
+                    "of key/DB ",
+                    "name/data, or wrong DUPFIXED size(?:')?$",
                 )
             ),
             self.database.file_records_under,
@@ -3002,6 +3064,7 @@ if __name__ == "__main__":
         runner().run(loader(Database_database_contexts_bad_calls))
         runner().run(loader(DatabaseInstance))
         runner().run(loader(Database_open_database))
+        runner().run(loader(Database_add_field_to_existing_database))
         runner().run(loader(DatabaseDir_open_database))
         runner().run(loader(DatabaseExist_open_database))
         runner().run(loader(Database_close_database))
