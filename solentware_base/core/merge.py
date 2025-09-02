@@ -110,9 +110,12 @@ class SortIndiciesToSequentialFiles:
                     reference.clear()
                 count = (self.segment + 1) * SegmentSize.db_segment_size
             self.segment = segment
-        for index, reference in self.indicies.items():
-            for item in value[index]:
-                reference.setdefault(item, []).append(key)
+        indicies = self.indicies
+        for index, values in value.items():
+            reference = indicies.get(index)
+            if reference:
+                for item in values:
+                    reference.setdefault(item, []).append(key)
         return count
 
     def write_segment_to_sequential_file(self, index, reference):
