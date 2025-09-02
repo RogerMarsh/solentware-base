@@ -113,7 +113,7 @@ class SortIndiciesToSequentialFiles:
         indicies = self.indicies
         for index, values in value.items():
             reference = indicies.get(index)
-            if reference:
+            if reference is not None:
                 for item in values:
                     reference.setdefault(item, []).append(key)
         return count
