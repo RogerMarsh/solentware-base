@@ -1031,7 +1031,7 @@ class Database_open_database_contexts(DB):
         # The object is either a lmdb.cffi._Database instance or a
         # dbem._Database object.
         # This and all other similar tests are changed to 'is None' tests.
-        #ae(isinstance(sdt["___design"].datastore, dbem._Database), False)
+        # ae(isinstance(sdt["___design"].datastore, dbem._Database), False)
 
         ae(sdt["___design"].datastore is None, True)
         ae(sdt["___control"].datastore is None, True)

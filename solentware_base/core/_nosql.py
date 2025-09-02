@@ -399,9 +399,8 @@ class Database(_database.Database):
                     "Specification and table register content inconsistent"
                 )
             for speckey in self.specification:
-                if (
-                    len(self.specification[speckey][SECONDARY])
-                    > len(field_register[speckey])
+                if len(self.specification[speckey][SECONDARY]) > len(
+                    field_register[speckey]
                 ):
                     raise DatabaseError(
                         "Specification and field register size inconsistent"
