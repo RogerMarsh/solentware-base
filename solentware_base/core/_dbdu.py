@@ -481,7 +481,7 @@ class Database(_databasedu.Database):
             assert len(record) == 2
             value, segment = record
             if len(segment) == 6:
-                count = b"x00\x01"
+                count = b"\x00\x01"
                 reference = segment[4:]
             else:
                 count = segment[4:6]
@@ -529,17 +529,23 @@ class Database(_databasedu.Database):
                     self.prev_key = item[0]
                     item_type = item.pop(2)
                     if item_type == EXISTING_SEGMENT_REFERENCE:
-                        self.cursor.put(item[0], b"".join(item[1:]), keylast)
                         assert len(item) == 4
+                        if item[-2] == b"\x00\x01":
+                            item.pop(-2)
+                        self.cursor.put(item[0], b"".join(item[1:]), keylast)
+                        length = len(b"".join(item[1:]))
+                        assert length == 10 or length == 6
                         return
                     if int.from_bytes(item[-2], byteorder="big") > 1:
                         item[-1] = segment_table.append(
                             item[-1], txn=self.database.dbtxn
                         ).to_bytes(4, byteorder="big")
                         assert len(item) == 4
+                        assert len(b"".join(item[1:])) == 10
                     else:
                         item.pop(2)
                         assert len(item) == 3
+                        assert len(b"".join(item[1:])) == 6
                     self.cursor.put(item[0], b"".join(item[1:]), keylast)
                     assert item_type == NEW_SEGMENT_CONTENT
                     return
@@ -547,22 +553,22 @@ class Database(_databasedu.Database):
                     assert item[2] == NEW_SEGMENT_CONTENT
                     del item[2]
                     high = read_high_item_in_index(self.cursor)
-                    existing_segment = make_segment_from_high(
+                    new_segment = make_segment_from_item(item)
+                    new_segment |= make_segment_from_high(
                         high, self.database.dbtxn
                     )
-                    new_segment = make_segment_from_item(item)
-                    new_segment |= existing_segment
                     new_segment.normalize()
                     item[-2] = (
                         self.database.encode_number_for_sequential_file_dump(
                             new_segment.count_records(), 2
                         )
                     )
-                    if int.from_bytes(high[-2], byteorder="big") == 1:
+                    if high[2] == b"\x00\x01":
                         item[-1] = segment_table.append(
                             new_segment.tobytes(), txn=self.database.dbtxn
                         ).to_bytes(4, byteorder="big")
                         self.cursor.delete()
+                        assert len(b"".join(item[1:])) == 10
                         self.cursor.put(item[0], b"".join(item[1:]), keylast)
                     else:
                         segment_table.put(
@@ -572,14 +578,19 @@ class Database(_databasedu.Database):
                         )
                         self.cursor.delete()
                         item[-1] = high[-1]
+                        assert len(b"".join(item[1:])) == 10
                         self.cursor.put(item[0], b"".join(item[1:]), keylast)
                     assert len(item) == 4
                     return
                 item_type = item.pop(2)
                 if item_type == EXISTING_SEGMENT_REFERENCE:
-                    self.prev_key = item[0]
-                    self.cursor.put(item[0], b"".join(item[1:]), keylast)
                     assert len(item) == 4
+                    self.prev_key = item[0]
+                    if item[-2] == b"\x00\x01":
+                        item.pop(-2)
+                    self.cursor.put(item[0], b"".join(item[1:]), keylast)
+                    length = len(b"".join(item[1:]))
+                    assert length == 10 or length == 6
                     return
                 if int.from_bytes(item[-2], byteorder="big") > 1:
                     item[-1] = segment_table.append(
@@ -587,9 +598,11 @@ class Database(_databasedu.Database):
                         txn=self.database.dbtxn,
                     ).to_bytes(4, byteorder="big")
                     assert len(item) == 4
+                    assert len(b"".join(item[1:])) == 10
                 else:
                     item.pop(2)
                     assert len(item) == 3
+                    assert len(b"".join(item[1:])) == 6
                 self.cursor.put(item[0], b"".join(item[1:]), keylast)
                 assert item_type == NEW_SEGMENT_CONTENT
                 return

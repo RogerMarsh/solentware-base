@@ -576,7 +576,7 @@ class Database(_databasedu.Database):
             assert len(record) == 1
             value, segment = record[0]
             if len(segment) == 6:
-                count = b"x00\x01"
+                count = b"\x00\x01"
                 reference = segment[4:]
             else:
                 count = segment[4:6]
@@ -664,22 +664,28 @@ class Database(_databasedu.Database):
                     self.prev_key = item[0]
                     item_type = item.pop(2)
                     if item_type == EXISTING_SEGMENT_REFERENCE:
+                        assert len(item) == 4
+                        if item[-2] == b"\x00\x01":
+                            item.pop(-2)
                         tcl_tk_call(
                             tuple(
                                 self.write_item_to_index
                                 + [item[0], b"".join(item[1:])]
                             )
                         )
-                        assert len(item) == 4
+                        length = len(b"".join(item[1:]))
+                        assert length == 10 or length == 6
                         return
                     if int.from_bytes(item[-2], byteorder="big") > 1:
                         item[-1] = tcl_tk_call(
                             tuple(self.write_segment_value + [item[-1]])
                         ).to_bytes(4, byteorder="big")
                         assert len(item) == 4
+                        assert len(b"".join(item[1:])) == 10
                     else:
                         item.pop(2)
                         assert len(item) == 3
+                        assert len(b"".join(item[1:])) == 6
                     tcl_tk_call(
                         tuple(
                             self.write_item_to_index
@@ -694,22 +700,22 @@ class Database(_databasedu.Database):
                     high = read_high_item_in_index(
                         self.get_last_record_in_index
                     )
-                    existing_segment = make_segment_from_high(
+                    new_segment = make_segment_from_item(item)
+                    new_segment |= make_segment_from_high(
                         high, self.get_segment_value
                     )
-                    new_segment = make_segment_from_item(item)
-                    new_segment |= existing_segment
                     new_segment.normalize()
                     item[-2] = (
                         self.database.encode_number_for_sequential_file_dump(
                             new_segment.count_records(), 2
                         )
                     )
-                    if int.from_bytes(high[-2], byteorder="big") == 1:
+                    if high[2] == b"\x00\x01":
                         item[-1] = tcl_tk_call(
                             tuple(self.write_segment_value + [item[-1]])
                         ).to_bytes(4, byteorder="big")
                         tcl_tk_call(tuple(self.delete_index_item))
+                        assert len(b"".join(item[1:])) == 10
                         tcl_tk_call(
                             tuple(
                                 self.write_item_to_index
@@ -728,6 +734,7 @@ class Database(_databasedu.Database):
                         )
                         tcl_tk_call(tuple(self.delete_index_item))
                         item[-1] = high[-1]
+                        assert len(b"".join(item[1:])) == 10
                         tcl_tk_call(
                             tuple(
                                 self.write_item_to_index
@@ -738,23 +745,29 @@ class Database(_databasedu.Database):
                     return
                 item_type = item.pop(2)
                 if item_type == EXISTING_SEGMENT_REFERENCE:
+                    assert len(item) == 4
                     self.prev_key = item[0]
+                    if item[-2] == b"\x00\x01":
+                        item.pop(-2)
                     tcl_tk_call(
                         tuple(
                             self.write_item_to_index
                             + [item[0], b"".join(item[1:])]
                         )
                     )
-                    assert len(item) == 4
+                    length = len(b"".join(item[1:]))
+                    assert length == 10 or length == 6
                     return
                 if int.from_bytes(item[-2], byteorder="big") > 1:
                     item[-1] = tcl_tk_call(
                         tuple(self.write_segment_value + [item[-1]])
                     ).to_bytes(4, byteorder="big")
                     assert len(item) == 4
+                    assert len(b"".join(item[1:])) == 10
                 else:
                     item.pop(2)
                     assert len(item) == 3
+                    assert len(b"".join(item[1:])) == 6
                 tcl_tk_call(
                     tuple(
                         self.write_item_to_index
