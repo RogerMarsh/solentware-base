@@ -34,6 +34,7 @@ from .constants import (
     CONTROL_FILE,
     DEFAULT_SEGMENT_SIZE_BYTES,
     SPECIFICATION_KEY,
+    APPLICATION_CONTROL_KEY,
     SEGMENT_SIZE_BYTES_KEY,
     SEGMENT_HEADER_LENGTH,
     FIELDS,
@@ -495,6 +496,9 @@ class Database(_database.Database):
                 SEGMENT_SIZE_BYTES_KEY,
                 repr(self.segment_size_bytes).encode(),
                 txn=self.dbtxn,
+            )
+            self.table[CONTROL_FILE].put(
+                APPLICATION_CONTROL_KEY, repr({}).encode(), txn=self.dbtxn
             )
         self.commit()
         self._dbe = dbe
@@ -1762,6 +1766,25 @@ class Database(_database.Database):
         if not self._file_per_database:
             return super()._generate_database_file_name(name)
         return os.path.join(self.home_directory, name)
+
+    def get_application_control(self):
+        """Return dict of application control items."""
+        value = self.table[CONTROL_FILE].get(
+            APPLICATION_CONTROL_KEY,
+            txn=self.dbtxn,
+        )
+        if value is not None:
+            return literal_eval(value.decode())
+        return {}
+
+    def set_application_control(self, appcontrol):
+        """Set dict of application control items."""
+        self.table[CONTROL_FILE].delete(
+            APPLICATION_CONTROL_KEY, txn=self.dbtxn
+        )
+        self.table[CONTROL_FILE].put(
+            APPLICATION_CONTROL_KEY, repr(appcontrol).encode(), txn=self.dbtxn
+        )
 
 
 class Cursor(_cursor.Cursor):

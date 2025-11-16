@@ -125,7 +125,7 @@ class SortIndiciesToSequentialFiles:
         encode_number = database.encode_number_for_sequential_file_dump
         encode_segment = database.encode_segment_for_sequential_file_dump
         dump_directory = os.path.join(
-            database.home_directory,
+            database.get_merge_import_sort_area(),
             "_".join((os.path.basename(database.database_file), self.file)),
             index,
         )
@@ -156,7 +156,7 @@ class SortIndiciesToSequentialFiles:
             self.write_segment_to_sequential_file(index, reference)
             reference.clear()
         guard_file = os.path.join(
-            self.database.home_directory,
+            self.database.get_merge_import_sort_area(),
             "_".join(
                 (os.path.basename(self.database.database_file), self.file)
             ),

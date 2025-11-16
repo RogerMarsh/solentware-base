@@ -18,6 +18,7 @@ from .constants import (
     DESIGN_FILE,
     DEFAULT_SEGMENT_SIZE_BYTES,
     SPECIFICATION_KEY,
+    APPLICATION_CONTROL_KEY,
     SEGMENT_SIZE_BYTES_KEY,
     SEGMENT_HEADER_LENGTH,
     DEFAULT_MAP_SIZE,
@@ -343,6 +344,7 @@ class Database(_database.Database):
                 SEGMENT_SIZE_BYTES_KEY,
                 repr(self.segment_size_bytes).encode(),
             )
+            cursor.put(APPLICATION_CONTROL_KEY, repr({}).encode())
             cursor.close()
             self.table[DESIGN_FILE].close_datastore()
             self.open_database_contexts()
@@ -1846,6 +1848,24 @@ class Database(_database.Database):
             map_pages + DEFAULT_MAP_PAGES * increment
         ) // DEFAULT_MAP_PAGES
         self.dbenv.set_mapsize(self.map_blocks * DEFAULT_MAP_SIZE)
+
+    def get_application_control(self):
+        """Return dict of application control items."""
+        value = self.dbtxn.transaction.get(
+            APPLICATION_CONTROL_KEY,
+            db=self.table[DESIGN_FILE].datastore,
+        )
+        if value is not None:
+            return literal_eval(value.decode())
+        return {}
+
+    def set_application_control(self, appcontrol):
+        """Set dict of application control items."""
+        self.dbtxn.transaction.put(
+            APPLICATION_CONTROL_KEY,
+            repr(appcontrol).encode(),
+            db=self.table[DESIGN_FILE].datastore,
+        )
 
 
 class _DBtxn:

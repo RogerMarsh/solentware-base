@@ -194,6 +194,7 @@ SPECIFICATION_KEY = b"_specification"
 SEGMENT_SIZE_BYTES_KEY = b"_segment_size_bytes"
 TABLE_REGISTER_KEY = b"_table_register"
 FIELD_REGISTER_KEY = b"_field_register"
+APPLICATION_CONTROL_KEY = b"_application_control"
 
 # Constants defined for UnQLite and Vedis databases.  dbm.gnu and dbm.ndbm are
 # added to this list later.

@@ -270,3 +270,15 @@ class Database(_database.Database):
         merger = merge.Merge(index_directory)
         for item in merger.sorter():
             yield item
+
+    def get_merge_import_sort_area(self):
+        """Return database directory.
+
+        The directory containing database is used for sorting by default,
+        subclasses should override as required.
+
+        There is little point in doing so unless the sort area is then on
+        a different drive or mount point.
+
+        """
+        return self.home_directory

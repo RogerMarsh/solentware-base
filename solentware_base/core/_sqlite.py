@@ -21,6 +21,7 @@ from .constants import (
     CONTROL_FILE,
     DEFAULT_SEGMENT_SIZE_BYTES,
     SPECIFICATION_KEY,
+    APPLICATION_CONTROL_KEY,
     SEGMENT_SIZE_BYTES_KEY,
     SQLITE_VALUE_COLUMN,
     SQLITE_SEGMENT_COLUMN,
@@ -124,7 +125,7 @@ class Database(_database.Database):
                 cursor.close()
 
     def backout(self):
-        """Backout tranaction."""
+        """Backout transaction."""
         if self.dbenv:
             cursor = self.dbenv.cursor()
             try:
@@ -133,7 +134,7 @@ class Database(_database.Database):
                 cursor.close()
 
     def commit(self):
-        """Commit tranaction."""
+        """Commit transaction."""
         if self.dbenv:
             cursor = self.dbenv.cursor()
             try:
@@ -349,6 +350,7 @@ class Database(_database.Database):
                     statement,
                     (SEGMENT_SIZE_BYTES_KEY, repr(self.segment_size_bytes)),
                 )
+                cursor.execute(statement, (APPLICATION_CONTROL_KEY, repr({})))
         self.commit()
 
     def _raise_if_no_object(self, type_, name):
@@ -2088,6 +2090,54 @@ class Database(_database.Database):
             taskmethod(db, logwidget, **taskmethodargs)
         finally:
             db.close_database()
+
+    def get_application_control(self):
+        """Return dict of application control items."""
+        cursor = self.dbenv.cursor()
+        statement = " ".join(
+            (
+                "select",
+                SQLITE_VALUE_COLUMN,
+                "from",
+                CONTROL_FILE,
+                "where",
+                CONTROL_FILE,
+                "== ?",
+            )
+        )
+        cursor.execute(statement, (APPLICATION_CONTROL_KEY,))
+        rsk = cursor.fetchall()
+        if rsk:
+            return literal_eval(rsk[0][0])
+        return {}
+
+    def set_application_control(self, appcontrol):
+        """Set dict of application control items."""
+        # Why is 'insert or replace into' on it's own not sufficient.
+        cursor = self.dbenv.cursor()
+        statement = " ".join(
+            (
+                "delete from",
+                CONTROL_FILE,
+                "where",
+                CONTROL_FILE,
+                "== ?",
+            )
+        )
+        cursor.execute(statement, (APPLICATION_CONTROL_KEY,))
+        statement = " ".join(
+            (
+                "insert into",
+                CONTROL_FILE,
+                "(",
+                CONTROL_FILE,
+                ",",
+                SQLITE_VALUE_COLUMN,
+                ")",
+                "values ( ? , ? )",
+            )
+        )
+        cursor.execute(statement, (APPLICATION_CONTROL_KEY, repr(appcontrol)))
 
 
 class Cursor(_cursor.Cursor):

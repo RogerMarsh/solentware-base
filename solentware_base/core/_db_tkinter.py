@@ -33,6 +33,7 @@ from .constants import (
     CONTROL_FILE,
     DEFAULT_SEGMENT_SIZE_BYTES,
     SPECIFICATION_KEY,
+    APPLICATION_CONTROL_KEY,
     SEGMENT_SIZE_BYTES_KEY,
     SEGMENT_HEADER_LENGTH,
     FIELDS,
@@ -637,6 +638,11 @@ class Database(_database.Database):
                     repr(self.segment_size_bytes).encode(),
                 ]
             )
+            tcl_tk_call(tuple(command))
+            command = [self.table[CONTROL_FILE], "put"]
+            if self.dbtxn:
+                command.extend(["-txn", self.dbtxn])
+            command.extend([APPLICATION_CONTROL_KEY, repr({}).encode()])
             tcl_tk_call(tuple(command))
         self.commit()
 
@@ -2196,6 +2202,34 @@ class Database(_database.Database):
         if not self._file_per_database:
             return super()._generate_database_file_name(name)
         return os.path.join(self.home_directory, name)
+
+    def get_application_control(self):
+        """Return dict of application control items."""
+        command = [self.table[CONTROL_FILE], "get"]
+        if self.dbtxn:
+            command.extend(["-txn", self.dbtxn])
+        command.extend(
+            [
+                APPLICATION_CONTROL_KEY,
+            ]
+        )
+        value = tcl_tk_call(tuple(command))
+        if value is not None:
+            return literal_eval(value.decode())
+        return {}
+
+    def set_application_control(self, appcontrol):
+        """Set dict of application control items."""
+        command = [self.table[CONTROL_FILE], "delete"]
+        if self.dbtxn:
+            command.extend(["-txn", self.dbtxn])
+        command.extend([APPLICATION_CONTROL_KEY])
+        tcl_tk_call(tuple(command))
+        command = [self.table[CONTROL_FILE], "put"]
+        if self.dbtxn:
+            command.extend(["-txn", self.dbtxn])
+        command.extend([APPLICATION_CONTROL_KEY, repr(appcontrol).encode()])
+        tcl_tk_call(tuple(command))
 
 
 class Cursor(_cursor.Cursor):

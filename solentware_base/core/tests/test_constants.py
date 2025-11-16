@@ -177,6 +177,7 @@ class ConstantsFunctions(unittest.TestCase):
         ae(constants.DB_TCL_MODULE, "solentware_base.db_tcl")
         ae(constants.TABLE_REGISTER_KEY, b"_table_register")
         ae(constants.FIELD_REGISTER_KEY, b"_field_register")
+        ae(constants.APPLICATION_CONTROL_KEY, b"_application_control")
         ae(constants.DESIGN_FILE, "___design")
         ae(constants.DEFAULT_MAP_PAGES, 2560)
         ae(constants.DEFAULT_MAP_SIZE, 10485760)
@@ -185,7 +186,7 @@ class ConstantsFunctions(unittest.TestCase):
         ae(constants.EXISTING_SEGMENT_REFERENCE, 0),
         ae(constants.NEW_SEGMENT_CONTENT, 1),
         cc = [d for d in dir(constants) if not d.endswith("__")]
-        ae(len(cc), 108)
+        ae(len(cc), 109)
         ae(
             sorted(cc),
             sorted(
@@ -292,6 +293,7 @@ class ConstantsFunctions(unittest.TestCase):
                     "BITMAP_BYTES",
                     "TABLE_REGISTER_KEY",
                     "FIELD_REGISTER_KEY",
+                    "APPLICATION_CONTROL_KEY",
                     "DESIGN_FILE",
                     "DEFAULT_MAP_SIZE",
                     "DEFAULT_MAP_BLOCKS",
