@@ -130,7 +130,11 @@ class _Database(unittest.TestCase):
 
     def _open_database__no_files(self):
         # DPT, ndbm, and gnu, do not do memory databases.
-        if self._engine not in (dptdu_database, ndbmdu_database, gnudu_database):
+        if self._engine not in (
+            dptdu_database,
+            ndbmdu_database,
+            gnudu_database,
+        ):
             self.database = self._D({}, segment_size_bytes=None)
             self.database.open_database()
             try:
@@ -146,7 +150,11 @@ class _Database(unittest.TestCase):
         # the 13th index one is being opened.  See call to set_cachesize().
         # The environment argument is ignored for the other engines.
         # DPT, ndbm, and gnu, do not do memory databases.
-        if self._engine not in (dptdu_database, ndbmdu_database, gnudu_database):
+        if self._engine not in (
+            dptdu_database,
+            ndbmdu_database,
+            gnudu_database,
+        ):
             self.database = self._D(
                 self.generated_filespec,
                 segment_size_bytes=None,
@@ -158,7 +166,9 @@ class _Database(unittest.TestCase):
                 self.assertEqual(self.database.home_directory, None)
                 self.assertEqual(self.database.database_file, None)
                 self.database.set_defer_update()
-                _data_generator.populate(self.database, self.dg, transaction=False)
+                _data_generator.populate(
+                    self.database, self.dg, transaction=False
+                )
                 self.database.unset_defer_update()
             finally:
                 self.database.close_database()
@@ -191,90 +201,108 @@ class _Database(unittest.TestCase):
 
 
 if unqlite:
+
     class _DatabaseUnqlite(_Database):
         def setUp(self):
             self._engine = unqlitedu_database
             super().setUp()
+
         test_01 = _Database._open_database__no_files
         test_02 = _Database._open_database__in_memory_no_txn_generated_filespec
         test_03 = _Database._open_database__in_file_no_txn_generated_filespec
 
 
 if vedis:
+
     class _DatabaseVedis(_Database):
         def setUp(self):
             self._engine = vedisdu_database
             super().setUp()
+
         test_01 = _Database._open_database__no_files
         test_02 = _Database._open_database__in_memory_no_txn_generated_filespec
         test_03 = _Database._open_database__in_file_no_txn_generated_filespec
 
 
 if berkeleydb:
+
     class _DatabaseBerkeleydb(_Database):
         def setUp(self):
             self._engine = berkeleydbdu_database
             super().setUp()
+
         test_01 = _Database._open_database__no_files
         test_02 = _Database._open_database__in_memory_no_txn_generated_filespec
         test_03 = _Database._open_database__in_file_no_txn_generated_filespec
 
 
 if bsddb3:
+
     class _DatabaseBsddb3(_Database):
         def setUp(self):
             self._engine = bsddb3du_database
             super().setUp()
+
         test_01 = _Database._open_database__no_files
         test_02 = _Database._open_database__in_memory_no_txn_generated_filespec
         test_03 = _Database._open_database__in_file_no_txn_generated_filespec
 
 
 if sqlite3:
+
     class _DatabaseSqlite3(_Database):
         def setUp(self):
             self._engine = sqlite3du_database
             super().setUp()
+
         test_01 = _Database._open_database__no_files
         test_02 = _Database._open_database__in_memory_no_txn_generated_filespec
         test_03 = _Database._open_database__in_file_no_txn_generated_filespec
 
 
 if apsw:
+
     class _DatabaseApsw(_Database):
         def setUp(self):
             self._engine = apswdu_database
             super().setUp()
+
         test_01 = _Database._open_database__no_files
         test_02 = _Database._open_database__in_memory_no_txn_generated_filespec
         test_03 = _Database._open_database__in_file_no_txn_generated_filespec
 
 
 if dptapi:
+
     class _DatabaseDpt(_Database):
         def setUp(self):
             self._engine = dptdu_database
             super().setUp()
+
         test_01 = _Database._open_database__no_files
         test_02 = _Database._open_database__in_memory_no_txn_generated_filespec
         test_03 = _Database._open_database__in_file_no_txn_generated_filespec
 
 
 if ndbm_module:
+
     class _DatabaseNdbm(_Database):
         def setUp(self):
             self._engine = ndbmdu_database
             super().setUp()
+
         test_01 = _Database._open_database__no_files
         test_02 = _Database._open_database__in_memory_no_txn_generated_filespec
         test_03 = _Database._open_database__in_file_no_txn_generated_filespec
 
 
 if gnu_module:
+
     class _DatabaseGnu(_Database):
         def setUp(self):
             self._engine = gnudu_database
             super().setUp()
+
         test_01 = _Database._open_database__no_files
         test_02 = _Database._open_database__in_memory_no_txn_generated_filespec
         test_03 = _Database._open_database__in_file_no_txn_generated_filespec

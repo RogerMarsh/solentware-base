@@ -514,7 +514,7 @@ class Database_open_database(_NoSQL):
 
 
 # Memory databases cannot be used for these tests.
-class Database_add_field_to_existing_database(_NoSQL):
+class DatabaseAddFieldToExistingDatabase(_NoSQL):
 
     def t13_add_field_to_open_database(self):
         folder = "aaaa"
@@ -1163,7 +1163,7 @@ class Database_find_values__populated(_NoSQLOpen):
         )
 
 
-class Database_add_record_to_field_value(_NoSQLOpen):
+class DatabaseAddRecordToFieldValue(_NoSQLOpen):
     def t01(self):
         self.assertRaisesRegex(
             TypeError,
@@ -1323,7 +1323,7 @@ class Database_add_record_to_field_value(_NoSQLOpen):
         )
 
 
-class Database_remove_record_from_field_value(_NoSQLOpen):
+class DatabaseRemoveRecordFieldValue(_NoSQLOpen):
     def t01(self):
         self.assertRaisesRegex(
             TypeError,
@@ -1337,7 +1337,7 @@ class Database_remove_record_from_field_value(_NoSQLOpen):
             self.database.remove_record_from_field_value,
         )
 
-    def t02_remove_record_from_tree_field_value(self):
+    def t02_remove_record_tree_field_value(self):
         db = self.database.dbenv
         for i in 5, 6, 2, 10, 20, 30, 40, 50, 51:
             self.database.add_record_to_field_value(
@@ -1456,7 +1456,7 @@ class Database_remove_record_from_field_value(_NoSQLOpen):
         self.assertEqual(db.exists("1_1_1_2_indexvalue"), False)
         self.assertEqual(db.exists("1_1"), False)
 
-    def t03_remove_record_from_hash_field_value(self):
+    def t03_remove_record_hash_field_value(self):
         db = self.database.dbenv
         self.database.add_record_to_field_value(
             "file2", "field2", "indexvalue", 2, 0
@@ -2751,7 +2751,7 @@ if gnu_module:
 
     class Database_add_field_to_existing_databaseGnu(_NoSQLGnu):
         test_13 = (
-            Database_add_field_to_existing_database.t13_add_field_to_open_database
+            DatabaseAddFieldToExistingDatabase.t13_add_field_to_open_database
         )
 
     class Database_do_database_taskGnu(Database_do_database_task):
@@ -2877,22 +2877,22 @@ if gnu_module:
         test_09 = Database_find_values__populated.t09_find_values
 
     class Database_add_record_to_field_valueGnu(_NoSQLOpenGnu):
-        test_01 = Database_add_record_to_field_value.t01
-        test_02 = Database_add_record_to_field_value.t02__assumptions
+        test_01 = DatabaseAddRecordToFieldValue.t01
+        test_02 = DatabaseAddRecordToFieldValue.t02__assumptions
         test_03 = (
-            Database_add_record_to_field_value.t03_add_record_to_tree_field_value
+            DatabaseAddRecordToFieldValue.t03_add_record_to_tree_field_value
         )
         test_04 = (
-            Database_add_record_to_field_value.t04_add_record_to_hash_field_value
+            DatabaseAddRecordToFieldValue.t04_add_record_to_hash_field_value
         )
 
     class Database_remove_record_from_field_valueGnu(_NoSQLOpenGnu):
-        test_01 = Database_remove_record_from_field_value.t01
+        test_01 = DatabaseRemoveRecordFieldValue.t01
         test_02 = (
-            Database_remove_record_from_field_value.t02_remove_record_from_tree_field_value
+            DatabaseRemoveRecordFieldValue.t02_remove_record_tree_field_value
         )
         test_03 = (
-            Database_remove_record_from_field_value.t03_remove_record_from_hash_field_value
+            DatabaseRemoveRecordFieldValue.t03_remove_record_hash_field_value
         )
 
     class Database_populate_segmentGnu(_NoSQLOpenGnu):
@@ -3104,7 +3104,7 @@ if ndbm_module:
 
     class Database_add_field_to_existing_databaseNdbm(_NoSQLNdbm):
         test_13 = (
-            Database_add_field_to_existing_database.t13_add_field_to_open_database
+            DatabaseAddFieldToExistingDatabase.t13_add_field_to_open_database
         )
 
     class Database_do_database_taskNdbm(Database_do_database_task):
@@ -3219,22 +3219,22 @@ if ndbm_module:
         test_09 = Database_find_values__populated.t09_find_values
 
     class Database_add_record_to_field_valueNdbm(_NoSQLOpenNdbm):
-        test_01 = Database_add_record_to_field_value.t01
-        test_02 = Database_add_record_to_field_value.t02__assumptions
+        test_01 = DatabaseAddRecordToFieldValue.t01
+        test_02 = DatabaseAddRecordToFieldValue.t02__assumptions
         test_03 = (
-            Database_add_record_to_field_value.t03_add_record_to_tree_field_value
+            DatabaseAddRecordToFieldValue.t03_add_record_to_tree_field_value
         )
         test_04 = (
-            Database_add_record_to_field_value.t04_add_record_to_hash_field_value
+            DatabaseAddRecordToFieldValue.t04_add_record_to_hash_field_value
         )
 
     class Database_remove_record_from_field_valueNdbm(_NoSQLOpenNdbm):
-        test_01 = Database_remove_record_from_field_value.t01
+        test_01 = DatabaseRemoveRecordFieldValue.t01
         test_02 = (
-            Database_remove_record_from_field_value.t02_remove_record_from_tree_field_value
+            DatabaseRemoveRecordFieldValue.t02_remove_record_tree_field_value
         )
         test_03 = (
-            Database_remove_record_from_field_value.t03_remove_record_from_hash_field_value
+            DatabaseRemoveRecordFieldValue.t03_remove_record_hash_field_value
         )
 
     class Database_populate_segmentNdbm(_NoSQLOpenNdbm):
@@ -3426,7 +3426,7 @@ if unqlite:
 
     class Database_add_field_to_existing_databaseUnqlite(_NoSQLUnqlite):
         test_13 = (
-            Database_add_field_to_existing_database.t13_add_field_to_open_database
+            DatabaseAddFieldToExistingDatabase.t13_add_field_to_open_database
         )
 
     class Database_do_database_taskUnqlite(Database_do_database_task):
@@ -3541,22 +3541,22 @@ if unqlite:
         test_09 = Database_find_values__populated.t09_find_values
 
     class Database_add_record_to_field_valueUnqlite(_NoSQLOpenUnqlite):
-        test_01 = Database_add_record_to_field_value.t01
-        test_02 = Database_add_record_to_field_value.t02__assumptions
+        test_01 = DatabaseAddRecordToFieldValue.t01
+        test_02 = DatabaseAddRecordToFieldValue.t02__assumptions
         test_03 = (
-            Database_add_record_to_field_value.t03_add_record_to_tree_field_value
+            DatabaseAddRecordToFieldValue.t03_add_record_to_tree_field_value
         )
         test_04 = (
-            Database_add_record_to_field_value.t04_add_record_to_hash_field_value
+            DatabaseAddRecordToFieldValue.t04_add_record_to_hash_field_value
         )
 
     class Database_remove_record_from_field_valueUnqlite(_NoSQLOpenUnqlite):
-        test_01 = Database_remove_record_from_field_value.t01
+        test_01 = DatabaseRemoveRecordFieldValue.t01
         test_02 = (
-            Database_remove_record_from_field_value.t02_remove_record_from_tree_field_value
+            DatabaseRemoveRecordFieldValue.t02_remove_record_tree_field_value
         )
         test_03 = (
-            Database_remove_record_from_field_value.t03_remove_record_from_hash_field_value
+            DatabaseRemoveRecordFieldValue.t03_remove_record_hash_field_value
         )
 
     class Database_populate_segmentUnqlite(_NoSQLOpenUnqlite):
@@ -3748,7 +3748,7 @@ if vedis:
 
     class Database_add_field_to_existing_databaseVedis(_NoSQLVedis):
         test_13 = (
-            Database_add_field_to_existing_database.t13_add_field_to_open_database
+            DatabaseAddFieldToExistingDatabase.t13_add_field_to_open_database
         )
 
     class Database_do_database_taskVedis(Database_do_database_task):
@@ -3863,22 +3863,22 @@ if vedis:
         test_09 = Database_find_values__populated.t09_find_values
 
     class Database_add_record_to_field_valueVedis(_NoSQLOpenVedis):
-        test_01 = Database_add_record_to_field_value.t01
-        test_02 = Database_add_record_to_field_value.t02__assumptions
+        test_01 = DatabaseAddRecordToFieldValue.t01
+        test_02 = DatabaseAddRecordToFieldValue.t02__assumptions
         test_03 = (
-            Database_add_record_to_field_value.t03_add_record_to_tree_field_value
+            DatabaseAddRecordToFieldValue.t03_add_record_to_tree_field_value
         )
         test_04 = (
-            Database_add_record_to_field_value.t04_add_record_to_hash_field_value
+            DatabaseAddRecordToFieldValue.t04_add_record_to_hash_field_value
         )
 
     class Database_remove_record_from_field_valueVedis(_NoSQLOpenVedis):
-        test_01 = Database_remove_record_from_field_value.t01
+        test_01 = DatabaseRemoveRecordFieldValue.t01
         test_02 = (
-            Database_remove_record_from_field_value.t02_remove_record_from_tree_field_value
+            DatabaseRemoveRecordFieldValue.t02_remove_record_tree_field_value
         )
         test_03 = (
-            Database_remove_record_from_field_value.t03_remove_record_from_hash_field_value
+            DatabaseRemoveRecordFieldValue.t03_remove_record_hash_field_value
         )
 
     class Database_populate_segmentVedis(_NoSQLOpenVedis):

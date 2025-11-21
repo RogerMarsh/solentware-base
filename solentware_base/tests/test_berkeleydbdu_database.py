@@ -21,14 +21,15 @@ if berkeleydbdu_database is not None:
                 TypeError,
                 "".join(
                     (
-                        r"__init__\(\) missing 1 required positional argument: ",
-                        "'specification'$",
+                        r"__init__\(\) missing 1 required positional ",
+                        "argument: 'specification'$",
                     )
                 ),
                 berkeleydbdu_database.Database,
             )
             self.assertIsInstance(
-                berkeleydbdu_database.Database({}), berkeleydbdu_database.Database
+                berkeleydbdu_database.Database({}),
+                berkeleydbdu_database.Database,
             )
 
 

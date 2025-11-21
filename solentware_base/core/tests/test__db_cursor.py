@@ -22,7 +22,6 @@ from ..segmentsize import SegmentSize
 
 if berkeleydb:
 
-
     class _DB(unittest.TestCase):
         def setUp(self):
             class _D(_db.Database):
@@ -30,7 +29,8 @@ if berkeleydb:
 
             self._D = _D
             self.database = self._D(
-                filespec.FileSpec(**{"file1": {"field1"}}), segment_size_bytes=None
+                filespec.FileSpec(**{"file1": {"field1"}}),
+                segment_size_bytes=None,
             )
             self.database.open_database(berkeleydb.db)
 
@@ -39,15 +39,14 @@ if berkeleydb:
             self.database = None
             self._D = None
 
-
     class Cursor_db(_DB):
         def test_01(self):
             self.assertRaisesRegex(
                 TypeError,
                 "".join(
                     (
-                        r"__init__\(\) takes from 2 to 4 positional arguments ",
-                        "but 5 were given$",
+                        r"__init__\(\) takes from 2 to 4 positional ",
+                        "arguments but 5 were given$",
                     )
                 ),
                 _db.Cursor,
@@ -60,7 +59,10 @@ if berkeleydb:
             self.assertRaisesRegex(
                 TypeError,
                 "".join(
-                    (r"close\(\) takes 1 positional argument but 2 were given$",)
+                    (
+                        r"close\(\) takes 1 positional argument but 2 were ",
+                        "given$",
+                    )
                 ),
                 cursor.close,
                 *(None,),
@@ -70,8 +72,8 @@ if berkeleydb:
                 TypeError,
                 "".join(
                     (
-                        r"get_converted_partial\(\) takes 1 positional argument ",
-                        "but 2 were given$",
+                        r"get_converted_partial\(\) takes 1 positional ",
+                        "argument but 2 were given$",
                     )
                 ),
                 cursor.get_converted_partial,
@@ -149,12 +151,13 @@ if berkeleydb:
                 cursor.get_converted_partial_with_wildcard,
             )
             cursor._partial = "part"
-            self.assertEqual(cursor.get_converted_partial_with_wildcard(), b"part")
+            self.assertEqual(
+                cursor.get_converted_partial_with_wildcard(), b"part"
+            )
 
         def test_07_refresh_recordset(self):
             cursor = _db.Cursor(self.database.table["file1"])
             self.assertEqual(cursor.refresh_recordset(), None)
-
 
     class Cursor_primary(_DB):
         def setUp(self):
@@ -174,8 +177,8 @@ if berkeleydb:
                 TypeError,
                 "".join(
                     (
-                        r"__init__\(\) takes from 2 to 4 positional arguments ",
-                        "but 5 were given$",
+                        r"__init__\(\) takes from 2 to 4 positional ",
+                        "arguments but 5 were given$",
                     )
                 ),
                 _db.CursorPrimary,
@@ -318,11 +321,21 @@ if berkeleydb:
                     )
                 ),
             )
-            self.assertEqual(self.cursor.get_position_of_record((304, None)), 256)
-            self.assertEqual(self.cursor.get_position_of_record((310, None)), 257)
-            self.assertEqual(self.cursor.get_position_of_record((317, None)), 257)
-            self.assertEqual(self.cursor.get_position_of_record((319, None)), 258)
-            self.assertEqual(self.cursor.get_position_of_record((320, None)), 258)
+            self.assertEqual(
+                self.cursor.get_position_of_record((304, None)), 256
+            )
+            self.assertEqual(
+                self.cursor.get_position_of_record((310, None)), 257
+            )
+            self.assertEqual(
+                self.cursor.get_position_of_record((317, None)), 257
+            )
+            self.assertEqual(
+                self.cursor.get_position_of_record((319, None)), 258
+            )
+            self.assertEqual(
+                self.cursor.get_position_of_record((320, None)), 258
+            )
 
         def test_08_get_record_at_position_01(self):
             self.assertEqual(self.cursor.get_record_at_position(), None)
@@ -375,7 +388,9 @@ if berkeleydb:
             self.assertEqual(
                 self.cursor.get_record_at_position(126), (126, str(126))
             )
-            self.assertEqual(self.cursor.get_record_at_position(1), (1, str(1)))
+            self.assertEqual(
+                self.cursor.get_record_at_position(1), (1, str(1))
+            )
             # Same as self.cursor.get_record_at_position(-259)
             self.assertEqual(self.cursor.get_record_at_position(0), None)
 
@@ -397,9 +412,15 @@ if berkeleydb:
                     self.create_record(record_number)
             self.assertEqual(self.cursor.get_record_at_position(-260), None)
             self.assertEqual(self.cursor.get_record_at_position(-259), None)
-            self.assertEqual(self.cursor.get_record_at_position(-258), (1, str(1)))
-            self.assertEqual(self.cursor.get_record_at_position(-257), (2, str(2)))
-            self.assertEqual(self.cursor.get_record_at_position(-256), (3, str(3)))
+            self.assertEqual(
+                self.cursor.get_record_at_position(-258), (1, str(1))
+            )
+            self.assertEqual(
+                self.cursor.get_record_at_position(-257), (2, str(2))
+            )
+            self.assertEqual(
+                self.cursor.get_record_at_position(-256), (3, str(3))
+            )
             self.assertEqual(
                 self.cursor.get_record_at_position(-1), (317, str(317))
             )
@@ -424,19 +445,22 @@ if berkeleydb:
 
         def create_ebm(self, bmb=None):
             if bmb is None:
-                bmb = b"\x7f" + b"\xff" * (SegmentSize.db_segment_size_bytes - 1)
+                bmb = b"\x7f" + b"\xff" * (
+                    SegmentSize.db_segment_size_bytes - 1
+                )
             self.database.ebm_control["file1"].ebm_table.put(1, bmb)
 
         def create_ebm_extra(self, segment, bmb=None):
             if bmb is None:
-                bmb = b"\xff" + b"\xff" * (SegmentSize.db_segment_size_bytes - 1)
+                bmb = b"\xff" + b"\xff" * (
+                    SegmentSize.db_segment_size_bytes - 1
+                )
             self.database.ebm_control["file1"].ebm_table.put(segment, bmb)
 
         def create_record(self, record_number):
             self.database.table["file1"].put(
                 record_number, str(record_number).encode()
             )
-
 
     class Cursor_secondary(_DB):
         def setUp(self):
@@ -499,7 +523,9 @@ if berkeleydb:
             )
             self.keyvalues = {}
             for s in segments:
-                self.segments[self.database.segment_table["file1"].append(s)] = s
+                self.segments[
+                    self.database.segment_table["file1"].append(s)
+                ] = s
             self.database.start_transaction()
             cursor = self.database.table["file1_field1"].cursor(
                 txn=self.database.dbtxn
@@ -512,7 +538,9 @@ if berkeleydb:
                         b"".join(
                             (
                                 b"\x00\x00\x00\x00",
-                                int(24 if e else 31).to_bytes(2, byteorder="big"),
+                                int(24 if e else 31).to_bytes(
+                                    2, byteorder="big"
+                                ),
                                 self.keyvalues[k].to_bytes(4, byteorder="big"),
                             )
                         ),
@@ -579,8 +607,8 @@ if berkeleydb:
                 TypeError,
                 "".join(
                     (
-                        r"__init__\(\) takes from 2 to 3 positional arguments ",
-                        "but 4 were given$",
+                        r"__init__\(\) takes from 2 to 3 positional ",
+                        "arguments but 4 were given$",
                     )
                 ),
                 _db.CursorSecondary,
@@ -761,9 +789,9 @@ if berkeleydb:
             s = self.cursor.get_position_of_record()
             self.assertEqual(s, 0)
 
-        # Tests 12, 13, and 14, drive method through all record paths in the loop
-        # on 'cursor.execute(...)' between them.  Tried arguments till set that did
-        # so was found.
+        # Tests 12, 13, and 14, drive method through all record paths in the
+        # loop on 'cursor.execute(...)' between them.  Tried arguments till
+        # set that did so was found.
 
         def test_12_get_position_of_record_02(self):
             s = self.cursor.get_position_of_record(("ba_o", 300))
@@ -1061,7 +1089,6 @@ if berkeleydb:
         def test_59_refresh_recordset(self):
             self.cursor.refresh_recordset()
 
-
     class Cursor_secondary__get_record_at_position(_DB):
         def setUp(self):
             super().setUp()
@@ -1083,7 +1110,9 @@ if berkeleydb:
             self.segments = {}
             key = "a_o"
             for s in segments:
-                self.segments[self.database.segment_table["file1"].append(s)] = s
+                self.segments[
+                    self.database.segment_table["file1"].append(s)
+                ] = s
             self.database.start_transaction()
             cursor = self.database.table["file1_field1"].cursor(
                 txn=self.database.dbtxn

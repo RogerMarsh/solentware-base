@@ -498,7 +498,7 @@ class Database___init__(DB):
         self.assertEqual(database.ebm_control, {})
         self.assertEqual(database._real_segment_size_bytes, False)
         self.assertEqual(database._initial_segment_size_bytes, 4000)
-        #self.assertEqual(SegmentSize.db_segment_size_bytes, 4096)
+        # self.assertEqual(SegmentSize.db_segment_size_bytes, 4096)
         database.set_segment_size()
         self.assertEqual(SegmentSize.db_segment_size_bytes, 4000)
 

@@ -30,8 +30,8 @@ if berkeleydb_database is not None:
                 TypeError,
                 "".join(
                     (
-                        r"__init__\(\) missing 1 required positional argument: ",
-                        "'specification'$",
+                        r"__init__\(\) missing 1 required positional ",
+                        "argument: 'specification'$",
                     )
                 ),
                 berkeleydb_database.Database,

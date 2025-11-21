@@ -423,7 +423,7 @@ class Database_open_database(_SQLite):
 
 
 # Memory databases cannot be used for these tests.
-class Database_add_field_to_existing_database(_SQLite):
+class DatabaseAddFieldToExistingDatabase(_SQLite):
 
     def t13_add_field_to_open_database(self):
         folder = "aaaa"
@@ -934,7 +934,8 @@ class Database_methods(_SQLiteOpen):
 
     def t26_get_table_connection(self):
         self.assertIsInstance(
-            self.database.get_table_connection("file1"), self.get_connection_class()
+            self.database.get_table_connection("file1"),
+            self.get_connection_class(),
         )
 
     def create_ebm(self):
@@ -2147,11 +2148,13 @@ if sqlite3:
     class _SQLiteSqlite3(_SQLite):
         def open_database(self):
             self.database.open_database(sqlite3)
+
         def open_database_temp(self, temp, files=None):
             if files is None:
                 temp.open_database(sqlite3)
             else:
                 temp.open_database(sqlite3, files=files)
+
         def get_connection_class(self):
             return sqlite3.Connection
 
@@ -2198,7 +2201,9 @@ if sqlite3:
         check_specification = Database_open_database.check_specification
 
     class Database_add_field_to_existing_databaseSqlite3(_SQLiteSqlite3):
-        test_13 = Database_add_field_to_existing_database.t13_add_field_to_open_database
+        test_13 = (
+            DatabaseAddFieldToExistingDatabase.t13_add_field_to_open_database
+        )
 
     class Database_do_database_taskSqlite3(Database_do_database_task):
         def setUp(self):
@@ -2220,7 +2225,8 @@ if sqlite3:
         def setUp(self):
             super().setUp()
             self.database = self._D(
-                filespec.FileSpec(**{"file1": {"field1"}}), segment_size_bytes=None
+                filespec.FileSpec(**{"file1": {"field1"}}),
+                segment_size_bytes=None,
             )
             self.open_database()
 
@@ -2360,13 +2366,27 @@ if sqlite3:
             Database_freed_record_number.setup_detail(self)
 
         test_01 = Database_freed_record_number.t01
-        test_02 = Database_freed_record_number.t02_note_freed_record_number_segment
-        test_03 = Database_freed_record_number.t03_get_lowest_freed_record_number
-        test_04 = Database_freed_record_number.t04_get_lowest_freed_record_number
-        test_05 = Database_freed_record_number.t05_get_lowest_freed_record_number
-        test_06 = Database_freed_record_number.t06_get_lowest_freed_record_number
-        test_07 = Database_freed_record_number.t07_get_lowest_freed_record_number
-        test_08 = Database_freed_record_number.t08_get_lowest_freed_record_number
+        test_02 = (
+            Database_freed_record_number.t02_note_freed_record_number_segment
+        )
+        test_03 = (
+            Database_freed_record_number.t03_get_lowest_freed_record_number
+        )
+        test_04 = (
+            Database_freed_record_number.t04_get_lowest_freed_record_number
+        )
+        test_05 = (
+            Database_freed_record_number.t05_get_lowest_freed_record_number
+        )
+        test_06 = (
+            Database_freed_record_number.t06_get_lowest_freed_record_number
+        )
+        test_07 = (
+            Database_freed_record_number.t07_get_lowest_freed_record_number
+        )
+        test_08 = (
+            Database_freed_record_number.t08_get_lowest_freed_record_number
+        )
 
     class Database_empty_freed_record_numberSqlite3(_SQLiteOpenSqlite3):
         def setUp(self):
@@ -2402,11 +2422,13 @@ if apsw:
     class _SQLiteApsw(_SQLite):
         def open_database(self):
             self.database.open_database(apsw)
+
         def open_database_temp(self, temp, files=None):
             if files is None:
                 temp.open_database(apsw)
             else:
                 temp.open_database(apsw, files=files)
+
         def get_connection_class(self):
             return apsw.Connection
 
@@ -2453,7 +2475,9 @@ if apsw:
         check_specification = Database_open_database.check_specification
 
     class Database_add_field_to_existing_databaseApsw(_SQLiteApsw):
-        test_13 = Database_add_field_to_existing_database.t13_add_field_to_open_database
+        test_13 = (
+            DatabaseAddFieldToExistingDatabase.t13_add_field_to_open_database
+        )
 
     class Database_do_database_taskApsw(Database_do_database_task):
         def setUp(self):
@@ -2475,7 +2499,8 @@ if apsw:
         def setUp(self):
             super().setUp()
             self.database = self._D(
-                filespec.FileSpec(**{"file1": {"field1"}}), segment_size_bytes=None
+                filespec.FileSpec(**{"file1": {"field1"}}),
+                segment_size_bytes=None,
             )
             self.open_database()
 
@@ -2615,13 +2640,27 @@ if apsw:
             Database_freed_record_number.setup_detail(self)
 
         test_01 = Database_freed_record_number.t01
-        test_02 = Database_freed_record_number.t02_note_freed_record_number_segment
-        test_03 = Database_freed_record_number.t03_get_lowest_freed_record_number
-        test_04 = Database_freed_record_number.t04_get_lowest_freed_record_number
-        test_05 = Database_freed_record_number.t05_get_lowest_freed_record_number
-        test_06 = Database_freed_record_number.t06_get_lowest_freed_record_number
-        test_07 = Database_freed_record_number.t07_get_lowest_freed_record_number
-        test_08 = Database_freed_record_number.t08_get_lowest_freed_record_number
+        test_02 = (
+            Database_freed_record_number.t02_note_freed_record_number_segment
+        )
+        test_03 = (
+            Database_freed_record_number.t03_get_lowest_freed_record_number
+        )
+        test_04 = (
+            Database_freed_record_number.t04_get_lowest_freed_record_number
+        )
+        test_05 = (
+            Database_freed_record_number.t05_get_lowest_freed_record_number
+        )
+        test_06 = (
+            Database_freed_record_number.t06_get_lowest_freed_record_number
+        )
+        test_07 = (
+            Database_freed_record_number.t07_get_lowest_freed_record_number
+        )
+        test_08 = (
+            Database_freed_record_number.t08_get_lowest_freed_record_number
+        )
 
     class Database_empty_freed_record_numberApsw(_SQLiteOpenApsw):
         def setUp(self):

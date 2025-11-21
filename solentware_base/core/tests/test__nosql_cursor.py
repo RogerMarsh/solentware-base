@@ -534,7 +534,7 @@ class Cursor_primary(_NoSQL):
         self.cursor.refresh_recordset()
 
 
-class Cursor_primary__get_record_at_position(_NoSQL):
+class CursorPrimaryGetRecordAtPosition(_NoSQL):
     # The Cursor_primary setup does not allow 'get_record_at_position(0)'
     # with 'record 0' absent; which was a problem in all other database
     # engines.
@@ -1116,7 +1116,7 @@ class Cursor_secondary(_NoSQL):
         )
 
 
-class Cursor_secondary__get_record_at_position(_NoSQL):
+class CursorSecondaryGetRecordAtPosition(_NoSQL):
     def setup_detail(self):
         segments = (
             b"".join(
@@ -1227,13 +1227,15 @@ if gnu_module:
     class Cursor_primary__get_record_at_positionGnu(_NoSQLGnu):
         def setUp(self):
             super().setUp()
-            Cursor_primary__get_record_at_position.setup_detail(self)
+            CursorPrimaryGetRecordAtPosition.setup_detail(self)
 
         def tearDown(self):
             self.cursor.close()
             super().tearDown()
 
-        test_01 = Cursor_primary__get_record_at_position.t01_get_record_at_position_01
+        test_01 = (
+            CursorPrimaryGetRecordAtPosition.t01_get_record_at_position_01
+        )
 
     class Cursor_secondaryGnu(_NoSQLGnu):
         def setUp(self):
@@ -1286,14 +1288,16 @@ if gnu_module:
     class Cursor_secondary__get_record_at_positionGnu(_NoSQLGnu):
         def setUp(self):
             super().setUp()
-            Cursor_secondary__get_record_at_position.setup_detail(self)
+            CursorSecondaryGetRecordAtPosition.setup_detail(self)
 
         def tearDown(self):
             self.cursor.close()
             self.database.commit()
             super().tearDown()
 
-        test_20 = Cursor_secondary__get_record_at_position.t20_get_record_at_position_06
+        test_20 = (
+            CursorSecondaryGetRecordAtPosition.t20_get_record_at_position_06
+        )
 
 
 if ndbm_module:
@@ -1366,13 +1370,15 @@ if ndbm_module:
     class Cursor_primary__get_record_at_positionNdbm(_NoSQLNdbm):
         def setUp(self):
             super().setUp()
-            Cursor_primary__get_record_at_position.setup_detail(self)
+            CursorPrimaryGetRecordAtPosition.setup_detail(self)
 
         def tearDown(self):
             self.cursor.close()
             super().tearDown()
 
-        test_01 = Cursor_primary__get_record_at_position.t01_get_record_at_position_01
+        test_01 = (
+            CursorPrimaryGetRecordAtPosition.t01_get_record_at_position_01
+        )
 
     class Cursor_secondaryNdbm(_NoSQLNdbm):
         def setUp(self):
@@ -1425,14 +1431,16 @@ if ndbm_module:
     class Cursor_secondary__get_record_at_positionNdbm(_NoSQLNdbm):
         def setUp(self):
             super().setUp()
-            Cursor_secondary__get_record_at_position.setup_detail(self)
+            CursorSecondaryGetRecordAtPosition.setup_detail(self)
 
         def tearDown(self):
             self.cursor.close()
             self.database.commit()
             super().tearDown()
 
-        test_20 = Cursor_secondary__get_record_at_position.t20_get_record_at_position_06
+        test_20 = (
+            CursorSecondaryGetRecordAtPosition.t20_get_record_at_position_06
+        )
 
 
 if unqlite:
@@ -1485,13 +1493,15 @@ if unqlite:
     class Cursor_primary__get_record_at_positionUnqlite(_NoSQLUnqlite):
         def setUp(self):
             super().setUp()
-            Cursor_primary__get_record_at_position.setup_detail(self)
+            CursorPrimaryGetRecordAtPosition.setup_detail(self)
 
         def tearDown(self):
             self.cursor.close()
             super().tearDown()
 
-        test_01 = Cursor_primary__get_record_at_position.t01_get_record_at_position_01
+        test_01 = (
+            CursorPrimaryGetRecordAtPosition.t01_get_record_at_position_01
+        )
 
     class Cursor_secondaryUnqlite(_NoSQLUnqlite):
         def setUp(self):
@@ -1544,14 +1554,16 @@ if unqlite:
     class Cursor_secondary__get_record_at_positionUnqlite(_NoSQLUnqlite):
         def setUp(self):
             super().setUp()
-            Cursor_secondary__get_record_at_position.setup_detail(self)
+            CursorSecondaryGetRecordAtPosition.setup_detail(self)
 
         def tearDown(self):
             self.cursor.close()
             self.database.commit()
             super().tearDown()
 
-        test_20 = Cursor_secondary__get_record_at_position.t20_get_record_at_position_06
+        test_20 = (
+            CursorSecondaryGetRecordAtPosition.t20_get_record_at_position_06
+        )
 
 
 if vedis:
@@ -1604,13 +1616,15 @@ if vedis:
     class Cursor_primary__get_record_at_positionVedis(_NoSQLVedis):
         def setUp(self):
             super().setUp()
-            Cursor_primary__get_record_at_position.setup_detail(self)
+            CursorPrimaryGetRecordAtPosition.setup_detail(self)
 
         def tearDown(self):
             self.cursor.close()
             super().tearDown()
 
-        test_01 = Cursor_primary__get_record_at_position.t01_get_record_at_position_01
+        test_01 = (
+            CursorPrimaryGetRecordAtPosition.t01_get_record_at_position_01
+        )
 
     class Cursor_secondaryVedis(_NoSQLVedis):
         def setUp(self):
@@ -1663,15 +1677,16 @@ if vedis:
     class Cursor_secondary__get_record_at_positionVedis(_NoSQLVedis):
         def setUp(self):
             super().setUp()
-            Cursor_secondary__get_record_at_position.setup_detail(self)
+            CursorSecondaryGetRecordAtPosition.setup_detail(self)
 
         def tearDown(self):
             self.cursor.close()
             self.database.commit()
             super().tearDown()
 
-        test_20 = Cursor_secondary__get_record_at_position.t20_get_record_at_position_06
-
+        test_20 = (
+            CursorSecondaryGetRecordAtPosition.t20_get_record_at_position_06
+        )
 
 
 if __name__ == "__main__":

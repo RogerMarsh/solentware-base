@@ -27,8 +27,8 @@ if ndbm_module is not None or ndbm_database is not None:
                 TypeError,
                 "".join(
                     (
-                        r"__init__\(\) missing 1 required positional argument: ",
-                        "'specification'$",
+                        r"__init__\(\) missing 1 required positional ",
+                        "argument: 'specification'$",
                     )
                 ),
                 ndbm_database.Database,

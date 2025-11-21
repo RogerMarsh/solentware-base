@@ -115,7 +115,10 @@ class _Database(unittest.TestCase):
         self._D = None
         SegmentSize.db_segment_size_bytes = self.__ssb
         if os.path.exists(self._folder):
-            if self._folder in ("___update_test_bsddb3", "___update_test_berkeleydb"):
+            if self._folder in (
+                "___update_test_bsddb3",
+                "___update_test_berkeleydb",
+            ):
                 logdir = os.path.join(self._folder, "___logs_" + self._folder)
                 if os.path.exists(logdir):
                     for f in os.listdir(logdir):
@@ -203,8 +206,13 @@ if unqlite:
             self._engine = unqlite_database
             super().setUp()
 
-        test_01 = _Database.t01_open_database__in_directory_txn_generated_filespec
-        test_02 = _Database.t02_open_database__in_directory_txn_generated_filespec
+        test_01 = (
+            _Database.t01_open_database__in_directory_txn_generated_filespec
+        )
+        test_02 = (
+            _Database.t02_open_database__in_directory_txn_generated_filespec
+        )
+
 
 if vedis:
 
@@ -214,8 +222,13 @@ if vedis:
             self._engine = vedis_database
             super().setUp()
 
-        test_01 = _Database.t01_open_database__in_directory_txn_generated_filespec
-        test_02 = _Database.t02_open_database__in_directory_txn_generated_filespec
+        test_01 = (
+            _Database.t01_open_database__in_directory_txn_generated_filespec
+        )
+        test_02 = (
+            _Database.t02_open_database__in_directory_txn_generated_filespec
+        )
+
 
 if bsddb3:
 
@@ -225,8 +238,13 @@ if bsddb3:
             self._engine = bsddb3_database
             super().setUp()
 
-        test_01 = _Database.t01_open_database__in_directory_txn_generated_filespec
-        test_02 = _Database.t02_open_database__in_directory_txn_generated_filespec
+        test_01 = (
+            _Database.t01_open_database__in_directory_txn_generated_filespec
+        )
+        test_02 = (
+            _Database.t02_open_database__in_directory_txn_generated_filespec
+        )
+
 
 if berkeleydb:
 
@@ -236,8 +254,13 @@ if berkeleydb:
             self._engine = berkeleydb_database
             super().setUp()
 
-        test_01 = _Database.t01_open_database__in_directory_txn_generated_filespec
-        test_02 = _Database.t02_open_database__in_directory_txn_generated_filespec
+        test_01 = (
+            _Database.t01_open_database__in_directory_txn_generated_filespec
+        )
+        test_02 = (
+            _Database.t02_open_database__in_directory_txn_generated_filespec
+        )
+
 
 if sqlite3:
 
@@ -247,8 +270,13 @@ if sqlite3:
             self._engine = sqlite3_database
             super().setUp()
 
-        test_01 = _Database.t01_open_database__in_directory_txn_generated_filespec
-        test_02 = _Database.t02_open_database__in_directory_txn_generated_filespec
+        test_01 = (
+            _Database.t01_open_database__in_directory_txn_generated_filespec
+        )
+        test_02 = (
+            _Database.t02_open_database__in_directory_txn_generated_filespec
+        )
+
 
 if apsw:
 
@@ -258,8 +286,13 @@ if apsw:
             self._engine = apsw_database
             super().setUp()
 
-        test_01 = _Database.t01_open_database__in_directory_txn_generated_filespec
-        test_02 = _Database.t02_open_database__in_directory_txn_generated_filespec
+        test_01 = (
+            _Database.t01_open_database__in_directory_txn_generated_filespec
+        )
+        test_02 = (
+            _Database.t02_open_database__in_directory_txn_generated_filespec
+        )
+
 
 if lmdb:
 
@@ -269,8 +302,13 @@ if lmdb:
             self._engine = lmdb_database
             super().setUp()
 
-        test_01 = _Database.t01_open_database__in_directory_txn_generated_filespec
-        test_02 = _Database.t02_open_database__in_directory_txn_generated_filespec
+        test_01 = (
+            _Database.t01_open_database__in_directory_txn_generated_filespec
+        )
+        test_02 = (
+            _Database.t02_open_database__in_directory_txn_generated_filespec
+        )
+
 
 if dptapi:
 
@@ -280,8 +318,13 @@ if dptapi:
             self._engine = dpt_database
             super().setUp()
 
-        test_01 = _Database.t01_open_database__in_directory_txn_generated_filespec
-        test_02 = _Database.t02_open_database__in_directory_txn_generated_filespec
+        test_01 = (
+            _Database.t01_open_database__in_directory_txn_generated_filespec
+        )
+        test_02 = (
+            _Database.t02_open_database__in_directory_txn_generated_filespec
+        )
+
 
 if ndbm_module:
 
@@ -291,8 +334,13 @@ if ndbm_module:
             self._engine = ndbm_database
             super().setUp()
 
-        test_01 = _Database.t01_open_database__in_directory_txn_generated_filespec
-        test_02 = _Database.t02_open_database__in_directory_txn_generated_filespec
+        test_01 = (
+            _Database.t01_open_database__in_directory_txn_generated_filespec
+        )
+        test_02 = (
+            _Database.t02_open_database__in_directory_txn_generated_filespec
+        )
+
 
 if gnu_module:
 
@@ -302,8 +350,12 @@ if gnu_module:
             self._engine = gnu_database
             super().setUp()
 
-        test_01 = _Database.t01_open_database__in_directory_txn_generated_filespec
-        test_02 = _Database.t02_open_database__in_directory_txn_generated_filespec
+        test_01 = (
+            _Database.t01_open_database__in_directory_txn_generated_filespec
+        )
+        test_02 = (
+            _Database.t02_open_database__in_directory_txn_generated_filespec
+        )
 
 
 dg = _data_generator._DataGenerator()

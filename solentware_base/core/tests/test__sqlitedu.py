@@ -137,15 +137,13 @@ class Database_open_database(_SQLitedu):
             True,
         )
         self.assertEqual(
-            ".setUp.<locals>._D.open_database of " in repr(
-                self.database.open_database
-            ),
+            ".setUp.<locals>._D.open_database of "
+            in repr(self.database.open_database),
             True,
         )
         self.assertEqual(
-            ".setUp.<locals>._D object at " in repr(
-                self.database.open_database
-            ),
+            ".setUp.<locals>._D object at "
+            in repr(self.database.open_database),
             True,
         )
 
@@ -893,7 +891,8 @@ if sqlite3:
         def setUp(self):
             super().setUp()
             self.database = self._D(
-                filespec.FileSpec(**{"file1": {"field1"}}), segment_size_bytes=None
+                filespec.FileSpec(**{"file1": {"field1"}}),
+                segment_size_bytes=None,
             )
             self.database.open_database()
 
@@ -915,7 +914,9 @@ if sqlite3:
         test_01 = Database__rows.t01
         test_02 = Database__rows.t02
 
-    class Database_do_final_segment_deferred_updatesSqlite3(_SQLiteOpenSqlite3):
+    class Database_do_final_segment_deferred_updatesSqlite3(
+        _SQLiteOpenSqlite3
+    ):
         test_01 = Database_do_final_segment_deferred_updates.t01
         test_02 = Database_do_final_segment_deferred_updates.t02
         test_04 = Database_do_final_segment_deferred_updates.t04
@@ -1006,7 +1007,8 @@ if apsw:
         def setUp(self):
             super().setUp()
             self.database = self._D(
-                filespec.FileSpec(**{"file1": {"field1"}}), segment_size_bytes=None
+                filespec.FileSpec(**{"file1": {"field1"}}),
+                segment_size_bytes=None,
             )
             self.database.open_database()
 

@@ -115,7 +115,10 @@ class _Database(unittest.TestCase):
         self._D = None
         SegmentSize.db_segment_size_bytes = self.__ssb
         if os.path.exists(self._folder):
-            if self._folder in ("___update_test_bsddb3", "___update_test_berkeleydb"):
+            if self._folder in (
+                "___update_test_bsddb3",
+                "___update_test_berkeleydb",
+            ):
                 logdir = os.path.join(self._folder, "___logs_" + self._folder)
                 if os.path.exists(logdir):
                     for f in os.listdir(logdir):
@@ -168,7 +171,10 @@ if unqlite:
             self._engine = unqlitedu_database
             super().setUp()
 
-        test_01 = _Database.t01_open_database__in_directory_no_txn_generated_filespec
+        test_01 = (
+            _Database.t01_open_database__in_directory_no_txn_generated_filespec
+        )
+
 
 if vedis:
 
@@ -178,7 +184,10 @@ if vedis:
             self._engine = vedisdu_database
             super().setUp()
 
-        test_01 = _Database.t01_open_database__in_directory_no_txn_generated_filespec
+        test_01 = (
+            _Database.t01_open_database__in_directory_no_txn_generated_filespec
+        )
+
 
 if bsddb3:
 
@@ -188,7 +197,10 @@ if bsddb3:
             self._engine = bsddb3du_database
             super().setUp()
 
-        test_01 = _Database.t01_open_database__in_directory_no_txn_generated_filespec
+        test_01 = (
+            _Database.t01_open_database__in_directory_no_txn_generated_filespec
+        )
+
 
 if berkeleydb:
 
@@ -198,7 +210,10 @@ if berkeleydb:
             self._engine = berkeleydbdu_database
             super().setUp()
 
-        test_01 = _Database.t01_open_database__in_directory_no_txn_generated_filespec
+        test_01 = (
+            _Database.t01_open_database__in_directory_no_txn_generated_filespec
+        )
+
 
 if sqlite3:
 
@@ -208,7 +223,10 @@ if sqlite3:
             self._engine = sqlite3du_database
             super().setUp()
 
-        test_01 = _Database.t01_open_database__in_directory_no_txn_generated_filespec
+        test_01 = (
+            _Database.t01_open_database__in_directory_no_txn_generated_filespec
+        )
+
 
 if apsw:
 
@@ -218,7 +236,10 @@ if apsw:
             self._engine = apswdu_database
             super().setUp()
 
-        test_01 = _Database.t01_open_database__in_directory_no_txn_generated_filespec
+        test_01 = (
+            _Database.t01_open_database__in_directory_no_txn_generated_filespec
+        )
+
 
 if lmdb:
 
@@ -228,7 +249,10 @@ if lmdb:
             self._engine = lmdbdu_database
             super().setUp()
 
-        test_01 = _Database.t01_open_database__in_directory_no_txn_generated_filespec
+        test_01 = (
+            _Database.t01_open_database__in_directory_no_txn_generated_filespec
+        )
+
 
 if dptapi:
 
@@ -238,7 +262,10 @@ if dptapi:
             self._engine = dptdu_database
             super().setUp()
 
-        test_01 = _Database.t01_open_database__in_directory_no_txn_generated_filespec
+        test_01 = (
+            _Database.t01_open_database__in_directory_no_txn_generated_filespec
+        )
+
 
 if ndbm_module:
 
@@ -248,7 +275,10 @@ if ndbm_module:
             self._engine = ndbmdu_database
             super().setUp()
 
-        test_01 = _Database.t01_open_database__in_directory_no_txn_generated_filespec
+        test_01 = (
+            _Database.t01_open_database__in_directory_no_txn_generated_filespec
+        )
+
 
 if gnu_module:
 
@@ -258,7 +288,9 @@ if gnu_module:
             self._engine = gnudu_database
             super().setUp()
 
-        test_01 = _Database.t01_open_database__in_directory_no_txn_generated_filespec
+        test_01 = (
+            _Database.t01_open_database__in_directory_no_txn_generated_filespec
+        )
 
 
 dg = _data_generator._DataGenerator()

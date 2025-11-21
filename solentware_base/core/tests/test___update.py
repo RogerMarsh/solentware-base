@@ -220,11 +220,13 @@ class _Database(unittest.TestCase):
 
 
 if unqlite:
+
     class _DatabaseUnqlite(_Database):
         def setUp(self):
             self._oda = unqlite, unqlite.UnQLite, unqlite.UnQLiteError
             self._engine = _nosql
             super().setUp()
+
         test_01 = _Database._open_database__no_files
         test_02 = _Database._open_database__in_memory_txn_generated_filespec
         test_03 = _Database._open_database__in_memory_no_txn_generated_filespec
@@ -233,11 +235,13 @@ if unqlite:
 
 
 if vedis:
+
     class _DatabaseVedis(_Database):
         def setUp(self):
             self._oda = vedis, vedis.Vedis, None
             self._engine = _nosql
             super().setUp()
+
         test_01 = _Database._open_database__no_files
         test_02 = _Database._open_database__in_memory_txn_generated_filespec
         test_03 = _Database._open_database__in_memory_no_txn_generated_filespec
@@ -246,11 +250,13 @@ if vedis:
 
 
 if berkeleydb:
+
     class _DatabaseBerkeleydb(_Database):
         def setUp(self):
             self._oda = (berkeleydb.db,)
             self._engine = _db
             super().setUp()
+
         test_01 = _Database._open_database__no_files
         test_02 = _Database._open_database__in_memory_txn_generated_filespec
         test_03 = _Database._open_database__in_memory_no_txn_generated_filespec
@@ -259,11 +265,13 @@ if berkeleydb:
 
 
 if bsddb3:
+
     class _DatabaseBsddb3(_Database):
         def setUp(self):
             self._oda = (bsddb3.db,)
             self._engine = _db
             super().setUp()
+
         test_01 = _Database._open_database__no_files
         test_02 = _Database._open_database__in_memory_txn_generated_filespec
         test_03 = _Database._open_database__in_memory_no_txn_generated_filespec
@@ -272,11 +280,13 @@ if bsddb3:
 
 
 if sqlite3:
+
     class _DatabaseSqlite3(_Database):
         def setUp(self):
             self._oda = (sqlite3,)
             self._engine = _sqlite
             super().setUp()
+
         test_01 = _Database._open_database__no_files
         test_02 = _Database._open_database__in_memory_txn_generated_filespec
         test_03 = _Database._open_database__in_memory_no_txn_generated_filespec
@@ -285,11 +295,13 @@ if sqlite3:
 
 
 if apsw:
+
     class _DatabaseApsw(_Database):
         def setUp(self):
             self._oda = (apsw,)
             self._engine = _sqlite
             super().setUp()
+
         test_01 = _Database._open_database__no_files
         test_02 = _Database._open_database__in_memory_txn_generated_filespec
         test_03 = _Database._open_database__in_memory_no_txn_generated_filespec
@@ -298,11 +310,13 @@ if apsw:
 
 
 if dptapi:
+
     class _DatabaseDpt(_Database):
         def setUp(self):
             self._oda = ()
             self._engine = _dpt
             super().setUp()
+
         test_01 = _Database._open_database__no_files
         test_02 = _Database._open_database__in_memory_txn_generated_filespec
         test_03 = _Database._open_database__in_memory_no_txn_generated_filespec
@@ -311,11 +325,13 @@ if dptapi:
 
 
 if ndbm_module:
+
     class _DatabaseNdbm(_Database):
         def setUp(self):
             self._oda = ndbm_module, ndbm_module.Ndbm, None
             self._engine = _nosql
             super().setUp()
+
         test_01 = _Database._open_database__no_files
         test_02 = _Database._open_database__in_memory_txn_generated_filespec
         test_03 = _Database._open_database__in_memory_no_txn_generated_filespec
@@ -324,11 +340,13 @@ if ndbm_module:
 
 
 if gnu_module:
+
     class _DatabaseGnu(_Database):
         def setUp(self):
             self._oda = gnu_module, gnu_module.Gnu, None
             self._engine = _nosql
             super().setUp()
+
         test_01 = _Database._open_database__no_files
         test_02 = _Database._open_database__in_memory_txn_generated_filespec
         test_03 = _Database._open_database__in_memory_no_txn_generated_filespec

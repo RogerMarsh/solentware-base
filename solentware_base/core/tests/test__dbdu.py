@@ -28,7 +28,6 @@ _segment_sort_scale = SegmentSize._segment_sort_scale
 
 if berkeleydb:
 
-
     class _DBdu(unittest.TestCase):
         def setUp(self):
             class _D(_dbdu.Database, _db.Database):
@@ -47,7 +46,6 @@ if berkeleydb:
                         os.remove(os.path.join(logdir, f))
                 os.rmdir(logdir)
 
-
     # Same tests as test__sqlite.Database___init__ with relevant additions.
     # Alternative is one test method with just the additional tests.
     class Database___init__(_DBdu):
@@ -56,8 +54,8 @@ if berkeleydb:
                 TypeError,
                 "".join(
                     (
-                        r"__init__\(\) takes from 2 to 7 positional arguments ",
-                        "but 8 were given$",
+                        r"__init__\(\) takes from 2 to 7 positional ",
+                        "arguments but 8 were given$",
                     )
                 ),
                 self._D,
@@ -65,7 +63,12 @@ if berkeleydb:
             )
 
         def test_02(self):
-            t = r"(?:type object|solentware_base\.core\.filespec\.FileSpec\(\))"
+            t = "".join(
+                (
+                    r"(?:type object|solentware_base\.core\.filespec",
+                    r"\.FileSpec\(\))",
+                )
+            )
             self.assertRaisesRegex(
                 TypeError,
                 "".join(
@@ -114,7 +117,9 @@ if berkeleydb:
             self.assertEqual(database.deferred_update_points, None)
             database.set_segment_size()
             self.assertEqual(SegmentSize.db_segment_size_bytes, 4000)
-            self.assertEqual(database.deferred_update_points, frozenset({31999}))
+            self.assertEqual(
+                database.deferred_update_points, frozenset({31999})
+            )
             self.assertEqual(database.first_chunk, {})
             self.assertEqual(database.high_segment, {})
             self.assertEqual(database.initial_high_segment, {})
@@ -126,16 +131,15 @@ if berkeleydb:
             self.assertEqual(database.home_directory, None)
             self.assertEqual(database.database_file, None)
 
-        # This combination of folder and segment_size_bytes arguments is used for
-        # unittests, except for one to see a non-memory database with a realistic
-        # segment size.
+        # This combination of folder and segment_size_bytes arguments is used
+        # for unittests, except for one to see a non-memory database with a
+        # realistic segment size.
         def test_06(self):
             database = self._D({}, segment_size_bytes=None)
             self.assertEqual(database.segment_size_bytes, None)
             database.set_segment_size()
             self.assertEqual(SegmentSize.db_segment_size_bytes, 16)
             self.assertEqual(database.deferred_update_points, frozenset({127}))
-
 
     # Transaction methods, except start_transaction, do not raise exceptions if
     # called when no database open but do nothing.
@@ -196,14 +200,13 @@ if berkeleydb:
                 TypeError,
                 "".join(
                     (
-                        r"checkpoint_before_close_dbenv\(\) takes 1 positional ",
-                        "argument but 2 were given$",
+                        r"checkpoint_before_close_dbenv\(\) takes 1 ",
+                        "positional argument but 2 were given$",
                     )
                 ),
                 self.database.checkpoint_before_close_dbenv,
                 *(None,),
             )
-
 
     # Memory databases are used for these tests.
     class Database_open_database(_DBdu):
@@ -225,8 +228,8 @@ if berkeleydb:
             repr_open = repr(self.database.open_database)
             self.assertEqual(
                 (
-                    repr_open.startswith(repr_main) or
-                    repr_open.startswith(repr_discover)
+                    repr_open.startswith(repr_main)
+                    or repr_open.startswith(repr_discover)
                 ),
                 True,
             )
@@ -238,20 +241,19 @@ if berkeleydb:
             self.database.close_database()
             self.assertEqual(self.database.dbenv, None)
 
-
     # Memory databases are used for these tests.
     class _DBOpen(_DBdu):
         def setUp(self):
             super().setUp()
             self.database = self._D(
-                filespec.FileSpec(**{"file1": {"field1"}}), segment_size_bytes=None
+                filespec.FileSpec(**{"file1": {"field1"}}),
+                segment_size_bytes=None,
             )
             self.database.open_database()
 
         def tearDown(self):
             self.database.close_database()
             super().tearDown()
-
 
     class Database_methods(_DBOpen):
         def test_01(self):
@@ -329,7 +331,12 @@ if berkeleydb:
 
         def test_04_write_existence_bit_map(self):
             segment = 0
-            b = b"\x7f\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            b = b"".join(
+                (
+                    b"\x7f\xff\xff\xff\x00\x00\x00\x00",
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00",
+                )
+            )
             bs = recordset.RecordsetSegmentBitarray(segment, None, b)
             self.database.existence_bit_maps["file1"] = {}
             self.database.existence_bit_maps["file1"][segment] = bs
@@ -371,7 +378,6 @@ if berkeleydb:
                 ),
                 None,
             )
-
 
     class Database_do_final_segment_deferred_updates(_DBOpen):
         def test_01(self):
@@ -429,8 +435,8 @@ if berkeleydb:
                 "field1", self.database.specification["file1"]["secondary"]
             )
 
-            # The segment has one record, not the high record, in segment but no
-            # index references.  See test_06 for opposite.
+            # The segment has one record, not the high record, in segment but
+            # no index references.  See test_06 for opposite.
             self.database.value_segments["file1"] = {}
             self.database.do_final_segment_deferred_updates()
             self.assertEqual(
@@ -452,14 +458,13 @@ if berkeleydb:
                 "field1", self.database.specification["file1"]["secondary"]
             )
 
-            # The segment has high record, and in this case others, in segment but
-            # no index references.  See test_05 for opposite.
+            # The segment has high record, and in this case others, in segment
+            # but no index references.  See test_05 for opposite.
             self.assertEqual(self.database.deferred_update_points, {i + 1})
             self.database.do_final_segment_deferred_updates()
             self.assertEqual(
                 self.database.ebm_control["file1"].ebm_table.get(1), None
             )
-
 
     class Database__sort_and_write_high_or_chunk(_DBOpen):
         def test_13(self):
@@ -513,18 +518,18 @@ if berkeleydb:
             if hasattr(self.database, "_path_marker"):
                 self.assertEqual(self.database._path_marker, {"p1", "p6"})
 
-        # This drives _sort_and_write_high_or_chunk() through all paths which do
-        # something except where the segment created by merging existing and new
-        # is a bitarray and the existing segment is a list or bitarray.
-        # The case where created segment is neither bitarray, list, nor int, is
-        # ignored.  This method should probably assume it cannot happen: I do not
-        # see how to test it without adding code elsewhere to create an unwanted
-        # segment type.
+        # This drives _sort_and_write_high_or_chunk() through all paths which
+        # do something except where the segment created by merging existing
+        # and new is a bitarray and the existing segment is a list or
+        # bitarray.  The case where created segment is neither bitarray, list,
+        # nor int, is ignored.  This method should probably assume it cannot
+        # happen: I do not see how to test it without adding code elsewhere
+        # to create an unwanted segment type.
         # Original test had "... 'list': [1, 2] ..." which led to a mismatch
         # between record count in segment and list of record numbers because
-        # _sort_and_write_high_or_chunk assumes existing and new segments do not
-        # have record numbers in common.  Not a problem for test's purpose, but
-        # confusing if one looks closely.
+        # _sort_and_write_high_or_chunk assumes existing and new segments do
+        # not have record numbers in common.  Not a problem for test's
+        # purpose, but confusing if one looks closely.
         def test_14(self):
             dt = self.database.table["file1_field1"]
             dt.put(b"int", b"\x00\x00\x00\x05\x00\x01")
@@ -596,9 +601,10 @@ if berkeleydb:
                 )
 
         # Force _sort_and_write_high_or_chunk through path 'p3'.
-        # That is it's only merit.  Setting "high_segment['file1'] = 3" with the
-        # put 'list' records referring to segment 5 is bound to cause problems,
-        # like putting the new segment 5 records in a separate record.
+        # That is it's only merit.  Setting "high_segment['file1'] = 3" with
+        # the put 'list' records referring to segment 5 is bound to cause
+        # problems, like putting the new segment 5 records in a separate
+        # record.
         def test_15(self):
             dt = self.database.table["file1_field1"]
             dt.put(b"int", b"\x00\x00\x00\x05\x00\x01")
@@ -829,7 +835,6 @@ if berkeleydb:
                     },
                 )
 
-
     class Database_sort_and_write(_DBOpen):
         def test_01(self):
             database = self._D({}, segment_size_bytes=None)
@@ -837,8 +842,8 @@ if berkeleydb:
                 TypeError,
                 "".join(
                     (
-                        r"sort_and_write\(\) missing 3 required ",
-                        "positional arguments: 'file', 'field', and 'segment'$",
+                        r"sort_and_write\(\) missing 3 required positional ",
+                        r"arguments: 'file', 'field', and 'segment'$",
                     )
                 ),
                 database.sort_and_write,
@@ -951,7 +956,9 @@ if berkeleydb:
             self.assertEqual(ra, [])
 
         def test_11(self):
-            self.database.value_segments["file1"] = {"field1": {"list": [1, 4]}}
+            self.database.value_segments["file1"] = {
+                "field1": {"list": [1, 4]}
+            }
             self.database.first_chunk["file1"] = False
             self.database.initial_high_segment["file1"] = 4
             self.database.high_segment["file1"] = 3
@@ -1018,14 +1025,12 @@ if berkeleydb:
                 ra.append(r)
             self.assertEqual(ra, [(1, b"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")])
 
-
     # merge() does nothing.
     class Database_merge(_DBOpen):
         def setUp(self):
             super().setUp()
             if SegmentSize._segment_sort_scale != _segment_sort_scale:
                 SegmentSize._segment_sort_scale = _segment_sort_scale
-
 
     class Database_delete_index(_DBOpen):
         def test_01(self):
@@ -1045,7 +1050,6 @@ if berkeleydb:
             self.assertEqual(
                 self.database.delete_index("file1", "field1") is None, True
             )
-
 
     class Database_find_value_segments(_DBOpen):
         def test_01(self):
@@ -1084,7 +1088,9 @@ if berkeleydb:
                 )
 
         def test_find_value_segments_03(self):
-            self.database.value_segments["file1"] = {"field1": {"list": [1, 4]}}
+            self.database.value_segments["file1"] = {
+                "field1": {"list": [1, 4]}
+            }
             self.database.first_chunk["file1"] = False
             self.database.initial_high_segment["file1"] = 4
             self.database.high_segment["file1"] = 3
@@ -1107,7 +1113,6 @@ if berkeleydb:
                     ],
                 )
 
-
     # Not memory-only so the folder can hold the sorted index sequential files.
     class _DBMerge(_DBdu):
         def setUp(self):
@@ -1128,7 +1133,6 @@ if berkeleydb:
             self.database.close_database()
             shutil.rmtree(self.folder)
             super().tearDown()
-
 
     class Database_merge_import(_DBMerge):
         def test_01(self):
@@ -1171,7 +1175,11 @@ if berkeleydb:
                 StopIteration,
                 "$",
                 next,
-                *(self.database.merge_import(self.field, "file1", "field1", 10),),
+                *(
+                    self.database.merge_import(
+                        self.field, "file1", "field1", 10
+                    ),
+                ),
             )
 
         def test_merge_import_04(self):
@@ -1181,7 +1189,11 @@ if berkeleydb:
                 StopIteration,
                 "$",
                 next,
-                *(self.database.merge_import(self.field, "file1", "field1", 10),),
+                *(
+                    self.database.merge_import(
+                        self.field, "file1", "field1", 10
+                    ),
+                ),
             )
 
         def test_merge_import_05(self):
@@ -1191,7 +1203,11 @@ if berkeleydb:
                 TypeError,
                 r"object of type 'int' has no len\(\)$",
                 next,
-                *(self.database.merge_import(self.field, "file1", "field1", 10),),
+                *(
+                    self.database.merge_import(
+                        self.field, "file1", "field1", 10
+                    ),
+                ),
             )
 
         def test_merge_import_06(self):
@@ -1201,7 +1217,11 @@ if berkeleydb:
                 AssertionError,
                 "",
                 next,
-                *(self.database.merge_import(self.field, "file1", "field1", 10),),
+                *(
+                    self.database.merge_import(
+                        self.field, "file1", "field1", 10
+                    ),
+                ),
             )
 
         def test_merge_import_07(self):
@@ -1211,35 +1231,75 @@ if berkeleydb:
                 AssertionError,
                 "",
                 next,
-                *(self.database.merge_import(self.field, "file1", "field1", 10),),
+                *(
+                    self.database.merge_import(
+                        self.field, "file1", "field1", 10
+                    ),
+                ),
             )
 
         def test_merge_import_08(self):
             with open(os.path.join(self.field, "0"), mode="w") as file:
                 file.write(
-                    repr([b"a", b"\x00\x00\x00\x01", 1, b"\x00\x01", b"\x00\x07"])
+                    repr(
+                        [
+                            b"a",
+                            b"\x00\x00\x00\x01",
+                            1,
+                            b"\x00\x01",
+                            b"\x00\x07",
+                        ]
+                    )
                 )
             self.database.start_transaction()
             self.assertRaisesRegex(
                 StopIteration,
                 "$",
                 next,
-                *(self.database.merge_import(self.field, "file1", "field1", 2),),
+                *(
+                    self.database.merge_import(
+                        self.field, "file1", "field1", 2
+                    ),
+                ),
             )
             self.database.commit()
 
         def test_merge_import_09(self):
             with open(os.path.join(self.field, "0"), mode="w") as file:
                 file.write(
-                    repr([b"a", b"\x00\x00\x00\x01", 1, b"\x00\x01", b"\x00\x07"])
+                    repr(
+                        [
+                            b"a",
+                            b"\x00\x00\x00\x01",
+                            1,
+                            b"\x00\x01",
+                            b"\x00\x07",
+                        ]
+                    )
                 )
                 file.write("\n")
                 file.write(
-                    repr([b"b", b"\x00\x00\x00\x01", 1, b"\x00\x01", b"\x00\x07"])
+                    repr(
+                        [
+                            b"b",
+                            b"\x00\x00\x00\x01",
+                            1,
+                            b"\x00\x01",
+                            b"\x00\x07",
+                        ]
+                    )
                 )
                 file.write("\n")
                 file.write(
-                    repr([b"c", b"\x00\x00\x00\x01", 1, b"\x00\x01", b"\x00\x07"])
+                    repr(
+                        [
+                            b"c",
+                            b"\x00\x00\x00\x01",
+                            1,
+                            b"\x00\x01",
+                            b"\x00\x07",
+                        ]
+                    )
                 )
             self.database.start_transaction()
             for count in self.database.merge_import(
@@ -1247,7 +1307,6 @@ if berkeleydb:
             ):
                 self.assertEqual(count, 2)
             self.database.commit()
-
 
     def encode(value):
         """Return encoded value.

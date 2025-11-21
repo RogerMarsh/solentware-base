@@ -30,9 +30,9 @@ from ..constants import CONTROL_FILE
 if berkeleydb:
 
     class _DB(unittest.TestCase):
-        # SegmentSize.db_segment_size_bytes is not reset in this class because only
-        # one pass through the test loop is done: for bsddb3.  Compare with modules
-        # test__sqlite and test__nosql where two passes are done.
+        # SegmentSize.db_segment_size_bytes is not reset in this class because
+        # only one pass through the test loop is done: for bsddb3.  Compare
+        # with modules test__sqlite and test__nosql where two passes are done.
 
         def setUp(self):
             class _D(_db.Database):
@@ -50,15 +50,14 @@ if berkeleydb:
                         os.remove(os.path.join(logdir, f))
                 os.rmdir(logdir)
 
-
     class Database___init__(_DB):
         def test_01(self):
             self.assertRaisesRegex(
                 TypeError,
                 "".join(
                     (
-                        r"__init__\(\) takes from 2 to 7 positional arguments ",
-                        "but 8 were given$",
+                        r"__init__\(\) takes from 2 to 7 positional ",
+                        "arguments but 8 were given$",
                     )
                 ),
                 self._D,
@@ -66,7 +65,12 @@ if berkeleydb:
             )
 
         def test_02(self):
-            t = r"(?:type object|solentware_base\.core\.filespec\.FileSpec\(\))"
+            t = "".join(
+                (
+                    r"(?:type object|solentware_base\.core\.filespec",
+                    r"\.FileSpec\(\))",
+                )
+            )
             self.assertRaisesRegex(
                 TypeError,
                 "".join(
@@ -131,15 +135,14 @@ if berkeleydb:
             self.assertEqual(database.home_directory, None)
             self.assertEqual(database.database_file, None)
 
-        # This combination of folder and segment_size_bytes arguments is used for
-        # unittests, except for one to see a non-memory database with a realistic
-        # segment size.
+        # This combination of folder and segment_size_bytes arguments is used
+        # for unittests, except for one to see a non-memory database with a
+        # realistic segment size.
         def test_07(self):
             database = self._D({}, segment_size_bytes=None)
             self.assertEqual(database.segment_size_bytes, None)
             database.set_segment_size()
             self.assertEqual(SegmentSize.db_segment_size_bytes, 16)
-
 
     # Transaction methods, except start_transaction, do not raise exceptions if
     # called when no database open but do nothing.
@@ -201,7 +204,6 @@ if berkeleydb:
                 *(None,),
             )
 
-
     # Methods which do not require database to be open.
     class DatabaseInstance(_DB):
         def setUp(self):
@@ -213,8 +215,8 @@ if berkeleydb:
                 TypeError,
                 "".join(
                     (
-                        r"_validate_segment_size_bytes\(\) missing 1 required ",
-                        "positional argument: 'segment_size_bytes'$",
+                        r"_validate_segment_size_bytes\(\) missing 1 ",
+                        "required positional argument: 'segment_size_bytes'$",
                     )
                 ),
                 self.database._validate_segment_size_bytes,
@@ -234,7 +236,9 @@ if berkeleydb:
             self.assertEqual(
                 self.database._validate_segment_size_bytes(None), None
             )
-            self.assertEqual(self.database._validate_segment_size_bytes(1), None)
+            self.assertEqual(
+                self.database._validate_segment_size_bytes(1), None
+            )
 
         def test_02_environment_flags(self):
             self.assertRaisesRegex(
@@ -315,7 +319,6 @@ if berkeleydb:
             self.assertIsInstance(
                 self.database.recordlist_nil("a"), recordset.RecordList
             )
-
 
     # Memory databases are used for these tests.
     class Database_open_database(_DB):
@@ -453,7 +456,8 @@ if berkeleydb:
             self.assertEqual(d.file_name_for_database("file1"), "file1")
             d.home_directory = "home"
             self.assertEqual(
-                d.file_name_for_database("file1"), os.path.join("home", "file1")
+                d.file_name_for_database("file1"),
+                os.path.join("home", "file1"),
             )
 
         def test_11_checkpoint_before_close_dbenv(self):
@@ -483,7 +487,9 @@ if berkeleydb:
 
         def check_specification(self):
             d = self.database
-            self.assertEqual(set(d.table), {"file1", "___control", "file1_field1"})
+            self.assertEqual(
+                set(d.table), {"file1", "___control", "file1_field1"}
+            )
             self.assertEqual(set(d.segment_table), {"file1"})
             self.assertEqual(set(d.ebm_control), {"file1"})
             for v in d.ebm_control.values():
@@ -510,7 +516,6 @@ if berkeleydb:
                     c += 1
                     o.add(v)
             self.assertEqual(c, len(o))
-
 
     # Memory databases cannot be used for these tests.
     class Database_add_field_to_existing_database(_DB):
@@ -540,15 +545,14 @@ if berkeleydb:
             self.assertEqual(set(database.table.keys()), set([]))
             shutil.rmtree(folder)
 
-
     # Memory databases are used for these tests.
     # This one has to look like a real application (almost).
     # Do not need to catch the self.__class__.SegmentSizeError exception in
     # _ED.open_database() method.
     class Database_do_database_task(unittest.TestCase):
-        # SegmentSize.db_segment_size_bytes is not reset in this class because only
-        # one pass through the test loop is done: for bsddb3.  Compare with modules
-        # test__sqlite and test__nosql where two passes are done.
+        # SegmentSize.db_segment_size_bytes is not reset in this class because
+        # only one pass through the test loop is done: for bsddb3.  Compare
+        # with modules test__sqlite and test__nosql where two passes are done.
 
         def setUp(self):
             class _ED(_db.Database):
@@ -580,21 +584,21 @@ if berkeleydb:
             d.open_database()
             self.assertEqual(d.do_database_task(m), None)
 
-
     # Memory databases are used for these tests.
-    # Use the 'testing only' segment size for convenience of setup and eyeballing.
+    # Use the 'testing only' segment size for convenience of setup and
+    # eyeballing.
     class _DBOpen(_DB):
         def setUp(self):
             super().setUp()
             self.database = self._D(
-                filespec.FileSpec(**{"file1": {"field1"}}), segment_size_bytes=None
+                filespec.FileSpec(**{"file1": {"field1"}}),
+                segment_size_bytes=None,
             )
             self.database.open_database(berkeleydb.db)
 
         def tearDown(self):
             self.database.close_database()
             super().tearDown()
-
 
     class DatabaseTransactions(_DBOpen):
         # Second start_transaction does nothing.
@@ -618,7 +622,6 @@ if berkeleydb:
         def test_05(self):
             self.database.commit()
 
-
     class Database_put_replace_delete(_DBOpen):
         def test_01(self):
             self.assertRaisesRegex(
@@ -635,7 +638,8 @@ if berkeleydb:
                 TypeError,
                 "".join(
                     (
-                        r"replace\(\) missing 4 required positional arguments: ",
+                        r"replace\(\) missing 4 required positional ",
+                        "arguments: ",
                         "'file', 'key', 'oldvalue', and 'newvalue'$",
                     )
                 ),
@@ -645,8 +649,8 @@ if berkeleydb:
                 TypeError,
                 "".join(
                     (
-                        r"delete\(\) missing 3 required positional arguments: ",
-                        "'file', 'key', and 'value'$",
+                        r"delete\(\) missing 3 required positional ",
+                        "arguments: 'file', 'key', and 'value'$",
                     )
                 ),
                 self.database.delete,
@@ -664,18 +668,22 @@ if berkeleydb:
         def test_04_put(self):
             recno = self.database.put("file1", None, "new value")
             self.assertEqual(recno, 1)
-            self.assertEqual(self.database.put("file1", 1, "renew value"), None)
+            self.assertEqual(
+                self.database.put("file1", 1, "renew value"), None
+            )
             recno = self.database.put("file1", None, "other value")
             self.assertEqual(recno, 2)
 
         def test_05_replace(self):
             self.assertEqual(
-                self.database.replace("file1", 1, "new value", "renew value"), None
+                self.database.replace("file1", 1, "new value", "renew value"),
+                None,
             )
 
         def test_06_delete(self):
-            self.assertEqual(self.database.delete("file1", 1, "new value"), None)
-
+            self.assertEqual(
+                self.database.delete("file1", 1, "new value"), None
+            )
 
     class Database_methods(_DBOpen):
         def test_01(self):
@@ -683,8 +691,8 @@ if berkeleydb:
                 TypeError,
                 "".join(
                     (
-                        r"get_primary_record\(\) missing 2 required positional ",
-                        "arguments: 'file' and 'key'$",
+                        r"get_primary_record\(\) missing 2 required ",
+                        "positional arguments: 'file' and 'key'$",
                     )
                 ),
                 self.database.get_primary_record,
@@ -734,8 +742,8 @@ if berkeleydb:
                 TypeError,
                 "".join(
                     (
-                        r"recordlist_record_number_range\(\) takes from 2 to 5 ",
-                        "positional arguments but 6 were given$",
+                        r"recordlist_record_number_range\(\) takes from 2 ",
+                        "to 5 positional arguments but 6 were given$",
                     )
                 ),
                 self.database.recordlist_record_number_range,
@@ -756,18 +764,22 @@ if berkeleydb:
                 TypeError,
                 "".join(
                     (
-                        r"get_table_connection\(\) missing 1 required positional ",
-                        "argument: 'file'$",
+                        r"get_table_connection\(\) missing 1 required ",
+                        "positional argument: 'file'$",
                     )
                 ),
                 self.database.get_table_connection,
             )
 
         def test_02_get_primary_record(self):
-            self.assertEqual(self.database.get_primary_record("file1", None), None)
+            self.assertEqual(
+                self.database.get_primary_record("file1", None), None
+            )
 
         def test_03_get_primary_record(self):
-            self.assertEqual(self.database.get_primary_record("file1", 1), None)
+            self.assertEqual(
+                self.database.get_primary_record("file1", 1), None
+            )
 
         def test_04_get_primary_record(self):
             self.database.put("file1", None, "new value")
@@ -784,17 +796,25 @@ if berkeleydb:
             )
 
         def test_06_remove_record_from_ebm(self):
-            self.assertEqual(self.database.add_record_to_ebm("file1", 2), (0, 2))
+            self.assertEqual(
+                self.database.add_record_to_ebm("file1", 2), (0, 2)
+            )
             self.assertEqual(
                 self.database.remove_record_from_ebm("file1", 2), (0, 2)
             )
 
         def test_07_add_record_to_ebm(self):
-            self.assertEqual(self.database.add_record_to_ebm("file1", 2), (0, 2))
-            self.assertEqual(self.database.add_record_to_ebm("file1", 4), (0, 4))
+            self.assertEqual(
+                self.database.add_record_to_ebm("file1", 2), (0, 2)
+            )
+            self.assertEqual(
+                self.database.add_record_to_ebm("file1", 4), (0, 4)
+            )
 
         def test_08_get_high_record(self):
-            self.assertEqual(self.database.get_high_record_number("file1"), None)
+            self.assertEqual(
+                self.database.get_high_record_number("file1"), None
+            )
 
         def test_14_recordset_record_number(self):
             self.assertIsInstance(
@@ -810,7 +830,9 @@ if berkeleydb:
 
         def test_16_recordset_record_number(self):
             self.database.table["file1"].put(1, encode("Some value"))
-            values = b"\x40" + b"\x00" * (SegmentSize.db_segment_size_bytes - 1)
+            values = b"\x40" + b"\x00" * (
+                SegmentSize.db_segment_size_bytes - 1
+            )
             self.database.ebm_control["file1"].ebm_table.put(1, values)
             rl = self.database.recordlist_record_number("file1", key=1)
             self.assertIsInstance(rl, recordset.RecordList)
@@ -840,7 +862,9 @@ if berkeleydb:
 
         def test_19_recordset_record_number_range(self):
             self.create_ebm()
-            rs = self.database.recordlist_record_number_range("file1", keystart=10)
+            rs = self.database.recordlist_record_number_range(
+                "file1", keystart=10
+            )
             self.assertIsInstance(rs, recordset.RecordList)
             self.assertEqual(
                 rs[0].tobytes(),
@@ -854,7 +878,9 @@ if berkeleydb:
 
         def test_20_recordset_record_number_range(self):
             self.create_ebm()
-            rs = self.database.recordlist_record_number_range("file1", keyend=35)
+            rs = self.database.recordlist_record_number_range(
+                "file1", keyend=35
+            )
             self.assertIsInstance(rs, recordset.RecordList)
             self.assertEqual(
                 rs[0].tobytes(),
@@ -940,13 +966,16 @@ if berkeleydb:
             )
 
         def create_ebm(self):
-            values = b"\x7f" + b"\xff" * (SegmentSize.db_segment_size_bytes - 1)
+            values = b"\x7f" + b"\xff" * (
+                SegmentSize.db_segment_size_bytes - 1
+            )
             self.database.ebm_control["file1"].ebm_table.put(1, values)
 
         def create_ebm_extra(self):
-            values = b"\xff" + b"\xff" * (SegmentSize.db_segment_size_bytes - 1)
+            values = b"\xff" + b"\xff" * (
+                SegmentSize.db_segment_size_bytes - 1
+            )
             self.database.ebm_control["file1"].ebm_table.append(values)
-
 
     class Database_find_values(_DBOpen):
         def setUp(self):
@@ -970,66 +999,104 @@ if berkeleydb:
             self.valuespec.above_value = "b"
             self.valuespec.below_value = "d"
             self.assertEqual(
-                [i for i in self.database.find_values(self.valuespec, "file1")], []
+                [
+                    i
+                    for i in self.database.find_values(self.valuespec, "file1")
+                ],
+                [],
             )
 
         def test_03_find_values(self):
             self.valuespec.above_value = "b"
             self.valuespec.to_value = "d"
             self.assertEqual(
-                [i for i in self.database.find_values(self.valuespec, "file1")], []
+                [
+                    i
+                    for i in self.database.find_values(self.valuespec, "file1")
+                ],
+                [],
             )
 
         def test_04_find_values(self):
             self.valuespec.from_value = "b"
             self.valuespec.to_value = "d"
             self.assertEqual(
-                [i for i in self.database.find_values(self.valuespec, "file1")], []
+                [
+                    i
+                    for i in self.database.find_values(self.valuespec, "file1")
+                ],
+                [],
             )
 
         def test_05_find_values(self):
             self.valuespec.from_value = "b"
             self.valuespec.below_value = "d"
             self.assertEqual(
-                [i for i in self.database.find_values(self.valuespec, "file1")], []
+                [
+                    i
+                    for i in self.database.find_values(self.valuespec, "file1")
+                ],
+                [],
             )
 
         def test_06_find_values(self):
             self.valuespec.above_value = "b"
             self.assertEqual(
-                [i for i in self.database.find_values(self.valuespec, "file1")], []
+                [
+                    i
+                    for i in self.database.find_values(self.valuespec, "file1")
+                ],
+                [],
             )
 
         def test_07_find_values(self):
             self.valuespec.from_value = "b"
             self.assertEqual(
-                [i for i in self.database.find_values(self.valuespec, "file1")], []
+                [
+                    i
+                    for i in self.database.find_values(self.valuespec, "file1")
+                ],
+                [],
             )
 
         def test_08_find_values(self):
             self.valuespec.to_value = "d"
             self.assertEqual(
-                [i for i in self.database.find_values(self.valuespec, "file1")], []
+                [
+                    i
+                    for i in self.database.find_values(self.valuespec, "file1")
+                ],
+                [],
             )
 
         def test_09_find_values(self):
             self.valuespec.below_value = "d"
             self.assertEqual(
-                [i for i in self.database.find_values(self.valuespec, "file1")], []
+                [
+                    i
+                    for i in self.database.find_values(self.valuespec, "file1")
+                ],
+                [],
             )
 
         def test_10_find_values(self):
             self.assertEqual(
-                [i for i in self.database.find_values(self.valuespec, "file1")], []
+                [
+                    i
+                    for i in self.database.find_values(self.valuespec, "file1")
+                ],
+                [],
             )
 
         def test_11_find_values(self):
             self.database.table["file1_field1"].put(b"d", encode("values"))
             self.assertEqual(
-                [i for i in self.database.find_values(self.valuespec, "file1")],
+                [
+                    i
+                    for i in self.database.find_values(self.valuespec, "file1")
+                ],
                 ["d"],
             )
-
 
     class Database_make_recordset(_DBOpen):
         def setUp(self):
@@ -1094,7 +1161,9 @@ if berkeleydb:
             self.keyvalues = {}
             self.references = {}
             for s in segments:
-                self.segments[self.database.segment_table["file1"].append(s)] = s
+                self.segments[
+                    self.database.segment_table["file1"].append(s)
+                ] = s
             cursor = self.database.table["file1_field1"].cursor(
                 txn=self.database.dbtxn
             )
@@ -1109,7 +1178,9 @@ if berkeleydb:
                         )
                     )
                     cursor.put(
-                        k.encode(), self.references[k], berkeleydb.db.DB_KEYLAST
+                        k.encode(),
+                        self.references[k],
+                        berkeleydb.db.DB_KEYLAST,
                     )
                 self.keyvalues["tww"] = 8
                 self.references["tww"] = b"".join(
@@ -1163,11 +1234,12 @@ if berkeleydb:
                     berkeleydb.db.DB_KEYLAST,
                 )
 
-                # This pair of puts wrote their records to different files before
-                # solentware-base-4.0, one for lists and one for bitmaps.
-                # At solentware-base-4.0 the original test_55_file_records_under
-                # raises a bsddb3.db.DBKeyEmptyError exception when attempting to
-                # delete the second record referred to by self.keyvalues['twy'].
+                # This pair of puts wrote their records to different files
+                # before solentware-base-4.0, one for lists and one for
+                # bitmaps.  At solentware-base-4.0 the original
+                # test_55_file_records_under raises a bsddb3.db.DBKeyEmptyError
+                # exception when attempting to delete the second record
+                # referred to by self.keyvalues['twy'].
                 # The test is changed to expect the exception.
                 cursor.put(
                     "www".encode(),
@@ -1215,7 +1287,8 @@ if berkeleydb:
                 TypeError,
                 "".join(
                     (
-                        r"remove_record_from_field_value\(\) missing 5 required ",
+                        r"remove_record_from_field_value\(\) missing 5 ",
+                        "required ",
                         "positional arguments: 'file', 'field', 'key', ",
                         "'segment', and 'record_number'$",
                     )
@@ -1227,7 +1300,8 @@ if berkeleydb:
                 "".join(
                     (
                         r"populate_segment\(\) missing 2 required ",
-                        "positional arguments: 'segment_reference' and 'file'$",
+                        "positional arguments: ",
+                        "'segment_reference' and 'file'$",
                     )
                 ),
                 self.database.populate_segment,
@@ -1301,8 +1375,9 @@ if berkeleydb:
                 TypeError,
                 "".join(
                     (
-                        r"file_records_under\(\) missing 4 required positional ",
-                        "arguments: 'file', 'field', 'recordset', and 'key'$",
+                        r"file_records_under\(\) missing 4 required ",
+                        "positional arguments: ",
+                        "'file', 'field', 'recordset', and 'key'$",
                     )
                 ),
                 self.database.file_records_under,
@@ -1374,7 +1449,9 @@ if berkeleydb:
                     if k.decode() == "one":
                         if v[:4] == b"\x00\x00\x00\x00":
                             s = self.database.populate_segment(v, "file1")
-                            self.assertIsInstance(s, recordset.RecordsetSegmentInt)
+                            self.assertIsInstance(
+                                s, recordset.RecordsetSegmentInt
+                            )
                             break
             finally:
                 cursor.close()
@@ -1447,26 +1524,34 @@ if berkeleydb:
             self.assertEqual(len(rs), 0)
 
         def test_19_make_recordset_key_like(self):
-            rs = self.database.recordlist_key_like("file1", "field1", keylike=b"z")
+            rs = self.database.recordlist_key_like(
+                "file1", "field1", keylike=b"z"
+            )
             self.assertIsInstance(rs, recordset.RecordList)
             self.assertEqual(len(rs), 0)
 
         def test_20_make_recordset_key_like(self):
-            rs = self.database.recordlist_key_like("file1", "field1", keylike=b"n")
+            rs = self.database.recordlist_key_like(
+                "file1", "field1", keylike=b"n"
+            )
             self.assertIsInstance(rs, recordset.RecordList)
             self.assertEqual(len(rs), 1)
             self.assertEqual(rs[0].count_records(), 2)
             self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
         def test_21_make_recordset_key_like(self):
-            rs = self.database.recordlist_key_like("file1", "field1", keylike=b"w")
+            rs = self.database.recordlist_key_like(
+                "file1", "field1", keylike=b"w"
+            )
             self.assertIsInstance(rs, recordset.RecordList)
             self.assertEqual(len(rs), 2)
             self.assertEqual(rs[0].count_records(), 5)
             self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
         def test_22_make_recordset_key_like(self):
-            rs = self.database.recordlist_key_like("file1", "field1", keylike=b"e")
+            rs = self.database.recordlist_key_like(
+                "file1", "field1", keylike=b"e"
+            )
             self.assertIsInstance(rs, recordset.RecordList)
             self.assertEqual(len(rs), 1)
             self.assertEqual(rs[0].count_records(), 41)
@@ -1583,7 +1668,9 @@ if berkeleydb:
             self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
         def test_38_make_recordset_key_range(self):
-            rs = self.database.recordlist_key_range("file1", "field1", le=b"cz")
+            rs = self.database.recordlist_key_range(
+                "file1", "field1", le=b"cz"
+            )
             self.assertIsInstance(rs, recordset.RecordList)
             self.assertEqual(len(rs), 1)
             self.assertEqual(rs[0].count_records(), 111)
@@ -1638,7 +1725,9 @@ if berkeleydb:
             self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
         def test_45_make_recordset_key_range(self):
-            rs = self.database.recordlist_key_range("file1", "field1", lt=b"cz")
+            rs = self.database.recordlist_key_range(
+                "file1", "field1", lt=b"cz"
+            )
             self.assertIsInstance(rs, recordset.RecordList)
             self.assertEqual(len(rs), 1)
             self.assertEqual(rs[0].count_records(), 111)
@@ -1681,13 +1770,15 @@ if berkeleydb:
             rs = self.database.recordlist_key("file1", "field1", key=b"one")
             self.database.file_records_under("file1", "field1", rs, b"rrr")
 
-        # Changed at solentware-base-4.0, see comments in setUp() for put records.
-        # Did I really miss the change in error message? Or change something which
-        # causes a different error?  Spotted while working on _nosql.py.
-        # There has been a FreeBSD OS and ports upgrade since solentware-base-4.0.
+        # Changed at solentware-base-4.0, see comments in setUp() for put
+        # records.
+        # Did I really miss the change in error message? Or change something
+        # which causes a different error?  Spotted while working on _nosql.py.
+        # There has been a FreeBSD OS and ports upgrade since
+        # solentware-base-4.0.
         # Changed back after rebuild at end of March 2020.
-        # When doing some testing on OpenBSD in September 2020 see that the -30997
-        # exception is raised.
+        # When doing some testing on OpenBSD in September 2020 see that the
+        # -30997 exception is raised.
         def test_55_file_records_under(self):
             rs = self.database.recordlist_key("file1", "field1", key=b"ba_o")
             # self.database.file_records_under('file1', 'field1', rs, b'www')
@@ -1699,15 +1790,14 @@ if berkeleydb:
                         r"DB_KEYEMPTY: Non-existent key/data pair'\)$",
                     )
                 ),
-                # "\(-30995, 'BDB0066 DB_KEYEMPTY: Non-existent key/data pair'\)",
-                # "\(-30997, 'DB_KEYEMPTY: Non-existent key/data pair'\)",
                 self.database.file_records_under,
                 *("file1", "field1", rs, b"www"),
             )
 
-        # Did I really miss the change in error message? Or change something which
-        # causes a different error?  Spotted while working on _nosql.py.
-        # There has been a FreeBSD OS and ports upgrade since solentware-base-4.0.
+        # Did I really miss the change in error message? Or change something
+        # which causes a different error?  Spotted while working on _nosql.py.
+        # There has been a FreeBSD OS and ports upgrade since
+        # solentware-base-4.0.
         # Changed back after rebuild at end of March 2020.
         # When doing some testing on OpenBSD in September 2020 see that BDB1002
         # is omitted from the exception text.
@@ -1754,12 +1844,14 @@ if berkeleydb:
             self.assertEqual(len(rs), 1)
             self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
             self.assertEqual(
-                d.populate_recordset_segment(rs, b"\x00\x00\x00\x00\x00\x01"), None
+                d.populate_recordset_segment(rs, b"\x00\x00\x00\x00\x00\x01"),
+                None,
             )
             self.assertEqual(len(rs), 1)
             self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
             self.assertEqual(
-                d.populate_recordset_segment(rs, b"\x00\x00\x00\x01\x00\x05"), None
+                d.populate_recordset_segment(rs, b"\x00\x00\x00\x01\x00\x05"),
+                None,
             )
             self.assertEqual(len(rs), 2)
             self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
@@ -1785,7 +1877,6 @@ if berkeleydb:
             self.assertIsInstance(
                 d.create_recordset_cursor(rs), recordsetcursor.RecordsetCursor
             )
-
 
     class Database_freed_record_number(_DBOpen):
         def setUp(self):
@@ -1815,8 +1906,8 @@ if berkeleydb:
                 TypeError,
                 "".join(
                     (
-                        r"get_lowest_freed_record_number\(\) missing 1 required ",
-                        "positional argument: 'dbset'$",
+                        r"get_lowest_freed_record_number\(\) missing 1 ",
+                        "required positional argument: 'dbset'$",
                     )
                 ),
                 self.database.get_lowest_freed_record_number,
@@ -1827,7 +1918,8 @@ if berkeleydb:
                     (
                         r"note_freed_record_number_segment\(\) missing 4 ",
                         "required positional arguments: 'dbset', 'segment', ",
-                        "'record_number_in_segment', and 'high_record_number'$",
+                        "'record_number_in_segment', and ",
+                        "'high_record_number'$",
                     )
                 ),
                 self.database.note_freed_record_number_segment,
@@ -1835,7 +1927,8 @@ if berkeleydb:
 
         def test_02_note_freed_record_number_segment_01(self):
             self.assertEqual(
-                self.database.ebm_control["file1"].freed_record_number_pages, None
+                self.database.ebm_control["file1"].freed_record_number_pages,
+                None,
             )
             for i in (
                 100,
@@ -1866,12 +1959,17 @@ if berkeleydb:
             self.assertEqual(len(records), 3)
             self.assertEqual(
                 records,
-                [(b"Efile1", b"\x00"), (b"Efile1", b"\x01"), (b"Efile1", b"\x02")],
+                [
+                    (b"Efile1", b"\x00"),
+                    (b"Efile1", b"\x01"),
+                    (b"Efile1", b"\x02"),
+                ],
             )
 
         def test_02_note_freed_record_number_segment_02(self):
             self.assertEqual(
-                self.database.ebm_control["file1"].freed_record_number_pages, None
+                self.database.ebm_control["file1"].freed_record_number_pages,
+                None,
             )
             for i in (
                 100,
@@ -1890,7 +1988,8 @@ if berkeleydb:
             )
             self.database.ebm_control["file1"].freed_record_number_pages = None
             self.assertEqual(
-                self.database.ebm_control["file1"].freed_record_number_pages, None
+                self.database.ebm_control["file1"].freed_record_number_pages,
+                None,
             )
             for i in (201,):
                 self.database.delete("file1", i, "_".join((str(i), "value")))
@@ -1942,14 +2041,15 @@ if berkeleydb:
             rn = self.database.get_lowest_freed_record_number("file1")
             self.assertEqual(rn, 110)
 
-        # The freed record number in segment number 2, 'divmod(380, 128)', is not
-        # seen until segment number 4 has records.
-        # Segment 2 is not deleted from the 'freed record number' list until the
-        # first search of the segment after all freed record numbers have been
-        # re-used.
+        # The freed record number in segment number 2, 'divmod(380, 128)', is
+        # not seen until segment number 4 has records.
+        # Segment 2 is not deleted from the 'freed record number' list until
+        # the first search of the segment after all freed record numbers have
+        # been re-used.
         def test_07_get_lowest_freed_record_number(self):
             self.assertEqual(
-                self.database.ebm_control["file1"].freed_record_number_pages, None
+                self.database.ebm_control["file1"].freed_record_number_pages,
+                None,
             )
             for i in (380,):
                 self.database.delete("file1", i, "_".join((str(i), "value")))
@@ -1958,7 +2058,11 @@ if berkeleydb:
                     "file1", sn, rn, self.high_record
                 )
             self.assertEqual(
-                len(self.database.ebm_control["file1"].freed_record_number_pages),
+                len(
+                    self.database.ebm_control[
+                        "file1"
+                    ].freed_record_number_pages
+                ),
                 1,
             )
             rn = self.database.get_lowest_freed_record_number("file1")
@@ -1972,7 +2076,11 @@ if berkeleydb:
                     ),
                 )
             self.assertEqual(
-                len(self.database.ebm_control["file1"].freed_record_number_pages),
+                len(
+                    self.database.ebm_control[
+                        "file1"
+                    ].freed_record_number_pages
+                ),
                 1,
             )
             self.high_record = self.database.get_high_record_number("file1")
@@ -1982,7 +2090,11 @@ if berkeleydb:
             rn = self.database.get_lowest_freed_record_number("file1")
             self.assertEqual(rn, 380)
             self.assertEqual(
-                len(self.database.ebm_control["file1"].freed_record_number_pages),
+                len(
+                    self.database.ebm_control[
+                        "file1"
+                    ].freed_record_number_pages
+                ),
                 1,
             )
             self.database.add_record_to_ebm("file1", 380)
@@ -1991,7 +2103,11 @@ if berkeleydb:
             # self.database.commit()
             self.assertEqual(rn, None)
             self.assertEqual(
-                len(self.database.ebm_control["file1"].freed_record_number_pages),
+                len(
+                    self.database.ebm_control[
+                        "file1"
+                    ].freed_record_number_pages
+                ),
                 0,
             )
 
@@ -2006,7 +2122,6 @@ if berkeleydb:
             rn = self.database.get_lowest_freed_record_number("file1")
             self.assertEqual(rn, 1)
 
-
     # Does this test add anything beyond Database_freed_record_number?
     class Database_empty_freed_record_number(_DBOpen):
         def setUp(self):
@@ -2018,18 +2133,19 @@ if berkeleydb:
 
         def test_01(self):
             self.assertEqual(
-                self.database.ebm_control["file1"].freed_record_number_pages, None
+                self.database.ebm_control["file1"].freed_record_number_pages,
+                None,
             )
             self.database.note_freed_record_number_segment(
                 "file1", 0, 100, self.high_record
             )
             self.assertEqual(
-                self.database.ebm_control["file1"].freed_record_number_pages, None
+                self.database.ebm_control["file1"].freed_record_number_pages,
+                None,
             )
             self.assertEqual(
                 self.database.get_high_record_number("file1"), self.high_record
             )
-
 
     class RecordsetCursor(_DBOpen):
         def setUp(self):
@@ -2125,7 +2241,6 @@ if berkeleydb:
             self.assertEqual(rc._get_record(120), None)
             self.assertEqual(rc._get_record(10), (10, "10Any value"))
             self.assertEqual(rc._get_record(155), (155, "155Any value"))
-
 
     def encode(value):
         """Return encoded value.

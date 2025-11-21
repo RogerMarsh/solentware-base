@@ -27,8 +27,8 @@ if gnu_module is not None or gnu_database is not None:
                 TypeError,
                 "".join(
                     (
-                        r"__init__\(\) missing 1 required positional argument: ",
-                        "'specification'$",
+                        r"__init__\(\) missing 1 required positional ",
+                        "argument: 'specification'$",
                     )
                 ),
                 gnu_database.Database,
@@ -47,7 +47,9 @@ if gnu_module is not None or gnu_database is not None:
 
         def test_open_database_02(self):
             path = os.path.join(os.path.dirname("__file__"), "___gnutest")
-            self.assertEqual(gnu_database.Database({}, path).open_database(), None)
+            self.assertEqual(
+                gnu_database.Database({}, path).open_database(), None
+            )
             for f in os.listdir(path):
                 os.remove(os.path.join(path, f))
             os.rmdir(path)

@@ -1047,7 +1047,7 @@ class Cursor_secondary(_SQLite):
         self.cursor.refresh_recordset()
 
 
-class Cursor_secondary__get_record_at_position(_SQLite):
+class CursorSecondaryGetRecordAtPosition(_SQLite):
     def setup_detail(self):
         segments = (
             b"".join(
@@ -1246,13 +1246,15 @@ if sqlite3:
     class Cursor_secondary__get_record_at_positionSqlite3(_SQLiteSqlite3):
         def setUp(self):
             super().setUp()
-            Cursor_secondary__get_record_at_position.setup_detail(self)
+            CursorSecondaryGetRecordAtPosition.setup_detail(self)
 
         def tearDown(self):
             self.cursor.close()
             super().tearDown()
 
-        test_20 = Cursor_secondary__get_record_at_position.t20_get_record_at_position_06
+        test_20 = (
+            CursorSecondaryGetRecordAtPosition.t20_get_record_at_position_06
+        )
 
 
 if apsw:
@@ -1365,13 +1367,15 @@ if apsw:
     class Cursor_secondary__get_record_at_positionApsw(_SQLiteApsw):
         def setUp(self):
             super().setUp()
-            Cursor_secondary__get_record_at_position.setup_detail(self)
+            CursorSecondaryGetRecordAtPosition.setup_detail(self)
 
         def tearDown(self):
             self.cursor.close()
             super().tearDown()
 
-        test_20 = Cursor_secondary__get_record_at_position.t20_get_record_at_position_06
+        test_20 = (
+            CursorSecondaryGetRecordAtPosition.t20_get_record_at_position_06
+        )
 
 
 if __name__ == "__main__":

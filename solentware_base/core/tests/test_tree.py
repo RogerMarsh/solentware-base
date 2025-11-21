@@ -303,7 +303,7 @@ class Tree_insert_branching_5(Tree_file1_field1):
             repr([0, 2, None, None, ["key"], None]).encode(),
         )
 
-    def t05_insert__populate_tree_branching_factor_2n_plus_1(self):
+    def t05__populate_branching_factor_2n_plus_1(self):
         self.assertEqual(self.tree.branching_factor, 5)
         # self.print_nodes()
         self.tree.insert("k3")
@@ -541,7 +541,7 @@ class Tree_insert_branching_4(Tree_file1_field1):
         super().setUp()
         self.tree.branching_factor = 4
 
-    def t01_insert__populate_tree_branching_factor_2n(self):
+    def t01__populate_branching_factor_2n(self):
         self.assertEqual(self.tree.branching_factor, 4)
         # self.print_nodes()
         self.tree.insert("k3")
@@ -1913,7 +1913,7 @@ class Tree__write_modified_nodes(Tree__splitters):
             self.tree._write_modified_nodes,
         )
 
-    def t03__write_modified_nodes__modified_is_False(self):
+    def t03__modified_is_False(self):
         self.assertEqual("1_1_2_10" in self.database.dbenv, False)
         self.assertEqual("1_1" in self.database.dbenv, False)
         self.assertEqual("1_1_2_11" in self.database.dbenv, False)
@@ -1937,7 +1937,7 @@ class Tree__write_modified_nodes(Tree__splitters):
         self.assertEqual("1_1_2_13" in self.database.dbenv, False)
         self.assertEqual("1_1_2_14" in self.database.dbenv, False)
 
-    def t04__write_modified_nodes__modified_is_True(self):
+    def t04__modified_is_True(self):
         self.assertEqual("1_1_2_10" in self.database.dbenv, False)
         self.assertEqual("1_1" in self.database.dbenv, False)
         self.assertEqual("1_1_2_11" in self.database.dbenv, False)
@@ -1962,7 +1962,7 @@ class Tree__write_modified_nodes(Tree__splitters):
         self.assertEqual("1_1_2_13" in self.database.dbenv, True)
         self.assertEqual("1_1_2_14" in self.database.dbenv, True)
 
-    def t05__write_modified_nodes__modified_is_None(self):
+    def t05__modified_is_None(self):
         self.assertEqual("1_1_2_10" in self.database.dbenv, False)
         self.assertEqual("1_1" in self.database.dbenv, False)
         self.assertEqual("1_1_2_11" in self.database.dbenv, False)
@@ -1987,7 +1987,7 @@ class Tree__write_modified_nodes(Tree__splitters):
         self.assertEqual("1_1_2_13" in self.database.dbenv, False)
         self.assertEqual("1_1_2_14" in self.database.dbenv, False)
 
-    def t06__write_modified_nodes__modified_is_None__key_exists(self):
+    def t06__modified_is_None__key_exists(self):
         self.assertEqual("1_1_2_10" in self.database.dbenv, False)
         self.assertEqual("1_1" in self.database.dbenv, False)
         self.assertEqual("1_1_2_11" in self.database.dbenv, False)
@@ -2027,7 +2027,7 @@ class Tree__write_modified_nodes(Tree__splitters):
         self.assertEqual(self.node12.modified, False)
 
 
-class Tree__splitter_node_for_key(Tree__splitters):
+class TreeSplitterNodeForKey(Tree__splitters):
     def setUp(self):
         super().setUp()
         self.nodepath = [
@@ -2061,7 +2061,7 @@ class Tree__splitter_node_for_key(Tree__splitters):
             self.tree._splitter_node_for_key,
         )
 
-    def t03__splitter_node_for_key__empty_nodepath(self):
+    def t03__splitter__empty_nodepath(self):
         self.assertRaisesRegex(
             tree.TreeError,
             "Key expected but not found in root or branch node$",
@@ -2069,7 +2069,7 @@ class Tree__splitter_node_for_key(Tree__splitters):
             *([], None),
         )
 
-    def t04__splitter_node_for_key__key_not_in_nodepath(self):
+    def t04__splitter__key_not_in_nodepath(self):
         self.assertRaisesRegex(
             tree.TreeError,
             "Key expected but not found in root or branch node$",
@@ -2077,7 +2077,7 @@ class Tree__splitter_node_for_key(Tree__splitters):
             *(self.nodepath, ""),
         )
 
-    def t05__splitter_node_for_key__key_in_nodepath(self):
+    def t05__splitter__key_in_nodepath(self):
         node, poffset = self.tree._splitter_node_for_key(self.nodepath, "k4")
         self.assertIs(node, self.nodepath[1])
         self.assertEqual(poffset, 0)
@@ -2088,7 +2088,7 @@ class Tree__splitter_node_for_key(Tree__splitters):
     # 'node[tree._Node.KEYS]' should never be empty except temporarely when
     # merging nodes in trees with branching factors less than 6.
     # This method does not check for the condition.
-    def t06__splitter_node_for_key__nodepath_keys_empty(self):
+    def t06__splitter__nodepath_keys_empty(self):
         self.nodepath[0].node[tree._Node.KEYS] = []
         self.assertRaisesRegex(
             tree.TreeError,
@@ -2100,15 +2100,15 @@ class Tree__splitter_node_for_key(Tree__splitters):
     # 'node[tree._Node.KEYS]' should never be empty except temporarely when
     # merging nodes in trees with branching factors less than 6.
     # This method does not check for the condition.
-    def t07__splitter_node_for_key__nodepath_keys_empty(self):
+    def t07__splitter__nodepath_keys_empty(self):
         self.nodepath[1].node[tree._Node.KEYS] = []
         node, poffset = self.tree._splitter_node_for_key(self.nodepath, "k2")
         self.assertIs(node, self.nodepath[0])
         self.assertEqual(poffset, 0)
 
 
-class Tree__replace_splitter_in_branch_or_root(Tree__splitters):
-    def t01__replace_splitter_in_branch_or_root__arguments(self):
+class TreeReplaceSplitterInBranchOrRoot(Tree__splitters):
+    def t01__replace_split_branch_or_root(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -2121,7 +2121,7 @@ class Tree__replace_splitter_in_branch_or_root(Tree__splitters):
             *(None, None),
         )
 
-    def t02__replace_splitter_in_branch_or_root__arguments(self):
+    def t02__replace_split_branch_or_root(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -2133,7 +2133,7 @@ class Tree__replace_splitter_in_branch_or_root(Tree__splitters):
             self.tree._replace_splitter_in_branch_or_root,
         )
 
-    def t03__replace_splitter_in_branch_or_root(self):
+    def t03__replace_split_branch_or_root(self):
         nodepath = [
             tree._Node(5, tree._Node.ROOT, keys=["k2"]),
             tree._Node(6, tree._Node.BRANCH, keys=["k4"]),
@@ -2735,42 +2735,55 @@ class _Node_insert_into_branch_or_root(unittest.TestCase):
 
 
 if unqlite:
+
     class UnTree(Tree):
         def setUp(self):
             self._oda = unqlite, unqlite.UnQLite, unqlite.UnQLiteError
             super().setUp()
+
     class UnTree___init__(UnTree):
         test_01 = Tree___init__.t01___init__
         test_02 = Tree___init__.t02___init__
         test_03 = Tree___init__.t03___init__
         test_04 = Tree___init__.t04___init__
+
     class UnTree_file1_field1(UnTree):
         def setUp(self):
             super().setUp()
             self.tree = tree.Tree("file1", "field1", self.database)
+
         def tearDown(self):
             del self.tree
             super().tearDown()
+
         print_nodes = Tree_file1_field1.print_nodes
         check_nodes = Tree_file1_field1.check_nodes
+
     class UnTree_insert_branching_5(UnTree_file1_field1):
         test_01 = Tree_insert_branching_5.t01_insert__arguments
         test_02 = Tree_insert_branching_5.t02_insert__arguments
         test_03 = Tree_insert_branching_5.t03_insert__key_exists
         test_04 = Tree_insert_branching_5.t04_insert__first_key_into_tree
-        test_05 = Tree_insert_branching_5.t05_insert__populate_tree_branching_factor_2n_plus_1
+        test_05 = (
+            Tree_insert_branching_5.t05__populate_branching_factor_2n_plus_1
+        )
+
     class UnTree_insert_branching_4(UnTree_file1_field1):
         def setUp(self):
             super().setUp()
             self.tree.branching_factor = 4
-        test_01 = Tree_insert_branching_4.t01_insert__populate_tree_branching_factor_2n
+
+        test_01 = Tree_insert_branching_4.t01__populate_branching_factor_2n
+
     class UnTree_insert_branching_6(UnTree_file1_field1):
         def setUp(self):
             super().setUp()
             self.tree.branching_factor = 6
+
         test_01 = Tree_insert_branching_6.t01_insert__keys_in_order
         test_02 = Tree_insert_branching_6.t02_insert__keys_in_reverse_order
         test_03 = Tree_insert_branching_6.t03_insert__keys_in_random_order
+
     class UnTree_delete_branching_5(UnTree_file1_field1):
         test_01 = Tree_delete_branching_5.t01_delete__arguments
         test_02 = Tree_delete_branching_5.t02_delete__arguments
@@ -2784,83 +2797,109 @@ if unqlite:
         test_10 = Tree_delete_branching_5.t10_delete__key_in_root_to_solo_root
         test_11 = Tree_delete_branching_5.t11_delete__key_in_root_to_solo_root
         test_12 = Tree_delete_branching_5.t12_delete__key_in_root_to_solo_root
-        test_13 = Tree_delete_branching_5.t13_delete__keys_in_leaf_nodes_off_root
-        test_14 = Tree_delete_branching_5.t14_delete__keys_in_leaf_nodes_off_branch
+        test_13 = (
+            Tree_delete_branching_5.t13_delete__keys_in_leaf_nodes_off_root
+        )
+        test_14 = (
+            Tree_delete_branching_5.t14_delete__keys_in_leaf_nodes_off_branch
+        )
+
     class UnTree_delete_branching_4(UnTree_file1_field1):
         def setUp(self):
             super().setUp()
             self.tree.branching_factor = 4
+
         test_01 = Tree_delete_branching_4.t01_delete__keys_in_solo_root
         test_02 = Tree_delete_branching_4.t02_delete__key_in_root_to_solo_root
         test_03 = Tree_delete_branching_4.t03_delete__key_in_root_to_solo_root
         test_04 = Tree_delete_branching_4.t04_delete__key_in_root_to_solo_root
         test_05 = Tree_delete_branching_4.t05_delete__key_in_root_to_solo_root
-        test_06 = Tree_delete_branching_4.t06_delete__keys_in_leaf_nodes_off_root
-        test_07 = Tree_delete_branching_4.t07_delete__keys_in_leaf_nodes_off_branch
+        test_06 = (
+            Tree_delete_branching_4.t06_delete__keys_in_leaf_nodes_off_root
+        )
+        test_07 = (
+            Tree_delete_branching_4.t07_delete__keys_in_leaf_nodes_off_branch
+        )
+
     class UnTree_delete_branching_6(UnTree_file1_field1):
         def setUp(self):
             super().setUp()
             self.tree.branching_factor = 6
             for i in range(50):
                 self.tree.insert("k" + str(i))
+
         test_01 = Tree_delete_branching_6.t01_delete__keys_in_order
         test_02 = Tree_delete_branching_6.t02_delete__keys_in_reverse_order
         test_03 = Tree_delete_branching_6.t03_delete__keys_in_random_order
+
     class UnTree_locate(UnTree_file1_field1):
         test_01 = Tree_locate.t01_locate__arguments
         test_02 = Tree_locate.t02_locate__arguments
         test_03 = Tree_locate.t03_locate__key_does_not_exist
         test_04 = Tree_locate.t04_locate__key_exists
+
     class UnTree_search(UnTree_file1_field1):
         test_01 = Tree_search.t01_search__arguments
         test_02 = Tree_search.t02_search__arguments
         test_03 = Tree_search.t02_search__empty_tree
+
     class UnTree__splitters(UnTree_file1_field1):
         def setUp(self):
             super().setUp()
             self.database.dbenv[self.tree.high_node] = repr(30)
+
     class UnTree__split_solo_root(UnTree__splitters):
         test_01 = Tree__split_solo_root.t01__split_solo_root__arguments
         test_02 = Tree__split_solo_root.t02__split_solo_root__arguments
         test_03 = Tree__split_solo_root.t03__split_solo_root__insert_low
         test_04 = Tree__split_solo_root.t04__split_solo_root__insert_high
+
     class UnTree__split_leaf(UnTree__splitters):
         test_01 = Tree__split_leaf.t01__split_leaf__arguments
         test_02 = Tree__split_leaf.t02__split_leaf__arguments
         test_03 = Tree__split_leaf.t03__split_leaf__insert_low
         test_04 = Tree__split_leaf.t04__split_leaf__insert_high
+
     class UnTree__split_root(UnTree__splitters):
         test_01 = Tree__split_root.t01__split_root__arguments
         test_02 = Tree__split_root.t02__split_root__arguments
         test_03 = Tree__split_root.t03__split_root__insert_low
         test_04 = Tree__split_root.t04__split_root__insert_high
+
     class UnTree__split_branch(UnTree__splitters):
         test_01 = Tree__split_branch.t01__split_branch__arguments
         test_02 = Tree__split_branch.t02__split_branch__arguments
         test_03 = Tree__split_branch.t03__split_branch__insert_low
         test_04 = Tree__split_branch.t04__split_branch__insert_high
+
     class UnTree__read_root(UnTree__splitters):
         test_01 = Tree__read_root.t01__read_root__arguments
         test_02 = Tree__read_root.t02__read_root
+
     class UnTree__write_root(UnTree__splitters):
         test_01 = Tree__write_root.t01__write_root__arguments
         test_02 = Tree__write_root.t02__write_root__arguments
         test_03 = Tree__write_root.t03__write_root
+
     class UnTree__read_node(UnTree__splitters):
         test_01 = Tree__read_node.t01__read_node__arguments
         test_02 = Tree__read_node.t02__read_node__arguments
         test_03 = Tree__read_node.t03__read_node
+
     class UnTree__write_node(UnTree__splitters):
         test_01 = Tree__write_node.t01__write_node__arguments
         test_02 = Tree__write_node.t02__write_node__arguments
         test_03 = Tree__write_node.t03__write_node
+
     class UnTree__delete_root(UnTree__splitters):
         test_01 = Tree__delete_root.t01__delete_root__arguments
         test_02 = Tree__delete_root.t02__delete_root
+
     class UnTree__delete_node(UnTree__splitters):
         test_01 = Tree__delete_node.t01__delete_node__arguments
         test_02 = Tree__delete_node.t02___delete_node__arguments
         test_03 = Tree__delete_node.t03__delete_node
+
     class UnTree__write_modified_nodes(UnTree__splitters):
         def setUp(self):
             super().setUp()
@@ -2870,12 +2909,18 @@ if unqlite:
             self.node13 = tree._Node(13, tree._Node.BRANCH)
             self.node14 = tree._Node(14, tree._Node.LEAF)
             # del self.database.dbenv['1_1']
-        test_01 = Tree__write_modified_nodes.t01__write_modified_nodes__arguments
-        test_02 = Tree__write_modified_nodes.t02__write_modified_nodes__arguments
-        test_03 = Tree__write_modified_nodes.t03__write_modified_nodes__modified_is_False
-        test_04 = Tree__write_modified_nodes.t04__write_modified_nodes__modified_is_True
-        test_05 = Tree__write_modified_nodes.t05__write_modified_nodes__modified_is_None
-        test_06 = Tree__write_modified_nodes.t06__write_modified_nodes__modified_is_None__key_exists
+
+        test_01 = (
+            Tree__write_modified_nodes.t01__write_modified_nodes__arguments
+        )
+        test_02 = (
+            Tree__write_modified_nodes.t02__write_modified_nodes__arguments
+        )
+        test_03 = Tree__write_modified_nodes.t03__modified_is_False
+        test_04 = Tree__write_modified_nodes.t04__modified_is_True
+        test_05 = Tree__write_modified_nodes.t05__modified_is_None
+        test_06 = Tree__write_modified_nodes.t06__modified_is_None__key_exists
+
     class UnTree__splitter_node_for_key(UnTree__splitters):
         def setUp(self):
             super().setUp()
@@ -2884,46 +2929,65 @@ if unqlite:
                 tree._Node(6, tree._Node.BRANCH, keys=["k4"]),
                 tree._Node(7, tree._Node.LEAF),
             ]
-        test_01 = Tree__splitter_node_for_key.t01__splitter_node_for_key__arguments
-        test_02 = Tree__splitter_node_for_key.t02__splitter_node_for_key__arguments
-        test_03 = Tree__splitter_node_for_key.t03__splitter_node_for_key__empty_nodepath
-        test_04 = Tree__splitter_node_for_key.t04__splitter_node_for_key__key_not_in_nodepath
-        test_05 = Tree__splitter_node_for_key.t05__splitter_node_for_key__key_in_nodepath
-        test_06 = Tree__splitter_node_for_key.t06__splitter_node_for_key__nodepath_keys_empty
-        test_07 = Tree__splitter_node_for_key.t07__splitter_node_for_key__nodepath_keys_empty
+
+        test_01 = TreeSplitterNodeForKey.t01__splitter_node_for_key__arguments
+        test_02 = TreeSplitterNodeForKey.t02__splitter_node_for_key__arguments
+        test_03 = TreeSplitterNodeForKey.t03__splitter__empty_nodepath
+        test_04 = TreeSplitterNodeForKey.t04__splitter__key_not_in_nodepath
+        test_05 = TreeSplitterNodeForKey.t05__splitter__key_in_nodepath
+        test_06 = TreeSplitterNodeForKey.t06__splitter__nodepath_keys_empty
+        test_07 = TreeSplitterNodeForKey.t07__splitter__nodepath_keys_empty
+
     class UnTree__replace_splitter_in_branch_or_root(UnTree__splitters):
-        test_01 = Tree__replace_splitter_in_branch_or_root.t01__replace_splitter_in_branch_or_root__arguments
-        test_02 = Tree__replace_splitter_in_branch_or_root.t02__replace_splitter_in_branch_or_root__arguments
-        test_03 = Tree__replace_splitter_in_branch_or_root.t03__replace_splitter_in_branch_or_root
+        test_01 = (
+            TreeReplaceSplitterInBranchOrRoot.t01__replace_split_branch_or_root
+        )
+        test_02 = (
+            TreeReplaceSplitterInBranchOrRoot.t02__replace_split_branch_or_root
+        )
+        test_03 = (
+            TreeReplaceSplitterInBranchOrRoot.t03__replace_split_branch_or_root
+        )
+
     class UnTree__merge_leaf(UnTree__splitters):
         test_01 = Tree__merge_leaf.t01__merge_leaf__arguments
         test_02 = Tree__merge_leaf.t02__merge_leaf__arguments
+
     class UnTree__merge_branch(UnTree__splitters):
         test_01 = Tree__merge_branch.t01__merge_branch__arguments
         test_02 = Tree__merge_branch.t02__merge_branch__arguments
+
     class UnCursor___init__(UnTree_file1_field1):
         test_01 = Cursor___init__.t01___init____arguments
         test_02 = Cursor___init__.t02___init____arguments
         test_03 = Cursor___init__.t03___init__
+
     class UnCursor_methods_empty_database(UnTree_file1_field1):
         def setUp(self):
             super().setUp()
             self.cursor = tree.Cursor(self.tree)
+
         test_01 = Cursor_methods_empty_database.t01_first__arguments
-        test_02 = Cursor_methods_empty_database.t02_get_position_of_key__arguments
-        test_03 = Cursor_methods_empty_database.t03_get_key_at_position__arguments
+        test_02 = (
+            Cursor_methods_empty_database.t02_get_position_of_key__arguments
+        )
+        test_03 = (
+            Cursor_methods_empty_database.t03_get_key_at_position__arguments
+        )
         test_04 = Cursor_methods_empty_database.t04_last__arguments
         test_05 = Cursor_methods_empty_database.t05_nearest__arguments
         test_06 = Cursor_methods_empty_database.t06_next__arguments
         test_07 = Cursor_methods_empty_database.t07_prev__arguments
         test_08 = Cursor_methods_empty_database.t08_setat__arguments
         test_09 = Cursor_methods_empty_database.t09__methods
+
     class UnCursor_methods_populated_database(UnTree_file1_field1):
         def setUp(self):
             super().setUp()
             self.cursor = tree.Cursor(self.tree)
             for i in range(10):
                 self.tree.insert(str(i + 10))
+
         test_01 = Cursor_methods_populated_database.t01__first
         test_02 = Cursor_methods_populated_database.t02__last
         test_03 = Cursor_methods_populated_database.t03__nearest
@@ -2935,42 +2999,55 @@ if unqlite:
 
 
 if vedis:
+
     class VeTree(Tree):
         def setUp(self):
             self._oda = vedis, vedis.Vedis, None
             super().setUp()
+
     class VeTree___init__(VeTree):
         test_01 = Tree___init__.t01___init__
         test_02 = Tree___init__.t02___init__
         test_03 = Tree___init__.t03___init__
         test_04 = Tree___init__.t04___init__
+
     class VeTree_file1_field1(VeTree):
         def setUp(self):
             super().setUp()
             self.tree = tree.Tree("file1", "field1", self.database)
+
         def tearDown(self):
             del self.tree
             super().tearDown()
+
         print_nodes = Tree_file1_field1.print_nodes
         check_nodes = Tree_file1_field1.check_nodes
+
     class VeTree_insert_branching_5(VeTree_file1_field1):
         test_01 = Tree_insert_branching_5.t01_insert__arguments
         test_02 = Tree_insert_branching_5.t02_insert__arguments
         test_03 = Tree_insert_branching_5.t03_insert__key_exists
         test_04 = Tree_insert_branching_5.t04_insert__first_key_into_tree
-        test_05 = Tree_insert_branching_5.t05_insert__populate_tree_branching_factor_2n_plus_1
+        test_05 = (
+            Tree_insert_branching_5.t05__populate_branching_factor_2n_plus_1
+        )
+
     class VeTree_insert_branching_4(VeTree_file1_field1):
         def setUp(self):
             super().setUp()
             self.tree.branching_factor = 4
-        test_01 = Tree_insert_branching_4.t01_insert__populate_tree_branching_factor_2n
+
+        test_01 = Tree_insert_branching_4.t01__populate_branching_factor_2n
+
     class VeTree_insert_branching_6(VeTree_file1_field1):
         def setUp(self):
             super().setUp()
             self.tree.branching_factor = 6
+
         test_01 = Tree_insert_branching_6.t01_insert__keys_in_order
         test_02 = Tree_insert_branching_6.t02_insert__keys_in_reverse_order
         test_03 = Tree_insert_branching_6.t03_insert__keys_in_random_order
+
     class VeTree_delete_branching_5(VeTree_file1_field1):
         test_01 = Tree_delete_branching_5.t01_delete__arguments
         test_02 = Tree_delete_branching_5.t02_delete__arguments
@@ -2984,83 +3061,109 @@ if vedis:
         test_10 = Tree_delete_branching_5.t10_delete__key_in_root_to_solo_root
         test_11 = Tree_delete_branching_5.t11_delete__key_in_root_to_solo_root
         test_12 = Tree_delete_branching_5.t12_delete__key_in_root_to_solo_root
-        test_13 = Tree_delete_branching_5.t13_delete__keys_in_leaf_nodes_off_root
-        test_14 = Tree_delete_branching_5.t14_delete__keys_in_leaf_nodes_off_branch
+        test_13 = (
+            Tree_delete_branching_5.t13_delete__keys_in_leaf_nodes_off_root
+        )
+        test_14 = (
+            Tree_delete_branching_5.t14_delete__keys_in_leaf_nodes_off_branch
+        )
+
     class VeTree_delete_branching_4(VeTree_file1_field1):
         def setUp(self):
             super().setUp()
             self.tree.branching_factor = 4
+
         test_01 = Tree_delete_branching_4.t01_delete__keys_in_solo_root
         test_02 = Tree_delete_branching_4.t02_delete__key_in_root_to_solo_root
         test_03 = Tree_delete_branching_4.t03_delete__key_in_root_to_solo_root
         test_04 = Tree_delete_branching_4.t04_delete__key_in_root_to_solo_root
         test_05 = Tree_delete_branching_4.t05_delete__key_in_root_to_solo_root
-        test_06 = Tree_delete_branching_4.t06_delete__keys_in_leaf_nodes_off_root
-        test_07 = Tree_delete_branching_4.t07_delete__keys_in_leaf_nodes_off_branch
+        test_06 = (
+            Tree_delete_branching_4.t06_delete__keys_in_leaf_nodes_off_root
+        )
+        test_07 = (
+            Tree_delete_branching_4.t07_delete__keys_in_leaf_nodes_off_branch
+        )
+
     class VeTree_delete_branching_6(VeTree_file1_field1):
         def setUp(self):
             super().setUp()
             self.tree.branching_factor = 6
             for i in range(50):
                 self.tree.insert("k" + str(i))
+
         test_01 = Tree_delete_branching_6.t01_delete__keys_in_order
         test_02 = Tree_delete_branching_6.t02_delete__keys_in_reverse_order
         test_03 = Tree_delete_branching_6.t03_delete__keys_in_random_order
+
     class VeTree_locate(VeTree_file1_field1):
         test_01 = Tree_locate.t01_locate__arguments
         test_02 = Tree_locate.t02_locate__arguments
         test_03 = Tree_locate.t03_locate__key_does_not_exist
         test_04 = Tree_locate.t04_locate__key_exists
+
     class VeTree_search(VeTree_file1_field1):
         test_01 = Tree_search.t01_search__arguments
         test_02 = Tree_search.t02_search__arguments
         test_03 = Tree_search.t02_search__empty_tree
+
     class VeTree__splitters(VeTree_file1_field1):
         def setUp(self):
             super().setUp()
             self.database.dbenv[self.tree.high_node] = repr(30)
+
     class VeTree__split_solo_root(VeTree__splitters):
         test_01 = Tree__split_solo_root.t01__split_solo_root__arguments
         test_02 = Tree__split_solo_root.t02__split_solo_root__arguments
         test_03 = Tree__split_solo_root.t03__split_solo_root__insert_low
         test_04 = Tree__split_solo_root.t04__split_solo_root__insert_high
+
     class VeTree__split_leaf(VeTree__splitters):
         test_01 = Tree__split_leaf.t01__split_leaf__arguments
         test_02 = Tree__split_leaf.t02__split_leaf__arguments
         test_03 = Tree__split_leaf.t03__split_leaf__insert_low
         test_04 = Tree__split_leaf.t04__split_leaf__insert_high
+
     class VeTree__split_root(VeTree__splitters):
         test_01 = Tree__split_root.t01__split_root__arguments
         test_02 = Tree__split_root.t02__split_root__arguments
         test_03 = Tree__split_root.t03__split_root__insert_low
         test_04 = Tree__split_root.t04__split_root__insert_high
+
     class VeTree__split_branch(VeTree__splitters):
         test_01 = Tree__split_branch.t01__split_branch__arguments
         test_02 = Tree__split_branch.t02__split_branch__arguments
         test_03 = Tree__split_branch.t03__split_branch__insert_low
         test_04 = Tree__split_branch.t04__split_branch__insert_high
+
     class VeTree__read_root(VeTree__splitters):
         test_01 = Tree__read_root.t01__read_root__arguments
         test_02 = Tree__read_root.t02__read_root
+
     class VeTree__write_root(VeTree__splitters):
         test_01 = Tree__write_root.t01__write_root__arguments
         test_02 = Tree__write_root.t02__write_root__arguments
         test_03 = Tree__write_root.t03__write_root
+
     class VeTree__read_node(VeTree__splitters):
         test_01 = Tree__read_node.t01__read_node__arguments
         test_02 = Tree__read_node.t02__read_node__arguments
         test_03 = Tree__read_node.t03__read_node
+
     class VeTree__write_node(VeTree__splitters):
         test_01 = Tree__write_node.t01__write_node__arguments
         test_02 = Tree__write_node.t02__write_node__arguments
         test_03 = Tree__write_node.t03__write_node
+
     class VeTree__delete_root(VeTree__splitters):
         test_01 = Tree__delete_root.t01__delete_root__arguments
         test_02 = Tree__delete_root.t02__delete_root
+
     class VeTree__delete_node(VeTree__splitters):
         test_01 = Tree__delete_node.t01__delete_node__arguments
         test_02 = Tree__delete_node.t02___delete_node__arguments
         test_03 = Tree__delete_node.t03__delete_node
+
     class VeTree__write_modified_nodes(VeTree__splitters):
         def setUp(self):
             super().setUp()
@@ -3070,12 +3173,18 @@ if vedis:
             self.node13 = tree._Node(13, tree._Node.BRANCH)
             self.node14 = tree._Node(14, tree._Node.LEAF)
             # del self.database.dbenv['1_1']
-        test_01 = Tree__write_modified_nodes.t01__write_modified_nodes__arguments
-        test_02 = Tree__write_modified_nodes.t02__write_modified_nodes__arguments
-        test_03 = Tree__write_modified_nodes.t03__write_modified_nodes__modified_is_False
-        test_04 = Tree__write_modified_nodes.t04__write_modified_nodes__modified_is_True
-        test_05 = Tree__write_modified_nodes.t05__write_modified_nodes__modified_is_None
-        test_06 = Tree__write_modified_nodes.t06__write_modified_nodes__modified_is_None__key_exists
+
+        test_01 = (
+            Tree__write_modified_nodes.t01__write_modified_nodes__arguments
+        )
+        test_02 = (
+            Tree__write_modified_nodes.t02__write_modified_nodes__arguments
+        )
+        test_03 = Tree__write_modified_nodes.t03__modified_is_False
+        test_04 = Tree__write_modified_nodes.t04__modified_is_True
+        test_05 = Tree__write_modified_nodes.t05__modified_is_None
+        test_06 = Tree__write_modified_nodes.t06__modified_is_None__key_exists
+
     class VeTree__splitter_node_for_key(VeTree__splitters):
         def setUp(self):
             super().setUp()
@@ -3084,46 +3193,65 @@ if vedis:
                 tree._Node(6, tree._Node.BRANCH, keys=["k4"]),
                 tree._Node(7, tree._Node.LEAF),
             ]
-        test_01 = Tree__splitter_node_for_key.t01__splitter_node_for_key__arguments
-        test_02 = Tree__splitter_node_for_key.t02__splitter_node_for_key__arguments
-        test_03 = Tree__splitter_node_for_key.t03__splitter_node_for_key__empty_nodepath
-        test_04 = Tree__splitter_node_for_key.t04__splitter_node_for_key__key_not_in_nodepath
-        test_05 = Tree__splitter_node_for_key.t05__splitter_node_for_key__key_in_nodepath
-        test_06 = Tree__splitter_node_for_key.t06__splitter_node_for_key__nodepath_keys_empty
-        test_07 = Tree__splitter_node_for_key.t07__splitter_node_for_key__nodepath_keys_empty
+
+        test_01 = TreeSplitterNodeForKey.t01__splitter_node_for_key__arguments
+        test_02 = TreeSplitterNodeForKey.t02__splitter_node_for_key__arguments
+        test_03 = TreeSplitterNodeForKey.t03__splitter__empty_nodepath
+        test_04 = TreeSplitterNodeForKey.t04__splitter__key_not_in_nodepath
+        test_05 = TreeSplitterNodeForKey.t05__splitter__key_in_nodepath
+        test_06 = TreeSplitterNodeForKey.t06__splitter__nodepath_keys_empty
+        test_07 = TreeSplitterNodeForKey.t07__splitter__nodepath_keys_empty
+
     class VeTree__replace_splitter_in_branch_or_root(VeTree__splitters):
-        test_01 = Tree__replace_splitter_in_branch_or_root.t01__replace_splitter_in_branch_or_root__arguments
-        test_02 = Tree__replace_splitter_in_branch_or_root.t02__replace_splitter_in_branch_or_root__arguments
-        test_03 = Tree__replace_splitter_in_branch_or_root.t03__replace_splitter_in_branch_or_root
+        test_01 = (
+            TreeReplaceSplitterInBranchOrRoot.t01__replace_split_branch_or_root
+        )
+        test_02 = (
+            TreeReplaceSplitterInBranchOrRoot.t02__replace_split_branch_or_root
+        )
+        test_03 = (
+            TreeReplaceSplitterInBranchOrRoot.t03__replace_split_branch_or_root
+        )
+
     class VeTree__merge_leaf(VeTree__splitters):
         test_01 = Tree__merge_leaf.t01__merge_leaf__arguments
         test_02 = Tree__merge_leaf.t02__merge_leaf__arguments
+
     class VeTree__merge_branch(VeTree__splitters):
         test_01 = Tree__merge_branch.t01__merge_branch__arguments
         test_02 = Tree__merge_branch.t02__merge_branch__arguments
+
     class VeCursor___init__(VeTree_file1_field1):
         test_01 = Cursor___init__.t01___init____arguments
         test_02 = Cursor___init__.t02___init____arguments
         test_03 = Cursor___init__.t03___init__
+
     class VeCursor_methods_empty_database(VeTree_file1_field1):
         def setUp(self):
             super().setUp()
             self.cursor = tree.Cursor(self.tree)
+
         test_01 = Cursor_methods_empty_database.t01_first__arguments
-        test_02 = Cursor_methods_empty_database.t02_get_position_of_key__arguments
-        test_03 = Cursor_methods_empty_database.t03_get_key_at_position__arguments
+        test_02 = (
+            Cursor_methods_empty_database.t02_get_position_of_key__arguments
+        )
+        test_03 = (
+            Cursor_methods_empty_database.t03_get_key_at_position__arguments
+        )
         test_04 = Cursor_methods_empty_database.t04_last__arguments
         test_05 = Cursor_methods_empty_database.t05_nearest__arguments
         test_06 = Cursor_methods_empty_database.t06_next__arguments
         test_07 = Cursor_methods_empty_database.t07_prev__arguments
         test_08 = Cursor_methods_empty_database.t08_setat__arguments
         test_09 = Cursor_methods_empty_database.t09__methods
+
     class VeCursor_methods_populated_database(VeTree_file1_field1):
         def setUp(self):
             super().setUp()
             self.cursor = tree.Cursor(self.tree)
             for i in range(10):
                 self.tree.insert(str(i + 10))
+
         test_01 = Cursor_methods_populated_database.t01__first
         test_02 = Cursor_methods_populated_database.t02__last
         test_03 = Cursor_methods_populated_database.t03__nearest

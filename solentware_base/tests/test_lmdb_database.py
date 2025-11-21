@@ -22,8 +22,8 @@ if lmdb_database is not None:
                 TypeError,
                 "".join(
                     (
-                        r"__init__\(\) missing 1 required positional argument: ",
-                        "'specification'$",
+                        r"__init__\(\) missing 1 required positional ",
+                        "argument: 'specification'$",
                     )
                 ),
                 lmdb_database.Database,
@@ -39,8 +39,8 @@ if lmdb_database is not None:
                 TypeError,
                 "".join(
                     (
-                        r"mkdir: path should be string, bytes or os.PathLike, ",
-                        "not NoneType$",
+                        r"mkdir: path should be string, bytes or ",
+                        "os.PathLike, not NoneType$",
                     )
                 ),
                 database.open_database,

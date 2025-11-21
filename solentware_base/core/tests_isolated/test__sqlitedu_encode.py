@@ -41,7 +41,7 @@ class _SQLitedu(unittest.TestCase):
         SegmentSize.db_segment_size_bytes = self.__ssb
 
 
-class Database_encode_for_dump(_SQLitedu):
+class DatabaseEncodeForDump(_SQLitedu):
     def setUp(self):
         super().setUp()
         self.database = self._D({}, folder="a")
@@ -113,6 +113,25 @@ if sqlite3:
             self.database = self._D({}, folder="a")
             self.database.set_int_to_bytes_lookup()
 
+        test_01 = (
+            DatabaseEncodeForDump.t01_encode_number_for_sequential_file_dump
+        )
+        test_02 = (
+            DatabaseEncodeForDump.t02_encode_number_for_sequential_file_dump
+        )
+        test_03 = (
+            DatabaseEncodeForDump.t03_encode_segment_for_sequential_file_dump
+        )
+        test_04 = (
+            DatabaseEncodeForDump.t04_encode_segment_for_sequential_file_dump
+        )
+        test_05 = (
+            DatabaseEncodeForDump.t05_encode_segment_for_sequential_file_dump
+        )
+        test_06 = (
+            DatabaseEncodeForDump.t06_encode_segment_for_sequential_file_dump
+        )
+
 
 if apsw:
 
@@ -132,12 +151,24 @@ if apsw:
             self.database = self._D({}, folder="a")
             self.database.set_int_to_bytes_lookup()
 
-        test_01 = Database_encode_for_dump.t01_encode_number_for_sequential_file_dump
-        test_02 = Database_encode_for_dump.t02_encode_number_for_sequential_file_dump
-        test_03 = Database_encode_for_dump.t03_encode_segment_for_sequential_file_dump
-        test_04 = Database_encode_for_dump.t04_encode_segment_for_sequential_file_dump
-        test_05 = Database_encode_for_dump.t05_encode_segment_for_sequential_file_dump
-        test_06 = Database_encode_for_dump.t06_encode_segment_for_sequential_file_dump
+        test_01 = (
+            DatabaseEncodeForDump.t01_encode_number_for_sequential_file_dump
+        )
+        test_02 = (
+            DatabaseEncodeForDump.t02_encode_number_for_sequential_file_dump
+        )
+        test_03 = (
+            DatabaseEncodeForDump.t03_encode_segment_for_sequential_file_dump
+        )
+        test_04 = (
+            DatabaseEncodeForDump.t04_encode_segment_for_sequential_file_dump
+        )
+        test_05 = (
+            DatabaseEncodeForDump.t05_encode_segment_for_sequential_file_dump
+        )
+        test_06 = (
+            DatabaseEncodeForDump.t06_encode_segment_for_sequential_file_dump
+        )
 
 
 if __name__ == "__main__":

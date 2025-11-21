@@ -30,8 +30,8 @@ if bsddb3_database is not None:
                 TypeError,
                 "".join(
                     (
-                        r"__init__\(\) missing 1 required positional argument: ",
-                        "'specification'$",
+                        r"__init__\(\) missing 1 required positional ",
+                        "argument: 'specification'$",
                     )
                 ),
                 bsddb3_database.Database,
@@ -42,7 +42,9 @@ if bsddb3_database is not None:
             )
 
         def test_open_database(self):
-            self.assertEqual(bsddb3_database.Database({}).open_database(), None)
+            self.assertEqual(
+                bsddb3_database.Database({}).open_database(), None
+            )
 
 
 if __name__ == "__main__":

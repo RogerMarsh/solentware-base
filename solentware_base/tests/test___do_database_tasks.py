@@ -116,7 +116,10 @@ class _Database(unittest.TestCase):
         self._ED = None
         SegmentSize.db_segment_size_bytes = self.__ssb
         if os.path.exists(self._folder):
-            if self._folder in ("___update_test_bsddb3", "___update_test_berkeleydb"):
+            if self._folder in (
+                "___update_test_bsddb3",
+                "___update_test_berkeleydb",
+            ):
                 logdir = os.path.join(self._folder, "___logs_" + self._folder)
                 if os.path.exists(logdir):
                     for f in os.listdir(logdir):
@@ -153,7 +156,10 @@ class DatabaseFiles(_Database):
             self._folder,
         )
         files = os.listdir(self.database.home_directory)
-        if self._folder in ("___update_test_bsddb3", "___update_test_berkeleydb"):
+        if self._folder in (
+            "___update_test_bsddb3",
+            "___update_test_berkeleydb",
+        ):
             ae("___logs_" + self._folder in files, True)
             ae(len(files), 2)
         elif self._oda[0] is lmdb:
@@ -180,7 +186,10 @@ class DatabaseFiles(_Database):
             self._folder,
         )
         files = os.listdir(self.database.home_directory)
-        if self._folder in ("___update_test_bsddb3", "___update_test_berkeleydb"):
+        if self._folder in (
+            "___update_test_bsddb3",
+            "___update_test_berkeleydb",
+        ):
             ae("___logs_" + self._folder in files, True)
             ae(len(files), 2)
         elif self._oda[0] is lmdb:
@@ -338,6 +347,7 @@ if unqlite:
         test_04 = DoDatabaseTaskSimpleSpec.t04_do_database_task_simple_spec
         test_05 = DoDatabaseTaskSimpleSpec.t05_do_database_task_simple_spec
 
+
 if vedis:
 
     class _DatabaseVedis(_Database):
@@ -391,6 +401,7 @@ if vedis:
         test_03 = DoDatabaseTaskSimpleSpec.t03_do_database_task_simple_spec
         test_04 = DoDatabaseTaskSimpleSpec.t04_do_database_task_simple_spec
         test_05 = DoDatabaseTaskSimpleSpec.t05_do_database_task_simple_spec
+
 
 if bsddb3:
 
@@ -446,6 +457,7 @@ if bsddb3:
         test_04 = DoDatabaseTaskSimpleSpec.t04_do_database_task_simple_spec
         test_05 = DoDatabaseTaskSimpleSpec.t05_do_database_task_simple_spec
 
+
 if berkeleydb:
 
     class _DatabaseBerkeleydb(_Database):
@@ -499,6 +511,7 @@ if berkeleydb:
         test_03 = DoDatabaseTaskSimpleSpec.t03_do_database_task_simple_spec
         test_04 = DoDatabaseTaskSimpleSpec.t04_do_database_task_simple_spec
         test_05 = DoDatabaseTaskSimpleSpec.t05_do_database_task_simple_spec
+
 
 if sqlite3:
 
@@ -554,6 +567,7 @@ if sqlite3:
         test_04 = DoDatabaseTaskSimpleSpec.t04_do_database_task_simple_spec
         test_05 = DoDatabaseTaskSimpleSpec.t05_do_database_task_simple_spec
 
+
 if apsw:
 
     class _DatabaseApsw(_Database):
@@ -604,6 +618,7 @@ if apsw:
         test_04 = DoDatabaseTaskSimpleSpec.t04_do_database_task_simple_spec
         test_05 = DoDatabaseTaskSimpleSpec.t05_do_database_task_simple_spec
 
+
 if lmdb:
 
     class _DatabaseLmdb(_Database):
@@ -653,6 +668,7 @@ if lmdb:
         test_03 = DoDatabaseTaskSimpleSpec.t03_do_database_task_simple_spec
         test_04 = DoDatabaseTaskSimpleSpec.t04_do_database_task_simple_spec
         test_05 = DoDatabaseTaskSimpleSpec.t05_do_database_task_simple_spec
+
 
 if dptapi:
 
@@ -708,6 +724,7 @@ if dptapi:
         test_04 = DoDatabaseTaskSimpleSpec.t04_do_database_task_simple_spec
         test_05 = DoDatabaseTaskSimpleSpec.t05_do_database_task_simple_spec
 
+
 if ndbm_module:
 
     class _DatabaseNdbm(_Database):
@@ -761,6 +778,7 @@ if ndbm_module:
         test_03 = DoDatabaseTaskSimpleSpec.t03_do_database_task_simple_spec
         test_04 = DoDatabaseTaskSimpleSpec.t04_do_database_task_simple_spec
         test_05 = DoDatabaseTaskSimpleSpec.t05_do_database_task_simple_spec
+
 
 if gnu_module:
 

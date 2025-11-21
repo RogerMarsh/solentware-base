@@ -617,10 +617,12 @@ class Database_merge(_NoSQLOpen):
 
 
 if gnu_module:
+
     class _NoSQLduGnu(_NoSQLdu):
         def setUp(self):
             self._oda = gnu_module, Gnu, None
             super().setUp()
+
         def tearDown(self):
             super().tearDown()
             # I have no idea why database teardown for gnu has to be like so:
@@ -631,6 +633,7 @@ if gnu_module:
                 for f in os.listdir(path):
                     os.remove(os.path.join(path, f))
                 os.rmdir(path)
+
     class Database___init__Gnu(_NoSQLduGnu):
         test_01 = Database___init__.t01
         test_02 = Database___init__.t02
@@ -638,16 +641,20 @@ if gnu_module:
         test_04 = Database___init__.t04
         test_05 = Database___init__.t05
         test_06 = Database___init__.t06
+
     class _NoSQLOpenGnu(_NoSQLduGnu):
         def setUp(self):
             super().setUp()
             self.database = self._D(
-                filespec.FileSpec(**{"file1": {"field1"}}), segment_size_bytes=None
+                filespec.FileSpec(**{"file1": {"field1"}}),
+                segment_size_bytes=None,
             )
             self.database.open_database(*self._oda)
+
         def tearDown(self):
             self.database.close_database()
             super().tearDown()
+
     class Database_methodsGnu(_NoSQLOpenGnu):
         test_01 = Database_methods.t01
         test_02 = Database_methods.t02_database_cursor
@@ -659,6 +666,7 @@ if gnu_module:
         # This test has to be done in a non-memory database.
         # xtest_08 = Database_methods.t08_set_defer_update_03
         test_09 = Database_methods.t09_get_ebm_segment
+
     class Database_do_final_segment_deferred_updatesGnu(_NoSQLOpenGnu):
         test_01 = Database_do_final_segment_deferred_updates.t01
         test_02 = Database_do_final_segment_deferred_updates.t02
@@ -666,6 +674,7 @@ if gnu_module:
         test_04 = Database_do_final_segment_deferred_updates.t04
         test_05 = Database_do_final_segment_deferred_updates.t05
         test_06 = Database_do_final_segment_deferred_updates.t06
+
     class Database_sort_and_writeGnu(_NoSQLOpenGnu):
         test_01 = Database_sort_and_write.t01
         test_02 = Database_sort_and_write.t02
@@ -673,13 +682,14 @@ if gnu_module:
         test_04 = Database_sort_and_write.t04
         test_05 = Database_sort_and_write.t05
         # Not sure why this does not raise exception for any NoSQL module now.
-        #test_06 = Database_sort_and_write.t06
+        # test_06 = Database_sort_and_write.t06
         test_07 = Database_sort_and_write.t07
         test_08 = Database_sort_and_write.t08
         test_09 = Database_sort_and_write.t09
         test_10 = Database_sort_and_write.t10
         test_11 = Database_sort_and_write.t11
         test_12 = Database_sort_and_write.t12
+
     # merge() does nothing.
     class Database_mergeGnu(_NoSQLOpenGnu):
         def setUp(self):
@@ -689,10 +699,12 @@ if gnu_module:
 
 
 if ndbm_module:
+
     class _NoSQLduNdbm(_NoSQLdu):
         def setUp(self):
             self._oda = ndbm_module, Ndbm, None
             super().setUp()
+
         def tearDown(self):
             super().tearDown()
             # I have no idea why database teardown for gnu has to be like so:
@@ -712,6 +724,7 @@ if ndbm_module:
                 for f in os.listdir(path):
                     os.remove(os.path.join(path, f))
                 os.rmdir(path)
+
     class Database___init__Ndbm(_NoSQLduNdbm):
         test_01 = Database___init__.t01
         test_02 = Database___init__.t02
@@ -719,16 +732,20 @@ if ndbm_module:
         test_04 = Database___init__.t04
         test_05 = Database___init__.t05
         test_06 = Database___init__.t06
+
     class _NoSQLOpenNdbm(_NoSQLduNdbm):
         def setUp(self):
             super().setUp()
             self.database = self._D(
-                filespec.FileSpec(**{"file1": {"field1"}}), segment_size_bytes=None
+                filespec.FileSpec(**{"file1": {"field1"}}),
+                segment_size_bytes=None,
             )
             self.database.open_database(*self._oda)
+
         def tearDown(self):
             self.database.close_database()
             super().tearDown()
+
     class Database_methodsNdbm(_NoSQLOpenNdbm):
         test_01 = Database_methods.t01
         test_02 = Database_methods.t02_database_cursor
@@ -740,6 +757,7 @@ if ndbm_module:
         # This test has to be done in a non-memory database.
         # xtest_08 = Database_methods.t08_set_defer_update_03
         test_09 = Database_methods.t09_get_ebm_segment
+
     class Database_do_final_segment_deferred_updatesNdbm(_NoSQLOpenNdbm):
         test_01 = Database_do_final_segment_deferred_updates.t01
         test_02 = Database_do_final_segment_deferred_updates.t02
@@ -747,6 +765,7 @@ if ndbm_module:
         test_04 = Database_do_final_segment_deferred_updates.t04
         test_05 = Database_do_final_segment_deferred_updates.t05
         test_06 = Database_do_final_segment_deferred_updates.t06
+
     class Database_sort_and_writeNdbm(_NoSQLOpenNdbm):
         test_01 = Database_sort_and_write.t01
         test_02 = Database_sort_and_write.t02
@@ -754,13 +773,14 @@ if ndbm_module:
         test_04 = Database_sort_and_write.t04
         test_05 = Database_sort_and_write.t05
         # Not sure why this does not raise exception for any NoSQL module now.
-        #test_06 = Database_sort_and_write.t06
+        # test_06 = Database_sort_and_write.t06
         test_07 = Database_sort_and_write.t07
         test_08 = Database_sort_and_write.t08
         test_09 = Database_sort_and_write.t09
         test_10 = Database_sort_and_write.t10
         test_11 = Database_sort_and_write.t11
         test_12 = Database_sort_and_write.t12
+
     # merge() does nothing.
     class Database_mergeNdbm(_NoSQLOpenNdbm):
         def setUp(self):
@@ -770,10 +790,12 @@ if ndbm_module:
 
 
 if unqlite:
+
     class _NoSQLduUnqlite(_NoSQLdu):
         def setUp(self):
             self._oda = unqlite, unqlite.UnQLite, unqlite.UnQLiteError
             super().setUp()
+
     class Database___init__Unqlite(_NoSQLduUnqlite):
         test_01 = Database___init__.t01
         test_02 = Database___init__.t02
@@ -781,16 +803,20 @@ if unqlite:
         test_04 = Database___init__.t04
         test_05 = Database___init__.t05
         test_06 = Database___init__.t06
+
     class _NoSQLOpenUnqlite(_NoSQLduUnqlite):
         def setUp(self):
             super().setUp()
             self.database = self._D(
-                filespec.FileSpec(**{"file1": {"field1"}}), segment_size_bytes=None
+                filespec.FileSpec(**{"file1": {"field1"}}),
+                segment_size_bytes=None,
             )
             self.database.open_database(*self._oda)
+
         def tearDown(self):
             self.database.close_database()
             super().tearDown()
+
     class Database_methodsUnqlite(_NoSQLOpenUnqlite):
         test_01 = Database_methods.t01
         test_02 = Database_methods.t02_database_cursor
@@ -802,6 +828,7 @@ if unqlite:
         # This test has to be done in a non-memory database.
         # xtest_08 = Database_methods.t08_set_defer_update_03
         test_09 = Database_methods.t09_get_ebm_segment
+
     class Database_do_final_segment_deferred_updatesUnqlite(_NoSQLOpenUnqlite):
         test_01 = Database_do_final_segment_deferred_updates.t01
         test_02 = Database_do_final_segment_deferred_updates.t02
@@ -809,6 +836,7 @@ if unqlite:
         test_04 = Database_do_final_segment_deferred_updates.t04
         test_05 = Database_do_final_segment_deferred_updates.t05
         test_06 = Database_do_final_segment_deferred_updates.t06
+
     class Database_sort_and_writeUnqlite(_NoSQLOpenUnqlite):
         test_01 = Database_sort_and_write.t01
         test_02 = Database_sort_and_write.t02
@@ -816,13 +844,14 @@ if unqlite:
         test_04 = Database_sort_and_write.t04
         test_05 = Database_sort_and_write.t05
         # Not sure why this does not raise exception for any NoSQL module now.
-        #test_06 = Database_sort_and_write.t06
+        # test_06 = Database_sort_and_write.t06
         test_07 = Database_sort_and_write.t07
         test_08 = Database_sort_and_write.t08
         test_09 = Database_sort_and_write.t09
         test_10 = Database_sort_and_write.t10
         test_11 = Database_sort_and_write.t11
         test_12 = Database_sort_and_write.t12
+
     # merge() does nothing.
     class Database_mergeUnqlite(_NoSQLOpenUnqlite):
         def setUp(self):
@@ -832,10 +861,12 @@ if unqlite:
 
 
 if vedis:
+
     class _NoSQLduVedis(_NoSQLdu):
         def setUp(self):
             self._oda = vedis, vedis.Vedis, None
             super().setUp()
+
     class Database___init__Vedis(_NoSQLduVedis):
         test_01 = Database___init__.t01
         test_02 = Database___init__.t02
@@ -843,16 +874,20 @@ if vedis:
         test_04 = Database___init__.t04
         test_05 = Database___init__.t05
         test_06 = Database___init__.t06
+
     class _NoSQLOpenVedis(_NoSQLduVedis):
         def setUp(self):
             super().setUp()
             self.database = self._D(
-                filespec.FileSpec(**{"file1": {"field1"}}), segment_size_bytes=None
+                filespec.FileSpec(**{"file1": {"field1"}}),
+                segment_size_bytes=None,
             )
             self.database.open_database(*self._oda)
+
         def tearDown(self):
             self.database.close_database()
             super().tearDown()
+
     class Database_methodsVedis(_NoSQLOpenVedis):
         test_01 = Database_methods.t01
         test_02 = Database_methods.t02_database_cursor
@@ -864,6 +899,7 @@ if vedis:
         # This test has to be done in a non-memory database.
         # xtest_08 = Database_methods.t08_set_defer_update_03
         test_09 = Database_methods.t09_get_ebm_segment
+
     class Database_do_final_segment_deferred_updatesVedis(_NoSQLOpenVedis):
         test_01 = Database_do_final_segment_deferred_updates.t01
         test_02 = Database_do_final_segment_deferred_updates.t02
@@ -871,6 +907,7 @@ if vedis:
         test_04 = Database_do_final_segment_deferred_updates.t04
         test_05 = Database_do_final_segment_deferred_updates.t05
         test_06 = Database_do_final_segment_deferred_updates.t06
+
     class Database_sort_and_writeVedis(_NoSQLOpenVedis):
         test_01 = Database_sort_and_write.t01
         test_02 = Database_sort_and_write.t02
@@ -878,13 +915,14 @@ if vedis:
         test_04 = Database_sort_and_write.t04
         test_05 = Database_sort_and_write.t05
         # Not sure why this does not raise exception for any NoSQL module now.
-        #test_06 = Database_sort_and_write.t06
+        # test_06 = Database_sort_and_write.t06
         test_07 = Database_sort_and_write.t07
         test_08 = Database_sort_and_write.t08
         test_09 = Database_sort_and_write.t09
         test_10 = Database_sort_and_write.t10
         test_11 = Database_sort_and_write.t11
         test_12 = Database_sort_and_write.t12
+
     # merge() does nothing.
     class Database_mergeVedis(_NoSQLOpenVedis):
         def setUp(self):
