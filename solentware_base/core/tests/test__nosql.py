@@ -2,7 +2,7 @@
 # Copyright 2019 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""_nosql _database tests
+"""_nosql _database tests with gnudbm, ndbm, unqlite, and vedis, interfaces.
 
 The rest of this docstring probably belongs a lot higher up the package tree.
 
@@ -88,14 +88,6 @@ class _NoSQL(unittest.TestCase):
     def setUp(self):
         # UnQLite and Vedis are sufficiently different that the open_database()
         # call arguments have to be set differently for these engines.
-        if dbe_module is unqlite:
-            self._oda = dbe_module, dbe_module.UnQLite, dbe_module.UnQLiteError
-        elif dbe_module is vedis:
-            self._oda = dbe_module, dbe_module.Vedis, None
-        elif dbe_module is ndbm_module:
-            self._oda = dbe_module, Ndbm, None
-        elif dbe_module is gnu_module:
-            self._oda = dbe_module, Gnu, None
 
         self.__ssb = SegmentSize.db_segment_size_bytes
 
@@ -109,38 +101,9 @@ class _NoSQL(unittest.TestCase):
         self._D = None
         SegmentSize.db_segment_size_bytes = self.__ssb
 
-        # I have no idea why the database teardown for ndbm has to be like so:
-        if dbe_module is ndbm_module:
-            path = os.path.join(
-                os.path.dirname(__file__), ".".join((_NDBM_TEST_ROOT, "db"))
-            )
-            if os.path.isdir(path):
-                for f in os.listdir(path):
-                    os.remove(os.path.join(path, f))
-                os.rmdir(path)
-            elif os.path.isfile(
-                path
-            ):  # Most tests, other two each have a few.
-                os.remove(path)
-            path = os.path.join(os.path.dirname(__file__), _NDBM_TEST_ROOT)
-            if os.path.isdir(path):
-                for f in os.listdir(path):
-                    os.remove(os.path.join(path, f))
-                os.rmdir(path)
-
-        # I have no idea why the database teardown for gnu has to be like so:
-        if dbe_module is gnu_module:
-            path = os.path.join(os.path.dirname(__file__), _GNU_TEST_ROOT)
-            if os.path.isfile(path):
-                os.remove(path)
-            if os.path.isdir(path):
-                for f in os.listdir(path):
-                    os.remove(os.path.join(path, f))
-                os.rmdir(path)
-
 
 class Database___init__(_NoSQL):
-    def test_01(self):
+    def t01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -153,7 +116,7 @@ class Database___init__(_NoSQL):
             *(None, None, None, None, None),
         )
 
-    def test_02(self):
+    def t02(self):
         # Matches 'type object' before Python 3.9 but class name otherwise.
         t = r"(?:type object|solentware_base\.core\.filespec\.FileSpec\(\))"
         self.assertRaisesRegex(
@@ -171,7 +134,7 @@ class Database___init__(_NoSQL):
         self.assertIsInstance(self._D({}), self._D)
         self.assertIsInstance(self._D(filespec.FileSpec()), self._D)
 
-    def test_03(self):
+    def t03(self):
         self.assertRaisesRegex(
             _nosql.DatabaseError,
             "".join(("Database folder name {} is not valid$",)),
@@ -180,7 +143,7 @@ class Database___init__(_NoSQL):
             **dict(folder={}),
         )
 
-    def test_04(self):
+    def t04(self):
         database = self._D({}, folder="a")
         self.assertEqual(
             sorted(database.__dict__.keys()),
@@ -217,11 +180,13 @@ class Database___init__(_NoSQL):
         self.assertEqual(database.trees, {})
         self.assertEqual(database._real_segment_size_bytes, False)
         self.assertEqual(database._initial_segment_size_bytes, 4000)
-        self.assertEqual(SegmentSize.db_segment_size_bytes, 4096)
+        # Following test may not pass when run by unittest discovery
+        # because other test modules may change the tested value.
+        # self.assertEqual(SegmentSize.db_segment_size_bytes, 4096)
         database.set_segment_size()
         self.assertEqual(SegmentSize.db_segment_size_bytes, 4000)
 
-    def test_05(self):
+    def t05(self):
         database = self._D({})
         self.assertEqual(database.home_directory, None)
         self.assertEqual(database.database_file, None)
@@ -229,7 +194,7 @@ class Database___init__(_NoSQL):
     # This combination of folder and segment_size_bytes arguments is used for
     # unittests, except for one to see a non-memory database with a realistic
     # segment size.
-    def test_06(self):
+    def t06(self):
         database = self._D({}, segment_size_bytes=None)
         self.assertEqual(database.segment_size_bytes, None)
         database.set_segment_size()
@@ -239,23 +204,20 @@ class Database___init__(_NoSQL):
 # Transaction methods do not raise exceptions if called when no database open
 # but do nothing.
 class Database_transaction_methods(_NoSQL):
-    def setUp(self):
-        super().setUp()
-        self.database = self._D({})
 
-    def test_01_start_transaction(self):
+    def t01_start_transaction(self):
         self.assertEqual(self.database.dbenv, None)
         self.database.start_transaction()
 
-    def test_02_backout(self):
+    def t02_backout(self):
         self.assertEqual(self.database.dbenv, None)
         self.database.backout()
 
-    def test_03_commit(self):
+    def t03_commit(self):
         self.assertEqual(self.database.dbenv, None)
         self.database.commit()
 
-    def test_04(self):
+    def t04(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -293,11 +255,8 @@ class Database_transaction_methods(_NoSQL):
 
 # Methods which do not require database to be open.
 class DatabaseInstance(_NoSQL):
-    def setUp(self):
-        super().setUp()
-        self.database = self._D({})
 
-    def test_01_validate_segment_size_bytes(self):
+    def t01_validate_segment_size_bytes(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -325,7 +284,7 @@ class DatabaseInstance(_NoSQL):
         )
         self.assertEqual(self.database._validate_segment_size_bytes(1), None)
 
-    def test_02_encode_record_number(self):
+    def t02_encode_record_number(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -338,7 +297,7 @@ class DatabaseInstance(_NoSQL):
         )
         self.assertEqual(self.database.encode_record_number(1), "1")
 
-    def test_03_decode_record_number(self):
+    def t03_decode_record_number(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -351,7 +310,7 @@ class DatabaseInstance(_NoSQL):
         )
         self.assertEqual(self.database.decode_record_number("1"), 1)
 
-    def test_04_encode_record_selector(self):
+    def t04_encode_record_selector(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -364,7 +323,7 @@ class DatabaseInstance(_NoSQL):
         )
         self.assertEqual(self.database.encode_record_selector("a"), "a")
 
-    def test_05_make_recordset(self):
+    def t05_make_recordset(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -381,13 +340,13 @@ class DatabaseInstance(_NoSQL):
         )
 
     # Attribute database file is None at this point.
-    def test_06__generate_database_file_name(self):
+    def t06__generate_database_file_name(self):
         self.assertEqual(self.database._generate_database_file_name("a"), None)
 
 
 # Memory databases are used for these tests.
 class Database_open_database(_NoSQL):
-    def test_01(self):
+    def t01(self):
         self.database = self._D({})
         self.assertRaisesRegex(
             TypeError,
@@ -423,7 +382,7 @@ class Database_open_database(_NoSQL):
             *(None, None),
         )
 
-    def test_02(self):
+    def t02(self):
         self.database = self._D({})
         self.database.open_database(*self._oda)
         self.assertEqual(SegmentSize.db_segment_size_bytes, 4000)
@@ -431,7 +390,7 @@ class Database_open_database(_NoSQL):
         self.assertEqual(self.database.database_file, None)
         self.assertIsInstance(self.database.dbenv, self._oda[1])
 
-    def test_03(self):
+    def t03(self):
         self.database = self._D({}, segment_size_bytes=None)
         self.database.open_database(*self._oda)
         self.assertEqual(SegmentSize.db_segment_size_bytes, 16)
@@ -439,7 +398,7 @@ class Database_open_database(_NoSQL):
         self.assertEqual(self.database.database_file, None)
         self.assertIsInstance(self.database.dbenv, self._oda[1])
 
-    def test_04_close_database(self):
+    def t04_close_database(self):
         self.database = self._D({}, segment_size_bytes=None)
         self.database.open_database(*self._oda)
         self.database.close_database()
@@ -447,7 +406,7 @@ class Database_open_database(_NoSQL):
         self.database.close_database()
         self.assertEqual(self.database.dbenv, None)
 
-    def test_05_close_database_contexts(self):
+    def t05_close_database_contexts(self):
         self.database = self._D({}, segment_size_bytes=None)
         self.database.open_database(*self._oda)
         self.database.close_database_contexts()
@@ -455,24 +414,24 @@ class Database_open_database(_NoSQL):
         self.database.close_database_contexts()
         self.assertEqual(self.database.dbenv, None)
 
-    def test_06(self):
+    def t06(self):
         self.database = self._D({"file1": {"field1"}})
         self.database.open_database(*self._oda)
         self.check_specification()
 
-    def test_07(self):
+    def t07(self):
         self.database = self._D(filespec.FileSpec(**{"file1": {"field1"}}))
         self.database.open_database(*self._oda)
         self.check_specification()
 
-    def test_08(self):
+    def t08(self):
         self.database = self._D(
             filespec.FileSpec(**{"file1": {"field1"}, "file2": {"field2"}})
         )
         self.database.open_database(*self._oda, files={"file1"})
         self.check_specification()
 
-    def test_09(self):
+    def t09(self):
         self.database = self._D(
             filespec.FileSpec(
                 **{"file1": {"field1"}, "file2": (), "file3": {"field2"}}
@@ -518,7 +477,7 @@ class Database_open_database(_NoSQL):
             self.assertIsInstance(v, _nosql.ExistenceBitmapControl)
 
     # Comment in _sqlite.py suggests this method is not needed.
-    def test_12_is_database_file_active(self):
+    def t12_is_database_file_active(self):
         self.database = self._D(
             filespec.FileSpec(**{"file1": {"field1"}, "file2": ()})
         )
@@ -557,7 +516,7 @@ class Database_open_database(_NoSQL):
 # Memory databases cannot be used for these tests.
 class Database_add_field_to_existing_database(_NoSQL):
 
-    def test_13_add_field_to_open_database(self):
+    def t13_add_field_to_open_database(self):
         folder = "aaaa"
         database = self._D({"file1": {"field1"}}, folder=folder)
         database.open_database(*self._oda)
@@ -591,14 +550,7 @@ class Database_do_database_task(unittest.TestCase):
     def setUp(self):
         # UnQLite and Vedis are sufficiently different that the open_database()
         # call arguments have to be set diferrently for these engines.
-        if dbe_module is unqlite:
-            _oda = dbe_module, dbe_module.UnQLite, dbe_module.UnQLiteError
-        elif dbe_module is vedis:
-            _oda = dbe_module, dbe_module.Vedis, None
-        elif dbe_module is ndbm_module:
-            _oda = dbe_module, dbe_module.Ndbm, None
-        elif dbe_module is gnu_module:
-            _oda = dbe_module, dbe_module.Gnu, None
+        _oda = self._oda
 
         self._ssb = SegmentSize.db_segment_size_bytes
 
@@ -617,51 +569,11 @@ class Database_do_database_task(unittest.TestCase):
         self._AD = None
         SegmentSize.db_segment_size_bytes = self._ssb
 
-        # I have no idea why the database teardown for gnu has to be like so:
-        if dbe_module is gnu_module:
-            path = os.path.join(os.path.dirname(__file__), _GNU_TEST_ROOT)
-            if os.path.isfile(path):
-                os.remove(path)
-            if os.path.isdir(path):
-                for f in os.listdir(path):
-                    os.remove(os.path.join(path, f))
-                os.rmdir(path)
-
-    def test_01_do_database_task(self):
-        def m(*a, **k):
-            pass
-
-        if dbe_module in (ndbm_module,):
-            path = os.path.join(os.path.dirname(__file__), _NDBM_TEST_ROOT)
-        elif dbe_module in (gnu_module,):
-            path = os.path.join(os.path.dirname(__file__), _GNU_TEST_ROOT)
-        else:
-            path = None
-        self.database = self._AD(path)
-        d = self.database
-        d.open_database()
-        self.assertEqual(d.do_database_task(m), None)
-
-    def test_02_do_database_task(self):
-        def m(*a, **k):
-            pass
-
-        if dbe_module in (ndbm_module,):
-            path = os.path.join(os.path.dirname(__file__), _NDBM_TEST_ROOT)
-        elif dbe_module in (gnu_module,):
-            path = os.path.join(os.path.dirname(__file__), _GNU_TEST_ROOT)
-        else:
-            path = None
-        self.database = self._AD(path)
-        d = self.database
-        self.assertEqual(d.do_database_task(m), None)
-
 
 # Memory databases are used for these tests.
 # Use the 'testing only' segment size for convenience of setup and eyeballing.
 class _NoSQLOpen(_NoSQL):
-    def setUp(self):
-        super().setUp()
+    def setup_detail(self):
         self.database = self._D(
             filespec.FileSpec(**{"file1": {"field1"}, "file2": {"field2"}}),
             segment_size_bytes=None,
@@ -671,28 +583,27 @@ class _NoSQLOpen(_NoSQL):
         ] = "hash"
         self.database.open_database(*self._oda)
 
-    def tearDown(self):
+    def teardown_detail(self):
         self.database.close_database()
-        super().tearDown()
 
 
 class DatabaseTransactions(_NoSQLOpen):
-    def test_01(self):
+    def t01(self):
         self.database.start_transaction()
         self.assertEqual(self.database.start_transaction(), None)
 
-    def test_02(self):
+    def t02(self):
         self.database.start_transaction()
         self.assertEqual(self.database.backout(), None)
 
-    def test_03(self):
+    def t03(self):
         self.database.start_transaction()
         self.assertEqual(self.database.commit(), None)
 
-    def test_04(self):
+    def t04(self):
         self.assertEqual(self.database.backout(), None)
 
-    def test_05(self):
+    def t05(self):
         self.assertEqual(self.database.commit(), None)
 
 
@@ -705,7 +616,7 @@ class Database_put_replace_delete(_NoSQLOpen):
     # rowid in a SQLite3 table, or the key of a Recno database in Berkeley DB,
     # or the record number of a DPT file.
 
-    def test_01(self):
+    def t01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -737,11 +648,11 @@ class Database_put_replace_delete(_NoSQLOpen):
             self.database.delete,
         )
 
-    def test_02_put(self):
+    def t02_put(self):
         recno = self.database.put("file1", None, "new value")
         self.assertEqual(recno, 0)
 
-    def test_03_put(self):
+    def t03_put(self):
         self.assertEqual("1__2" in self.database.dbenv, False)
         self.assertEqual(self.database.put("file1", 2, "new value"), None)
         self.database.add_record_to_ebm("file1", 2)
@@ -749,7 +660,7 @@ class Database_put_replace_delete(_NoSQLOpen):
         recno = self.database.put("file1", None, "new value")
         self.assertEqual(recno, 3)
 
-    def test_04_put(self):
+    def t04_put(self):
         recno = self.database.put("file1", None, "new value")
         self.assertEqual(recno, 0)
         self.database.add_record_to_ebm("file1", 0)
@@ -757,7 +668,7 @@ class Database_put_replace_delete(_NoSQLOpen):
         recno = self.database.put("file1", None, "other value")
         self.assertEqual(recno, 1)
 
-    def test_05_replace(self):
+    def t05_replace(self):
         self.assertEqual("1_1" in self.database.dbenv, False)
         self.assertEqual(
             self.database.replace(
@@ -776,7 +687,7 @@ class Database_put_replace_delete(_NoSQLOpen):
         )
         self.assertEqual("1_1" in self.database.dbenv, True)
 
-    def test_06_replace(self):
+    def t06_replace(self):
         self.database.dbenv["1_0_1"] = repr("old value")
         self.assertEqual(self.database.dbenv["1_0_1"], b"'old value'")
         self.assertEqual(
@@ -787,7 +698,7 @@ class Database_put_replace_delete(_NoSQLOpen):
         )
         self.assertEqual(self.database.dbenv["1_0_1"], b"'new value'")
 
-    def test_07_replace(self):
+    def t07_replace(self):
         self.database.dbenv["1_1"] = repr("old value")
         self.assertEqual(self.database.dbenv["1_1"], b"'old value'")
         self.assertEqual(
@@ -798,7 +709,7 @@ class Database_put_replace_delete(_NoSQLOpen):
         )
         self.assertEqual(self.database.dbenv["1_1"], b"'old value'")
 
-    def test_08_delete(self):
+    def t08_delete(self):
         self.assertEqual("1_1" in self.database.dbenv, False)
         self.assertEqual(
             self.database.delete("file1", 1, repr("new value")), None
@@ -811,7 +722,7 @@ class Database_put_replace_delete(_NoSQLOpen):
         )
         self.assertEqual("1_1" in self.database.dbenv, True)
 
-    def test_09_delete(self):
+    def t09_delete(self):
         self.database.dbenv["1_0_1"] = repr("new value")
         self.database.add_record_to_ebm("file1", 0)
         self.assertEqual("1_0_1" in self.database.dbenv, True)
@@ -821,7 +732,7 @@ class Database_put_replace_delete(_NoSQLOpen):
         self.database.remove_record_from_ebm("file1", 0)
         self.assertEqual("1_0_1" in self.database.dbenv, False)
 
-    def test_10_delete(self):
+    def t10_delete(self):
         self.database.dbenv["1_1"] = repr("new value")
         self.assertEqual("1_1" in self.database.dbenv, True)
         self.assertEqual(
@@ -832,7 +743,7 @@ class Database_put_replace_delete(_NoSQLOpen):
 
 # These tests need fully working put, replace, and delete, methods.
 class Database_methods(_NoSQLOpen):
-    def test_01(self):
+    def t01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -917,19 +828,19 @@ class Database_methods(_NoSQLOpen):
             self.database.get_table_connection,
         )
 
-    def test_02_get_primary_record(self):
+    def t02_get_primary_record(self):
         self.assertEqual(self.database.get_primary_record("file1", None), None)
 
-    def test_03_get_primary_record(self):
+    def t03_get_primary_record(self):
         self.assertEqual(self.database.get_primary_record("file1", 1), None)
 
-    def test_04_get_primary_record(self):
+    def t04_get_primary_record(self):
         self.database.put("file1", None, repr("new value"))
         self.assertEqual(
             self.database.get_primary_record("file1", 0), (0, "'new value'")
         )
 
-    def test_05_remove_record_from_ebm(self):
+    def t05_remove_record_from_ebm(self):
         self.assertRaisesRegex(
             _nosql.DatabaseError,
             "Existence bit map for segment does not exist$",
@@ -937,32 +848,32 @@ class Database_methods(_NoSQLOpen):
             *("file1", 2),
         )
 
-    def test_06_remove_record_from_ebm(self):
+    def t06_remove_record_from_ebm(self):
         self.assertEqual(self.database.add_record_to_ebm("file1", 2), (0, 2))
         self.assertEqual(
             self.database.remove_record_from_ebm("file1", 2), (0, 2)
         )
 
-    def test_07_add_record_to_ebm(self):
+    def t07_add_record_to_ebm(self):
         self.assertEqual(self.database.add_record_to_ebm("file1", 2), (0, 2))
         self.assertEqual(self.database.add_record_to_ebm("file1", 4), (0, 4))
 
-    def test_08_get_high_record(self):
+    def t08_get_high_record(self):
         self.assertEqual(self.database.get_high_record_number("file1"), None)
 
-    def test_14_recordset_record_number(self):
+    def t14_recordset_record_number(self):
         self.assertIsInstance(
             self.database.recordlist_record_number("file1"),
             recordset.RecordList,
         )
 
-    def test_15_recordset_record_number(self):
+    def t15_recordset_record_number(self):
         self.assertIsInstance(
             self.database.recordlist_record_number("file1", key=500),
             recordset.RecordList,
         )
 
-    def test_16_recordset_record_number(self):
+    def t16_recordset_record_number(self):
         dbenv = self.database.dbenv
         self.assertEqual(dbenv.exists("1_0"), False)
         self.assertEqual(dbenv["1_0__ebm"], b"[]")
@@ -976,13 +887,13 @@ class Database_methods(_NoSQLOpen):
         self.assertIsInstance(rl, recordset.RecordList)
         self.assertEqual(rl.count_records(), 1)
 
-    def test_17_recordset_record_number_range(self):
+    def t17_recordset_record_number_range(self):
         self.assertIsInstance(
             self.database.recordlist_record_number_range("file1"),
             recordset.RecordList,
         )
 
-    def test_18_recordset_record_number_range(self):
+    def t18_recordset_record_number_range(self):
         self.create_ebm()
         rs = self.database.recordlist_record_number_range(
             "file1", keystart=0, keyend=2000
@@ -998,7 +909,7 @@ class Database_methods(_NoSQLOpen):
             ),
         )
 
-    def test_19_recordset_record_number_range(self):
+    def t19_recordset_record_number_range(self):
         self.create_ebm()
         rs = self.database.recordlist_record_number_range("file1", keystart=10)
         self.assertIsInstance(rs, recordset.RecordList)
@@ -1012,7 +923,7 @@ class Database_methods(_NoSQLOpen):
             ),
         )
 
-    def test_20_recordset_record_number_range(self):
+    def t20_recordset_record_number_range(self):
         self.create_ebm()
         rs = self.database.recordlist_record_number_range("file1", keyend=35)
         self.assertIsInstance(rs, recordset.RecordList)
@@ -1026,7 +937,7 @@ class Database_methods(_NoSQLOpen):
             ),
         )
 
-    def test_21_recordset_record_number_range(self):
+    def t21_recordset_record_number_range(self):
         self.create_ebm()
         rs = self.database.recordlist_record_number_range(
             "file1", keystart=10, keyend=35
@@ -1042,7 +953,7 @@ class Database_methods(_NoSQLOpen):
             ),
         )
 
-    def test_22_recordset_record_number_range(self):
+    def t22_recordset_record_number_range(self):
         self.create_ebm()
         self.create_ebm()
         self.create_ebm()
@@ -1071,7 +982,7 @@ class Database_methods(_NoSQLOpen):
             ),
         )
 
-    def test_23_recordset_record_number_range(self):
+    def t23_recordset_record_number_range(self):
         self.create_ebm()
         self.create_ebm()
         self.create_ebm()
@@ -1082,29 +993,16 @@ class Database_methods(_NoSQLOpen):
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 0)
 
-    def test_24_recordset_ebm(self):
+    def t24_recordset_ebm(self):
         self.assertIsInstance(
             self.database.recordlist_ebm("file1"), recordset.RecordList
         )
 
-    def test_25_recordset_ebm(self):
+    def t25_recordset_ebm(self):
         self.create_ebm()
         rlebm = self.database.recordlist_ebm("file1")
         self.assertIsInstance(rlebm, recordset.RecordList)
         self.assertEqual(rlebm.sorted_segnums, [0])
-
-    def test_26_get_table_connection(self):
-        if dbe_module is unqlite:
-            object_class = unqlite.UnQLite
-        elif dbe_module is vedis:
-            object_class = vedis.Vedis
-        elif dbe_module is ndbm_module:
-            object_class = ndbm_module.Ndbm
-        elif dbe_module is gnu_module:
-            object_class = gnu_module.Gnu
-        self.assertIsInstance(
-            self.database.get_table_connection("file1"), object_class
-        )
 
     def create_ebm(self):
         self.database.ebm_control["file1"].append_ebm_segment(
@@ -1114,12 +1012,11 @@ class Database_methods(_NoSQLOpen):
 
 
 class Database_find_values__empty(_NoSQLOpen):
-    def setUp(self):
-        super().setUp()
+    def setup_detail(self):
         self.valuespec = ValuesClause()
         self.valuespec.field = "field1"
 
-    def test_01_find_values(self):
+    def t01_find_values(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -1131,67 +1028,66 @@ class Database_find_values__empty(_NoSQLOpen):
             self.database.find_values,
         )
 
-    def test_02_find_values(self):
+    def t02_find_values(self):
         self.valuespec.above_value = "b"
         self.valuespec.below_value = "d"
         self.assertEqual(
             [i for i in self.database.find_values(self.valuespec, "file1")], []
         )
 
-    def test_03_find_values(self):
+    def t03_find_values(self):
         self.valuespec.above_value = "b"
         self.valuespec.to_value = "d"
         self.assertEqual(
             [i for i in self.database.find_values(self.valuespec, "file1")], []
         )
 
-    def test_04_find_values(self):
+    def t04_find_values(self):
         self.valuespec.from_value = "b"
         self.valuespec.to_value = "d"
         self.assertEqual(
             [i for i in self.database.find_values(self.valuespec, "file1")], []
         )
 
-    def test_05_find_values(self):
+    def t05_find_values(self):
         self.valuespec.from_value = "b"
         self.valuespec.below_value = "d"
         self.assertEqual(
             [i for i in self.database.find_values(self.valuespec, "file1")], []
         )
 
-    def test_06_find_values(self):
+    def t06_find_values(self):
         self.valuespec.above_value = "b"
         self.assertEqual(
             [i for i in self.database.find_values(self.valuespec, "file1")], []
         )
 
-    def test_07_find_values(self):
+    def t07_find_values(self):
         self.valuespec.from_value = "b"
         self.assertEqual(
             [i for i in self.database.find_values(self.valuespec, "file1")], []
         )
 
-    def test_08_find_values(self):
+    def t08_find_values(self):
         self.valuespec.to_value = "d"
         self.assertEqual(
             [i for i in self.database.find_values(self.valuespec, "file1")], []
         )
 
-    def test_09_find_values(self):
+    def t09_find_values(self):
         self.valuespec.below_value = "d"
         self.assertEqual(
             [i for i in self.database.find_values(self.valuespec, "file1")], []
         )
 
-    def test_10_find_values(self):
+    def t10_find_values(self):
         self.assertEqual(
             [i for i in self.database.find_values(self.valuespec, "file1")], []
         )
 
 
 class Database_find_values__populated(_NoSQLOpen):
-    def setUp(self):
-        super().setUp()
+    def setup_detail(self):
         self.valuespec = ValuesClause()
         self.valuespec.field = "field1"
         self.database.trees["file1_field1"].insert("c")
@@ -1200,7 +1096,7 @@ class Database_find_values__populated(_NoSQLOpen):
         self.database.trees["file1_field1"].insert("e")
         self.database.trees["file1_field1"].insert("f")
 
-    def test_01_find_values(self):
+    def t01_find_values(self):
         self.valuespec.above_value = "d"
         self.valuespec.below_value = "e"
         self.assertEqual(
@@ -1208,7 +1104,7 @@ class Database_find_values__populated(_NoSQLOpen):
             ["dk"],
         )
 
-    def test_02_find_values(self):
+    def t02_find_values(self):
         self.valuespec.above_value = "d"
         self.valuespec.to_value = "e"
         self.assertEqual(
@@ -1216,7 +1112,7 @@ class Database_find_values__populated(_NoSQLOpen):
             ["dk", "e"],
         )
 
-    def test_03_find_values(self):
+    def t03_find_values(self):
         self.valuespec.from_value = "d"
         self.valuespec.to_value = "e"
         self.assertEqual(
@@ -1224,7 +1120,7 @@ class Database_find_values__populated(_NoSQLOpen):
             ["d", "dk", "e"],
         )
 
-    def test_04_find_values(self):
+    def t04_find_values(self):
         self.valuespec.from_value = "d"
         self.valuespec.below_value = "e"
         self.assertEqual(
@@ -1232,35 +1128,35 @@ class Database_find_values__populated(_NoSQLOpen):
             ["d", "dk"],
         )
 
-    def test_05_find_values(self):
+    def t05_find_values(self):
         self.valuespec.above_value = "d"
         self.assertEqual(
             [i for i in self.database.find_values(self.valuespec, "file1")],
             ["dk", "e", "f"],
         )
 
-    def test_06_find_values(self):
+    def t06_find_values(self):
         self.valuespec.from_value = "d"
         self.assertEqual(
             [i for i in self.database.find_values(self.valuespec, "file1")],
             ["d", "dk", "e", "f"],
         )
 
-    def test_07_find_values(self):
+    def t07_find_values(self):
         self.valuespec.to_value = "e"
         self.assertEqual(
             [i for i in self.database.find_values(self.valuespec, "file1")],
             ["c", "d", "dk", "e"],
         )
 
-    def test_08_find_values(self):
+    def t08_find_values(self):
         self.valuespec.below_value = "e"
         self.assertEqual(
             [i for i in self.database.find_values(self.valuespec, "file1")],
             ["c", "d", "dk"],
         )
 
-    def test_09_find_values(self):
+    def t09_find_values(self):
         self.assertEqual(
             [i for i in self.database.find_values(self.valuespec, "file1")],
             ["c", "d", "dk", "e", "f"],
@@ -1268,7 +1164,7 @@ class Database_find_values__populated(_NoSQLOpen):
 
 
 class Database_add_record_to_field_value(_NoSQLOpen):
-    def test_01(self):
+    def t01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -1281,7 +1177,7 @@ class Database_add_record_to_field_value(_NoSQLOpen):
             self.database.add_record_to_field_value,
         )
 
-    def test_02__assumptions(self):
+    def t02__assumptions(self):
         # Nothing exists yet, but tree is available for (file1, field1) only.
         db = self.database.dbenv
         self.assertEqual(db.exists("1_1_0_indexvalue"), False)
@@ -1307,7 +1203,7 @@ class Database_add_record_to_field_value(_NoSQLOpen):
             "btree",
         )
 
-    def test_03_add_record_to_tree_field_value(self):
+    def t03_add_record_to_tree_field_value(self):
         db = self.database.dbenv
         self.database.add_record_to_field_value(
             "file1", "field1", "indexvalue", 2, 0
@@ -1415,7 +1311,7 @@ class Database_add_record_to_field_value(_NoSQLOpen):
             ),
         )
 
-    def test_04_add_record_to_hash_field_value(self):
+    def t04_add_record_to_hash_field_value(self):
         db = self.database.dbenv
         self.database.add_record_to_field_value(
             "file2", "field2", "indexvalue", 2, 0
@@ -1428,7 +1324,7 @@ class Database_add_record_to_field_value(_NoSQLOpen):
 
 
 class Database_remove_record_from_field_value(_NoSQLOpen):
-    def test_01(self):
+    def t01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -1441,7 +1337,7 @@ class Database_remove_record_from_field_value(_NoSQLOpen):
             self.database.remove_record_from_field_value,
         )
 
-    def test_02_remove_record_from_tree_field_value(self):
+    def t02_remove_record_from_tree_field_value(self):
         db = self.database.dbenv
         for i in 5, 6, 2, 10, 20, 30, 40, 50, 51:
             self.database.add_record_to_field_value(
@@ -1560,7 +1456,7 @@ class Database_remove_record_from_field_value(_NoSQLOpen):
         self.assertEqual(db.exists("1_1_1_2_indexvalue"), False)
         self.assertEqual(db.exists("1_1"), False)
 
-    def test_03_remove_record_from_hash_field_value(self):
+    def t03_remove_record_from_hash_field_value(self):
         db = self.database.dbenv
         self.database.add_record_to_field_value(
             "file2", "field2", "indexvalue", 2, 0
@@ -1578,7 +1474,7 @@ class Database_remove_record_from_field_value(_NoSQLOpen):
 
 
 class Database_populate_segment(_NoSQLOpen):
-    def test_01(self):
+    def t01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -1591,16 +1487,16 @@ class Database_populate_segment(_NoSQLOpen):
             self.database.populate_segment,
         )
 
-    def test_02_populate_segment(self):
+    def t02_populate_segment(self):
         s = self.database.populate_segment(2, 3, "file1")
         self.assertIsInstance(s, recordset.RecordsetSegmentInt)
 
-    def test_04_populate_segment(self):
+    def t04_populate_segment(self):
         s = self.database.populate_segment(2, b"\x00\x40\x00\x41", "file1")
         self.assertIsInstance(s, recordset.RecordsetSegmentList)
         self.assertEqual(s.count_records(), 2)
 
-    def test_06_populate_segment(self):
+    def t06_populate_segment(self):
         s = self.database.populate_segment(
             0,
             b"".join(
@@ -1616,8 +1512,7 @@ class Database_populate_segment(_NoSQLOpen):
 
 
 class _NoSQLOpenPopulated(_NoSQLOpen):
-    def setUp(self):
-        super().setUp()
+    def setup_detail(self):
         segments = (
             b"".join(
                 (
@@ -1695,7 +1590,7 @@ class _NoSQLOpenPopulated(_NoSQLOpen):
 
 
 class Database_make_recordset(_NoSQLOpenPopulated):
-    def test_01(self):
+    def t01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -1763,7 +1658,7 @@ class Database_make_recordset(_NoSQLOpenPopulated):
             *(None, None, None),
         )
 
-    def test_02_make_recordset_key_like(self):
+    def t02_make_recordset_key_like(self):
         self.assertRaisesRegex(
             _nosql.DatabaseError,
             "'field2' field in 'file2' file is not ordered$",
@@ -1771,69 +1666,69 @@ class Database_make_recordset(_NoSQLOpenPopulated):
             *("file2", "field2"),
         )
 
-    def test_03_make_recordset_key_like(self):
+    def t03_make_recordset_key_like(self):
         rs = self.database.recordlist_key_like("file1", "field1")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 0)
 
-    def test_04_make_recordset_key_like(self):
+    def t04_make_recordset_key_like(self):
         rs = self.database.recordlist_key_like("file1", "field1", keylike="z")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 0)
 
-    def test_05_make_recordset_key_like(self):
+    def t05_make_recordset_key_like(self):
         rs = self.database.recordlist_key_like("file1", "field1", keylike="n")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 1)
         self.assertEqual(rs[0].count_records(), 2)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_06_make_recordset_key_like(self):
+    def t06_make_recordset_key_like(self):
         rs = self.database.recordlist_key_like("file1", "field1", keylike="w")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 2)
         self.assertEqual(rs[0].count_records(), 5)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_07_make_recordset_key_like(self):
+    def t07_make_recordset_key_like(self):
         rs = self.database.recordlist_key_like("file1", "field1", keylike="e")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 1)
         self.assertEqual(rs[0].count_records(), 41)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_08_make_recordset_key(self):
+    def t08_make_recordset_key(self):
         rs = self.database.recordlist_key("file2", "field2")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 0)
 
-    def test_09_make_recordset_key(self):
+    def t09_make_recordset_key(self):
         rs = self.database.recordlist_key("file1", "field1")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 0)
 
-    def test_10_make_recordset_key(self):
+    def t10_make_recordset_key(self):
         rs = self.database.recordlist_key("file1", "field1", key="one")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 1)
         self.assertEqual(rs[0].count_records(), 1)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentInt)
 
-    def test_11_make_recordset_key(self):
+    def t11_make_recordset_key(self):
         rs = self.database.recordlist_key("file1", "field1", key="tww")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 1)
         self.assertEqual(rs[0].count_records(), 2)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentList)
 
-    def test_12_make_recordset_key(self):
+    def t12_make_recordset_key(self):
         rs = self.database.recordlist_key("file1", "field1", key="a_o")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 1)
         self.assertEqual(rs[0].count_records(), 32)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_13_make_recordset_key_startswith(self):
+    def t13_make_recordset_key_startswith(self):
         self.assertRaisesRegex(
             _nosql.DatabaseError,
             "'field2' field in 'file2' file is not ordered$",
@@ -1841,19 +1736,19 @@ class Database_make_recordset(_NoSQLOpenPopulated):
             *("file2", "field2"),
         )
 
-    def test_14_make_recordset_key_startswith(self):
+    def t14_make_recordset_key_startswith(self):
         rs = self.database.recordlist_key_startswith("file1", "field1")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 0)
 
-    def test_15_make_recordset_key_startswith(self):
+    def t15_make_recordset_key_startswith(self):
         rs = self.database.recordlist_key_startswith(
             "file1", "field1", keystart="ppp"
         )
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 0)
 
-    def test_16_make_recordset_key_startswith(self):
+    def t16_make_recordset_key_startswith(self):
         rs = self.database.recordlist_key_startswith(
             "file1", "field1", keystart="o"
         )
@@ -1861,7 +1756,7 @@ class Database_make_recordset(_NoSQLOpenPopulated):
         self.assertEqual(rs[0].count_records(), 1)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentInt)
 
-    def test_17_make_recordset_key_startswith(self):
+    def t17_make_recordset_key_startswith(self):
         rs = self.database.recordlist_key_startswith(
             "file1", "field1", keystart="tw"
         )
@@ -1869,7 +1764,7 @@ class Database_make_recordset(_NoSQLOpenPopulated):
         self.assertEqual(rs[0].count_records(), 5)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_18_make_recordset_key_startswith(self):
+    def t18_make_recordset_key_startswith(self):
         rs = self.database.recordlist_key_startswith(
             "file1", "field1", keystart="d"
         )
@@ -1877,7 +1772,7 @@ class Database_make_recordset(_NoSQLOpenPopulated):
         self.assertEqual(rs[0].count_records(), 24)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_19_make_recordset_key_range(self):
+    def t19_make_recordset_key_range(self):
         self.assertRaisesRegex(
             _nosql.DatabaseError,
             "'field2' field in 'file2' file is not ordered$",
@@ -1885,21 +1780,21 @@ class Database_make_recordset(_NoSQLOpenPopulated):
             *("file2", "field2"),
         )
 
-    def test_20_make_recordset_key_range(self):
+    def t20_make_recordset_key_range(self):
         rs = self.database.recordlist_key_range("file1", "field1")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 2)
         self.assertEqual(rs[0].count_records(), 128)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_21_make_recordset_key_range(self):
+    def t21_make_recordset_key_range(self):
         rs = self.database.recordlist_key_range(
             "file1", "field1", ge="ppp", le="qqq"
         )
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 0)
 
-    def test_22_make_recordset_key_range(self):
+    def t22_make_recordset_key_range(self):
         rs = self.database.recordlist_key_range(
             "file1", "field1", ge="n", le="q"
         )
@@ -1908,7 +1803,7 @@ class Database_make_recordset(_NoSQLOpenPopulated):
         self.assertEqual(rs[0].count_records(), 2)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_23_make_recordset_key_range(self):
+    def t23_make_recordset_key_range(self):
         rs = self.database.recordlist_key_range(
             "file1", "field1", ge="t", le="tz"
         )
@@ -1917,7 +1812,7 @@ class Database_make_recordset(_NoSQLOpenPopulated):
         self.assertEqual(rs[0].count_records(), 5)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_24_make_recordset_key_range(self):
+    def t24_make_recordset_key_range(self):
         rs = self.database.recordlist_key_range(
             "file1", "field1", ge="c", le="cz"
         )
@@ -1926,35 +1821,35 @@ class Database_make_recordset(_NoSQLOpenPopulated):
         self.assertEqual(rs[0].count_records(), 40)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_25_make_recordset_key_range(self):
+    def t25_make_recordset_key_range(self):
         rs = self.database.recordlist_key_range("file1", "field1", ge="c")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 2)
         self.assertEqual(rs[0].count_records(), 62)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_26_make_recordset_key_range(self):
+    def t26_make_recordset_key_range(self):
         rs = self.database.recordlist_key_range("file1", "field1", le="cz")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 1)
         self.assertEqual(rs[0].count_records(), 112)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_27_make_recordset_key_range(self):
+    def t27_make_recordset_key_range(self):
         rs = self.database.recordlist_key_range(
             "file1", "field1", ge="ppp", lt="qqq"
         )
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 0)
 
-    def test_28_make_recordset_key_range(self):
+    def t28_make_recordset_key_range(self):
         rs = self.database.recordlist_key_range(
             "file1", "field1", gt="ppp", lt="qqq"
         )
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 0)
 
-    def test_29_make_recordset_key_range(self):
+    def t29_make_recordset_key_range(self):
         rs = self.database.recordlist_key_range(
             "file1", "field1", gt="n", le="q"
         )
@@ -1963,7 +1858,7 @@ class Database_make_recordset(_NoSQLOpenPopulated):
         self.assertEqual(rs[0].count_records(), 2)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_30_make_recordset_key_range(self):
+    def t30_make_recordset_key_range(self):
         rs = self.database.recordlist_key_range(
             "file1", "field1", gt="t", le="tz"
         )
@@ -1972,7 +1867,7 @@ class Database_make_recordset(_NoSQLOpenPopulated):
         self.assertEqual(rs[0].count_records(), 5)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_31_make_recordset_key_range(self):
+    def t31_make_recordset_key_range(self):
         rs = self.database.recordlist_key_range(
             "file1", "field1", gt="c", lt="cz"
         )
@@ -1981,21 +1876,21 @@ class Database_make_recordset(_NoSQLOpenPopulated):
         self.assertEqual(rs[0].count_records(), 40)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_32_make_recordset_key_range(self):
+    def t32_make_recordset_key_range(self):
         rs = self.database.recordlist_key_range("file1", "field1", gt="c")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 2)
         self.assertEqual(rs[0].count_records(), 62)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_33_make_recordset_key_range(self):
+    def t33_make_recordset_key_range(self):
         rs = self.database.recordlist_key_range("file1", "field1", lt="cz")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 1)
         self.assertEqual(rs[0].count_records(), 112)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_34_make_recordset_all(self):
+    def t34_make_recordset_all(self):
         self.assertRaisesRegex(
             _nosql.DatabaseError,
             "'field2' field in 'file2' file is not ordered$",
@@ -2003,21 +1898,21 @@ class Database_make_recordset(_NoSQLOpenPopulated):
             *("file2", "field2"),
         )
 
-    def test_35_make_recordset_all(self):
+    def t35_make_recordset_all(self):
         rs = self.database.recordlist_all("file1", "field1")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 2)
         self.assertEqual(rs[0].count_records(), 128)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_36_make_recordset_nil(self):
+    def t36_make_recordset_nil(self):
         rs = self.database.recordlist_nil("file1")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 0)
 
 
 class Database_file_unfile_records(_NoSQLOpenPopulated):
-    def test_01(self):
+    def t01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -2039,7 +1934,7 @@ class Database_file_unfile_records(_NoSQLOpenPopulated):
             self.database.file_records_under,
         )
 
-    def test_02_unfile_records_under(self):
+    def t02_unfile_records_under(self):
         db = self.database.dbenv
         self.assertEqual(
             "aa_o"
@@ -2057,7 +1952,7 @@ class Database_file_unfile_records(_NoSQLOpenPopulated):
             False,
         )
 
-    def test_03_unfile_records_under(self):
+    def t03_unfile_records_under(self):
         db = self.database.dbenv
         self.assertEqual(
             "kkkk"
@@ -2073,7 +1968,7 @@ class Database_file_unfile_records(_NoSQLOpenPopulated):
             False,
         )
 
-    def test_04_file_records_under(self):
+    def t04_file_records_under(self):
         db = self.database.dbenv
         rs = self.database.recordlist_all("file1", "field1")
         self.assertEqual(
@@ -2106,7 +2001,7 @@ class Database_file_unfile_records(_NoSQLOpenPopulated):
             literal_eval(db["1_1_1_1_aa_o"].decode()), b"\x00B\x00C\x00D"
         )
 
-    def test_05_file_records_under(self):
+    def t05_file_records_under(self):
         db = self.database.dbenv
         self.assertEqual(db.exists("1_1_0_rrr"), False)
         rs = self.database.recordlist_all("file1", "field1")
@@ -2128,7 +2023,7 @@ class Database_file_unfile_records(_NoSQLOpenPopulated):
             literal_eval(db["1_1_1_1_rrr"].decode()), b"\x00B\x00C\x00D"
         )
 
-    def test_06_file_records_under(self):
+    def t06_file_records_under(self):
         db = self.database.dbenv
         self.assertEqual(literal_eval(db["1_1_0_twy"].decode()), {0: ("L", 3)})
         self.assertEqual(
@@ -2159,7 +2054,7 @@ class Database_file_unfile_records(_NoSQLOpenPopulated):
             literal_eval(db["1_1_1_0_aa_o"].decode()), b"\x00B\x00C\x00D"
         )
 
-    def test_07_file_records_under(self):
+    def t07_file_records_under(self):
         db = self.database.dbenv
         self.assertEqual(literal_eval(db["1_1_0_twy"].decode()), {0: ("L", 3)})
         self.assertEqual(
@@ -2177,7 +2072,7 @@ class Database_file_unfile_records(_NoSQLOpenPopulated):
             literal_eval(db["1_1_1_0_rrr"].decode()), b"\x00B\x00C\x00D"
         )
 
-    def test_08_file_records_under(self):
+    def t08_file_records_under(self):
         db = self.database.dbenv
         self.assertEqual(literal_eval(db["1_1_0_one"].decode()), {0: (50, 1)})
         self.assertEqual(
@@ -2198,7 +2093,7 @@ class Database_file_unfile_records(_NoSQLOpenPopulated):
         self.assertEqual(literal_eval(db["1_1_0_aa_o"].decode()), {0: (50, 1)})
         self.assertEqual(db.exists("1_1_1_0_aa_o"), False)
 
-    def test_09_file_records_under(self):
+    def t09_file_records_under(self):
         db = self.database.dbenv
         self.assertEqual(literal_eval(db["1_1_0_one"].decode()), {0: (50, 1)})
         self.assertEqual(db.exists("1_1_0_rrr"), False)
@@ -2207,7 +2102,7 @@ class Database_file_unfile_records(_NoSQLOpenPopulated):
         self.assertEqual(literal_eval(db["1_1_0_one"].decode()), {0: (50, 1)})
         self.assertEqual(literal_eval(db["1_1_0_rrr"].decode()), {0: (50, 1)})
 
-    def test_10_file_records_under(self):
+    def t10_file_records_under(self):
         db = self.database.dbenv
         self.assertEqual(
             literal_eval(db["1_1_0_ba_o"].decode()), {0: ("B", 24)}
@@ -2260,7 +2155,7 @@ class Database_file_unfile_records(_NoSQLOpenPopulated):
 
 
 class Database_database_create_cursors(_NoSQLOpen):
-    def test_01(self):
+    def t01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -2283,19 +2178,19 @@ class Database_database_create_cursors(_NoSQLOpen):
             self.database.create_recordset_cursor,
         )
 
-    def test_02_database_cursor_primary(self):
+    def t02_database_cursor_primary(self):
         self.assertIsInstance(
             self.database.database_cursor("file1", "file1"),
             _nosql.CursorPrimary,
         )
 
-    def test_03_database_cursor_secondary_tree(self):
+    def t03_database_cursor_secondary_tree(self):
         self.assertIsInstance(
             self.database.database_cursor("file1", "field1"),
             _nosql.CursorSecondary,
         )
 
-    def test_04_database_cursor_secondary_hash(self):
+    def t04_database_cursor_secondary_hash(self):
         self.assertRaisesRegex(
             _nosql.DatabaseError,
             "'field2' field in 'file2' file is not ordered$",
@@ -2303,14 +2198,14 @@ class Database_database_create_cursors(_NoSQLOpen):
             *("file2", "field2"),
         )
 
-    def test_05_create_recordset_cursor(self):
+    def t05_create_recordset_cursor(self):
         d = self.database
         rs = d.recordlist_key("file1", "field1", key="ba_o")
         self.assertIsInstance(
             d.create_recordset_cursor(rs), recordsetcursor.RecordsetCursor
         )
 
-    def test_06_database_cursor_recordset(self):
+    def t06_database_cursor_recordset(self):
         rs = recordset.RecordList(self.database, "field1")
         self.assertIsInstance(
             self.database.database_cursor("file1", "file1", recordset=rs),
@@ -2319,8 +2214,7 @@ class Database_database_create_cursors(_NoSQLOpen):
 
 
 class Database_freed_record_number(_NoSQLOpen):
-    def setUp(self):
-        super().setUp()
+    def setup_detail(self):
         for i in range(SegmentSize.db_segment_size * 3):
             self.database.dbenv["_".join(("1_0", str(i)))] = repr(
                 "_".join((str(i), "value"))
@@ -2331,7 +2225,7 @@ class Database_freed_record_number(_NoSQLOpen):
             self.high_record, SegmentSize.db_segment_size
         )[0]
 
-    def test_01(self):
+    def t01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -2354,7 +2248,7 @@ class Database_freed_record_number(_NoSQLOpen):
             self.database.note_freed_record_number_segment,
         )
 
-    def test_02_note_freed_record_number_segment(self):
+    def t02_note_freed_record_number_segment(self):
         self.assertEqual(
             self.database.ebm_control["file1"].freed_record_number_pages, None
         )
@@ -2388,11 +2282,11 @@ class Database_freed_record_number(_NoSQLOpen):
             [0, 1, 2],
         )
 
-    def test_03_get_lowest_freed_record_number(self):
+    def t03_get_lowest_freed_record_number(self):
         rn = self.database.get_lowest_freed_record_number("file1")
         self.assertEqual(rn, None)
 
-    def test_04_get_lowest_freed_record_number(self):
+    def t04_get_lowest_freed_record_number(self):
         for i in (
             100,
             101,
@@ -2407,7 +2301,7 @@ class Database_freed_record_number(_NoSQLOpen):
         rn = self.database.get_lowest_freed_record_number("file1")
         self.assertEqual(rn, 100)
 
-    def test_05_get_lowest_freed_record_number(self):
+    def t05_get_lowest_freed_record_number(self):
         for i in (380,):
             self.database.delete("file1", i, repr("_".join((str(i), "value"))))
             sn, rn = self.database.remove_record_from_ebm("file1", i)
@@ -2417,7 +2311,7 @@ class Database_freed_record_number(_NoSQLOpen):
         rn = self.database.get_lowest_freed_record_number("file1")
         self.assertEqual(rn, None)
 
-    def test_06_get_lowest_freed_record_number(self):
+    def t06_get_lowest_freed_record_number(self):
         for i in (110,):
             self.database.delete("file1", i, repr("_".join((str(i), "value"))))
             sn, rn = self.database.remove_record_from_ebm("file1", i)
@@ -2432,7 +2326,7 @@ class Database_freed_record_number(_NoSQLOpen):
     # Segment 2 is not deleted from the 'freed record number' list until the
     # first search of the segment after all freed record numbers have been
     # re-used.
-    def test_07_get_lowest_freed_record_number(self):
+    def t07_get_lowest_freed_record_number(self):
         self.assertEqual(
             self.database.ebm_control["file1"].freed_record_number_pages, None
         )
@@ -2476,7 +2370,7 @@ class Database_freed_record_number(_NoSQLOpen):
             0,
         )
 
-    def test_08_get_lowest_freed_record_number(self):
+    def t08_get_lowest_freed_record_number(self):
         for i in (0, 1):
             self.database.delete("file1", i, repr("_".join((str(i), "value"))))
             sn, rn = self.database.remove_record_from_ebm("file1", i)
@@ -2493,7 +2387,7 @@ class Database_empty_freed_record_number(_NoSQLOpen):
         super().setUp()
         self.high_record = self.database.get_high_record_number("file1")
 
-    def test_01(self):
+    def t01(self):
         self.assertEqual(
             self.database.ebm_control["file1"].freed_record_number_pages, None
         )
@@ -2509,8 +2403,7 @@ class Database_empty_freed_record_number(_NoSQLOpen):
 
 
 class RecordsetCursor(_NoSQLOpen):
-    def setUp(self):
-        super().setUp()
+    def setup_detail(self):
         segments = (
             b"".join(
                 (
@@ -2549,7 +2442,7 @@ class RecordsetCursor(_NoSQLOpen):
             {0: "B", 1: "B", 2: "B"}
         )
 
-    def test_01(self):
+    def t01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -2571,17 +2464,17 @@ class RecordsetCursor(_NoSQLOpen):
             _nosql.RecordsetCursor(None, None)._get_record,
         )
 
-    def test_02___init__01(self):
+    def t02___init__01(self):
         rc = _nosql.RecordsetCursor(None, True)
         self.assertEqual(rc.engine, True)
 
-    def test_03___init__02(self):
+    def t03___init__02(self):
         rs = self.database.recordlist_key("file1", "field1", key="a_o")
         rc = _nosql.RecordsetCursor(rs, self.database.dbenv)
         self.assertIs(rc.engine, self.database.dbenv)
         self.assertIs(rc._dbset, rs)
 
-    def test_04__get_record(self):
+    def t04__get_record(self):
         rc = _nosql.RecordsetCursor(
             self.database.recordlist_key("file1", "field1", key="a_o"),
             self.database.dbenv,
@@ -2596,7 +2489,7 @@ class ExistenceBitmapControl(_NoSQLOpen):
     def setUp(self):
         super().setUp()
 
-    def test_01(self):
+    def t01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -2648,14 +2541,14 @@ class ExistenceBitmapControl(_NoSQLOpen):
             self.database.ebm_control["file1"].append_ebm_segment,
         )
 
-    def test_02_read_exists_segment_01(self):
+    def t02_read_exists_segment_01(self):
         self.assertEqual(self.database.ebm_control["file1"]._segment_count, 0)
         self.assertEqual(
             self.database.ebm_control["file1"].read_exists_segment(0, None),
             None,
         )
 
-    def test_03_read_exists_segment_02(self):
+    def t03_read_exists_segment_02(self):
         self.assertEqual(self.database.ebm_control["file1"]._segment_count, 0)
         bits = b"\xff" + b"\xff" * (SegmentSize.db_segment_size_bytes - 1)
         self.database.dbenv["_".join(("1", "0", "_ebm", "0"))] = repr(bits)
@@ -2672,13 +2565,13 @@ class ExistenceBitmapControl(_NoSQLOpen):
         )
         self.assertEqual(seg.count(), 128)
 
-    def test_04_get_ebm_segment_01(self):
+    def t04_get_ebm_segment_01(self):
         sr = self.database.ebm_control["file1"].get_ebm_segment(
             0, self.database.dbenv
         )
         self.assertEqual(sr, None)
 
-    def test_05_get_ebm_segment_02(self):
+    def t05_get_ebm_segment_02(self):
         bits = b"\xff" + b"\xff" * (SegmentSize.db_segment_size_bytes - 1)
         self.database.dbenv["_".join(("1", "0", "_ebm", "0"))] = repr(bits)
         self.database.ebm_control["file1"].table_ebm_segments = [0]
@@ -2687,12 +2580,12 @@ class ExistenceBitmapControl(_NoSQLOpen):
         )
         self.assertEqual(sr, bits)
 
-    def test_06_delete_ebm_segment_01(self):
+    def t06_delete_ebm_segment_01(self):
         self.database.ebm_control["file1"].delete_ebm_segment(
             0, self.database.dbenv
         )
 
-    def test_07_delete_ebm_segment_02(self):
+    def t07_delete_ebm_segment_02(self):
         bits = b"\xff" + b"\xff" * (SegmentSize.db_segment_size_bytes - 1)
         self.database.dbenv["_".join(("1", "0", "_ebm", "0"))] = repr(bits)
         self.database.ebm_control["file1"].table_ebm_segments = [0]
@@ -2700,7 +2593,7 @@ class ExistenceBitmapControl(_NoSQLOpen):
             0, self.database.dbenv
         )
 
-    def test_08_put_ebm_segment_01(self):
+    def t08_put_ebm_segment_01(self):
         bits = b"\xff" + b"\xff" * (SegmentSize.db_segment_size_bytes - 1)
         self.database.ebm_control["file1"].put_ebm_segment(
             0, bits, self.database.dbenv
@@ -2709,7 +2602,7 @@ class ExistenceBitmapControl(_NoSQLOpen):
             "_".join(("1", "0", "_ebm", "0")) in self.database.dbenv, False
         )
 
-    def test_09_put_ebm_segment_02(self):
+    def t09_put_ebm_segment_02(self):
         bits = b"\xff" + b"\xff" * (SegmentSize.db_segment_size_bytes - 1)
         self.database.ebm_control["file1"].table_ebm_segments = [0]
         self.database.ebm_control["file1"].put_ebm_segment(
@@ -2720,13 +2613,13 @@ class ExistenceBitmapControl(_NoSQLOpen):
             repr(bits).encode(),
         )
 
-    def test_10_append_ebm_segment(self):
+    def t10_append_ebm_segment(self):
         bits = b"\xff" + b"\xff" * (SegmentSize.db_segment_size_bytes - 1)
         self.database.ebm_control["file1"].append_ebm_segment(
             bits, self.database.dbenv
         )
 
-    def test_11_set_high_record_number_01(self):
+    def t11_set_high_record_number_01(self):
         self.database.ebm_control["file1"].set_high_record_number(
             self.database.dbenv
         )
@@ -2734,7 +2627,7 @@ class ExistenceBitmapControl(_NoSQLOpen):
             self.database.ebm_control["file1"].high_record_number, -1
         )
 
-    def test_12_set_high_record_number_02(self):
+    def t12_set_high_record_number_02(self):
         bits0 = b"\x00" + b"\x00" * (SegmentSize.db_segment_size_bytes - 1)
         bits1 = b"\xff" + b"\xff" * (SegmentSize.db_segment_size_bytes - 1)
         self.database.ebm_control["file1"].table_ebm_segments = [0, 1, 2]
@@ -2754,7 +2647,7 @@ class ExistenceBitmapControl(_NoSQLOpen):
             self.database.ebm_control["file1"].high_record_number, 383
         )
 
-    def test_13_set_high_record_number_03(self):
+    def t13_set_high_record_number_03(self):
         bits0 = b"\x00" + b"\x00" * (SegmentSize.db_segment_size_bytes - 1)
         bits1 = b"\xff" + b"\xff" * (SegmentSize.db_segment_size_bytes - 1)
         self.database.ebm_control["file1"].table_ebm_segments = [0, 1, 2]
@@ -2774,7 +2667,7 @@ class ExistenceBitmapControl(_NoSQLOpen):
             self.database.ebm_control["file1"].high_record_number, 255
         )
 
-    def test_14_set_high_record_number_04(self):
+    def t14_set_high_record_number_04(self):
         bits0 = b"\x00" + b"\x00" * (SegmentSize.db_segment_size_bytes - 1)
         bits1 = b"\xff" + b"\x00" * (SegmentSize.db_segment_size_bytes - 1)
         self.database.ebm_control["file1"].table_ebm_segments = [0, 1, 2]
@@ -2795,30 +2688,1424 @@ class ExistenceBitmapControl(_NoSQLOpen):
         )
 
 
+if gnu_module:
+
+    class _NoSQLGnu(_NoSQL):
+        def setUp(self):
+            self._oda = gnu_module, Gnu, None
+            super().setUp()
+
+        def tearDown(self):
+            super().tearDown()
+            # I have no idea why database teardown for gnu has to be like so:
+            path = os.path.join(os.path.dirname(__file__), _GNU_TEST_ROOT)
+            if os.path.isfile(path):
+                os.remove(path)
+            if os.path.isdir(path):
+                for f in os.listdir(path):
+                    os.remove(os.path.join(path, f))
+                os.rmdir(path)
+
+    class Database___init__Gnu(_NoSQLGnu):
+        test_01 = Database___init__.t01
+        test_02 = Database___init__.t02
+        test_03 = Database___init__.t03
+        test_04 = Database___init__.t04
+        test_05 = Database___init__.t05
+        test_06 = Database___init__.t06
+
+    class Database_transaction_methodsGnu(_NoSQLGnu):
+        def setUp(self):
+            super().setUp()
+            self.database = self._D({})
+
+        test_01 = Database_transaction_methods.t01_start_transaction
+        test_02 = Database_transaction_methods.t02_backout
+        test_03 = Database_transaction_methods.t03_commit
+        test_04 = Database_transaction_methods.t04
+
+    class DatabaseInstanceGnu(_NoSQLGnu):
+        def setUp(self):
+            super().setUp()
+            self.database = self._D({})
+
+        test_01 = DatabaseInstance.t01_validate_segment_size_bytes
+        test_02 = DatabaseInstance.t02_encode_record_number
+        test_03 = DatabaseInstance.t03_decode_record_number
+        test_04 = DatabaseInstance.t04_encode_record_selector
+        test_05 = DatabaseInstance.t05_make_recordset
+        test_06 = DatabaseInstance.t06__generate_database_file_name
+
+    class Database_open_databaseGnu(_NoSQLGnu):
+        test_01 = Database_open_database.t01
+        test_02 = Database_open_database.t02
+        test_03 = Database_open_database.t03
+        test_04 = Database_open_database.t04_close_database
+        test_05 = Database_open_database.t05_close_database_contexts
+        test_06 = Database_open_database.t06
+        test_07 = Database_open_database.t07
+        test_08 = Database_open_database.t08
+        test_09 = Database_open_database.t09
+        test_12 = Database_open_database.t12_is_database_file_active
+        check_specification = Database_open_database.check_specification
+
+    class Database_add_field_to_existing_databaseGnu(_NoSQLGnu):
+        test_13 = (
+            Database_add_field_to_existing_database.t13_add_field_to_open_database
+        )
+
+    class Database_do_database_taskGnu(Database_do_database_task):
+        def setUp(self):
+            self._oda = gnu_module, Gnu, None
+            super().setUp()
+
+        def tearDown(self):
+            super().tearDown()
+            # I have no idea why database teardown for gnu has to be like so:
+            path = os.path.join(os.path.dirname(__file__), _GNU_TEST_ROOT)
+            if os.path.isfile(path):
+                os.remove(path)
+            if os.path.isdir(path):
+                for f in os.listdir(path):
+                    os.remove(os.path.join(path, f))
+                os.rmdir(path)
+
+        def test_01_do_database_task(self):
+            def m(*a, **k):
+                pass
+
+            path = os.path.join(os.path.dirname(__file__), _GNU_TEST_ROOT)
+            self.database = self._AD(path)
+            d = self.database
+            d.open_database()
+            self.assertEqual(d.do_database_task(m), None)
+
+        def test_02_do_database_task(self):
+            def m(*a, **k):
+                pass
+
+            path = os.path.join(os.path.dirname(__file__), _GNU_TEST_ROOT)
+            self.database = self._AD(path)
+            d = self.database
+            self.assertEqual(d.do_database_task(m), None)
+
+    class _NoSQLOpenGnu(_NoSQLGnu):
+        def setUp(self):
+            super().setUp()
+            _NoSQLOpen.setup_detail(self)
+
+        def tearDown(self):
+            _NoSQLOpen.teardown_detail(self)
+            super().tearDown()
+
+    class DatabaseTransactionsGnu(_NoSQLOpenGnu):
+        test_01 = DatabaseTransactions.t01
+        test_02 = DatabaseTransactions.t02
+        test_03 = DatabaseTransactions.t03
+        test_04 = DatabaseTransactions.t04
+        test_05 = DatabaseTransactions.t05
+
+    class Database_put_replace_deleteGnu(_NoSQLOpenGnu):
+        test_01 = Database_put_replace_delete.t01
+        test_02 = Database_put_replace_delete.t02_put
+        test_03 = Database_put_replace_delete.t03_put
+        test_04 = Database_put_replace_delete.t04_put
+        test_05 = Database_put_replace_delete.t05_replace
+        test_06 = Database_put_replace_delete.t06_replace
+        test_08 = Database_put_replace_delete.t08_delete
+        test_09 = Database_put_replace_delete.t09_delete
+        test_10 = Database_put_replace_delete.t10_delete
+
+    class Database_methodsGnu(_NoSQLOpenGnu):
+        test_01 = Database_methods.t01
+        test_02 = Database_methods.t02_get_primary_record
+        test_03 = Database_methods.t03_get_primary_record
+        test_04 = Database_methods.t04_get_primary_record
+        test_05 = Database_methods.t05_remove_record_from_ebm
+        test_06 = Database_methods.t06_remove_record_from_ebm
+        test_07 = Database_methods.t07_add_record_to_ebm
+        test_08 = Database_methods.t08_get_high_record
+        test_14 = Database_methods.t14_recordset_record_number
+        test_15 = Database_methods.t15_recordset_record_number
+        test_16 = Database_methods.t16_recordset_record_number
+        test_17 = Database_methods.t17_recordset_record_number_range
+        test_18 = Database_methods.t18_recordset_record_number_range
+        test_19 = Database_methods.t19_recordset_record_number_range
+        test_20 = Database_methods.t20_recordset_record_number_range
+        test_21 = Database_methods.t21_recordset_record_number_range
+        test_22 = Database_methods.t22_recordset_record_number_range
+        test_23 = Database_methods.t23_recordset_record_number_range
+        test_24 = Database_methods.t24_recordset_ebm
+        test_25 = Database_methods.t25_recordset_ebm
+
+        def test26_get_table_connection(self):
+            self.assertIsInstance(
+                self.database.get_table_connection("file1"), gnu_module.Gnu
+            )
+
+        create_ebm = Database_methods.create_ebm
+
+    class Database_find_values__emptyGnu(_NoSQLOpenGnu):
+        def setUp(self):
+            super().setUp()
+            Database_find_values__empty.setup_detail(self)
+
+        test_01 = Database_find_values__empty.t01_find_values
+        test_02 = Database_find_values__empty.t02_find_values
+        test_03 = Database_find_values__empty.t03_find_values
+        test_04 = Database_find_values__empty.t04_find_values
+        test_05 = Database_find_values__empty.t05_find_values
+        test_06 = Database_find_values__empty.t06_find_values
+        test_07 = Database_find_values__empty.t07_find_values
+        test_08 = Database_find_values__empty.t08_find_values
+        test_09 = Database_find_values__empty.t09_find_values
+        test_10 = Database_find_values__empty.t10_find_values
+
+    class Database_find_values__populatedGnu(_NoSQLOpenGnu):
+        def setUp(self):
+            super().setUp()
+            Database_find_values__populated.setup_detail(self)
+
+        test_01 = Database_find_values__populated.t01_find_values
+        test_02 = Database_find_values__populated.t02_find_values
+        test_03 = Database_find_values__populated.t03_find_values
+        test_04 = Database_find_values__populated.t04_find_values
+        test_05 = Database_find_values__populated.t05_find_values
+        test_06 = Database_find_values__populated.t06_find_values
+        test_07 = Database_find_values__populated.t07_find_values
+        test_08 = Database_find_values__populated.t08_find_values
+        test_09 = Database_find_values__populated.t09_find_values
+
+    class Database_add_record_to_field_valueGnu(_NoSQLOpenGnu):
+        test_01 = Database_add_record_to_field_value.t01
+        test_02 = Database_add_record_to_field_value.t02__assumptions
+        test_03 = (
+            Database_add_record_to_field_value.t03_add_record_to_tree_field_value
+        )
+        test_04 = (
+            Database_add_record_to_field_value.t04_add_record_to_hash_field_value
+        )
+
+    class Database_remove_record_from_field_valueGnu(_NoSQLOpenGnu):
+        test_01 = Database_remove_record_from_field_value.t01
+        test_02 = (
+            Database_remove_record_from_field_value.t02_remove_record_from_tree_field_value
+        )
+        test_03 = (
+            Database_remove_record_from_field_value.t03_remove_record_from_hash_field_value
+        )
+
+    class Database_populate_segmentGnu(_NoSQLOpenGnu):
+        test_01 = Database_populate_segment.t01
+        test_02 = Database_populate_segment.t02_populate_segment
+        test_04 = Database_populate_segment.t04_populate_segment
+        test_06 = Database_populate_segment.t06_populate_segment
+
+    class _NoSQLOpenPopulatedGnu(_NoSQLOpenGnu):
+        def setUp(self):
+            super().setUp()
+            _NoSQLOpenPopulated.setup_detail(self)
+
+    class Database_make_recordsetGnu(_NoSQLOpenPopulatedGnu):
+        test_01 = Database_make_recordset.t01
+        test_02 = Database_make_recordset.t02_make_recordset_key_like
+        test_03 = Database_make_recordset.t03_make_recordset_key_like
+        test_04 = Database_make_recordset.t04_make_recordset_key_like
+        test_05 = Database_make_recordset.t05_make_recordset_key_like
+        test_06 = Database_make_recordset.t06_make_recordset_key_like
+        test_07 = Database_make_recordset.t07_make_recordset_key_like
+        test_08 = Database_make_recordset.t08_make_recordset_key
+        test_09 = Database_make_recordset.t09_make_recordset_key
+        test_10 = Database_make_recordset.t10_make_recordset_key
+        test_11 = Database_make_recordset.t11_make_recordset_key
+        test_12 = Database_make_recordset.t12_make_recordset_key
+        test_13 = Database_make_recordset.t13_make_recordset_key_startswith
+        test_14 = Database_make_recordset.t14_make_recordset_key_startswith
+        test_15 = Database_make_recordset.t15_make_recordset_key_startswith
+        test_16 = Database_make_recordset.t16_make_recordset_key_startswith
+        test_17 = Database_make_recordset.t17_make_recordset_key_startswith
+        test_18 = Database_make_recordset.t18_make_recordset_key_startswith
+        test_19 = Database_make_recordset.t19_make_recordset_key_range
+        test_20 = Database_make_recordset.t20_make_recordset_key_range
+        test_21 = Database_make_recordset.t21_make_recordset_key_range
+        test_22 = Database_make_recordset.t22_make_recordset_key_range
+        test_23 = Database_make_recordset.t23_make_recordset_key_range
+        test_24 = Database_make_recordset.t24_make_recordset_key_range
+        test_25 = Database_make_recordset.t25_make_recordset_key_range
+        test_26 = Database_make_recordset.t26_make_recordset_key_range
+        test_27 = Database_make_recordset.t27_make_recordset_key_range
+        test_28 = Database_make_recordset.t28_make_recordset_key_range
+        test_29 = Database_make_recordset.t29_make_recordset_key_range
+        test_30 = Database_make_recordset.t30_make_recordset_key_range
+        test_31 = Database_make_recordset.t31_make_recordset_key_range
+        test_32 = Database_make_recordset.t32_make_recordset_key_range
+        test_33 = Database_make_recordset.t33_make_recordset_key_range
+        test_34 = Database_make_recordset.t34_make_recordset_all
+        test_35 = Database_make_recordset.t35_make_recordset_all
+        test_36 = Database_make_recordset.t36_make_recordset_nil
+
+    class Database_file_unfile_recordsGnu(_NoSQLOpenPopulatedGnu):
+        test_01 = Database_file_unfile_records.t01
+        test_02 = Database_file_unfile_records.t02_unfile_records_under
+        test_03 = Database_file_unfile_records.t03_unfile_records_under
+        test_04 = Database_file_unfile_records.t04_file_records_under
+        test_05 = Database_file_unfile_records.t05_file_records_under
+        test_06 = Database_file_unfile_records.t06_file_records_under
+        test_07 = Database_file_unfile_records.t07_file_records_under
+        test_08 = Database_file_unfile_records.t08_file_records_under
+        test_09 = Database_file_unfile_records.t09_file_records_under
+        test_10 = Database_file_unfile_records.t10_file_records_under
+
+    class Database_database_create_cursorsGnu(_NoSQLOpenGnu):
+        test_01 = Database_database_create_cursors.t01
+        test_02 = Database_database_create_cursors.t02_database_cursor_primary
+        test_03 = (
+            Database_database_create_cursors.t03_database_cursor_secondary_tree
+        )
+        test_04 = (
+            Database_database_create_cursors.t04_database_cursor_secondary_hash
+        )
+        test_05 = Database_database_create_cursors.t05_create_recordset_cursor
+        test_06 = (
+            Database_database_create_cursors.t06_database_cursor_recordset
+        )
+
+    class Database_freed_record_numberGnu(_NoSQLOpenGnu):
+        def setUp(self):
+            super().setUp()
+            Database_freed_record_number.setup_detail(self)
+
+        test_01 = Database_freed_record_number.t01
+        test_02 = (
+            Database_freed_record_number.t02_note_freed_record_number_segment
+        )
+        test_03 = (
+            Database_freed_record_number.t03_get_lowest_freed_record_number
+        )
+        test_04 = (
+            Database_freed_record_number.t04_get_lowest_freed_record_number
+        )
+        test_05 = (
+            Database_freed_record_number.t05_get_lowest_freed_record_number
+        )
+        test_06 = (
+            Database_freed_record_number.t06_get_lowest_freed_record_number
+        )
+        test_07 = (
+            Database_freed_record_number.t07_get_lowest_freed_record_number
+        )
+        test_08 = (
+            Database_freed_record_number.t08_get_lowest_freed_record_number
+        )
+
+    class Database_empty_freed_record_numberGnu(_NoSQLOpenGnu):
+        def setUp(self):
+            super().setUp()
+            self.high_record = self.database.get_high_record_number("file1")
+
+        test_01 = Database_empty_freed_record_number.t01
+
+    class RecordsetCursorGnu(_NoSQLOpenGnu):
+        def setUp(self):
+            super().setUp()
+            RecordsetCursor.setup_detail(self)
+
+        test_01 = RecordsetCursor.t01
+        test_02 = RecordsetCursor.t02___init__01
+        test_03 = RecordsetCursor.t03___init__02
+        test_04 = RecordsetCursor.t04__get_record
+
+    class ExistenceBitmapControlGnu(_NoSQLOpenGnu):
+        test_01 = ExistenceBitmapControl.t01
+        test_02 = ExistenceBitmapControl.t02_read_exists_segment_01
+        test_03 = ExistenceBitmapControl.t03_read_exists_segment_02
+        test_04 = ExistenceBitmapControl.t04_get_ebm_segment_01
+        test_05 = ExistenceBitmapControl.t05_get_ebm_segment_02
+        test_06 = ExistenceBitmapControl.t06_delete_ebm_segment_01
+        test_07 = ExistenceBitmapControl.t07_delete_ebm_segment_02
+        test_08 = ExistenceBitmapControl.t08_put_ebm_segment_01
+        test_09 = ExistenceBitmapControl.t09_put_ebm_segment_02
+        test_10 = ExistenceBitmapControl.t10_append_ebm_segment
+        test_11 = ExistenceBitmapControl.t11_set_high_record_number_01
+        test_12 = ExistenceBitmapControl.t12_set_high_record_number_02
+        test_13 = ExistenceBitmapControl.t13_set_high_record_number_03
+        test_14 = ExistenceBitmapControl.t14_set_high_record_number_04
+
+
+if ndbm_module:
+
+    class _NoSQLNdbm(_NoSQL):
+        def setUp(self):
+            self._oda = ndbm_module, Ndbm, None
+            super().setUp()
+
+        def tearDown(self):
+            super().tearDown()
+            # I have no idea why database teardown for gnu has to be like so:
+            path = os.path.join(
+                os.path.dirname(__file__), ".".join((_NDBM_TEST_ROOT, "db"))
+            )
+            if os.path.isdir(path):
+                for f in os.listdir(path):
+                    os.remove(os.path.join(path, f))
+                os.rmdir(path)
+            elif os.path.isfile(
+                path
+            ):  # Most tests, other two each have a few.
+                os.remove(path)
+            path = os.path.join(os.path.dirname(__file__), _NDBM_TEST_ROOT)
+            if os.path.isdir(path):
+                for f in os.listdir(path):
+                    os.remove(os.path.join(path, f))
+                os.rmdir(path)
+
+    class Database___init__Ndbm(_NoSQLNdbm):
+        test_01 = Database___init__.t01
+        test_02 = Database___init__.t02
+        test_03 = Database___init__.t03
+        test_04 = Database___init__.t04
+        test_05 = Database___init__.t05
+        test_06 = Database___init__.t06
+
+    class Database_transaction_methodsNdbm(_NoSQLNdbm):
+        def setUp(self):
+            super().setUp()
+            self.database = self._D({})
+
+        test_01 = Database_transaction_methods.t01_start_transaction
+        test_02 = Database_transaction_methods.t02_backout
+        test_03 = Database_transaction_methods.t03_commit
+        test_04 = Database_transaction_methods.t04
+
+    class DatabaseInstanceNdbm(_NoSQLNdbm):
+        def setUp(self):
+            super().setUp()
+            self.database = self._D({})
+
+        test_01 = DatabaseInstance.t01_validate_segment_size_bytes
+        test_02 = DatabaseInstance.t02_encode_record_number
+        test_03 = DatabaseInstance.t03_decode_record_number
+        test_04 = DatabaseInstance.t04_encode_record_selector
+        test_05 = DatabaseInstance.t05_make_recordset
+        test_06 = DatabaseInstance.t06__generate_database_file_name
+
+    class Database_open_databaseNdbm(_NoSQLNdbm):
+        test_01 = Database_open_database.t01
+        test_02 = Database_open_database.t02
+        test_03 = Database_open_database.t03
+        test_04 = Database_open_database.t04_close_database
+        test_05 = Database_open_database.t05_close_database_contexts
+        test_06 = Database_open_database.t06
+        test_07 = Database_open_database.t07
+        test_08 = Database_open_database.t08
+        test_09 = Database_open_database.t09
+        test_12 = Database_open_database.t12_is_database_file_active
+        check_specification = Database_open_database.check_specification
+
+    class Database_add_field_to_existing_databaseNdbm(_NoSQLNdbm):
+        test_13 = (
+            Database_add_field_to_existing_database.t13_add_field_to_open_database
+        )
+
+    class Database_do_database_taskNdbm(Database_do_database_task):
+        def setUp(self):
+            self._oda = ndbm_module, ndbm_module.Ndbm, None
+            super().setUp()
+
+        def test_01_do_database_task(self):
+            def m(*a, **k):
+                pass
+
+            path = os.path.join(os.path.dirname(__file__), _NDBM_TEST_ROOT)
+            self.database = self._AD(path)
+            d = self.database
+            d.open_database()
+            self.assertEqual(d.do_database_task(m), None)
+
+        def test_02_do_database_task(self):
+            def m(*a, **k):
+                pass
+
+            path = os.path.join(os.path.dirname(__file__), _NDBM_TEST_ROOT)
+            self.database = self._AD(path)
+            d = self.database
+            self.assertEqual(d.do_database_task(m), None)
+
+    class _NoSQLOpenNdbm(_NoSQLNdbm):
+        def setUp(self):
+            super().setUp()
+            _NoSQLOpen.setup_detail(self)
+
+        def tearDown(self):
+            _NoSQLOpen.teardown_detail(self)
+            super().tearDown()
+
+    class DatabaseTransactionsNdbm(_NoSQLOpenNdbm):
+        test_01 = DatabaseTransactions.t01
+        test_02 = DatabaseTransactions.t02
+        test_03 = DatabaseTransactions.t03
+        test_04 = DatabaseTransactions.t04
+        test_05 = DatabaseTransactions.t05
+
+    class Database_put_replace_deleteNdbm(_NoSQLOpenNdbm):
+        test_01 = Database_put_replace_delete.t01
+        test_02 = Database_put_replace_delete.t02_put
+        test_03 = Database_put_replace_delete.t03_put
+        test_04 = Database_put_replace_delete.t04_put
+        test_05 = Database_put_replace_delete.t05_replace
+        test_06 = Database_put_replace_delete.t06_replace
+        test_08 = Database_put_replace_delete.t08_delete
+        test_09 = Database_put_replace_delete.t09_delete
+        test_10 = Database_put_replace_delete.t10_delete
+
+    class Database_methodsNdbm(_NoSQLOpenNdbm):
+        test_01 = Database_methods.t01
+        test_02 = Database_methods.t02_get_primary_record
+        test_03 = Database_methods.t03_get_primary_record
+        test_04 = Database_methods.t04_get_primary_record
+        test_05 = Database_methods.t05_remove_record_from_ebm
+        test_06 = Database_methods.t06_remove_record_from_ebm
+        test_07 = Database_methods.t07_add_record_to_ebm
+        test_08 = Database_methods.t08_get_high_record
+        test_14 = Database_methods.t14_recordset_record_number
+        test_15 = Database_methods.t15_recordset_record_number
+        test_16 = Database_methods.t16_recordset_record_number
+        test_17 = Database_methods.t17_recordset_record_number_range
+        test_18 = Database_methods.t18_recordset_record_number_range
+        test_19 = Database_methods.t19_recordset_record_number_range
+        test_20 = Database_methods.t20_recordset_record_number_range
+        test_21 = Database_methods.t21_recordset_record_number_range
+        test_22 = Database_methods.t22_recordset_record_number_range
+        test_23 = Database_methods.t23_recordset_record_number_range
+        test_24 = Database_methods.t24_recordset_ebm
+        test_25 = Database_methods.t25_recordset_ebm
+
+        def test26_get_table_connection(self):
+            self.assertIsInstance(
+                self.database.get_table_connection("file1"), ndbm_module.Ndbm
+            )
+
+        create_ebm = Database_methods.create_ebm
+
+    class Database_find_values__emptyNdbm(_NoSQLOpenNdbm):
+        def setUp(self):
+            super().setUp()
+            Database_find_values__empty.setup_detail(self)
+
+        test_01 = Database_find_values__empty.t01_find_values
+        test_02 = Database_find_values__empty.t02_find_values
+        test_03 = Database_find_values__empty.t03_find_values
+        test_04 = Database_find_values__empty.t04_find_values
+        test_05 = Database_find_values__empty.t05_find_values
+        test_06 = Database_find_values__empty.t06_find_values
+        test_07 = Database_find_values__empty.t07_find_values
+        test_08 = Database_find_values__empty.t08_find_values
+        test_09 = Database_find_values__empty.t09_find_values
+        test_10 = Database_find_values__empty.t10_find_values
+
+    class Database_find_values__populatedNdbm(_NoSQLOpenNdbm):
+        def setUp(self):
+            super().setUp()
+            Database_find_values__populated.setup_detail(self)
+
+        test_01 = Database_find_values__populated.t01_find_values
+        test_02 = Database_find_values__populated.t02_find_values
+        test_03 = Database_find_values__populated.t03_find_values
+        test_04 = Database_find_values__populated.t04_find_values
+        test_05 = Database_find_values__populated.t05_find_values
+        test_06 = Database_find_values__populated.t06_find_values
+        test_07 = Database_find_values__populated.t07_find_values
+        test_08 = Database_find_values__populated.t08_find_values
+        test_09 = Database_find_values__populated.t09_find_values
+
+    class Database_add_record_to_field_valueNdbm(_NoSQLOpenNdbm):
+        test_01 = Database_add_record_to_field_value.t01
+        test_02 = Database_add_record_to_field_value.t02__assumptions
+        test_03 = (
+            Database_add_record_to_field_value.t03_add_record_to_tree_field_value
+        )
+        test_04 = (
+            Database_add_record_to_field_value.t04_add_record_to_hash_field_value
+        )
+
+    class Database_remove_record_from_field_valueNdbm(_NoSQLOpenNdbm):
+        test_01 = Database_remove_record_from_field_value.t01
+        test_02 = (
+            Database_remove_record_from_field_value.t02_remove_record_from_tree_field_value
+        )
+        test_03 = (
+            Database_remove_record_from_field_value.t03_remove_record_from_hash_field_value
+        )
+
+    class Database_populate_segmentNdbm(_NoSQLOpenNdbm):
+        test_01 = Database_populate_segment.t01
+        test_02 = Database_populate_segment.t02_populate_segment
+        test_04 = Database_populate_segment.t04_populate_segment
+        test_06 = Database_populate_segment.t06_populate_segment
+
+    class _NoSQLOpenPopulatedNdbm(_NoSQLOpenNdbm):
+        def setUp(self):
+            super().setUp()
+            _NoSQLOpenPopulated.setup_detail(self)
+
+    class Database_make_recordsetNdbm(_NoSQLOpenPopulatedNdbm):
+        test_01 = Database_make_recordset.t01
+        test_02 = Database_make_recordset.t02_make_recordset_key_like
+        test_03 = Database_make_recordset.t03_make_recordset_key_like
+        test_04 = Database_make_recordset.t04_make_recordset_key_like
+        test_05 = Database_make_recordset.t05_make_recordset_key_like
+        test_06 = Database_make_recordset.t06_make_recordset_key_like
+        test_07 = Database_make_recordset.t07_make_recordset_key_like
+        test_08 = Database_make_recordset.t08_make_recordset_key
+        test_09 = Database_make_recordset.t09_make_recordset_key
+        test_10 = Database_make_recordset.t10_make_recordset_key
+        test_11 = Database_make_recordset.t11_make_recordset_key
+        test_12 = Database_make_recordset.t12_make_recordset_key
+        test_13 = Database_make_recordset.t13_make_recordset_key_startswith
+        test_14 = Database_make_recordset.t14_make_recordset_key_startswith
+        test_15 = Database_make_recordset.t15_make_recordset_key_startswith
+        test_16 = Database_make_recordset.t16_make_recordset_key_startswith
+        test_17 = Database_make_recordset.t17_make_recordset_key_startswith
+        test_18 = Database_make_recordset.t18_make_recordset_key_startswith
+        test_19 = Database_make_recordset.t19_make_recordset_key_range
+        test_20 = Database_make_recordset.t20_make_recordset_key_range
+        test_21 = Database_make_recordset.t21_make_recordset_key_range
+        test_22 = Database_make_recordset.t22_make_recordset_key_range
+        test_23 = Database_make_recordset.t23_make_recordset_key_range
+        test_24 = Database_make_recordset.t24_make_recordset_key_range
+        test_25 = Database_make_recordset.t25_make_recordset_key_range
+        test_26 = Database_make_recordset.t26_make_recordset_key_range
+        test_27 = Database_make_recordset.t27_make_recordset_key_range
+        test_28 = Database_make_recordset.t28_make_recordset_key_range
+        test_29 = Database_make_recordset.t29_make_recordset_key_range
+        test_30 = Database_make_recordset.t30_make_recordset_key_range
+        test_31 = Database_make_recordset.t31_make_recordset_key_range
+        test_32 = Database_make_recordset.t32_make_recordset_key_range
+        test_33 = Database_make_recordset.t33_make_recordset_key_range
+        test_34 = Database_make_recordset.t34_make_recordset_all
+        test_35 = Database_make_recordset.t35_make_recordset_all
+        test_36 = Database_make_recordset.t36_make_recordset_nil
+
+    class Database_file_unfile_recordsNdbm(_NoSQLOpenPopulatedNdbm):
+        test_01 = Database_file_unfile_records.t01
+        test_02 = Database_file_unfile_records.t02_unfile_records_under
+        test_03 = Database_file_unfile_records.t03_unfile_records_under
+        test_04 = Database_file_unfile_records.t04_file_records_under
+        test_05 = Database_file_unfile_records.t05_file_records_under
+        test_06 = Database_file_unfile_records.t06_file_records_under
+        test_07 = Database_file_unfile_records.t07_file_records_under
+        test_08 = Database_file_unfile_records.t08_file_records_under
+        test_09 = Database_file_unfile_records.t09_file_records_under
+        test_10 = Database_file_unfile_records.t10_file_records_under
+
+    class Database_database_create_cursorsNdbm(_NoSQLOpenNdbm):
+        test_01 = Database_database_create_cursors.t01
+        test_02 = Database_database_create_cursors.t02_database_cursor_primary
+        test_03 = (
+            Database_database_create_cursors.t03_database_cursor_secondary_tree
+        )
+        test_04 = (
+            Database_database_create_cursors.t04_database_cursor_secondary_hash
+        )
+        test_05 = Database_database_create_cursors.t05_create_recordset_cursor
+        test_06 = (
+            Database_database_create_cursors.t06_database_cursor_recordset
+        )
+
+    class Database_freed_record_numberNdbm(_NoSQLOpenNdbm):
+        def setUp(self):
+            super().setUp()
+            Database_freed_record_number.setup_detail(self)
+
+        test_01 = Database_freed_record_number.t01
+        test_02 = (
+            Database_freed_record_number.t02_note_freed_record_number_segment
+        )
+        test_03 = (
+            Database_freed_record_number.t03_get_lowest_freed_record_number
+        )
+        test_04 = (
+            Database_freed_record_number.t04_get_lowest_freed_record_number
+        )
+        test_05 = (
+            Database_freed_record_number.t05_get_lowest_freed_record_number
+        )
+        test_06 = (
+            Database_freed_record_number.t06_get_lowest_freed_record_number
+        )
+        test_07 = (
+            Database_freed_record_number.t07_get_lowest_freed_record_number
+        )
+        test_08 = (
+            Database_freed_record_number.t08_get_lowest_freed_record_number
+        )
+
+    class Database_empty_freed_record_numberNdbm(_NoSQLOpenNdbm):
+        def setUp(self):
+            super().setUp()
+            self.high_record = self.database.get_high_record_number("file1")
+
+        test_01 = Database_empty_freed_record_number.t01
+
+    class RecordsetCursorNdbm(_NoSQLOpenNdbm):
+        def setUp(self):
+            super().setUp()
+            RecordsetCursor.setup_detail(self)
+
+        test_01 = RecordsetCursor.t01
+        test_02 = RecordsetCursor.t02___init__01
+        test_03 = RecordsetCursor.t03___init__02
+        test_04 = RecordsetCursor.t04__get_record
+
+    class ExistenceBitmapControlNdbm(_NoSQLOpenNdbm):
+        test_01 = ExistenceBitmapControl.t01
+        test_02 = ExistenceBitmapControl.t02_read_exists_segment_01
+        test_03 = ExistenceBitmapControl.t03_read_exists_segment_02
+        test_04 = ExistenceBitmapControl.t04_get_ebm_segment_01
+        test_05 = ExistenceBitmapControl.t05_get_ebm_segment_02
+        test_06 = ExistenceBitmapControl.t06_delete_ebm_segment_01
+        test_07 = ExistenceBitmapControl.t07_delete_ebm_segment_02
+        test_08 = ExistenceBitmapControl.t08_put_ebm_segment_01
+        test_09 = ExistenceBitmapControl.t09_put_ebm_segment_02
+        test_10 = ExistenceBitmapControl.t10_append_ebm_segment
+        test_11 = ExistenceBitmapControl.t11_set_high_record_number_01
+        test_12 = ExistenceBitmapControl.t12_set_high_record_number_02
+        test_13 = ExistenceBitmapControl.t13_set_high_record_number_03
+        test_14 = ExistenceBitmapControl.t14_set_high_record_number_04
+
+
+if unqlite:
+
+    class _NoSQLUnqlite(_NoSQL):
+        def setUp(self):
+            self._oda = unqlite, unqlite.UnQLite, unqlite.UnQLiteError
+            super().setUp()
+
+    class Database___init__Unqlite(_NoSQLUnqlite):
+        test_01 = Database___init__.t01
+        test_02 = Database___init__.t02
+        test_03 = Database___init__.t03
+        test_04 = Database___init__.t04
+        test_05 = Database___init__.t05
+        test_06 = Database___init__.t06
+
+    class Database_transaction_methodsUnqlite(_NoSQLUnqlite):
+        def setUp(self):
+            super().setUp()
+            self.database = self._D({})
+
+        test_01 = Database_transaction_methods.t01_start_transaction
+        test_02 = Database_transaction_methods.t02_backout
+        test_03 = Database_transaction_methods.t03_commit
+        test_04 = Database_transaction_methods.t04
+
+    class DatabaseInstanceUnqlite(_NoSQLUnqlite):
+        def setUp(self):
+            super().setUp()
+            self.database = self._D({})
+
+        test_01 = DatabaseInstance.t01_validate_segment_size_bytes
+        test_02 = DatabaseInstance.t02_encode_record_number
+        test_03 = DatabaseInstance.t03_decode_record_number
+        test_04 = DatabaseInstance.t04_encode_record_selector
+        test_05 = DatabaseInstance.t05_make_recordset
+        test_06 = DatabaseInstance.t06__generate_database_file_name
+
+    class Database_open_databaseUnqlite(_NoSQLUnqlite):
+        test_01 = Database_open_database.t01
+        test_02 = Database_open_database.t02
+        test_03 = Database_open_database.t03
+        test_04 = Database_open_database.t04_close_database
+        test_05 = Database_open_database.t05_close_database_contexts
+        test_06 = Database_open_database.t06
+        test_07 = Database_open_database.t07
+        test_08 = Database_open_database.t08
+        test_09 = Database_open_database.t09
+        test_12 = Database_open_database.t12_is_database_file_active
+        check_specification = Database_open_database.check_specification
+
+    class Database_add_field_to_existing_databaseUnqlite(_NoSQLUnqlite):
+        test_13 = (
+            Database_add_field_to_existing_database.t13_add_field_to_open_database
+        )
+
+    class Database_do_database_taskUnqlite(Database_do_database_task):
+        def setUp(self):
+            self._oda = unqlite, unqlite.UnQLite, unqlite.UnQLiteError
+            super().setUp()
+
+        def test_01_do_database_task(self):
+            def m(*a, **k):
+                pass
+
+            path = None
+            self.database = self._AD(path)
+            d = self.database
+            d.open_database()
+            self.assertEqual(d.do_database_task(m), None)
+
+        def test_02_do_database_task(self):
+            def m(*a, **k):
+                pass
+
+            path = None
+            self.database = self._AD(path)
+            d = self.database
+            self.assertEqual(d.do_database_task(m), None)
+
+    class _NoSQLOpenUnqlite(_NoSQLUnqlite):
+        def setUp(self):
+            super().setUp()
+            _NoSQLOpen.setup_detail(self)
+
+        def tearDown(self):
+            _NoSQLOpen.teardown_detail(self)
+            super().tearDown()
+
+    class DatabaseTransactionsUnqlite(_NoSQLOpenUnqlite):
+        test_01 = DatabaseTransactions.t01
+        test_02 = DatabaseTransactions.t02
+        test_03 = DatabaseTransactions.t03
+        test_04 = DatabaseTransactions.t04
+        test_05 = DatabaseTransactions.t05
+
+    class Database_put_replace_deleteUnqlite(_NoSQLOpenUnqlite):
+        test_01 = Database_put_replace_delete.t01
+        test_02 = Database_put_replace_delete.t02_put
+        test_03 = Database_put_replace_delete.t03_put
+        test_04 = Database_put_replace_delete.t04_put
+        test_05 = Database_put_replace_delete.t05_replace
+        test_06 = Database_put_replace_delete.t06_replace
+        test_08 = Database_put_replace_delete.t08_delete
+        test_09 = Database_put_replace_delete.t09_delete
+        test_10 = Database_put_replace_delete.t10_delete
+
+    class Database_methodsUnqlite(_NoSQLOpenUnqlite):
+        test_01 = Database_methods.t01
+        test_02 = Database_methods.t02_get_primary_record
+        test_03 = Database_methods.t03_get_primary_record
+        test_04 = Database_methods.t04_get_primary_record
+        test_05 = Database_methods.t05_remove_record_from_ebm
+        test_06 = Database_methods.t06_remove_record_from_ebm
+        test_07 = Database_methods.t07_add_record_to_ebm
+        test_08 = Database_methods.t08_get_high_record
+        test_14 = Database_methods.t14_recordset_record_number
+        test_15 = Database_methods.t15_recordset_record_number
+        test_16 = Database_methods.t16_recordset_record_number
+        test_17 = Database_methods.t17_recordset_record_number_range
+        test_18 = Database_methods.t18_recordset_record_number_range
+        test_19 = Database_methods.t19_recordset_record_number_range
+        test_20 = Database_methods.t20_recordset_record_number_range
+        test_21 = Database_methods.t21_recordset_record_number_range
+        test_22 = Database_methods.t22_recordset_record_number_range
+        test_23 = Database_methods.t23_recordset_record_number_range
+        test_24 = Database_methods.t24_recordset_ebm
+        test_25 = Database_methods.t25_recordset_ebm
+
+        def test26_get_table_connection(self):
+            self.assertIsInstance(
+                self.database.get_table_connection("file1"), unqlite.UnQLite
+            )
+
+        create_ebm = Database_methods.create_ebm
+
+    class Database_find_values__emptyUnqlite(_NoSQLOpenUnqlite):
+        def setUp(self):
+            super().setUp()
+            Database_find_values__empty.setup_detail(self)
+
+        test_01 = Database_find_values__empty.t01_find_values
+        test_02 = Database_find_values__empty.t02_find_values
+        test_03 = Database_find_values__empty.t03_find_values
+        test_04 = Database_find_values__empty.t04_find_values
+        test_05 = Database_find_values__empty.t05_find_values
+        test_06 = Database_find_values__empty.t06_find_values
+        test_07 = Database_find_values__empty.t07_find_values
+        test_08 = Database_find_values__empty.t08_find_values
+        test_09 = Database_find_values__empty.t09_find_values
+        test_10 = Database_find_values__empty.t10_find_values
+
+    class Database_find_values__populatedUnqlite(_NoSQLOpenUnqlite):
+        def setUp(self):
+            super().setUp()
+            Database_find_values__populated.setup_detail(self)
+
+        test_01 = Database_find_values__populated.t01_find_values
+        test_02 = Database_find_values__populated.t02_find_values
+        test_03 = Database_find_values__populated.t03_find_values
+        test_04 = Database_find_values__populated.t04_find_values
+        test_05 = Database_find_values__populated.t05_find_values
+        test_06 = Database_find_values__populated.t06_find_values
+        test_07 = Database_find_values__populated.t07_find_values
+        test_08 = Database_find_values__populated.t08_find_values
+        test_09 = Database_find_values__populated.t09_find_values
+
+    class Database_add_record_to_field_valueUnqlite(_NoSQLOpenUnqlite):
+        test_01 = Database_add_record_to_field_value.t01
+        test_02 = Database_add_record_to_field_value.t02__assumptions
+        test_03 = (
+            Database_add_record_to_field_value.t03_add_record_to_tree_field_value
+        )
+        test_04 = (
+            Database_add_record_to_field_value.t04_add_record_to_hash_field_value
+        )
+
+    class Database_remove_record_from_field_valueUnqlite(_NoSQLOpenUnqlite):
+        test_01 = Database_remove_record_from_field_value.t01
+        test_02 = (
+            Database_remove_record_from_field_value.t02_remove_record_from_tree_field_value
+        )
+        test_03 = (
+            Database_remove_record_from_field_value.t03_remove_record_from_hash_field_value
+        )
+
+    class Database_populate_segmentUnqlite(_NoSQLOpenUnqlite):
+        test_01 = Database_populate_segment.t01
+        test_02 = Database_populate_segment.t02_populate_segment
+        test_04 = Database_populate_segment.t04_populate_segment
+        test_06 = Database_populate_segment.t06_populate_segment
+
+    class _NoSQLOpenPopulatedUnqlite(_NoSQLOpenUnqlite):
+        def setUp(self):
+            super().setUp()
+            _NoSQLOpenPopulated.setup_detail(self)
+
+    class Database_make_recordsetUnqlite(_NoSQLOpenPopulatedUnqlite):
+        test_01 = Database_make_recordset.t01
+        test_02 = Database_make_recordset.t02_make_recordset_key_like
+        test_03 = Database_make_recordset.t03_make_recordset_key_like
+        test_04 = Database_make_recordset.t04_make_recordset_key_like
+        test_05 = Database_make_recordset.t05_make_recordset_key_like
+        test_06 = Database_make_recordset.t06_make_recordset_key_like
+        test_07 = Database_make_recordset.t07_make_recordset_key_like
+        test_08 = Database_make_recordset.t08_make_recordset_key
+        test_09 = Database_make_recordset.t09_make_recordset_key
+        test_10 = Database_make_recordset.t10_make_recordset_key
+        test_11 = Database_make_recordset.t11_make_recordset_key
+        test_12 = Database_make_recordset.t12_make_recordset_key
+        test_13 = Database_make_recordset.t13_make_recordset_key_startswith
+        test_14 = Database_make_recordset.t14_make_recordset_key_startswith
+        test_15 = Database_make_recordset.t15_make_recordset_key_startswith
+        test_16 = Database_make_recordset.t16_make_recordset_key_startswith
+        test_17 = Database_make_recordset.t17_make_recordset_key_startswith
+        test_18 = Database_make_recordset.t18_make_recordset_key_startswith
+        test_19 = Database_make_recordset.t19_make_recordset_key_range
+        test_20 = Database_make_recordset.t20_make_recordset_key_range
+        test_21 = Database_make_recordset.t21_make_recordset_key_range
+        test_22 = Database_make_recordset.t22_make_recordset_key_range
+        test_23 = Database_make_recordset.t23_make_recordset_key_range
+        test_24 = Database_make_recordset.t24_make_recordset_key_range
+        test_25 = Database_make_recordset.t25_make_recordset_key_range
+        test_26 = Database_make_recordset.t26_make_recordset_key_range
+        test_27 = Database_make_recordset.t27_make_recordset_key_range
+        test_28 = Database_make_recordset.t28_make_recordset_key_range
+        test_29 = Database_make_recordset.t29_make_recordset_key_range
+        test_30 = Database_make_recordset.t30_make_recordset_key_range
+        test_31 = Database_make_recordset.t31_make_recordset_key_range
+        test_32 = Database_make_recordset.t32_make_recordset_key_range
+        test_33 = Database_make_recordset.t33_make_recordset_key_range
+        test_34 = Database_make_recordset.t34_make_recordset_all
+        test_35 = Database_make_recordset.t35_make_recordset_all
+        test_36 = Database_make_recordset.t36_make_recordset_nil
+
+    class Database_file_unfile_recordsUnqlite(_NoSQLOpenPopulatedUnqlite):
+        test_01 = Database_file_unfile_records.t01
+        test_02 = Database_file_unfile_records.t02_unfile_records_under
+        test_03 = Database_file_unfile_records.t03_unfile_records_under
+        test_04 = Database_file_unfile_records.t04_file_records_under
+        test_05 = Database_file_unfile_records.t05_file_records_under
+        test_06 = Database_file_unfile_records.t06_file_records_under
+        test_07 = Database_file_unfile_records.t07_file_records_under
+        test_08 = Database_file_unfile_records.t08_file_records_under
+        test_09 = Database_file_unfile_records.t09_file_records_under
+        test_10 = Database_file_unfile_records.t10_file_records_under
+
+    class Database_database_create_cursorsUnqlite(_NoSQLOpenUnqlite):
+        test_01 = Database_database_create_cursors.t01
+        test_02 = Database_database_create_cursors.t02_database_cursor_primary
+        test_03 = (
+            Database_database_create_cursors.t03_database_cursor_secondary_tree
+        )
+        test_04 = (
+            Database_database_create_cursors.t04_database_cursor_secondary_hash
+        )
+        test_05 = Database_database_create_cursors.t05_create_recordset_cursor
+        test_06 = (
+            Database_database_create_cursors.t06_database_cursor_recordset
+        )
+
+    class Database_freed_record_numberUnqlite(_NoSQLOpenUnqlite):
+        def setUp(self):
+            super().setUp()
+            Database_freed_record_number.setup_detail(self)
+
+        test_01 = Database_freed_record_number.t01
+        test_02 = (
+            Database_freed_record_number.t02_note_freed_record_number_segment
+        )
+        test_03 = (
+            Database_freed_record_number.t03_get_lowest_freed_record_number
+        )
+        test_04 = (
+            Database_freed_record_number.t04_get_lowest_freed_record_number
+        )
+        test_05 = (
+            Database_freed_record_number.t05_get_lowest_freed_record_number
+        )
+        test_06 = (
+            Database_freed_record_number.t06_get_lowest_freed_record_number
+        )
+        test_07 = (
+            Database_freed_record_number.t07_get_lowest_freed_record_number
+        )
+        test_08 = (
+            Database_freed_record_number.t08_get_lowest_freed_record_number
+        )
+
+    class Database_empty_freed_record_numberUnqlite(_NoSQLOpenUnqlite):
+        def setUp(self):
+            super().setUp()
+            self.high_record = self.database.get_high_record_number("file1")
+
+        test_01 = Database_empty_freed_record_number.t01
+
+    class RecordsetCursorUnqlite(_NoSQLOpenUnqlite):
+        def setUp(self):
+            super().setUp()
+            RecordsetCursor.setup_detail(self)
+
+        test_01 = RecordsetCursor.t01
+        test_02 = RecordsetCursor.t02___init__01
+        test_03 = RecordsetCursor.t03___init__02
+        test_04 = RecordsetCursor.t04__get_record
+
+    class ExistenceBitmapControlUnqlite(_NoSQLOpenUnqlite):
+        test_01 = ExistenceBitmapControl.t01
+        test_02 = ExistenceBitmapControl.t02_read_exists_segment_01
+        test_03 = ExistenceBitmapControl.t03_read_exists_segment_02
+        test_04 = ExistenceBitmapControl.t04_get_ebm_segment_01
+        test_05 = ExistenceBitmapControl.t05_get_ebm_segment_02
+        test_06 = ExistenceBitmapControl.t06_delete_ebm_segment_01
+        test_07 = ExistenceBitmapControl.t07_delete_ebm_segment_02
+        test_08 = ExistenceBitmapControl.t08_put_ebm_segment_01
+        test_09 = ExistenceBitmapControl.t09_put_ebm_segment_02
+        test_10 = ExistenceBitmapControl.t10_append_ebm_segment
+        test_11 = ExistenceBitmapControl.t11_set_high_record_number_01
+        test_12 = ExistenceBitmapControl.t12_set_high_record_number_02
+        test_13 = ExistenceBitmapControl.t13_set_high_record_number_03
+        test_14 = ExistenceBitmapControl.t14_set_high_record_number_04
+
+
+if vedis:
+
+    class _NoSQLVedis(_NoSQL):
+        def setUp(self):
+            self._oda = vedis, vedis.Vedis, None
+            super().setUp()
+
+    class Database___init__Vedis(_NoSQLVedis):
+        test_01 = Database___init__.t01
+        test_02 = Database___init__.t02
+        test_03 = Database___init__.t03
+        test_04 = Database___init__.t04
+        test_05 = Database___init__.t05
+        test_06 = Database___init__.t06
+
+    class Database_transaction_methodsVedis(_NoSQLVedis):
+        def setUp(self):
+            super().setUp()
+            self.database = self._D({})
+
+        test_01 = Database_transaction_methods.t01_start_transaction
+        test_02 = Database_transaction_methods.t02_backout
+        test_03 = Database_transaction_methods.t03_commit
+        test_04 = Database_transaction_methods.t04
+
+    class DatabaseInstanceVedis(_NoSQLVedis):
+        def setUp(self):
+            super().setUp()
+            self.database = self._D({})
+
+        test_01 = DatabaseInstance.t01_validate_segment_size_bytes
+        test_02 = DatabaseInstance.t02_encode_record_number
+        test_03 = DatabaseInstance.t03_decode_record_number
+        test_04 = DatabaseInstance.t04_encode_record_selector
+        test_05 = DatabaseInstance.t05_make_recordset
+        test_06 = DatabaseInstance.t06__generate_database_file_name
+
+    class Database_open_databaseVedis(_NoSQLVedis):
+        test_01 = Database_open_database.t01
+        test_02 = Database_open_database.t02
+        test_03 = Database_open_database.t03
+        test_04 = Database_open_database.t04_close_database
+        test_05 = Database_open_database.t05_close_database_contexts
+        test_06 = Database_open_database.t06
+        test_07 = Database_open_database.t07
+        test_08 = Database_open_database.t08
+        test_09 = Database_open_database.t09
+        test_12 = Database_open_database.t12_is_database_file_active
+        check_specification = Database_open_database.check_specification
+
+    class Database_add_field_to_existing_databaseVedis(_NoSQLVedis):
+        test_13 = (
+            Database_add_field_to_existing_database.t13_add_field_to_open_database
+        )
+
+    class Database_do_database_taskVedis(Database_do_database_task):
+        def setUp(self):
+            self._oda = vedis, vedis.Vedis, None
+            super().setUp()
+
+        def test_01_do_database_task(self):
+            def m(*a, **k):
+                pass
+
+            path = None
+            self.database = self._AD(path)
+            d = self.database
+            d.open_database()
+            self.assertEqual(d.do_database_task(m), None)
+
+        def test_02_do_database_task(self):
+            def m(*a, **k):
+                pass
+
+            path = None
+            self.database = self._AD(path)
+            d = self.database
+            self.assertEqual(d.do_database_task(m), None)
+
+    class _NoSQLOpenVedis(_NoSQLVedis):
+        def setUp(self):
+            super().setUp()
+            _NoSQLOpen.setup_detail(self)
+
+        def tearDown(self):
+            _NoSQLOpen.teardown_detail(self)
+            super().tearDown()
+
+    class DatabaseTransactionsVedis(_NoSQLOpenVedis):
+        test_01 = DatabaseTransactions.t01
+        test_02 = DatabaseTransactions.t02
+        test_03 = DatabaseTransactions.t03
+        test_04 = DatabaseTransactions.t04
+        test_05 = DatabaseTransactions.t05
+
+    class Database_put_replace_deleteVedis(_NoSQLOpenVedis):
+        test_01 = Database_put_replace_delete.t01
+        test_02 = Database_put_replace_delete.t02_put
+        test_03 = Database_put_replace_delete.t03_put
+        test_04 = Database_put_replace_delete.t04_put
+        test_05 = Database_put_replace_delete.t05_replace
+        test_06 = Database_put_replace_delete.t06_replace
+        test_08 = Database_put_replace_delete.t08_delete
+        test_09 = Database_put_replace_delete.t09_delete
+        test_10 = Database_put_replace_delete.t10_delete
+
+    class Database_methodsVedis(_NoSQLOpenVedis):
+        test_01 = Database_methods.t01
+        test_02 = Database_methods.t02_get_primary_record
+        test_03 = Database_methods.t03_get_primary_record
+        test_04 = Database_methods.t04_get_primary_record
+        test_05 = Database_methods.t05_remove_record_from_ebm
+        test_06 = Database_methods.t06_remove_record_from_ebm
+        test_07 = Database_methods.t07_add_record_to_ebm
+        test_08 = Database_methods.t08_get_high_record
+        test_14 = Database_methods.t14_recordset_record_number
+        test_15 = Database_methods.t15_recordset_record_number
+        test_16 = Database_methods.t16_recordset_record_number
+        test_17 = Database_methods.t17_recordset_record_number_range
+        test_18 = Database_methods.t18_recordset_record_number_range
+        test_19 = Database_methods.t19_recordset_record_number_range
+        test_20 = Database_methods.t20_recordset_record_number_range
+        test_21 = Database_methods.t21_recordset_record_number_range
+        test_22 = Database_methods.t22_recordset_record_number_range
+        test_23 = Database_methods.t23_recordset_record_number_range
+        test_24 = Database_methods.t24_recordset_ebm
+        test_25 = Database_methods.t25_recordset_ebm
+
+        def test26_get_table_connection(self):
+            self.assertIsInstance(
+                self.database.get_table_connection("file1"), vedis.Vedis
+            )
+
+        create_ebm = Database_methods.create_ebm
+
+    class Database_find_values__emptyVedis(_NoSQLOpenVedis):
+        def setUp(self):
+            super().setUp()
+            Database_find_values__empty.setup_detail(self)
+
+        test_01 = Database_find_values__empty.t01_find_values
+        test_02 = Database_find_values__empty.t02_find_values
+        test_03 = Database_find_values__empty.t03_find_values
+        test_04 = Database_find_values__empty.t04_find_values
+        test_05 = Database_find_values__empty.t05_find_values
+        test_06 = Database_find_values__empty.t06_find_values
+        test_07 = Database_find_values__empty.t07_find_values
+        test_08 = Database_find_values__empty.t08_find_values
+        test_09 = Database_find_values__empty.t09_find_values
+        test_10 = Database_find_values__empty.t10_find_values
+
+    class Database_find_values__populatedVedis(_NoSQLOpenVedis):
+        def setUp(self):
+            super().setUp()
+            Database_find_values__populated.setup_detail(self)
+
+        test_01 = Database_find_values__populated.t01_find_values
+        test_02 = Database_find_values__populated.t02_find_values
+        test_03 = Database_find_values__populated.t03_find_values
+        test_04 = Database_find_values__populated.t04_find_values
+        test_05 = Database_find_values__populated.t05_find_values
+        test_06 = Database_find_values__populated.t06_find_values
+        test_07 = Database_find_values__populated.t07_find_values
+        test_08 = Database_find_values__populated.t08_find_values
+        test_09 = Database_find_values__populated.t09_find_values
+
+    class Database_add_record_to_field_valueVedis(_NoSQLOpenVedis):
+        test_01 = Database_add_record_to_field_value.t01
+        test_02 = Database_add_record_to_field_value.t02__assumptions
+        test_03 = (
+            Database_add_record_to_field_value.t03_add_record_to_tree_field_value
+        )
+        test_04 = (
+            Database_add_record_to_field_value.t04_add_record_to_hash_field_value
+        )
+
+    class Database_remove_record_from_field_valueVedis(_NoSQLOpenVedis):
+        test_01 = Database_remove_record_from_field_value.t01
+        test_02 = (
+            Database_remove_record_from_field_value.t02_remove_record_from_tree_field_value
+        )
+        test_03 = (
+            Database_remove_record_from_field_value.t03_remove_record_from_hash_field_value
+        )
+
+    class Database_populate_segmentVedis(_NoSQLOpenVedis):
+        test_01 = Database_populate_segment.t01
+        test_02 = Database_populate_segment.t02_populate_segment
+        test_04 = Database_populate_segment.t04_populate_segment
+        test_06 = Database_populate_segment.t06_populate_segment
+
+    class _NoSQLOpenPopulatedVedis(_NoSQLOpenVedis):
+        def setUp(self):
+            super().setUp()
+            _NoSQLOpenPopulated.setup_detail(self)
+
+    class Database_make_recordsetVedis(_NoSQLOpenPopulatedVedis):
+        test_01 = Database_make_recordset.t01
+        test_02 = Database_make_recordset.t02_make_recordset_key_like
+        test_03 = Database_make_recordset.t03_make_recordset_key_like
+        test_04 = Database_make_recordset.t04_make_recordset_key_like
+        test_05 = Database_make_recordset.t05_make_recordset_key_like
+        test_06 = Database_make_recordset.t06_make_recordset_key_like
+        test_07 = Database_make_recordset.t07_make_recordset_key_like
+        test_08 = Database_make_recordset.t08_make_recordset_key
+        test_09 = Database_make_recordset.t09_make_recordset_key
+        test_10 = Database_make_recordset.t10_make_recordset_key
+        test_11 = Database_make_recordset.t11_make_recordset_key
+        test_12 = Database_make_recordset.t12_make_recordset_key
+        test_13 = Database_make_recordset.t13_make_recordset_key_startswith
+        test_14 = Database_make_recordset.t14_make_recordset_key_startswith
+        test_15 = Database_make_recordset.t15_make_recordset_key_startswith
+        test_16 = Database_make_recordset.t16_make_recordset_key_startswith
+        test_17 = Database_make_recordset.t17_make_recordset_key_startswith
+        test_18 = Database_make_recordset.t18_make_recordset_key_startswith
+        test_19 = Database_make_recordset.t19_make_recordset_key_range
+        test_20 = Database_make_recordset.t20_make_recordset_key_range
+        test_21 = Database_make_recordset.t21_make_recordset_key_range
+        test_22 = Database_make_recordset.t22_make_recordset_key_range
+        test_23 = Database_make_recordset.t23_make_recordset_key_range
+        test_24 = Database_make_recordset.t24_make_recordset_key_range
+        test_25 = Database_make_recordset.t25_make_recordset_key_range
+        test_26 = Database_make_recordset.t26_make_recordset_key_range
+        test_27 = Database_make_recordset.t27_make_recordset_key_range
+        test_28 = Database_make_recordset.t28_make_recordset_key_range
+        test_29 = Database_make_recordset.t29_make_recordset_key_range
+        test_30 = Database_make_recordset.t30_make_recordset_key_range
+        test_31 = Database_make_recordset.t31_make_recordset_key_range
+        test_32 = Database_make_recordset.t32_make_recordset_key_range
+        test_33 = Database_make_recordset.t33_make_recordset_key_range
+        test_34 = Database_make_recordset.t34_make_recordset_all
+        test_35 = Database_make_recordset.t35_make_recordset_all
+        test_36 = Database_make_recordset.t36_make_recordset_nil
+
+    class Database_file_unfile_recordsVedis(_NoSQLOpenPopulatedVedis):
+        test_01 = Database_file_unfile_records.t01
+        test_02 = Database_file_unfile_records.t02_unfile_records_under
+        test_03 = Database_file_unfile_records.t03_unfile_records_under
+        test_04 = Database_file_unfile_records.t04_file_records_under
+        test_05 = Database_file_unfile_records.t05_file_records_under
+        test_06 = Database_file_unfile_records.t06_file_records_under
+        test_07 = Database_file_unfile_records.t07_file_records_under
+        test_08 = Database_file_unfile_records.t08_file_records_under
+        test_09 = Database_file_unfile_records.t09_file_records_under
+        test_10 = Database_file_unfile_records.t10_file_records_under
+
+    class Database_database_create_cursorsVedis(_NoSQLOpenVedis):
+        test_01 = Database_database_create_cursors.t01
+        test_02 = Database_database_create_cursors.t02_database_cursor_primary
+        test_03 = (
+            Database_database_create_cursors.t03_database_cursor_secondary_tree
+        )
+        test_04 = (
+            Database_database_create_cursors.t04_database_cursor_secondary_hash
+        )
+        test_05 = Database_database_create_cursors.t05_create_recordset_cursor
+        test_06 = (
+            Database_database_create_cursors.t06_database_cursor_recordset
+        )
+
+    class Database_freed_record_numberVedis(_NoSQLOpenVedis):
+        def setUp(self):
+            super().setUp()
+            Database_freed_record_number.setup_detail(self)
+
+        test_01 = Database_freed_record_number.t01
+        test_02 = (
+            Database_freed_record_number.t02_note_freed_record_number_segment
+        )
+        test_03 = (
+            Database_freed_record_number.t03_get_lowest_freed_record_number
+        )
+        test_04 = (
+            Database_freed_record_number.t04_get_lowest_freed_record_number
+        )
+        test_05 = (
+            Database_freed_record_number.t05_get_lowest_freed_record_number
+        )
+        test_06 = (
+            Database_freed_record_number.t06_get_lowest_freed_record_number
+        )
+        test_07 = (
+            Database_freed_record_number.t07_get_lowest_freed_record_number
+        )
+        test_08 = (
+            Database_freed_record_number.t08_get_lowest_freed_record_number
+        )
+
+    class Database_empty_freed_record_numberVedis(_NoSQLOpenVedis):
+        def setUp(self):
+            super().setUp()
+            self.high_record = self.database.get_high_record_number("file1")
+
+        test_01 = Database_empty_freed_record_number.t01
+
+    class RecordsetCursorVedis(_NoSQLOpenVedis):
+        def setUp(self):
+            super().setUp()
+            RecordsetCursor.setup_detail(self)
+
+        test_01 = RecordsetCursor.t01
+        test_02 = RecordsetCursor.t02___init__01
+        test_03 = RecordsetCursor.t03___init__02
+        test_04 = RecordsetCursor.t04__get_record
+
+    class ExistenceBitmapControlVedis(_NoSQLOpenVedis):
+        test_01 = ExistenceBitmapControl.t01
+        test_02 = ExistenceBitmapControl.t02_read_exists_segment_01
+        test_03 = ExistenceBitmapControl.t03_read_exists_segment_02
+        test_04 = ExistenceBitmapControl.t04_get_ebm_segment_01
+        test_05 = ExistenceBitmapControl.t05_get_ebm_segment_02
+        test_06 = ExistenceBitmapControl.t06_delete_ebm_segment_01
+        test_07 = ExistenceBitmapControl.t07_delete_ebm_segment_02
+        test_08 = ExistenceBitmapControl.t08_put_ebm_segment_01
+        test_09 = ExistenceBitmapControl.t09_put_ebm_segment_02
+        test_10 = ExistenceBitmapControl.t10_append_ebm_segment
+        test_11 = ExistenceBitmapControl.t11_set_high_record_number_01
+        test_12 = ExistenceBitmapControl.t12_set_high_record_number_02
+        test_13 = ExistenceBitmapControl.t13_set_high_record_number_03
+        test_14 = ExistenceBitmapControl.t14_set_high_record_number_04
+
+
 if __name__ == "__main__":
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
-    for dbe_module in unqlite, vedis, ndbm_module, gnu_module:
-        if dbe_module is None:
-            continue
-        runner().run(loader(Database___init__))
-        runner().run(loader(Database_transaction_methods))
-        runner().run(loader(DatabaseInstance))
-        runner().run(loader(Database_open_database))
-        runner().run(loader(Database_add_field_to_existing_database))
-        runner().run(loader(Database_do_database_task))
-        runner().run(loader(DatabaseTransactions))
-        runner().run(loader(Database_put_replace_delete))
-        runner().run(loader(Database_methods))
-        runner().run(loader(Database_find_values__empty))
-        runner().run(loader(Database_find_values__populated))
-        runner().run(loader(Database_add_record_to_field_value))
-        runner().run(loader(Database_remove_record_from_field_value))
-        runner().run(loader(Database_populate_segment))
-        runner().run(loader(Database_make_recordset))
-        runner().run(loader(Database_file_unfile_records))
-        runner().run(loader(Database_database_create_cursors))
-        runner().run(loader(Database_freed_record_number))
-        runner().run(loader(Database_empty_freed_record_number))
-        runner().run(loader(RecordsetCursor))
-        runner().run(loader(ExistenceBitmapControl))
+    if gnu_module:
+        runner().run(loader(Database___init__Gnu))
+        runner().run(loader(Database_transaction_methodsGnu))
+        runner().run(loader(DatabaseInstanceGnu))
+        runner().run(loader(Database_open_databaseGnu))
+        runner().run(loader(Database_add_field_to_existing_databaseGnu))
+        runner().run(loader(Database_do_database_taskGnu))
+        runner().run(loader(DatabaseTransactionsGnu))
+        runner().run(loader(Database_put_replace_deleteGnu))
+        runner().run(loader(Database_methodsGnu))
+        runner().run(loader(Database_find_values__emptyGnu))
+        runner().run(loader(Database_find_values__populatedGnu))
+        runner().run(loader(Database_add_record_to_field_valueGnu))
+        runner().run(loader(Database_remove_record_from_field_valueGnu))
+        runner().run(loader(Database_populate_segmentGnu))
+        runner().run(loader(Database_make_recordsetGnu))
+        runner().run(loader(Database_file_unfile_recordsGnu))
+        runner().run(loader(Database_database_create_cursorsGnu))
+        runner().run(loader(Database_freed_record_numberGnu))
+        runner().run(loader(Database_empty_freed_record_numberGnu))
+        runner().run(loader(RecordsetCursorGnu))
+        runner().run(loader(ExistenceBitmapControlGnu))
+    if ndbm_module:
+        runner().run(loader(Database___init__Ndbm))
+        runner().run(loader(Database_transaction_methodsNdbm))
+        runner().run(loader(DatabaseInstanceNdbm))
+        runner().run(loader(Database_open_databaseNdbm))
+        runner().run(loader(Database_add_field_to_existing_databaseNdbm))
+        runner().run(loader(Database_do_database_taskNdbm))
+        runner().run(loader(DatabaseTransactionsNdbm))
+        runner().run(loader(Database_put_replace_deleteNdbm))
+        runner().run(loader(Database_methodsNdbm))
+        runner().run(loader(Database_find_values__emptyNdbm))
+        runner().run(loader(Database_find_values__populatedNdbm))
+        runner().run(loader(Database_add_record_to_field_valueNdbm))
+        runner().run(loader(Database_remove_record_from_field_valueNdbm))
+        runner().run(loader(Database_populate_segmentNdbm))
+        runner().run(loader(Database_make_recordsetNdbm))
+        runner().run(loader(Database_file_unfile_recordsNdbm))
+        runner().run(loader(Database_database_create_cursorsNdbm))
+        runner().run(loader(Database_freed_record_numberNdbm))
+        runner().run(loader(Database_empty_freed_record_numberNdbm))
+        runner().run(loader(RecordsetCursorNdbm))
+        runner().run(loader(ExistenceBitmapControlNdbm))
+    if unqlite:
+        runner().run(loader(Database___init__Unqlite))
+        runner().run(loader(Database_transaction_methodsUnqlite))
+        runner().run(loader(DatabaseInstanceUnqlite))
+        runner().run(loader(Database_open_databaseUnqlite))
+        runner().run(loader(Database_add_field_to_existing_databaseUnqlite))
+        runner().run(loader(Database_do_database_taskUnqlite))
+        runner().run(loader(DatabaseTransactionsUnqlite))
+        runner().run(loader(Database_put_replace_deleteUnqlite))
+        runner().run(loader(Database_methodsUnqlite))
+        runner().run(loader(Database_find_values__emptyUnqlite))
+        runner().run(loader(Database_find_values__populatedUnqlite))
+        runner().run(loader(Database_add_record_to_field_valueUnqlite))
+        runner().run(loader(Database_remove_record_from_field_valueUnqlite))
+        runner().run(loader(Database_populate_segmentUnqlite))
+        runner().run(loader(Database_make_recordsetUnqlite))
+        runner().run(loader(Database_file_unfile_recordsUnqlite))
+        runner().run(loader(Database_database_create_cursorsUnqlite))
+        runner().run(loader(Database_freed_record_numberUnqlite))
+        runner().run(loader(Database_empty_freed_record_numberUnqlite))
+        runner().run(loader(RecordsetCursorUnqlite))
+        runner().run(loader(ExistenceBitmapControlUnqlite))
+    if vedis:
+        runner().run(loader(Database___init__Vedis))
+        runner().run(loader(Database_transaction_methodsVedis))
+        runner().run(loader(DatabaseInstanceVedis))
+        runner().run(loader(Database_open_databaseVedis))
+        runner().run(loader(Database_add_field_to_existing_databaseVedis))
+        runner().run(loader(Database_do_database_taskVedis))
+        runner().run(loader(DatabaseTransactionsVedis))
+        runner().run(loader(Database_put_replace_deleteVedis))
+        runner().run(loader(Database_methodsVedis))
+        runner().run(loader(Database_find_values__emptyVedis))
+        runner().run(loader(Database_find_values__populatedVedis))
+        runner().run(loader(Database_add_record_to_field_valueVedis))
+        runner().run(loader(Database_remove_record_from_field_valueVedis))
+        runner().run(loader(Database_populate_segmentVedis))
+        runner().run(loader(Database_make_recordsetVedis))
+        runner().run(loader(Database_file_unfile_recordsVedis))
+        runner().run(loader(Database_database_create_cursorsVedis))
+        runner().run(loader(Database_freed_record_numberVedis))
+        runner().run(loader(Database_empty_freed_record_numberVedis))
+        runner().run(loader(RecordsetCursorVedis))
+        runner().run(loader(ExistenceBitmapControlVedis))

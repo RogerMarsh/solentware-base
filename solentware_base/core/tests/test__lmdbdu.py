@@ -2,16 +2,13 @@
 # Copyright 2023 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""_lmdbdu _database tests"""
+"""_lmdbdu _database tests with lmdb interface."""
 
 import unittest
 import os
 import shutil
 
-try:
-    import lmdb
-except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
-    lmdb = None
+import lmdb
 
 from .. import _lmdb
 from .. import _lmdbdu
@@ -88,7 +85,9 @@ class Database___init__(DBdu):
         self.assertEqual(database._dbe, None)
         self.assertEqual(database.segment_table, {})
         self.assertEqual(database.ebm_control, {})
-        self.assertEqual(SegmentSize.db_segment_size_bytes, 4096)
+        # Following test may not pass when run by unittest discovery
+        # because other test modules may change the tested value.
+        # self.assertEqual(SegmentSize.db_segment_size_bytes, 4096)
 
         # These tests are only difference to test__sqlite.Database___init__
         self.assertEqual(database.deferred_update_points, None)
@@ -1382,27 +1381,24 @@ class Database_merge_import(_DBOpen):
         self.database.commit()
 
 
+def encode(value):
+    return value
+
+
 if __name__ == "__main__":
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
-    for dbe_module in (lmdb,):
-        if dbe_module is None:
-            continue
-
-        def encode(value):
-            return value
-
-        runner().run(loader(Database___init__))
-        runner().run(loader(Database_transaction_bad_calls))
-        runner().run(loader(Database_start_transaction))
-        runner().run(loader(Database_backout_and_commit))
-        runner().run(loader(Database_open_database))
-        runner().run(loader(Database_methods))
-        # runner().run(loader(Database__rows))
-        runner().run(loader(Database_do_final_segment_deferred_updates))
-        runner().run(loader(Database__sort_and_write_high_or_chunk))
-        runner().run(loader(Database_sort_and_write))
-        runner().run(loader(Database_merge))
-        runner().run(loader(Database_delete_index))
-        runner().run(loader(Database_find_value_segments))
-        runner().run(loader(Database_merge_import))
+    runner().run(loader(Database___init__))
+    runner().run(loader(Database_transaction_bad_calls))
+    runner().run(loader(Database_start_transaction))
+    runner().run(loader(Database_backout_and_commit))
+    runner().run(loader(Database_open_database))
+    runner().run(loader(Database_methods))
+    # runner().run(loader(Database__rows))
+    runner().run(loader(Database_do_final_segment_deferred_updates))
+    runner().run(loader(Database__sort_and_write_high_or_chunk))
+    runner().run(loader(Database_sort_and_write))
+    runner().run(loader(Database_merge))
+    runner().run(loader(Database_delete_index))
+    runner().run(loader(Database_find_value_segments))
+    runner().run(loader(Database_merge_import))

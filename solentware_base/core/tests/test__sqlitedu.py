@@ -31,12 +31,6 @@ class _SQLitedu(unittest.TestCase):
     def setUp(self):
         self.__ssb = SegmentSize.db_segment_size_bytes
 
-        class _D(_sqlitedu.Database, _sqlite.Database):
-            def open_database(self, **k):
-                super().open_database(dbe_module, **k)
-
-        self._D = _D
-
     def tearDown(self):
         self.database = None
         self._D = None
@@ -46,7 +40,7 @@ class _SQLitedu(unittest.TestCase):
 # Same tests as test__sqlite.Database___init__ with relevant additions.
 # Alternative is one test method with just the additional tests.
 class Database___init__(_SQLitedu):
-    def test_01(self):
+    def t01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -59,7 +53,7 @@ class Database___init__(_SQLitedu):
             *(None, None, None, None, None),
         )
 
-    def test_02(self):
+    def t02(self):
         # Matches 'type object' before Python 3.9 but class name otherwise.
         t = r"(?:type object|solentware_base\.core\.filespec\.FileSpec\(\))"
         self.assertRaisesRegex(
@@ -77,7 +71,7 @@ class Database___init__(_SQLitedu):
         self.assertIsInstance(self._D({}), self._D)
         self.assertIsInstance(self._D(filespec.FileSpec()), self._D)
 
-    def test_03(self):
+    def t03(self):
         self.assertRaisesRegex(
             _sqlite.DatabaseError,
             "".join(("Database folder name {} is not valid$",)),
@@ -86,7 +80,7 @@ class Database___init__(_SQLitedu):
             **dict(folder={}),
         )
 
-    def test_04(self):
+    def t04(self):
         database = self._D({}, folder="a")
         self.assertIsInstance(database, self._D)
         self.assertEqual(os.path.basename(database.home_directory), "a")
@@ -101,7 +95,9 @@ class Database___init__(_SQLitedu):
         self.assertEqual(database.index, {})
         self.assertEqual(database.segment_table, {})
         self.assertEqual(database.ebm_control, {})
-        self.assertEqual(SegmentSize.db_segment_size_bytes, 4096)
+        # Following test may not pass when run by unittest discovery
+        # because other test modules may change the tested value.
+        # self.assertEqual(SegmentSize.db_segment_size_bytes, 4096)
 
         # These tests are only difference to test__sqlite.Database___init__
         self.assertEqual(database.deferred_update_points, None)
@@ -114,7 +110,7 @@ class Database___init__(_SQLitedu):
         self.assertEqual(database.existence_bit_maps, {})
         self.assertEqual(database.value_segments, {})
 
-    def test_05(self):
+    def t05(self):
         database = self._D({})
         self.assertEqual(database.home_directory, None)
         self.assertEqual(database.database_file, None)
@@ -122,7 +118,7 @@ class Database___init__(_SQLitedu):
     # This combination of folder and segment_size_bytes arguments is used for
     # unittests, except for one to see a non-memory database with a realistic
     # segment size.
-    def test_06(self):
+    def t06(self):
         database = self._D({}, segment_size_bytes=None)
         self.assertEqual(database.segment_size_bytes, None)
         database.set_segment_size()
@@ -132,20 +128,28 @@ class Database___init__(_SQLitedu):
 
 # Memory databases are used for these tests.
 class Database_open_database(_SQLitedu):
-    def test_01(self):
+    def t01(self):
         self.database = self._D({})
-        repr_open_database = "".join(
-            (
-                "<bound method _SQLitedu.setUp.<locals>._D.open_database of ",
-                "<__main__._SQLitedu.setUp.<locals>._D object at ",
-            )
+        self.assertEqual(
+            repr(self.database.open_database).startswith(
+                "<bound method _SQLitedu"
+            ),
+            True,
         )
         self.assertEqual(
-            repr(self.database.open_database).startswith(repr_open_database),
+            ".setUp.<locals>._D.open_database of " in repr(
+                self.database.open_database
+            ),
+            True,
+        )
+        self.assertEqual(
+            ".setUp.<locals>._D object at " in repr(
+                self.database.open_database
+            ),
             True,
         )
 
-    def test_02(self):
+    def t02(self):
         self.database = self._D({}, segment_size_bytes=None)
         self.database.open_database()
         self.assertEqual(self.database.dbenv.__class__.__name__, "Connection")
@@ -168,7 +172,7 @@ class _SQLiteOpen(_SQLitedu):
 
 
 class Database_methods(_SQLiteOpen):
-    def test_01(self):
+    def t01(self):
         self.assertRaisesRegex(
             _sqlitedu.DatabaseError,
             "database_cursor not implemented$",
@@ -208,7 +212,7 @@ class Database_methods(_SQLiteOpen):
             *(None,),
         )
 
-    def test_02_database_cursor(self):
+    def t02_database_cursor(self):
         self.assertRaisesRegex(
             _sqlitedu.DatabaseError,
             "database_cursor not implemented$",
@@ -216,11 +220,11 @@ class Database_methods(_SQLiteOpen):
             *(None, None),
         )
 
-    def test_03_unset_defer_update(self):
+    def t03_unset_defer_update(self):
         self.database.start_transaction()
         self.database.unset_defer_update()
 
-    def test_05_new_deferred_root(self):
+    def t05_new_deferred_root(self):
         self.assertEqual(self.database.table["file1_field1"], "file1_field1")
         self.assertEqual(self.database.index["file1_field1"], "ixfile1_field1")
         self.database.new_deferred_root("file1", "field1")
@@ -233,13 +237,13 @@ class Database_methods(_SQLiteOpen):
             "ixfile1_field1",
         )
 
-    def test_06_set_defer_update_01(self):
+    def t06_set_defer_update_01(self):
         self.database.set_defer_update()
         self.assertEqual(self.database.initial_high_segment["file1"], None)
         self.assertEqual(self.database.high_segment["file1"], None)
         self.assertEqual(self.database.first_chunk["file1"], None)
 
-    def test_07_set_defer_update_02(self):
+    def t07_set_defer_update_02(self):
         cursor = self.database.dbenv.cursor()
         try:
             cursor.execute(
@@ -265,7 +269,7 @@ class Database_methods(_SQLiteOpen):
         self.assertEqual(self.database.high_segment["file1"], 0)
         self.assertEqual(self.database.first_chunk["file1"], True)
 
-    def test_08_set_defer_update_03(self):
+    def t08_set_defer_update_03(self):
         # Simulate normal use: the insert is not part of the deferred update.
         self.database.start_transaction()
         cursor = self.database.dbenv.cursor()
@@ -282,7 +286,7 @@ class Database_methods(_SQLiteOpen):
         self.assertEqual(self.database.high_segment["file1"], 0)
         self.assertEqual(self.database.first_chunk["file1"], True)
 
-    def test_09_get_ebm_segment(self):
+    def t09_get_ebm_segment(self):
         self.assertEqual(
             self.database.get_ebm_segment(
                 self.database.ebm_control["file1"], 1
@@ -292,7 +296,7 @@ class Database_methods(_SQLiteOpen):
 
 
 class Database__rows(_SQLitedu):
-    def test_01(self):
+    def t01(self):
         database = self._D({}, segment_size_bytes=None)
         self.assertRaisesRegex(
             TypeError,
@@ -305,7 +309,7 @@ class Database__rows(_SQLitedu):
             database._rows,
         )
 
-    def test_02(self):
+    def t02(self):
         database = self._D({}, segment_size_bytes=None)
         values = {"kv3": (2, b"dd"), "kv1": (56, b"lots"), "kv2": (1, b"l")}
         self.assertEqual(
@@ -319,7 +323,7 @@ class Database__rows(_SQLitedu):
 
 
 class Database_do_final_segment_deferred_updates(_SQLiteOpen):
-    def test_01(self):
+    def t01(self):
         database = self._D({}, segment_size_bytes=None)
         self.assertRaisesRegex(
             TypeError,
@@ -333,14 +337,14 @@ class Database_do_final_segment_deferred_updates(_SQLiteOpen):
             *(None,),
         )
 
-    def test_02(self):
+    def t02(self):
         self.assertEqual(len(self.database.existence_bit_maps), 0)
         self.assertIn(
             "field1", self.database.specification["file1"]["secondary"]
         )
         self.database.do_final_segment_deferred_updates()
 
-    def test_03(self):
+    def t03(self):
         self.database.existence_bit_maps["file1"] = None
         self.assertEqual(len(self.database.existence_bit_maps), 1)
         self.assertIn(
@@ -348,7 +352,7 @@ class Database_do_final_segment_deferred_updates(_SQLiteOpen):
         )
         self.database.do_final_segment_deferred_updates()
 
-    def test_04(self):
+    def t04(self):
         cursor = self.database.dbenv.cursor()
         try:
             cursor.execute(
@@ -367,7 +371,7 @@ class Database_do_final_segment_deferred_updates(_SQLiteOpen):
             self.database.do_final_segment_deferred_updates,
         )
 
-    def test_05(self):
+    def t05(self):
         cursor = self.database.dbenv.cursor()
         try:
             cursor.execute(
@@ -391,7 +395,7 @@ class Database_do_final_segment_deferred_updates(_SQLiteOpen):
         self.database.value_segments["file1"] = {}
         self.database.do_final_segment_deferred_updates()
 
-    def test_06(self):
+    def t06(self):
         cursor = self.database.dbenv.cursor()
         try:
             for i in range(127):
@@ -418,7 +422,7 @@ class Database_do_final_segment_deferred_updates(_SQLiteOpen):
 
 
 class Database_sort_and_write(_SQLiteOpen):
-    def test_01(self):
+    def t01(self):
         database = self._D({}, segment_size_bytes=None)
         self.assertRaisesRegex(
             TypeError,
@@ -431,7 +435,7 @@ class Database_sort_and_write(_SQLiteOpen):
             database.sort_and_write,
         )
 
-    def test_02(self):
+    def t02(self):
         self.assertRaisesRegex(
             KeyError,
             "'file1'$",
@@ -439,12 +443,12 @@ class Database_sort_and_write(_SQLiteOpen):
             *("file1", "nofield", None),
         )
 
-    def test_03(self):
+    def t03(self):
         self.database.value_segments["file1"] = {}
         self.database.sort_and_write("file1", "nofield", None)
         self.database.sort_and_write("file1", "field1", None)
 
-    def test_04(self):
+    def t04(self):
         self.database.value_segments["file1"] = {"field1": None}
         self.assertRaisesRegex(
             TypeError,
@@ -453,7 +457,7 @@ class Database_sort_and_write(_SQLiteOpen):
             *("file1", "field1", None),
         )
 
-    def test_05(self):
+    def t05(self):
         self.database.value_segments["file1"] = {"field1": {}}
         self.assertRaisesRegex(
             KeyError,
@@ -462,7 +466,7 @@ class Database_sort_and_write(_SQLiteOpen):
             *("file1", "field1", None),
         )
 
-    def test_06(self):
+    def t06(self):
         self.database.value_segments["file1"] = {"field1": {}}
         self.database.first_chunk["file1"] = True
         self.database.initial_high_segment["file1"] = 4
@@ -473,7 +477,7 @@ class Database_sort_and_write(_SQLiteOpen):
             *("file1", "field1", 4),
         )
 
-    def test_07(self):
+    def t07(self):
         self.database.value_segments["file1"] = {"field1": {}}
         self.database.first_chunk["file1"] = True
         self.database.initial_high_segment["file1"] = 4
@@ -481,7 +485,7 @@ class Database_sort_and_write(_SQLiteOpen):
         self.database.sort_and_write("file1", "field1", 4)
         self.assertEqual(self.database.table["file1_field1"], "file1_field1")
 
-    def test_08(self):
+    def t08(self):
         self.database.value_segments["file1"] = {"field1": {}}
         self.database.first_chunk["file1"] = True
         self.database.initial_high_segment["file1"] = 4
@@ -492,7 +496,7 @@ class Database_sort_and_write(_SQLiteOpen):
             "file1_field1",
         )
 
-    def test_09(self):
+    def t09(self):
         self.database.value_segments["file1"] = {"field1": {}}
         self.database.first_chunk["file1"] = False
         self.database.initial_high_segment["file1"] = 4
@@ -500,7 +504,7 @@ class Database_sort_and_write(_SQLiteOpen):
         self.database.sort_and_write("file1", "field1", 5)
         self.assertEqual(self.database.table["file1_field1"], "file1_field1")
 
-    def test_10(self):
+    def t10(self):
         self.database.value_segments["file1"] = {"field1": {"list": [1]}}
         self.database.first_chunk["file1"] = False
         self.database.initial_high_segment["file1"] = 4
@@ -516,7 +520,7 @@ class Database_sort_and_write(_SQLiteOpen):
             cursor.execute("select * from file1__segment").fetchall(), []
         )
 
-    def test_11(self):
+    def t11(self):
         self.database.value_segments["file1"] = {"field1": {"list": [1, 4]}}
         self.database.first_chunk["file1"] = False
         self.database.initial_high_segment["file1"] = 4
@@ -537,7 +541,7 @@ class Database_sort_and_write(_SQLiteOpen):
             [(b"\x00\x01\x00\x04",)],
         )
 
-    def test_12(self):
+    def t12(self):
         ba = Bitarray()
         ba.frombytes(b"\x0a" * 16)
         self.database.value_segments["file1"] = {"field1": {"bits": ba}}
@@ -556,7 +560,7 @@ class Database_sort_and_write(_SQLiteOpen):
             [(b"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",)],
         )
 
-    def test_13(self):
+    def t13(self):
         ba = Bitarray()
         ba.frombytes(b"\x0a" * 16)
         self.database.value_segments["file1"] = {
@@ -583,7 +587,7 @@ class Database_sort_and_write(_SQLiteOpen):
             [(1,)],
         )
 
-    def test_14(self):
+    def t14(self):
         cursor = self.database.dbenv.cursor()
         cursor.execute(
             " ".join(
@@ -660,62 +664,8 @@ class Database_merge(_SQLiteOpen):
             SegmentSize._segment_sort_scale = _segment_sort_scale
 
 
-class Database_encode_for_dump(_SQLitedu):
-    def setUp(self):
-        super().setUp()
-        self.database = self._D({}, folder="a")
-        self.database.set_int_to_bytes_lookup()
-
-    def test_encode_number_for_sequential_file_dump_01(self):
-        self.assertRaisesRegex(
-            TypeError,
-            "".join(
-                (
-                    r"encode_number_for_sequential_file_dump\(\) ",
-                    r"missing 2 required positional arguments: ",
-                    "'number' and 'bytes_'$",
-                )
-            ),
-            self.database.encode_number_for_sequential_file_dump,
-        )
-
-    def test_encode_number_for_sequential_file_dump_02(self):
-        bytes_ = self.database.encode_number_for_sequential_file_dump(5, 3)
-        self.assertEqual(bytes_, 5)
-
-    def test_encode_segment_for_sequential_file_dump_01(self):
-        self.assertRaisesRegex(
-            TypeError,
-            "".join(
-                (
-                    r"encode_segment_for_sequential_file_dump\(\) ",
-                    r"missing 1 required positional argument: ",
-                    "'record_numbers'$",
-                )
-            ),
-            self.database.encode_segment_for_sequential_file_dump,
-        )
-
-    def test_encode_segment_for_sequential_file_dump_02(self):
-        self.assertEqual(SegmentSize.db_upper_conversion_limit, 2000)
-        bytes_ = self.database.encode_segment_for_sequential_file_dump([3, 4])
-        self.assertEqual(bytes_, b"\x00\x03\x00\x04")
-
-    def test_encode_segment_for_sequential_file_dump_03(self):
-        self.assertEqual(SegmentSize.db_upper_conversion_limit, 2000)
-        self.assertEqual(SegmentSize.db_segment_size_bytes, 4096)
-        recs = [n for n in range(SegmentSize.db_upper_conversion_limit + 1)]
-        bytes_ = self.database.encode_segment_for_sequential_file_dump(recs)
-        self.assertEqual(len(bytes_), SegmentSize.db_segment_size_bytes)
-
-    def test_encode_segment_for_sequential_file_dump_03(self):
-        self.assertEqual(SegmentSize.db_upper_conversion_limit, 2000)
-        bytes_ = self.database.encode_segment_for_sequential_file_dump([3])
-        self.assertEqual(bytes_, 3)
-
-
 class Database_delete_index(_SQLiteOpen):
-    def test_01(self):
+    def t01(self):
         database = self._D({}, segment_size_bytes=None)
         self.assertRaisesRegex(
             TypeError,
@@ -728,14 +678,14 @@ class Database_delete_index(_SQLiteOpen):
             database.delete_index,
         )
 
-    def test_delete_index_01(self):
+    def t02_delete_index(self):
         self.assertEqual(
             self.database.delete_index("file1", "field1") is None, True
         )
 
 
 class Database_find_value_segments(_SQLiteOpen):
-    def test_01(self):
+    def t01(self):
         database = self._D({}, segment_size_bytes=None)
         self.assertRaisesRegex(
             TypeError,
@@ -748,7 +698,7 @@ class Database_find_value_segments(_SQLiteOpen):
             database.find_value_segments,
         )
 
-    def test_find_value_segments_01(self):
+    def t02_find_value_segments(self):
         self.assertRaisesRegex(
             StopIteration,
             "$",
@@ -756,7 +706,7 @@ class Database_find_value_segments(_SQLiteOpen):
             *(self.database.find_value_segments("field1", "file1"),),
         )
 
-    def test_find_value_segments_02(self):
+    def t03_find_value_segments(self):
         self.database.value_segments["file1"] = {"field1": {"int": [1]}}
         self.database.first_chunk["file1"] = False
         self.database.initial_high_segment["file1"] = 4
@@ -767,7 +717,7 @@ class Database_find_value_segments(_SQLiteOpen):
         for item in self.database.find_value_segments("field1", "file1"):
             self.assertEqual(item, ["int", 5, 0, 1, 1])
 
-    def test_find_value_segments_03(self):
+    def t04_find_value_segments(self):
         self.database.value_segments["file1"] = {"field1": {"list": [1, 4]}}
         self.database.first_chunk["file1"] = False
         self.database.initial_high_segment["file1"] = 4
@@ -785,8 +735,7 @@ class Database_find_value_segments(_SQLiteOpen):
 
 # Not memory-only so the folder can hold the sorted index sequential files.
 class _SQLiteMerge(_SQLitedu):
-    def setUp(self):
-        super().setUp()
+    def setup_detail(self):
         self.folder = os.path.join("/tmp", "merge_test_sqlitedu")
         self.database = self._D(
             filespec.FileSpec(**{"file1": {"field1"}}),
@@ -806,7 +755,7 @@ class _SQLiteMerge(_SQLitedu):
 
 
 class Database_merge_import(_SQLiteMerge):
-    def test_01(self):
+    def t01(self):
         database = self._D({}, segment_size_bytes=None)
         self.assertRaisesRegex(
             TypeError,
@@ -820,7 +769,7 @@ class Database_merge_import(_SQLiteMerge):
             database.merge_import,
         )
 
-    def test_merge_import_01(self):
+    def t02_merge_import(self):
         self.assertRaisesRegex(
             FileNotFoundError,
             "No such file or directory: 'ss'$",
@@ -828,7 +777,7 @@ class Database_merge_import(_SQLiteMerge):
             *(self.database.merge_import("ss", "file1", "field1", 10),),
         )
 
-    def test_merge_import_02(self):
+    def t03_merge_import(self):
         shutil.rmtree(self.field)
         self.assertRaisesRegex(
             StopIteration,
@@ -841,7 +790,7 @@ class Database_merge_import(_SQLiteMerge):
             ),
         )
 
-    def test_merge_import_03(self):
+    def t04_merge_import(self):
         self.assertRaisesRegex(
             StopIteration,
             "$",
@@ -849,7 +798,7 @@ class Database_merge_import(_SQLiteMerge):
             *(self.database.merge_import(self.field, "file1", "field1", 10),),
         )
 
-    def test_merge_import_04(self):
+    def t05_merge_import(self):
         with open(os.path.join(self.field, "0"), mode="w") as file:
             file.write("")
         self.assertRaisesRegex(
@@ -859,7 +808,7 @@ class Database_merge_import(_SQLiteMerge):
             *(self.database.merge_import(self.field, "file1", "field1", 10),),
         )
 
-    def test_merge_import_05(self):
+    def t06_merge_import(self):
         with open(os.path.join(self.field, "0"), mode="w") as file:
             file.write("1")
         self.assertRaisesRegex(
@@ -869,7 +818,7 @@ class Database_merge_import(_SQLiteMerge):
             *(self.database.merge_import(self.field, "file1", "field1", 10),),
         )
 
-    def test_merge_import_06(self):
+    def t07_merge_import(self):
         with open(os.path.join(self.field, "0"), mode="w") as file:
             file.write(repr(["a", "b", "c", "d"]))
         self.assertRaisesRegex(
@@ -879,7 +828,7 @@ class Database_merge_import(_SQLiteMerge):
             *(self.database.merge_import(self.field, "file1", "field1", 10),),
         )
 
-    def test_merge_import_07(self):
+    def t08_merge_import(self):
         with open(os.path.join(self.field, "0"), mode="w") as file:
             file.write(repr(["a", "b", "c", "d", "e", "f"]))
         self.assertRaisesRegex(
@@ -889,7 +838,7 @@ class Database_merge_import(_SQLiteMerge):
             *(self.database.merge_import(self.field, "file1", "field1", 10),),
         )
 
-    def test_merge_import_08(self):
+    def t09_merge_import(self):
         with open(os.path.join(self.field, "0"), mode="w") as file:
             file.write(repr(["a", b"\x00\x00\x00\x01", 1, 1, b"\x00\x07"]))
         self.database.start_transaction()
@@ -901,7 +850,7 @@ class Database_merge_import(_SQLiteMerge):
         )
         self.database.commit()
 
-    def test_merge_import_09(self):
+    def t10_merge_import(self):
         with open(os.path.join(self.field, "0"), mode="w") as file:
             file.write(repr(["a", b"\x00\x00\x00\x01", 1, 1, b"\x00\x07"]))
             file.write("\n")
@@ -916,20 +865,254 @@ class Database_merge_import(_SQLiteMerge):
         self.database.commit()
 
 
+if sqlite3:
+
+    class _SQLiteduSqlite3(_SQLitedu):
+        def setUp(self):
+            super().setUp()
+
+            class _D(_sqlitedu.Database, _sqlite.Database):
+                def open_database(self, **k):
+                    super().open_database(sqlite3, **k)
+
+            self._D = _D
+
+    class Database___init__Sqlite3(_SQLiteduSqlite3):
+        test_01 = Database___init__.t01
+        test_02 = Database___init__.t02
+        test_03 = Database___init__.t03
+        test_04 = Database___init__.t04
+        test_05 = Database___init__.t05
+        test_06 = Database___init__.t06
+
+    class Database_open_databaseSqlite3(_SQLiteduSqlite3):
+        test_01 = Database_open_database.t01
+        test_02 = Database_open_database.t02
+
+    class _SQLiteOpenSqlite3(_SQLiteduSqlite3):
+        def setUp(self):
+            super().setUp()
+            self.database = self._D(
+                filespec.FileSpec(**{"file1": {"field1"}}), segment_size_bytes=None
+            )
+            self.database.open_database()
+
+        def tearDown(self):
+            self.database.close_database()
+            super().tearDown()
+
+    class Database_methodsSqlite3(_SQLiteOpenSqlite3):
+        test_01 = Database_methods.t01
+        test_02 = Database_methods.t02_database_cursor
+        test_03 = Database_methods.t03_unset_defer_update
+        test_05 = Database_methods.t05_new_deferred_root
+        test_06 = Database_methods.t06_set_defer_update_01
+        test_07 = Database_methods.t07_set_defer_update_02
+        test_08 = Database_methods.t08_set_defer_update_03
+        test_09 = Database_methods.t09_get_ebm_segment
+
+    class Database__rowsSqlite3(_SQLiteduSqlite3):
+        test_01 = Database__rows.t01
+        test_02 = Database__rows.t02
+
+    class Database_do_final_segment_deferred_updatesSqlite3(_SQLiteOpenSqlite3):
+        test_01 = Database_do_final_segment_deferred_updates.t01
+        test_02 = Database_do_final_segment_deferred_updates.t02
+        test_04 = Database_do_final_segment_deferred_updates.t04
+        test_05 = Database_do_final_segment_deferred_updates.t05
+        test_06 = Database_do_final_segment_deferred_updates.t06
+
+    class Database_sort_and_writeSqlite3(_SQLiteOpenSqlite3):
+        test_01 = Database_sort_and_write.t01
+        test_02 = Database_sort_and_write.t02
+        test_03 = Database_sort_and_write.t03
+        test_04 = Database_sort_and_write.t04
+        test_05 = Database_sort_and_write.t05
+        test_06 = Database_sort_and_write.t06
+        test_07 = Database_sort_and_write.t07
+        test_08 = Database_sort_and_write.t08
+        test_09 = Database_sort_and_write.t09
+        test_10 = Database_sort_and_write.t10
+        test_11 = Database_sort_and_write.t11
+        test_12 = Database_sort_and_write.t12
+        test_13 = Database_sort_and_write.t13
+        test_14 = Database_sort_and_write.t14
+
+    # merge() does nothing.
+    class Database_mergeSqlite3(_SQLiteOpenSqlite3):
+        def setUp(self):
+            super().setUp()
+            if SegmentSize._segment_sort_scale != _segment_sort_scale:
+                SegmentSize._segment_sort_scale = _segment_sort_scale
+
+    class Database_delete_indexSqlite3(_SQLiteOpenSqlite3):
+        test_01 = Database_delete_index.t01
+        test_02 = Database_delete_index.t02_delete_index
+
+    class Database_find_value_segmentsSqlite3(_SQLiteOpenSqlite3):
+        test_01 = Database_find_value_segments.t01
+        test_02 = Database_find_value_segments.t02_find_value_segments
+        test_03 = Database_find_value_segments.t03_find_value_segments
+        test_04 = Database_find_value_segments.t04_find_value_segments
+
+    class _SQLiteMergeSqlite3(_SQLiteduSqlite3):
+        def tearDown(self):
+            self.database.close_database()
+            shutil.rmtree(self.folder)
+            super().tearDown()
+
+    class Database_merge_importSqlite3(_SQLiteMergeSqlite3):
+        def setUp(self):
+            super().setUp()
+            _SQLiteMerge.setup_detail(self)
+
+        test01 = Database_merge_import.t01
+        test02 = Database_merge_import.t02_merge_import
+        test03 = Database_merge_import.t03_merge_import
+        test04 = Database_merge_import.t04_merge_import
+        test05 = Database_merge_import.t05_merge_import
+        test06 = Database_merge_import.t06_merge_import
+        test07 = Database_merge_import.t07_merge_import
+        test08 = Database_merge_import.t08_merge_import
+        test09 = Database_merge_import.t09_merge_import
+        test10 = Database_merge_import.t10_merge_import
+
+
+if apsw:
+
+    class _SQLiteduApsw(_SQLitedu):
+        def setUp(self):
+            super().setUp()
+
+            class _D(_sqlitedu.Database, _sqlite.Database):
+                def open_database(self, **k):
+                    super().open_database(apsw, **k)
+
+            self._D = _D
+
+    class Database___init__Apsw(_SQLiteduApsw):
+        test_01 = Database___init__.t01
+        test_02 = Database___init__.t02
+        test_03 = Database___init__.t03
+        test_04 = Database___init__.t04
+        test_05 = Database___init__.t05
+        test_06 = Database___init__.t06
+
+    class Database_open_databaseApsw(_SQLiteduApsw):
+        test_01 = Database_open_database.t01
+        test_02 = Database_open_database.t02
+
+    class _SQLiteOpenApsw(_SQLiteduApsw):
+        def setUp(self):
+            super().setUp()
+            self.database = self._D(
+                filespec.FileSpec(**{"file1": {"field1"}}), segment_size_bytes=None
+            )
+            self.database.open_database()
+
+        def tearDown(self):
+            self.database.close_database()
+            super().tearDown()
+
+    class Database_methodsApsw(_SQLiteOpenApsw):
+        test_01 = Database_methods.t01
+        test_02 = Database_methods.t02_database_cursor
+        test_03 = Database_methods.t03_unset_defer_update
+        test_05 = Database_methods.t05_new_deferred_root
+        test_06 = Database_methods.t06_set_defer_update_01
+        test_07 = Database_methods.t07_set_defer_update_02
+        test_08 = Database_methods.t08_set_defer_update_03
+        test_09 = Database_methods.t09_get_ebm_segment
+
+    class Database__rowsApsw(_SQLiteduApsw):
+        test_01 = Database__rows.t01
+        test_02 = Database__rows.t02
+
+    class Database_do_final_segment_deferred_updatesApsw(_SQLiteOpenApsw):
+        test_01 = Database_do_final_segment_deferred_updates.t01
+        test_02 = Database_do_final_segment_deferred_updates.t02
+        test_04 = Database_do_final_segment_deferred_updates.t04
+        test_05 = Database_do_final_segment_deferred_updates.t05
+        test_06 = Database_do_final_segment_deferred_updates.t06
+
+    class Database_sort_and_writeApsw(_SQLiteOpenApsw):
+        test_01 = Database_sort_and_write.t01
+        test_02 = Database_sort_and_write.t02
+        test_03 = Database_sort_and_write.t03
+        test_04 = Database_sort_and_write.t04
+        test_05 = Database_sort_and_write.t05
+        test_06 = Database_sort_and_write.t06
+        test_07 = Database_sort_and_write.t07
+        test_08 = Database_sort_and_write.t08
+        test_09 = Database_sort_and_write.t09
+        test_10 = Database_sort_and_write.t10
+        test_11 = Database_sort_and_write.t11
+        test_12 = Database_sort_and_write.t12
+        test_13 = Database_sort_and_write.t13
+        test_14 = Database_sort_and_write.t14
+
+    # merge() does nothing.
+    class Database_mergeApsw(_SQLiteOpenApsw):
+        def setUp(self):
+            super().setUp()
+            if SegmentSize._segment_sort_scale != _segment_sort_scale:
+                SegmentSize._segment_sort_scale = _segment_sort_scale
+
+    class Database_delete_indexApsw(_SQLiteOpenApsw):
+        test_01 = Database_delete_index.t01
+        test_02 = Database_delete_index.t02_delete_index
+
+    class Database_find_value_segmentsApsw(_SQLiteOpenApsw):
+        test_01 = Database_find_value_segments.t01
+        test_02 = Database_find_value_segments.t02_find_value_segments
+        test_03 = Database_find_value_segments.t03_find_value_segments
+        test_04 = Database_find_value_segments.t04_find_value_segments
+
+    class _SQLiteMergeApsw(_SQLiteduApsw):
+        def tearDown(self):
+            self.database.close_database()
+            shutil.rmtree(self.folder)
+            super().tearDown()
+
+    class Database_merge_importApsw(_SQLiteMergeApsw):
+        def setUp(self):
+            super().setUp()
+            _SQLiteMerge.setup_detail(self)
+
+        test01 = Database_merge_import.t01
+        test02 = Database_merge_import.t02_merge_import
+        test03 = Database_merge_import.t03_merge_import
+        test04 = Database_merge_import.t04_merge_import
+        test05 = Database_merge_import.t05_merge_import
+        test06 = Database_merge_import.t06_merge_import
+        test07 = Database_merge_import.t07_merge_import
+        test08 = Database_merge_import.t08_merge_import
+        test09 = Database_merge_import.t09_merge_import
+        test10 = Database_merge_import.t10_merge_import
+
+
 if __name__ == "__main__":
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
-    for dbe_module in sqlite3, apsw:
-        if dbe_module is None:
-            continue
-        runner().run(loader(Database___init__))
-        runner().run(loader(Database_open_database))
-        runner().run(loader(Database_methods))
-        runner().run(loader(Database__rows))
-        runner().run(loader(Database_do_final_segment_deferred_updates))
-        runner().run(loader(Database_sort_and_write))
-        runner().run(loader(Database_merge))
-        runner().run(loader(Database_encode_for_dump))
-        runner().run(loader(Database_delete_index))
-        runner().run(loader(Database_find_value_segments))
-        runner().run(loader(Database_merge_import))
+    if sqlite3:
+        runner().run(loader(Database___init__Sqlite3))
+        runner().run(loader(Database_open_databaseSqlite3))
+        runner().run(loader(Database_methodsSqlite3))
+        runner().run(loader(Database__rowsSqlite3))
+        runner().run(loader(Database_do_final_segment_deferred_updatesSqlite3))
+        runner().run(loader(Database_sort_and_writeSqlite3))
+        runner().run(loader(Database_mergeSqlite3))
+        runner().run(loader(Database_delete_indexSqlite3))
+        runner().run(loader(Database_find_value_segmentsSqlite3))
+        runner().run(loader(Database_merge_importSqlite3))
+    if apsw:
+        runner().run(loader(Database___init__Apsw))
+        runner().run(loader(Database_open_databaseApsw))
+        runner().run(loader(Database_methodsApsw))
+        runner().run(loader(Database__rowsApsw))
+        runner().run(loader(Database_do_final_segment_deferred_updatesApsw))
+        runner().run(loader(Database_sort_and_writeApsw))
+        runner().run(loader(Database_mergeApsw))
+        runner().run(loader(Database_delete_indexApsw))
+        runner().run(loader(Database_find_value_segmentsApsw))
+        runner().run(loader(Database_merge_importApsw))

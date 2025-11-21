@@ -12,22 +12,24 @@ except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     unqlitedu_database = None
 
 
-class UnqliteduDatabase(unittest.TestCase):
-    def test__assumptions(self):
-        msg = "Failure of this test invalidates all other tests"
-        self.assertRaisesRegex(
-            TypeError,
-            "".join(
-                (
-                    r"__init__\(\) missing 1 required positional argument: ",
-                    "'specification'$",
-                )
-            ),
-            unqlitedu_database.Database,
-        )
-        self.assertIsInstance(
-            unqlitedu_database.Database({}), unqlitedu_database.Database
-        )
+if unqlitedu_database is not None:
+
+    class UnqliteduDatabase(unittest.TestCase):
+        def test__assumptions(self):
+            msg = "Failure of this test invalidates all other tests"
+            self.assertRaisesRegex(
+                TypeError,
+                "".join(
+                    (
+                        r"__init__\(\) missing 1 required positional argument: ",
+                        "'specification'$",
+                    )
+                ),
+                unqlitedu_database.Database,
+            )
+            self.assertIsInstance(
+                unqlitedu_database.Database({}), unqlitedu_database.Database
+            )
 
 
 if __name__ == "__main__":

@@ -12,22 +12,24 @@ except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     bsddb3du_database = None
 
 
-class Bsddb3duDatabase(unittest.TestCase):
-    def test__assumptions(self):
-        msg = "Failure of this test invalidates all other tests"
-        self.assertRaisesRegex(
-            TypeError,
-            "".join(
-                (
-                    r"__init__\(\) missing 1 required positional argument: ",
-                    "'specification'$",
-                )
-            ),
-            bsddb3du_database.Database,
-        )
-        self.assertIsInstance(
-            bsddb3du_database.Database({}), bsddb3du_database.Database
-        )
+if bsddb3du_database is not None:
+
+    class Bsddb3duDatabase(unittest.TestCase):
+        def test__assumptions(self):
+            msg = "Failure of this test invalidates all other tests"
+            self.assertRaisesRegex(
+                TypeError,
+                "".join(
+                    (
+                        r"__init__\(\) missing 1 required positional argument: ",
+                        "'specification'$",
+                    )
+                ),
+                bsddb3du_database.Database,
+            )
+            self.assertIsInstance(
+                bsddb3du_database.Database({}), bsddb3du_database.Database
+            )
 
 
 if __name__ == "__main__":

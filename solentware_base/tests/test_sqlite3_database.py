@@ -12,26 +12,28 @@ except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     sqlite3_database = None
 
 
-class SqliteDatabase(unittest.TestCase):
-    def test__assumptions(self):
-        msg = "Failure of this test invalidates all other tests"
-        self.assertRaisesRegex(
-            TypeError,
-            "".join(
-                (
-                    r"__init__\(\) missing 1 required positional argument: ",
-                    "'specification'$",
-                )
-            ),
-            sqlite3_database.Database,
-        )
-        self.assertIsInstance(
-            sqlite3_database.Database({}),
-            sqlite3_database.Database,
-        )
+if sqlite3_database is not None:
 
-    def test_open_database(self):
-        self.assertEqual(sqlite3_database.Database({}).open_database(), None)
+    class SqliteDatabase(unittest.TestCase):
+        def test__assumptions(self):
+            msg = "Failure of this test invalidates all other tests"
+            self.assertRaisesRegex(
+                TypeError,
+                "".join(
+                    (
+                        r"__init__\(\) missing 1 required positional argument: ",
+                        "'specification'$",
+                    )
+                ),
+                sqlite3_database.Database,
+            )
+            self.assertIsInstance(
+                sqlite3_database.Database({}),
+                sqlite3_database.Database,
+            )
+
+        def test_open_database(self):
+            self.assertEqual(sqlite3_database.Database({}).open_database(), None)
 
 
 if __name__ == "__main__":

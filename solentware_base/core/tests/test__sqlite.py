@@ -2,7 +2,7 @@
 # Copyright 2019 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""_sqlite _database tests"""
+"""_sqlite _database tests with apsw and sqlite3 interfaces."""
 
 import unittest
 import os
@@ -46,7 +46,7 @@ class _SQLite(unittest.TestCase):
 
 
 class Database___init__(_SQLite):
-    def test_01(self):
+    def t01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -59,7 +59,7 @@ class Database___init__(_SQLite):
             *(None, None, None, None, None),
         )
 
-    def test_02(self):
+    def t02(self):
         # Matches 'type object' before Python 3.9 but class name otherwise.
         t = r"(?:type object|solentware_base\.core\.filespec\.FileSpec\(\))"
         self.assertRaisesRegex(
@@ -77,7 +77,7 @@ class Database___init__(_SQLite):
         self.assertIsInstance(self._D({}), self._D)
         self.assertIsInstance(self._D(filespec.FileSpec()), self._D)
 
-    def test_03(self):
+    def t03(self):
         self.assertRaisesRegex(
             _sqlite.DatabaseError,
             "".join(("Database folder name {} is not valid$",)),
@@ -86,7 +86,7 @@ class Database___init__(_SQLite):
             **dict(folder={}),
         )
 
-    def test_04(self):
+    def t04(self):
         database = self._D({}, folder="a")
         self.assertIsInstance(database, self._D)
         self.assertEqual(os.path.basename(database.home_directory), "a")
@@ -101,11 +101,13 @@ class Database___init__(_SQLite):
         self.assertEqual(database.index, {})
         self.assertEqual(database.segment_table, {})
         self.assertEqual(database.ebm_control, {})
-        self.assertEqual(SegmentSize.db_segment_size_bytes, 4096)
+        # Following test may not pass when run by unittest discovery
+        # because other test modules may change the tested value.
+        # self.assertEqual(SegmentSize.db_segment_size_bytes, 4096)
         database.set_segment_size()
         self.assertEqual(SegmentSize.db_segment_size_bytes, 4000)
 
-    def test_05(self):
+    def t05(self):
         database = self._D({})
         self.assertEqual(database.home_directory, None)
         self.assertEqual(database.database_file, None)
@@ -113,7 +115,7 @@ class Database___init__(_SQLite):
     # This combination of folder and segment_size_bytes arguments is used for
     # unittests, except for one to see a non-memory database with a realistic
     # segment size.
-    def test_06(self):
+    def t06(self):
         ssb = self._ssb
         database = self._D({}, segment_size_bytes=None)
         self.assertEqual(database.segment_size_bytes, None)
@@ -129,19 +131,19 @@ class Database_transaction_methods(_SQLite):
         super().setUp()
         self.database = self._D({})
 
-    def test_01_start_transaction(self):
+    def t01_start_transaction(self):
         self.assertEqual(self.database.dbenv, None)
         self.database.start_transaction()
 
-    def test_02_backout(self):
+    def t02_backout(self):
         self.assertEqual(self.database.dbenv, None)
         self.database.backout()
 
-    def test_03_commit(self):
+    def t03_commit(self):
         self.assertEqual(self.database.dbenv, None)
         self.database.commit()
 
-    def test_04(self):
+    def t04(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -183,7 +185,7 @@ class DatabaseInstance(_SQLite):
         super().setUp()
         self.database = self._D({})
 
-    def test_01_validate_segment_size_bytes(self):
+    def t01_validate_segment_size_bytes(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -211,7 +213,7 @@ class DatabaseInstance(_SQLite):
         )
         self.assertEqual(self.database._validate_segment_size_bytes(1), None)
 
-    def test_02_encode_record_number(self):
+    def t02_encode_record_number(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -224,7 +226,7 @@ class DatabaseInstance(_SQLite):
         )
         self.assertEqual(self.database.encode_record_number(1), "1")
 
-    def test_03_decode_record_number(self):
+    def t03_decode_record_number(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -237,7 +239,7 @@ class DatabaseInstance(_SQLite):
         )
         self.assertEqual(self.database.decode_record_number("1"), 1)
 
-    def test_04_encode_record_selector(self):
+    def t04_encode_record_selector(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -250,7 +252,7 @@ class DatabaseInstance(_SQLite):
         )
         self.assertEqual(self.database.encode_record_selector("a"), "a")
 
-    def test_05_make_recordset(self):
+    def t05_make_recordset(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -269,7 +271,7 @@ class DatabaseInstance(_SQLite):
 
 # Memory databases are used for these tests.
 class Database_open_database(_SQLite):
-    def test_01(self):
+    def t01(self):
         self.database = self._D({})
         self.assertRaisesRegex(
             TypeError,
@@ -305,60 +307,60 @@ class Database_open_database(_SQLite):
             *(None, None),
         )
 
-    def test_02(self):
+    def t02(self):
         self.database = self._D({})
-        self.database.open_database(dbe_module)
+        self.open_database_temp(self.database)
         self.assertEqual(SegmentSize.db_segment_size_bytes, 4000)
         self.assertEqual(self.database.home_directory, None)
         self.assertEqual(self.database.database_file, None)
-        self.assertIsInstance(self.database.dbenv, dbe_module.Connection)
+        self.assertIsInstance(self.database.dbenv, self.get_connection_class())
 
-    def test_03(self):
+    def t03(self):
         self.database = self._D({}, segment_size_bytes=None)
-        self.database.open_database(dbe_module)
+        self.open_database_temp(self.database)
         self.assertEqual(SegmentSize.db_segment_size_bytes, 16)
         self.assertEqual(self.database.home_directory, None)
         self.assertEqual(self.database.database_file, None)
-        self.assertIsInstance(self.database.dbenv, dbe_module.Connection)
+        self.assertIsInstance(self.database.dbenv, self.get_connection_class())
 
-    def test_04_close_database(self):
+    def t04_close_database(self):
         self.database = self._D({}, segment_size_bytes=None)
-        self.database.open_database(dbe_module)
+        self.open_database_temp(self.database)
         self.database.close_database()
         self.assertEqual(self.database.dbenv, None)
         self.database.close_database()
         self.assertEqual(self.database.dbenv, None)
 
-    def test_05_close_database_contexts(self):
+    def t05_close_database_contexts(self):
         self.database = self._D({}, segment_size_bytes=None)
-        self.database.open_database(dbe_module)
+        self.open_database_temp(self.database)
         self.database.close_database_contexts()
         self.assertEqual(self.database.dbenv, None)
         self.database.close_database_contexts()
         self.assertEqual(self.database.dbenv, None)
 
-    def test_06(self):
+    def t06(self):
         self.database = self._D({"file1": {"field1"}})
-        self.database.open_database(dbe_module)
+        self.open_database_temp(self.database)
         self.check_specification()
 
-    def test_07(self):
+    def t07(self):
         self.database = self._D(filespec.FileSpec(**{"file1": {"field1"}}))
-        self.database.open_database(dbe_module)
+        self.open_database_temp(self.database)
         self.check_specification()
 
-    def test_08(self):
+    def t08(self):
         self.database = self._D(
             filespec.FileSpec(**{"file1": {"field1"}, "file2": {"field2"}})
         )
-        self.database.open_database(dbe_module, files={"file1"})
+        self.open_database_temp(self.database, files={"file1"})
         self.check_specification()
 
-    def test_09(self):
+    def t09(self):
         self.database = self._D(
             filespec.FileSpec(**{"file1": {"field1"}, "file2": ()})
         )
-        self.database.open_database(dbe_module)
+        self.open_database_temp(self.database)
         self.assertEqual(
             self.database.table,
             {
@@ -388,13 +390,13 @@ class Database_open_database(_SQLite):
             self.assertIsInstance(v, _sqlite.ExistenceBitmapControl)
 
     # Comment in _sqlite.py suggests this method is not needed.
-    def test_12_is_database_file_active(self):
+    def t12_is_database_file_active(self):
         self.database = self._D(
             filespec.FileSpec(**{"file1": {"field1"}, "file2": ()})
         )
         d = self.database
         self.assertEqual(d.is_database_file_active("file1"), False)
-        d.open_database(dbe_module)
+        self.open_database_temp(d)
         self.assertEqual(d.is_database_file_active("file1"), True)
 
     def check_specification(self):
@@ -423,10 +425,10 @@ class Database_open_database(_SQLite):
 # Memory databases cannot be used for these tests.
 class Database_add_field_to_existing_database(_SQLite):
 
-    def test_13_add_field_to_open_database(self):
+    def t13_add_field_to_open_database(self):
         folder = "aaaa"
         database = self._D({"file1": {"field1"}}, folder=folder)
-        database.open_database(dbe_module)
+        self.open_database_temp(database)
         database.close_database()
         database = None
         database = self._D({"file1": {"field1", "newfield"}}, folder=folder)
@@ -438,8 +440,8 @@ class Database_add_field_to_existing_database(_SQLite):
                     "file as defined in this FileSpec$",
                 )
             ),
-            database.open_database,
-            *(dbe_module,),
+            self.open_database_temp,  # database.open_database,
+            *(database,),  # *(dbe_module,),
         )
         shutil.rmtree(folder)
 
@@ -454,25 +456,12 @@ class Database_do_database_task(unittest.TestCase):
     # to the initial value in tearDown().
     # _SQLite does this, but Database_do_database_task is not based on it.
 
-    def setUp(self):
-        self._ssb = SegmentSize.db_segment_size_bytes
-
-        class _ED(_sqlite.Database):
-            def open_database(self, **k):
-                super().open_database(dbe_module, **k)
-
-        class _AD(_ED):
-            def __init__(self, folder, **k):
-                super().__init__({}, folder, **k)
-
-        self._AD = _AD
-
     def tearDown(self):
         self.database = None
         self._AD = None
         SegmentSize.db_segment_size_bytes = self._ssb
 
-    def test_01_do_database_task(self):
+    def t01_do_database_task(self):
         def m(*a, **k):
             pass
 
@@ -500,7 +489,7 @@ class _SQLiteOpen(_SQLite):
 class DatabaseTransactions(_SQLiteOpen):
     # apsw exception is apsw.SQLError
     # sqlite3 exception is sqlite3.OperationalError
-    def test_01(self):
+    def t01(self):
         self.database.start_transaction()
         self.assertRaisesRegex(
             Exception,
@@ -508,17 +497,17 @@ class DatabaseTransactions(_SQLiteOpen):
             self.database.start_transaction,
         )
 
-    def test_02(self):
+    def t02(self):
         self.database.start_transaction()
         self.database.backout()
 
-    def test_03(self):
+    def t03(self):
         self.database.start_transaction()
         self.database.commit()
 
     # apsw exception is apsw.SQLError
     # sqlite3 exception is sqlite3.OperationalError
-    def test_04(self):
+    def t04(self):
         self.assertRaisesRegex(
             Exception,
             "cannot rollback - no transaction is active$",
@@ -527,7 +516,7 @@ class DatabaseTransactions(_SQLiteOpen):
 
     # apsw exception is apsw.SQLError
     # sqlite3 exception is sqlite3.OperationalError
-    def test_05(self):
+    def t05(self):
         self.assertRaisesRegex(
             Exception,
             "cannot commit - no transaction is active$",
@@ -536,7 +525,7 @@ class DatabaseTransactions(_SQLiteOpen):
 
 
 class Database_put_replace_delete(_SQLiteOpen):
-    def test_01(self):
+    def t01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -568,33 +557,33 @@ class Database_put_replace_delete(_SQLiteOpen):
             self.database.delete,
         )
 
-    def test_02_put(self):
+    def t02_put(self):
         recno = self.database.put("file1", None, "new value")
         self.assertEqual(recno, 1)
 
-    def test_03_put(self):
+    def t03_put(self):
         self.assertEqual(self.database.put("file1", 2, "new value"), None)
         recno = self.database.put("file1", None, "new value")
         self.assertEqual(recno, 3)
 
-    def test_04_put(self):
+    def t04_put(self):
         recno = self.database.put("file1", None, "new value")
         self.assertEqual(recno, 1)
         self.assertEqual(self.database.put("file1", 1, "renew value"), None)
         recno = self.database.put("file1", None, "other value")
         self.assertEqual(recno, 2)
 
-    def test_05_replace(self):
+    def t05_replace(self):
         self.assertEqual(
             self.database.replace("file1", 1, "new value", "renew value"), None
         )
 
-    def test_06_delete(self):
+    def t06_delete(self):
         self.assertEqual(self.database.delete("file1", 1, "new value"), None)
 
 
 class Database_methods(_SQLiteOpen):
-    def test_01(self):
+    def t01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -719,19 +708,19 @@ class Database_methods(_SQLiteOpen):
             self.database.get_table_connection,
         )
 
-    def test_02_get_primary_record(self):
+    def t02_get_primary_record(self):
         self.assertEqual(self.database.get_primary_record("file1", None), None)
 
-    def test_03_get_primary_record(self):
+    def t03_get_primary_record(self):
         self.assertEqual(self.database.get_primary_record("file1", 1), None)
 
-    def test_04_get_primary_record(self):
+    def t04_get_primary_record(self):
         self.database.put("file1", None, "new value")
         self.assertEqual(
             self.database.get_primary_record("file1", 1), (1, "new value")
         )
 
-    def test_05_remove_record_from_ebm(self):
+    def t05_remove_record_from_ebm(self):
         self.assertRaisesRegex(
             _sqlite.DatabaseError,
             "Existence bit map for segment does not exist$",
@@ -739,24 +728,24 @@ class Database_methods(_SQLiteOpen):
             *("file1", 2),
         )
 
-    def test_06_remove_record_from_ebm(self):
+    def t06_remove_record_from_ebm(self):
         self.assertEqual(self.database.add_record_to_ebm("file1", 2), (0, 2))
         self.assertEqual(
             self.database.remove_record_from_ebm("file1", 2), (0, 2)
         )
 
-    def test_07_add_record_to_ebm(self):
+    def t07_add_record_to_ebm(self):
         self.assertEqual(self.database.add_record_to_ebm("file1", 2), (0, 2))
         self.assertEqual(self.database.add_record_to_ebm("file1", 4), (0, 4))
 
-    def test_08_get_high_record(self):
+    def t08_get_high_record(self):
         self.assertEqual(self.database.get_high_record_number("file1"), None)
 
-    def test_09_get_segment_records(self):
+    def t09_get_segment_records(self):
         self.database.insert_segment_records((12,), "file1")
         self.assertEqual(self.database.get_segment_records(1, "file1"), 12)
 
-    def test_10_get_segment_records(self):
+    def t10_get_segment_records(self):
         self.database.insert_segment_records((12,), "file1")
         self.assertRaisesRegex(
             _sqlite.DatabaseError,
@@ -765,32 +754,32 @@ class Database_methods(_SQLiteOpen):
             *(2, "file1"),
         )
 
-    def test_11_set_segment_records(self):
+    def t11_set_segment_records(self):
         self.database.insert_segment_records((12,), "file1")
         self.database.set_segment_records((13, 1), "file1")
         self.assertEqual(self.database.get_segment_records(1, "file1"), 13)
 
-    def test_12_delete_segment_records(self):
+    def t12_delete_segment_records(self):
         self.database.delete_segment_records((12,), "file1")
 
-    def test_13_insert_segment_records(self):
+    def t13_insert_segment_records(self):
         self.assertEqual(
             self.database.insert_segment_records((12,), "file1"), 1
         )
 
-    def test_14_recordset_record_number(self):
+    def t14_recordset_record_number(self):
         self.assertIsInstance(
             self.database.recordlist_record_number("file1"),
             recordset.RecordList,
         )
 
-    def test_15_recordset_record_number(self):
+    def t15_recordset_record_number(self):
         self.assertIsInstance(
             self.database.recordlist_record_number("file1", key=500),
             recordset.RecordList,
         )
 
-    def test_16_recordset_record_number(self):
+    def t16_recordset_record_number(self):
         cursor = self.database.dbenv.cursor()
         statement = " ".join(
             (
@@ -826,13 +815,13 @@ class Database_methods(_SQLiteOpen):
         self.assertIsInstance(rl, recordset.RecordList)
         self.assertEqual(rl.count_records(), 1)
 
-    def test_17_recordset_record_number_range(self):
+    def t17_recordset_record_number_range(self):
         self.assertIsInstance(
             self.database.recordlist_record_number_range("file1"),
             recordset.RecordList,
         )
 
-    def test_18_recordset_record_number_range(self):
+    def t18_recordset_record_number_range(self):
         self.create_ebm()
         rs = self.database.recordlist_record_number_range(
             "file1", keystart=0, keyend=2000
@@ -848,7 +837,7 @@ class Database_methods(_SQLiteOpen):
             ),
         )
 
-    def test_19_recordset_record_number_range(self):
+    def t19_recordset_record_number_range(self):
         self.create_ebm()
         rs = self.database.recordlist_record_number_range("file1", keystart=10)
         self.assertIsInstance(rs, recordset.RecordList)
@@ -862,7 +851,7 @@ class Database_methods(_SQLiteOpen):
             ),
         )
 
-    def test_20_recordset_record_number_range(self):
+    def t20_recordset_record_number_range(self):
         self.create_ebm()
         rs = self.database.recordlist_record_number_range("file1", keyend=35)
         self.assertIsInstance(rs, recordset.RecordList)
@@ -876,7 +865,7 @@ class Database_methods(_SQLiteOpen):
             ),
         )
 
-    def test_21_recordset_record_number_range(self):
+    def t21_recordset_record_number_range(self):
         self.create_ebm()
         rs = self.database.recordlist_record_number_range(
             "file1", keystart=10, keyend=35
@@ -892,7 +881,7 @@ class Database_methods(_SQLiteOpen):
             ),
         )
 
-    def test_22_recordset_record_number_range(self):
+    def t22_recordset_record_number_range(self):
         self.create_ebm()
         self.create_ebm_extra(2)
         self.create_ebm_extra(3)
@@ -921,7 +910,7 @@ class Database_methods(_SQLiteOpen):
             ),
         )
 
-    def test_23_recordset_record_number_range(self):
+    def t23_recordset_record_number_range(self):
         self.create_ebm()
         self.create_ebm_extra(2)
         self.create_ebm_extra(3)
@@ -932,20 +921,20 @@ class Database_methods(_SQLiteOpen):
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 0)
 
-    def test_24_recordset_ebm(self):
+    def t24_recordset_ebm(self):
         self.assertIsInstance(
             self.database.recordlist_ebm("file1"), recordset.RecordList
         )
 
-    def test_25_recordset_ebm(self):
+    def t25_recordset_ebm(self):
         self.create_ebm()
         self.assertIsInstance(
             self.database.recordlist_ebm("file1"), recordset.RecordList
         )
 
-    def test_26_get_table_connection(self):
+    def t26_get_table_connection(self):
         self.assertIsInstance(
-            self.database.get_table_connection("file1"), dbe_module.Connection
+            self.database.get_table_connection("file1"), self.get_connection_class()
         )
 
     def create_ebm(self):
@@ -992,7 +981,7 @@ class Database_find_values(_SQLiteOpen):
         self.valuespec = ValuesClause()
         self.valuespec.field = "field1"
 
-    def test_01_find_values(self):
+    def t01_find_values(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -1004,64 +993,64 @@ class Database_find_values(_SQLiteOpen):
             self.database.find_values,
         )
 
-    def test_02_find_values(self):
+    def t02_find_values(self):
         self.valuespec.above_value = "b"
         self.valuespec.below_value = "d"
         self.assertEqual(
             [i for i in self.database.find_values(self.valuespec, "file1")], []
         )
 
-    def test_03_find_values(self):
+    def t03_find_values(self):
         self.valuespec.above_value = "b"
         self.valuespec.to_value = "d"
         self.assertEqual(
             [i for i in self.database.find_values(self.valuespec, "file1")], []
         )
 
-    def test_04_find_values(self):
+    def t04_find_values(self):
         self.valuespec.from_value = "b"
         self.valuespec.to_value = "d"
         self.assertEqual(
             [i for i in self.database.find_values(self.valuespec, "file1")], []
         )
 
-    def test_05_find_values(self):
+    def t05_find_values(self):
         self.valuespec.from_value = "b"
         self.valuespec.below_value = "d"
         self.assertEqual(
             [i for i in self.database.find_values(self.valuespec, "file1")], []
         )
 
-    def test_06_find_values(self):
+    def t06_find_values(self):
         self.valuespec.above_value = "b"
         self.assertEqual(
             [i for i in self.database.find_values(self.valuespec, "file1")], []
         )
 
-    def test_07_find_values(self):
+    def t07_find_values(self):
         self.valuespec.from_value = "b"
         self.assertEqual(
             [i for i in self.database.find_values(self.valuespec, "file1")], []
         )
 
-    def test_08_find_values(self):
+    def t08_find_values(self):
         self.valuespec.to_value = "d"
         self.assertEqual(
             [i for i in self.database.find_values(self.valuespec, "file1")], []
         )
 
-    def test_09_find_values(self):
+    def t09_find_values(self):
         self.valuespec.below_value = "d"
         self.assertEqual(
             [i for i in self.database.find_values(self.valuespec, "file1")], []
         )
 
-    def test_10_find_values(self):
+    def t10_find_values(self):
         self.assertEqual(
             [i for i in self.database.find_values(self.valuespec, "file1")], []
         )
 
-    def test_11_find_values(self):
+    def t11_find_values(self):
         cursor = self.database.dbenv.cursor()
         statement = " ".join(
             (
@@ -1082,8 +1071,7 @@ class Database_find_values(_SQLiteOpen):
 
 
 class Database_make_recordset(_SQLiteOpen):
-    def setUp(self):
-        super().setUp()
+    def setup_detail(self):
         segments = (
             b"".join(
                 (
@@ -1188,7 +1176,7 @@ class Database_make_recordset(_SQLiteOpen):
         finally:
             cursor.close()
 
-    def test_01(self):
+    def t01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -1297,61 +1285,61 @@ class Database_make_recordset(_SQLiteOpen):
             self.database.file_records_under,
         )
 
-    def test_02_add_record_to_field_value(self):
+    def t02_add_record_to_field_value(self):
         self.database.add_record_to_field_value(
             "file1", "field1", "indexvalue", 1, 0
         )
 
-    def test_03_add_record_to_field_value(self):
+    def t03_add_record_to_field_value(self):
         self.database.add_record_to_field_value(
             "file1", "field1", "nin", 0, 99
         )
 
-    def test_04_add_record_to_field_value(self):
+    def t04_add_record_to_field_value(self):
         self.database.add_record_to_field_value(
             "file1", "field1", "twy", 0, 99
         )
 
-    def test_05_add_record_to_field_value(self):
+    def t05_add_record_to_field_value(self):
         self.database.add_record_to_field_value(
             "file1", "field1", "aa_o", 0, 99
         )
 
-    def test_06_remove_record_from_field_value(self):
+    def t06_remove_record_from_field_value(self):
         self.database.remove_record_from_field_value(
             "file1", "field1", "indexvalue", 1, 0
         )
 
-    def test_07_remove_record_from_field_value(self):
+    def t07_remove_record_from_field_value(self):
         self.database.remove_record_from_field_value(
             "file1", "field1", "nin", 0, 99
         )
 
-    def test_08_remove_record_from_field_value(self):
+    def t08_remove_record_from_field_value(self):
         self.database.remove_record_from_field_value(
             "file1", "field1", "twy", 0, 68
         )
 
-    def test_09_remove_record_from_field_value(self):
+    def t09_remove_record_from_field_value(self):
         self.database.remove_record_from_field_value(
             "file1", "field1", "bb_o", 0, 68
         )
 
-    def test_10_remove_record_from_field_value(self):
+    def t10_remove_record_from_field_value(self):
         self.database.remove_record_from_field_value(
             "file1", "field1", "tww", 0, 65
         )
 
-    def test_11_remove_record_from_field_value(self):
+    def t11_remove_record_from_field_value(self):
         self.database.remove_record_from_field_value(
             "file1", "field1", "one", 0, 50
         )
 
-    def test_12_populate_segment(self):
+    def t12_populate_segment(self):
         s = self.database.populate_segment(("keyvalue", 2, 1, 3), "file1")
         self.assertIsInstance(s, recordset.RecordsetSegmentInt)
 
-    def test_13_populate_segment(self):
+    def t13_populate_segment(self):
         ss = " ".join(
             (
                 "select field1 , Segment , RecordCount , file1 from",
@@ -1363,14 +1351,14 @@ class Database_make_recordset(_SQLiteOpen):
         )
         self.assertIsInstance(s, recordset.RecordsetSegmentInt)
 
-    def test_14_populate_segment(self):
+    def t14_populate_segment(self):
         s = self.database.populate_segment(
             ("tww", 0, 2, self.keyvalues["tww"]), "file1"
         )
         self.assertIsInstance(s, recordset.RecordsetSegmentList)
         self.assertEqual(s.count_records(), 2)
 
-    def test_15_populate_segment(self):
+    def t15_populate_segment(self):
         ss = " ".join(
             (
                 "select field1 , Segment , RecordCount , file1 from",
@@ -1383,14 +1371,14 @@ class Database_make_recordset(_SQLiteOpen):
         self.assertIsInstance(s, recordset.RecordsetSegmentList)
         self.assertEqual(s.count_records(), 2)
 
-    def test_16_populate_segment(self):
+    def t16_populate_segment(self):
         s = self.database.populate_segment(
             ("c_o", 0, 24, self.keyvalues["c_o"]), "file1"
         )
         self.assertIsInstance(s, recordset.RecordsetSegmentBitarray)
         self.assertEqual(s.count_records(), 24)
 
-    def test_17_populate_segment(self):
+    def t17_populate_segment(self):
         ss = " ".join(
             (
                 "select field1 , Segment , RecordCount , file1 from",
@@ -1403,76 +1391,76 @@ class Database_make_recordset(_SQLiteOpen):
         self.assertIsInstance(s, recordset.RecordsetSegmentBitarray)
         self.assertEqual(s.count_records(), 24)
 
-    def test_18_make_recordset_key_like(self):
+    def t18_make_recordset_key_like(self):
         rs = self.database.recordlist_key_like("file1", "field1")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 0)
 
-    def test_19_make_recordset_key_like(self):
+    def t19_make_recordset_key_like(self):
         rs = self.database.recordlist_key_like("file1", "field1", keylike="z")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 0)
 
-    def test_20_make_recordset_key_like(self):
+    def t20_make_recordset_key_like(self):
         rs = self.database.recordlist_key_like("file1", "field1", keylike="n")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 1)
         self.assertEqual(rs[0].count_records(), 2)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_21_make_recordset_key_like(self):
+    def t21_make_recordset_key_like(self):
         rs = self.database.recordlist_key_like("file1", "field1", keylike="w")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 2)
         self.assertEqual(rs[0].count_records(), 5)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_22_make_recordset_key_like(self):
+    def t22_make_recordset_key_like(self):
         rs = self.database.recordlist_key_like("file1", "field1", keylike="e")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 1)
         self.assertEqual(rs[0].count_records(), 41)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_23_make_recordset_key(self):
+    def t23_make_recordset_key(self):
         rs = self.database.recordlist_key("file1", "field1")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 0)
 
-    def test_24_make_recordset_key(self):
+    def t24_make_recordset_key(self):
         rs = self.database.recordlist_key("file1", "field1", key="one")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 1)
         self.assertEqual(rs[0].count_records(), 1)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentInt)
 
-    def test_25_make_recordset_key(self):
+    def t25_make_recordset_key(self):
         rs = self.database.recordlist_key("file1", "field1", key="tww")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 1)
         self.assertEqual(rs[0].count_records(), 2)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentList)
 
-    def test_26_make_recordset_key(self):
+    def t26_make_recordset_key(self):
         rs = self.database.recordlist_key("file1", "field1", key="a_o")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 1)
         self.assertEqual(rs[0].count_records(), 31)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_27_make_recordset_key_startswith(self):
+    def t27_make_recordset_key_startswith(self):
         rs = self.database.recordlist_key_startswith("file1", "field1")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 0)
 
-    def test_28_make_recordset_key_startswith(self):
+    def t28_make_recordset_key_startswith(self):
         rs = self.database.recordlist_key_startswith(
             "file1", "field1", keystart="ppp"
         )
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 0)
 
-    def test_29_make_recordset_key_startswith(self):
+    def t29_make_recordset_key_startswith(self):
         rs = self.database.recordlist_key_startswith(
             "file1", "field1", keystart="o"
         )
@@ -1480,7 +1468,7 @@ class Database_make_recordset(_SQLiteOpen):
         self.assertEqual(rs[0].count_records(), 1)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentInt)
 
-    def test_30_make_recordset_key_startswith(self):
+    def t30_make_recordset_key_startswith(self):
         rs = self.database.recordlist_key_startswith(
             "file1", "field1", keystart="tw"
         )
@@ -1488,7 +1476,7 @@ class Database_make_recordset(_SQLiteOpen):
         self.assertEqual(rs[0].count_records(), 5)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_31_make_recordset_key_startswith(self):
+    def t31_make_recordset_key_startswith(self):
         rs = self.database.recordlist_key_startswith(
             "file1", "field1", keystart="d"
         )
@@ -1496,21 +1484,21 @@ class Database_make_recordset(_SQLiteOpen):
         self.assertEqual(rs[0].count_records(), 24)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_32_make_recordset_key_range(self):
+    def t32_make_recordset_key_range(self):
         rs = self.database.recordlist_key_range("file1", "field1")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 2)
         self.assertEqual(rs[0].count_records(), 127)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_33_make_recordset_key_range(self):
+    def t33_make_recordset_key_range(self):
         rs = self.database.recordlist_key_range(
             "file1", "field1", ge="ppp", le="qqq"
         )
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 0)
 
-    def test_34_make_recordset_key_range(self):
+    def t34_make_recordset_key_range(self):
         rs = self.database.recordlist_key_range(
             "file1", "field1", ge="n", le="q"
         )
@@ -1519,7 +1507,7 @@ class Database_make_recordset(_SQLiteOpen):
         self.assertEqual(rs[0].count_records(), 2)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_35_make_recordset_key_range(self):
+    def t35_make_recordset_key_range(self):
         rs = self.database.recordlist_key_range(
             "file1", "field1", ge="t", le="tz"
         )
@@ -1528,7 +1516,7 @@ class Database_make_recordset(_SQLiteOpen):
         self.assertEqual(rs[0].count_records(), 5)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_36_make_recordset_key_range(self):
+    def t36_make_recordset_key_range(self):
         rs = self.database.recordlist_key_range(
             "file1", "field1", ge="c", le="cz"
         )
@@ -1537,35 +1525,35 @@ class Database_make_recordset(_SQLiteOpen):
         self.assertEqual(rs[0].count_records(), 40)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_37_make_recordset_key_range(self):
+    def t37_make_recordset_key_range(self):
         rs = self.database.recordlist_key_range("file1", "field1", ge="c")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 2)
         self.assertEqual(rs[0].count_records(), 62)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_38_make_recordset_key_range(self):
+    def t38_make_recordset_key_range(self):
         rs = self.database.recordlist_key_range("file1", "field1", le="cz")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 1)
         self.assertEqual(rs[0].count_records(), 111)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_39_make_recordset_key_range(self):
+    def t39_make_recordset_key_range(self):
         rs = self.database.recordlist_key_range(
             "file1", "field1", ge="ppp", lt="qqq"
         )
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 0)
 
-    def test_40_make_recordset_key_range(self):
+    def t40_make_recordset_key_range(self):
         rs = self.database.recordlist_key_range(
             "file1", "field1", gt="ppp", lt="qqq"
         )
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 0)
 
-    def test_41_make_recordset_key_range(self):
+    def t41_make_recordset_key_range(self):
         rs = self.database.recordlist_key_range(
             "file1", "field1", gt="n", le="q"
         )
@@ -1574,7 +1562,7 @@ class Database_make_recordset(_SQLiteOpen):
         self.assertEqual(rs[0].count_records(), 2)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_42_make_recordset_key_range(self):
+    def t42_make_recordset_key_range(self):
         rs = self.database.recordlist_key_range(
             "file1", "field1", gt="t", le="tz"
         )
@@ -1583,7 +1571,7 @@ class Database_make_recordset(_SQLiteOpen):
         self.assertEqual(rs[0].count_records(), 5)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_43_make_recordset_key_range(self):
+    def t43_make_recordset_key_range(self):
         rs = self.database.recordlist_key_range(
             "file1", "field1", gt="c", lt="cz"
         )
@@ -1592,62 +1580,62 @@ class Database_make_recordset(_SQLiteOpen):
         self.assertEqual(rs[0].count_records(), 40)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_44_make_recordset_key_range(self):
+    def t44_make_recordset_key_range(self):
         rs = self.database.recordlist_key_range("file1", "field1", gt="c")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 2)
         self.assertEqual(rs[0].count_records(), 62)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_45_make_recordset_key_range(self):
+    def t45_make_recordset_key_range(self):
         rs = self.database.recordlist_key_range("file1", "field1", lt="cz")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 1)
         self.assertEqual(rs[0].count_records(), 111)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_46_make_recordset_all(self):
+    def t46_make_recordset_all(self):
         rs = self.database.recordlist_all("file1", "field1")
         self.assertIsInstance(rs, recordset.RecordList)
         self.assertEqual(len(rs), 2)
         self.assertEqual(rs[0].count_records(), 127)
         self.assertIsInstance(rs[0], recordset.RecordsetSegmentBitarray)
 
-    def test_47_unfile_records_under(self):
+    def t47_unfile_records_under(self):
         self.database.unfile_records_under("file1", "field1", "aa_o")
 
-    def test_48_unfile_records_under(self):
+    def t48_unfile_records_under(self):
         self.database.unfile_records_under("file1", "field1", "kkkk")
 
-    def test_49_file_records_under(self):
+    def t49_file_records_under(self):
         rs = self.database.recordlist_all("file1", "field1")
         self.database.file_records_under("file1", "field1", rs, "aa_o")
 
-    def test_50_file_records_under(self):
+    def t50_file_records_under(self):
         rs = self.database.recordlist_all("file1", "field1")
         self.database.file_records_under("file1", "field1", rs, "rrr")
 
-    def test_51_file_records_under(self):
+    def t51_file_records_under(self):
         rs = self.database.recordlist_key("file1", "field1", key="twy")
         self.database.file_records_under("file1", "field1", rs, "aa_o")
 
-    def test_52_file_records_under(self):
+    def t52_file_records_under(self):
         rs = self.database.recordlist_key("file1", "field1", key="twy")
         self.database.file_records_under("file1", "field1", rs, "rrr")
 
-    def test_53_file_records_under(self):
+    def t53_file_records_under(self):
         rs = self.database.recordlist_key("file1", "field1", key="one")
         self.database.file_records_under("file1", "field1", rs, "aa_o")
 
-    def test_54_file_records_under(self):
+    def t54_file_records_under(self):
         rs = self.database.recordlist_key("file1", "field1", key="one")
         self.database.file_records_under("file1", "field1", rs, "rrr")
 
-    def test_55_file_records_under(self):
+    def t55_file_records_under(self):
         rs = self.database.recordlist_key("file1", "field1", key="ba_o")
         self.database.file_records_under("file1", "field1", rs, "www")
 
-    def test_56_database_cursor(self):
+    def t56_database_cursor(self):
         d = self.database
         self.assertIsInstance(
             d.database_cursor("file1", "file1"), _sqlite.CursorPrimary
@@ -1656,7 +1644,7 @@ class Database_make_recordset(_SQLiteOpen):
             d.database_cursor("file1", "field1"), _sqlite.CursorSecondary
         )
 
-    def test_57_create_recordset_cursor(self):
+    def t57_create_recordset_cursor(self):
         d = self.database
         rs = self.database.recordlist_key("file1", "field1", key=b"ba_o")
         self.assertIsInstance(
@@ -1665,8 +1653,7 @@ class Database_make_recordset(_SQLiteOpen):
 
 
 class Database_freed_record_number(_SQLiteOpen):
-    def setUp(self):
-        super().setUp()
+    def setup_detail(self):
         self.database.ebm_control["file1"] = _sqlite.ExistenceBitmapControl(
             "file1", self.database
         )
@@ -1694,7 +1681,7 @@ class Database_freed_record_number(_SQLiteOpen):
             self.high_record, SegmentSize.db_segment_size
         )[0]
 
-    def test_01(self):
+    def t01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -1717,7 +1704,7 @@ class Database_freed_record_number(_SQLiteOpen):
             self.database.note_freed_record_number_segment,
         )
 
-    def test_02_note_freed_record_number_segment(self):
+    def t02_note_freed_record_number_segment(self):
         self.assertEqual(
             self.database.ebm_control["file1"].freed_record_number_pages, None
         )
@@ -1751,11 +1738,11 @@ class Database_freed_record_number(_SQLiteOpen):
             [0, 1, 2],
         )
 
-    def test_03_get_lowest_freed_record_number(self):
+    def t03_get_lowest_freed_record_number(self):
         rn = self.database.get_lowest_freed_record_number("file1")
         self.assertEqual(rn, None)
 
-    def test_04_get_lowest_freed_record_number(self):
+    def t04_get_lowest_freed_record_number(self):
         for i in (
             100,
             101,
@@ -1770,7 +1757,7 @@ class Database_freed_record_number(_SQLiteOpen):
         rn = self.database.get_lowest_freed_record_number("file1")
         self.assertEqual(rn, 100)
 
-    def test_05_get_lowest_freed_record_number(self):
+    def t05_get_lowest_freed_record_number(self):
         for i in (380,):
             self.database.delete("file1", i, "_".join((str(i), "value")))
             sn, rn = self.database.remove_record_from_ebm("file1", i)
@@ -1780,7 +1767,7 @@ class Database_freed_record_number(_SQLiteOpen):
         rn = self.database.get_lowest_freed_record_number("file1")
         self.assertEqual(rn, None)
 
-    def test_06_get_lowest_freed_record_number(self):
+    def t06_get_lowest_freed_record_number(self):
         for i in (110,):
             self.database.delete("file1", i, "_".join((str(i), "value")))
             sn, rn = self.database.remove_record_from_ebm("file1", i)
@@ -1795,7 +1782,7 @@ class Database_freed_record_number(_SQLiteOpen):
     # Segment 2 is not deleted from the 'freed record number' list until the
     # first search of the segment after all freed record numbers have been
     # re-used.
-    def test_07_get_lowest_freed_record_number(self):
+    def t07_get_lowest_freed_record_number(self):
         self.assertEqual(
             self.database.ebm_control["file1"].freed_record_number_pages, None
         )
@@ -1842,7 +1829,7 @@ class Database_freed_record_number(_SQLiteOpen):
         )
 
     # Deletion of record number 0 is silently ignored.
-    def test_08_get_lowest_freed_record_number(self):
+    def t08_get_lowest_freed_record_number(self):
         for i in (0, 1):
             self.database.delete("file1", i, "_".join((str(i), "value")))
             sn, rn = self.database.remove_record_from_ebm("file1", i)
@@ -1859,7 +1846,7 @@ class Database_empty_freed_record_number(_SQLiteOpen):
         super().setUp()
         self.high_record = self.database.get_high_record_number("file1")
 
-    def test_01(self):
+    def t01(self):
         self.assertEqual(
             self.database.ebm_control["file1"].freed_record_number_pages, None
         )
@@ -1875,8 +1862,7 @@ class Database_empty_freed_record_number(_SQLiteOpen):
 
 
 class RecordsetCursor(_SQLiteOpen):
-    def setUp(self):
-        super().setUp()
+    def setup_detail(self):
         segments = (
             b"".join(
                 (
@@ -1953,7 +1939,7 @@ class RecordsetCursor(_SQLiteOpen):
         finally:
             cursor.close()
 
-    def test_01(self):
+    def t01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -1975,17 +1961,17 @@ class RecordsetCursor(_SQLiteOpen):
             _sqlite.RecordsetCursor(None, None)._get_record,
         )
 
-    def test_02___init__01(self):
+    def t02___init__01(self):
         rc = _sqlite.RecordsetCursor(None, True)
         self.assertEqual(rc.engine, True)
 
-    def test_03___init__02(self):
+    def t03___init__02(self):
         rs = self.database.recordlist_key("file1", "field1", key="a_o")
         rc = _sqlite.RecordsetCursor(rs, self.database.dbenv)
         self.assertIs(rc.engine, self.database.dbenv)
         self.assertIs(rc._dbset, rs)
 
-    def test_04__get_record(self):
+    def t04__get_record(self):
         rc = _sqlite.RecordsetCursor(
             self.database.recordlist_key("file1", "field1", key="a_o"),
             self.database.dbenv,
@@ -2000,7 +1986,7 @@ class ExistenceBitmapControl(_SQLiteOpen):
     def setUp(self):
         super().setUp()
 
-    def test_01(self):
+    def t01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -2052,7 +2038,7 @@ class ExistenceBitmapControl(_SQLiteOpen):
             self.database.ebm_control["file1"].append_ebm_segment,
         )
 
-    def test_02_read_exists_segment_01(self):
+    def t02_read_exists_segment_01(self):
         self.assertEqual(self.database.ebm_control["file1"]._segment_count, 0)
         self.assertEqual(
             self.database.ebm_control["file1"].read_exists_segment(
@@ -2061,7 +2047,7 @@ class ExistenceBitmapControl(_SQLiteOpen):
             None,
         )
 
-    def test_03_read_exists_segment_02(self):
+    def t03_read_exists_segment_02(self):
         self.assertEqual(self.database.ebm_control["file1"]._segment_count, 0)
         cursor = self.database.dbenv.cursor()
         statement = " ".join(
@@ -2091,13 +2077,13 @@ class ExistenceBitmapControl(_SQLiteOpen):
         )
         self.assertEqual(seg.count(), 128)
 
-    def test_04_get_ebm_segment_01(self):
+    def t04_get_ebm_segment_01(self):
         sr = self.database.ebm_control["file1"].get_ebm_segment(
             0, self.database.dbenv
         )
         self.assertEqual(sr, None)
 
-    def test_05_get_ebm_segment_02(self):
+    def t05_get_ebm_segment_02(self):
         cursor = self.database.dbenv.cursor()
         statement = " ".join(
             (
@@ -2118,12 +2104,12 @@ class ExistenceBitmapControl(_SQLiteOpen):
         )
         self.assertEqual(sr, bits)
 
-    def test_06_delete_ebm_segment_01(self):
+    def t06_delete_ebm_segment_01(self):
         self.database.ebm_control["file1"].delete_ebm_segment(
             0, self.database.dbenv
         )
 
-    def test_07_delete_ebm_segment_02(self):
+    def t07_delete_ebm_segment_02(self):
         cursor = self.database.dbenv.cursor()
         statement = " ".join(
             (
@@ -2143,37 +2129,561 @@ class ExistenceBitmapControl(_SQLiteOpen):
             1, self.database.dbenv
         )
 
-    def test_08_put_ebm_segment(self):
+    def t08_put_ebm_segment(self):
         bits = b"\x7f" + b"\xff" * (SegmentSize.db_segment_size_bytes - 1)
         self.database.ebm_control["file1"].put_ebm_segment(
             0, bits, self.database.dbenv
         )
 
-    def test_09_append_ebm_segment(self):
+    def t09_append_ebm_segment(self):
         bits = b"\x7f" + b"\xff" * (SegmentSize.db_segment_size_bytes - 1)
         self.database.ebm_control["file1"].append_ebm_segment(
             bits, self.database.dbenv
         )
 
 
+if sqlite3:
+
+    class _SQLiteSqlite3(_SQLite):
+        def open_database(self):
+            self.database.open_database(sqlite3)
+        def open_database_temp(self, temp, files=None):
+            if files is None:
+                temp.open_database(sqlite3)
+            else:
+                temp.open_database(sqlite3, files=files)
+        def get_connection_class(self):
+            return sqlite3.Connection
+
+    class Database___init__Sqlite3(_SQLiteSqlite3):
+        test_01 = Database___init__.t01
+        test_02 = Database___init__.t02
+        test_03 = Database___init__.t03
+        test_04 = Database___init__.t04
+        test_05 = Database___init__.t05
+        test_06 = Database___init__.t06
+
+    class Database_transaction_methodsSqlite3(_SQLiteSqlite3):
+        def setUp(self):
+            super().setUp()
+            self.database = self._D({})
+
+        test_01 = Database_transaction_methods.t01_start_transaction
+        test_02 = Database_transaction_methods.t02_backout
+        test_03 = Database_transaction_methods.t03_commit
+        test_04 = Database_transaction_methods.t04
+
+    class DatabaseInstanceSqlite3(_SQLiteSqlite3):
+        def setUp(self):
+            super().setUp()
+            self.database = self._D({})
+
+        test_01 = DatabaseInstance.t01_validate_segment_size_bytes
+        test_02 = DatabaseInstance.t02_encode_record_number
+        test_03 = DatabaseInstance.t03_decode_record_number
+        test_04 = DatabaseInstance.t04_encode_record_selector
+        test_05 = DatabaseInstance.t05_make_recordset
+
+    class Database_open_databaseSqlite3(_SQLiteSqlite3):
+        test_01 = Database_open_database.t01
+        test_02 = Database_open_database.t02
+        test_03 = Database_open_database.t03
+        test_04 = Database_open_database.t04_close_database
+        test_05 = Database_open_database.t05_close_database_contexts
+        test_06 = Database_open_database.t06
+        test_07 = Database_open_database.t07
+        test_08 = Database_open_database.t08
+        test_09 = Database_open_database.t09
+        test_12 = Database_open_database.t12_is_database_file_active
+        check_specification = Database_open_database.check_specification
+
+    class Database_add_field_to_existing_databaseSqlite3(_SQLiteSqlite3):
+        test_13 = Database_add_field_to_existing_database.t13_add_field_to_open_database
+
+    class Database_do_database_taskSqlite3(Database_do_database_task):
+        def setUp(self):
+            self._ssb = SegmentSize.db_segment_size_bytes
+
+            class _ED(_sqlite.Database):
+                def open_database(self, **k):
+                    super().open_database(sqlite3, **k)
+
+            class _AD(_ED):
+                def __init__(self, folder, **k):
+                    super().__init__({}, folder, **k)
+
+            self._AD = _AD
+
+        test_01 = Database_do_database_task.t01_do_database_task
+
+    class _SQLiteOpenSqlite3(_SQLiteSqlite3):
+        def setUp(self):
+            super().setUp()
+            self.database = self._D(
+                filespec.FileSpec(**{"file1": {"field1"}}), segment_size_bytes=None
+            )
+            self.open_database()
+
+        def tearDown(self):
+            self.database.close_database()
+            super().tearDown()
+
+    class DatabaseTransactionsSqlite3(_SQLiteOpenSqlite3):
+        test_01 = DatabaseTransactions.t01
+        test_02 = DatabaseTransactions.t02
+        test_03 = DatabaseTransactions.t03
+        test_04 = DatabaseTransactions.t04
+        test_05 = DatabaseTransactions.t05
+
+    class Database_put_replace_deleteSqlite3(_SQLiteOpenSqlite3):
+        test_01 = Database_put_replace_delete.t01
+        test_02 = Database_put_replace_delete.t02_put
+        test_03 = Database_put_replace_delete.t03_put
+        test_04 = Database_put_replace_delete.t04_put
+        test_05 = Database_put_replace_delete.t05_replace
+        test_06 = Database_put_replace_delete.t06_delete
+
+    class Database_methodsSqlite3(_SQLiteOpenSqlite3):
+        test_01 = Database_methods.t01
+        test_02 = Database_methods.t02_get_primary_record
+        test_03 = Database_methods.t03_get_primary_record
+        test_04 = Database_methods.t04_get_primary_record
+        test_05 = Database_methods.t05_remove_record_from_ebm
+        test_06 = Database_methods.t06_remove_record_from_ebm
+        test_07 = Database_methods.t07_add_record_to_ebm
+        test_08 = Database_methods.t08_get_high_record
+        test_09 = Database_methods.t09_get_segment_records
+        test_10 = Database_methods.t10_get_segment_records
+        test_11 = Database_methods.t11_set_segment_records
+        test_12 = Database_methods.t12_delete_segment_records
+        test_13 = Database_methods.t13_insert_segment_records
+        test_14 = Database_methods.t14_recordset_record_number
+        test_15 = Database_methods.t15_recordset_record_number
+        test_16 = Database_methods.t16_recordset_record_number
+        test_17 = Database_methods.t17_recordset_record_number_range
+        test_18 = Database_methods.t18_recordset_record_number_range
+        test_19 = Database_methods.t19_recordset_record_number_range
+        test_20 = Database_methods.t20_recordset_record_number_range
+        test_21 = Database_methods.t21_recordset_record_number_range
+        test_22 = Database_methods.t22_recordset_record_number_range
+        test_23 = Database_methods.t23_recordset_record_number_range
+        test_24 = Database_methods.t24_recordset_ebm
+        test_25 = Database_methods.t25_recordset_ebm
+        test_26 = Database_methods.t26_get_table_connection
+        create_ebm = Database_methods.create_ebm
+        create_ebm_extra = Database_methods.create_ebm_extra
+
+    class Database_find_valuesSqlite3(_SQLiteOpenSqlite3):
+        def setUp(self):
+            super().setUp()
+            self.valuespec = ValuesClause()
+            self.valuespec.field = "field1"
+
+        test_01 = Database_find_values.t01_find_values
+        test_02 = Database_find_values.t02_find_values
+        test_03 = Database_find_values.t03_find_values
+        test_04 = Database_find_values.t04_find_values
+        test_05 = Database_find_values.t05_find_values
+        test_06 = Database_find_values.t06_find_values
+        test_07 = Database_find_values.t07_find_values
+        test_08 = Database_find_values.t08_find_values
+        test_09 = Database_find_values.t09_find_values
+        test_10 = Database_find_values.t10_find_values
+        test_11 = Database_find_values.t11_find_values
+
+    class Database_make_recordsetSqlite3(_SQLiteOpenSqlite3):
+        def setUp(self):
+            super().setUp()
+            Database_make_recordset.setup_detail(self)
+
+        test_01 = Database_make_recordset.t01
+        test_02 = Database_make_recordset.t02_add_record_to_field_value
+        test_03 = Database_make_recordset.t03_add_record_to_field_value
+        test_04 = Database_make_recordset.t04_add_record_to_field_value
+        test_05 = Database_make_recordset.t05_add_record_to_field_value
+        test_06 = Database_make_recordset.t06_remove_record_from_field_value
+        test_07 = Database_make_recordset.t07_remove_record_from_field_value
+        test_08 = Database_make_recordset.t08_remove_record_from_field_value
+        test_09 = Database_make_recordset.t09_remove_record_from_field_value
+        test_10 = Database_make_recordset.t10_remove_record_from_field_value
+        test_11 = Database_make_recordset.t11_remove_record_from_field_value
+        test_12 = Database_make_recordset.t12_populate_segment
+        test_13 = Database_make_recordset.t13_populate_segment
+        test_14 = Database_make_recordset.t14_populate_segment
+        test_15 = Database_make_recordset.t15_populate_segment
+        test_16 = Database_make_recordset.t16_populate_segment
+        test_17 = Database_make_recordset.t17_populate_segment
+        test_18 = Database_make_recordset.t18_make_recordset_key_like
+        test_19 = Database_make_recordset.t19_make_recordset_key_like
+        test_20 = Database_make_recordset.t20_make_recordset_key_like
+        test_21 = Database_make_recordset.t21_make_recordset_key_like
+        test_22 = Database_make_recordset.t22_make_recordset_key_like
+        test_23 = Database_make_recordset.t23_make_recordset_key
+        test_24 = Database_make_recordset.t24_make_recordset_key
+        test_25 = Database_make_recordset.t25_make_recordset_key
+        test_26 = Database_make_recordset.t26_make_recordset_key
+        test_27 = Database_make_recordset.t27_make_recordset_key_startswith
+        test_28 = Database_make_recordset.t28_make_recordset_key_startswith
+        test_29 = Database_make_recordset.t29_make_recordset_key_startswith
+        test_30 = Database_make_recordset.t30_make_recordset_key_startswith
+        test_31 = Database_make_recordset.t31_make_recordset_key_startswith
+        test_32 = Database_make_recordset.t32_make_recordset_key_range
+        test_33 = Database_make_recordset.t33_make_recordset_key_range
+        test_34 = Database_make_recordset.t34_make_recordset_key_range
+        test_35 = Database_make_recordset.t35_make_recordset_key_range
+        test_36 = Database_make_recordset.t36_make_recordset_key_range
+        test_37 = Database_make_recordset.t37_make_recordset_key_range
+        test_38 = Database_make_recordset.t38_make_recordset_key_range
+        test_39 = Database_make_recordset.t39_make_recordset_key_range
+        test_40 = Database_make_recordset.t40_make_recordset_key_range
+        test_41 = Database_make_recordset.t41_make_recordset_key_range
+        test_42 = Database_make_recordset.t42_make_recordset_key_range
+        test_43 = Database_make_recordset.t43_make_recordset_key_range
+        test_44 = Database_make_recordset.t44_make_recordset_key_range
+        test_45 = Database_make_recordset.t45_make_recordset_key_range
+        test_46 = Database_make_recordset.t46_make_recordset_all
+        test_47 = Database_make_recordset.t47_unfile_records_under
+        test_48 = Database_make_recordset.t48_unfile_records_under
+        test_49 = Database_make_recordset.t49_file_records_under
+        test_50 = Database_make_recordset.t50_file_records_under
+        test_51 = Database_make_recordset.t51_file_records_under
+        test_52 = Database_make_recordset.t52_file_records_under
+        test_53 = Database_make_recordset.t53_file_records_under
+        test_54 = Database_make_recordset.t54_file_records_under
+        test_55 = Database_make_recordset.t55_file_records_under
+        test_56 = Database_make_recordset.t56_database_cursor
+        test_57 = Database_make_recordset.t57_create_recordset_cursor
+
+    class Database_freed_record_numberSqlite3(_SQLiteOpenSqlite3):
+        def setUp(self):
+            super().setUp()
+            Database_freed_record_number.setup_detail(self)
+
+        test_01 = Database_freed_record_number.t01
+        test_02 = Database_freed_record_number.t02_note_freed_record_number_segment
+        test_03 = Database_freed_record_number.t03_get_lowest_freed_record_number
+        test_04 = Database_freed_record_number.t04_get_lowest_freed_record_number
+        test_05 = Database_freed_record_number.t05_get_lowest_freed_record_number
+        test_06 = Database_freed_record_number.t06_get_lowest_freed_record_number
+        test_07 = Database_freed_record_number.t07_get_lowest_freed_record_number
+        test_08 = Database_freed_record_number.t08_get_lowest_freed_record_number
+
+    class Database_empty_freed_record_numberSqlite3(_SQLiteOpenSqlite3):
+        def setUp(self):
+            super().setUp()
+            self.high_record = self.database.get_high_record_number("file1")
+
+        test_01 = Database_empty_freed_record_number.t01
+
+    class RecordsetCursorSqlite3(_SQLiteOpenSqlite3):
+        def setUp(self):
+            super().setUp()
+            RecordsetCursor.setup_detail(self)
+
+        test_01 = RecordsetCursor.t01
+        test_02 = RecordsetCursor.t02___init__01
+        test_03 = RecordsetCursor.t03___init__02
+        test_04 = RecordsetCursor.t04__get_record
+
+    class ExistenceBitmapControlSqlite3(_SQLiteOpenSqlite3):
+        test_01 = ExistenceBitmapControl.t01
+        test_02 = ExistenceBitmapControl.t02_read_exists_segment_01
+        test_03 = ExistenceBitmapControl.t03_read_exists_segment_02
+        test_04 = ExistenceBitmapControl.t04_get_ebm_segment_01
+        test_05 = ExistenceBitmapControl.t05_get_ebm_segment_02
+        test_06 = ExistenceBitmapControl.t06_delete_ebm_segment_01
+        test_07 = ExistenceBitmapControl.t07_delete_ebm_segment_02
+        test_08 = ExistenceBitmapControl.t08_put_ebm_segment
+        test_09 = ExistenceBitmapControl.t09_append_ebm_segment
+
+
+if apsw:
+
+    class _SQLiteApsw(_SQLite):
+        def open_database(self):
+            self.database.open_database(apsw)
+        def open_database_temp(self, temp, files=None):
+            if files is None:
+                temp.open_database(apsw)
+            else:
+                temp.open_database(apsw, files=files)
+        def get_connection_class(self):
+            return apsw.Connection
+
+    class Database___init__Apsw(_SQLiteApsw):
+        test_01 = Database___init__.t01
+        test_02 = Database___init__.t02
+        test_03 = Database___init__.t03
+        test_04 = Database___init__.t04
+        test_05 = Database___init__.t05
+        test_06 = Database___init__.t06
+
+    class Database_transaction_methodsApsw(_SQLiteApsw):
+        def setUp(self):
+            super().setUp()
+            self.database = self._D({})
+
+        test_01 = Database_transaction_methods.t01_start_transaction
+        test_02 = Database_transaction_methods.t02_backout
+        test_03 = Database_transaction_methods.t03_commit
+        test_04 = Database_transaction_methods.t04
+
+    class DatabaseInstanceApsw(_SQLiteApsw):
+        def setUp(self):
+            super().setUp()
+            self.database = self._D({})
+
+        test_01 = DatabaseInstance.t01_validate_segment_size_bytes
+        test_02 = DatabaseInstance.t02_encode_record_number
+        test_03 = DatabaseInstance.t03_decode_record_number
+        test_04 = DatabaseInstance.t04_encode_record_selector
+        test_05 = DatabaseInstance.t05_make_recordset
+
+    class Database_open_databaseApsw(_SQLiteApsw):
+        test_01 = Database_open_database.t01
+        test_02 = Database_open_database.t02
+        test_03 = Database_open_database.t03
+        test_04 = Database_open_database.t04_close_database
+        test_05 = Database_open_database.t05_close_database_contexts
+        test_06 = Database_open_database.t06
+        test_07 = Database_open_database.t07
+        test_08 = Database_open_database.t08
+        test_09 = Database_open_database.t09
+        test_12 = Database_open_database.t12_is_database_file_active
+        check_specification = Database_open_database.check_specification
+
+    class Database_add_field_to_existing_databaseApsw(_SQLiteApsw):
+        test_13 = Database_add_field_to_existing_database.t13_add_field_to_open_database
+
+    class Database_do_database_taskApsw(Database_do_database_task):
+        def setUp(self):
+            self._ssb = SegmentSize.db_segment_size_bytes
+
+            class _ED(_sqlite.Database):
+                def open_database(self, **k):
+                    super().open_database(sqlite3, **k)
+
+            class _AD(_ED):
+                def __init__(self, folder, **k):
+                    super().__init__({}, folder, **k)
+
+            self._AD = _AD
+
+        test_01 = Database_do_database_task.t01_do_database_task
+
+    class _SQLiteOpenApsw(_SQLiteApsw):
+        def setUp(self):
+            super().setUp()
+            self.database = self._D(
+                filespec.FileSpec(**{"file1": {"field1"}}), segment_size_bytes=None
+            )
+            self.open_database()
+
+        def tearDown(self):
+            self.database.close_database()
+            super().tearDown()
+
+    class DatabaseTransactionsApsw(_SQLiteOpenApsw):
+        test_01 = DatabaseTransactions.t01
+        test_02 = DatabaseTransactions.t02
+        test_03 = DatabaseTransactions.t03
+        test_04 = DatabaseTransactions.t04
+        test_05 = DatabaseTransactions.t05
+
+    class Database_put_replace_deleteApsw(_SQLiteOpenApsw):
+        test_01 = Database_put_replace_delete.t01
+        test_02 = Database_put_replace_delete.t02_put
+        test_03 = Database_put_replace_delete.t03_put
+        test_04 = Database_put_replace_delete.t04_put
+        test_05 = Database_put_replace_delete.t05_replace
+        test_06 = Database_put_replace_delete.t06_delete
+
+    class Database_methodsApsw(_SQLiteOpenApsw):
+        test_01 = Database_methods.t01
+        test_02 = Database_methods.t02_get_primary_record
+        test_03 = Database_methods.t03_get_primary_record
+        test_04 = Database_methods.t04_get_primary_record
+        test_05 = Database_methods.t05_remove_record_from_ebm
+        test_06 = Database_methods.t06_remove_record_from_ebm
+        test_07 = Database_methods.t07_add_record_to_ebm
+        test_08 = Database_methods.t08_get_high_record
+        test_09 = Database_methods.t09_get_segment_records
+        test_10 = Database_methods.t10_get_segment_records
+        test_11 = Database_methods.t11_set_segment_records
+        test_12 = Database_methods.t12_delete_segment_records
+        test_13 = Database_methods.t13_insert_segment_records
+        test_14 = Database_methods.t14_recordset_record_number
+        test_15 = Database_methods.t15_recordset_record_number
+        test_16 = Database_methods.t16_recordset_record_number
+        test_17 = Database_methods.t17_recordset_record_number_range
+        test_18 = Database_methods.t18_recordset_record_number_range
+        test_19 = Database_methods.t19_recordset_record_number_range
+        test_20 = Database_methods.t20_recordset_record_number_range
+        test_21 = Database_methods.t21_recordset_record_number_range
+        test_22 = Database_methods.t22_recordset_record_number_range
+        test_23 = Database_methods.t23_recordset_record_number_range
+        test_24 = Database_methods.t24_recordset_ebm
+        test_25 = Database_methods.t25_recordset_ebm
+        test_26 = Database_methods.t26_get_table_connection
+        create_ebm = Database_methods.create_ebm
+        create_ebm_extra = Database_methods.create_ebm_extra
+
+    class Database_find_valuesApsw(_SQLiteOpenApsw):
+        def setUp(self):
+            super().setUp()
+            self.valuespec = ValuesClause()
+            self.valuespec.field = "field1"
+
+        test_01 = Database_find_values.t01_find_values
+        test_02 = Database_find_values.t02_find_values
+        test_03 = Database_find_values.t03_find_values
+        test_04 = Database_find_values.t04_find_values
+        test_05 = Database_find_values.t05_find_values
+        test_06 = Database_find_values.t06_find_values
+        test_07 = Database_find_values.t07_find_values
+        test_08 = Database_find_values.t08_find_values
+        test_09 = Database_find_values.t09_find_values
+        test_10 = Database_find_values.t10_find_values
+        test_11 = Database_find_values.t11_find_values
+
+    class Database_make_recordsetApsw(_SQLiteOpenApsw):
+        def setUp(self):
+            super().setUp()
+            Database_make_recordset.setup_detail(self)
+
+        test_01 = Database_make_recordset.t01
+        test_02 = Database_make_recordset.t02_add_record_to_field_value
+        test_03 = Database_make_recordset.t03_add_record_to_field_value
+        test_04 = Database_make_recordset.t04_add_record_to_field_value
+        test_05 = Database_make_recordset.t05_add_record_to_field_value
+        test_06 = Database_make_recordset.t06_remove_record_from_field_value
+        test_07 = Database_make_recordset.t07_remove_record_from_field_value
+        test_08 = Database_make_recordset.t08_remove_record_from_field_value
+        test_09 = Database_make_recordset.t09_remove_record_from_field_value
+        test_10 = Database_make_recordset.t10_remove_record_from_field_value
+        test_11 = Database_make_recordset.t11_remove_record_from_field_value
+        test_12 = Database_make_recordset.t12_populate_segment
+        test_13 = Database_make_recordset.t13_populate_segment
+        test_14 = Database_make_recordset.t14_populate_segment
+        test_15 = Database_make_recordset.t15_populate_segment
+        test_16 = Database_make_recordset.t16_populate_segment
+        test_17 = Database_make_recordset.t17_populate_segment
+        test_18 = Database_make_recordset.t18_make_recordset_key_like
+        test_19 = Database_make_recordset.t19_make_recordset_key_like
+        test_20 = Database_make_recordset.t20_make_recordset_key_like
+        test_21 = Database_make_recordset.t21_make_recordset_key_like
+        test_22 = Database_make_recordset.t22_make_recordset_key_like
+        test_23 = Database_make_recordset.t23_make_recordset_key
+        test_24 = Database_make_recordset.t24_make_recordset_key
+        test_25 = Database_make_recordset.t25_make_recordset_key
+        test_26 = Database_make_recordset.t26_make_recordset_key
+        test_27 = Database_make_recordset.t27_make_recordset_key_startswith
+        test_28 = Database_make_recordset.t28_make_recordset_key_startswith
+        test_29 = Database_make_recordset.t29_make_recordset_key_startswith
+        test_30 = Database_make_recordset.t30_make_recordset_key_startswith
+        test_31 = Database_make_recordset.t31_make_recordset_key_startswith
+        test_32 = Database_make_recordset.t32_make_recordset_key_range
+        test_33 = Database_make_recordset.t33_make_recordset_key_range
+        test_34 = Database_make_recordset.t34_make_recordset_key_range
+        test_35 = Database_make_recordset.t35_make_recordset_key_range
+        test_36 = Database_make_recordset.t36_make_recordset_key_range
+        test_37 = Database_make_recordset.t37_make_recordset_key_range
+        test_38 = Database_make_recordset.t38_make_recordset_key_range
+        test_39 = Database_make_recordset.t39_make_recordset_key_range
+        test_40 = Database_make_recordset.t40_make_recordset_key_range
+        test_41 = Database_make_recordset.t41_make_recordset_key_range
+        test_42 = Database_make_recordset.t42_make_recordset_key_range
+        test_43 = Database_make_recordset.t43_make_recordset_key_range
+        test_44 = Database_make_recordset.t44_make_recordset_key_range
+        test_45 = Database_make_recordset.t45_make_recordset_key_range
+        test_46 = Database_make_recordset.t46_make_recordset_all
+        test_47 = Database_make_recordset.t47_unfile_records_under
+        test_48 = Database_make_recordset.t48_unfile_records_under
+        test_49 = Database_make_recordset.t49_file_records_under
+        test_50 = Database_make_recordset.t50_file_records_under
+        test_51 = Database_make_recordset.t51_file_records_under
+        test_52 = Database_make_recordset.t52_file_records_under
+        test_53 = Database_make_recordset.t53_file_records_under
+        test_54 = Database_make_recordset.t54_file_records_under
+        test_55 = Database_make_recordset.t55_file_records_under
+        test_56 = Database_make_recordset.t56_database_cursor
+        test_57 = Database_make_recordset.t57_create_recordset_cursor
+
+    class Database_freed_record_numberApsw(_SQLiteOpenApsw):
+        def setUp(self):
+            super().setUp()
+            Database_freed_record_number.setup_detail(self)
+
+        test_01 = Database_freed_record_number.t01
+        test_02 = Database_freed_record_number.t02_note_freed_record_number_segment
+        test_03 = Database_freed_record_number.t03_get_lowest_freed_record_number
+        test_04 = Database_freed_record_number.t04_get_lowest_freed_record_number
+        test_05 = Database_freed_record_number.t05_get_lowest_freed_record_number
+        test_06 = Database_freed_record_number.t06_get_lowest_freed_record_number
+        test_07 = Database_freed_record_number.t07_get_lowest_freed_record_number
+        test_08 = Database_freed_record_number.t08_get_lowest_freed_record_number
+
+    class Database_empty_freed_record_numberApsw(_SQLiteOpenApsw):
+        def setUp(self):
+            super().setUp()
+            self.high_record = self.database.get_high_record_number("file1")
+
+        test_01 = Database_empty_freed_record_number.t01
+
+    class RecordsetCursorApsw(_SQLiteOpenApsw):
+        def setUp(self):
+            super().setUp()
+            RecordsetCursor.setup_detail(self)
+
+        test_01 = RecordsetCursor.t01
+        test_02 = RecordsetCursor.t02___init__01
+        test_03 = RecordsetCursor.t03___init__02
+        test_04 = RecordsetCursor.t04__get_record
+
+    class ExistenceBitmapControlApsw(_SQLiteOpenApsw):
+        test_01 = ExistenceBitmapControl.t01
+        test_02 = ExistenceBitmapControl.t02_read_exists_segment_01
+        test_03 = ExistenceBitmapControl.t03_read_exists_segment_02
+        test_04 = ExistenceBitmapControl.t04_get_ebm_segment_01
+        test_05 = ExistenceBitmapControl.t05_get_ebm_segment_02
+        test_06 = ExistenceBitmapControl.t06_delete_ebm_segment_01
+        test_07 = ExistenceBitmapControl.t07_delete_ebm_segment_02
+        test_08 = ExistenceBitmapControl.t08_put_ebm_segment
+        test_09 = ExistenceBitmapControl.t09_append_ebm_segment
+
+
 if __name__ == "__main__":
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
-    for dbe_module in sqlite3, apsw:
-        if dbe_module is None:
-            continue
-        runner().run(loader(Database___init__))
-        runner().run(loader(Database_transaction_methods))
-        runner().run(loader(DatabaseInstance))
-        runner().run(loader(Database_open_database))
-        runner().run(loader(Database_add_field_to_existing_database))
-        runner().run(loader(Database_do_database_task))
-        runner().run(loader(DatabaseTransactions))
-        runner().run(loader(Database_put_replace_delete))
-        runner().run(loader(Database_methods))
-        runner().run(loader(Database_find_values))
-        runner().run(loader(Database_make_recordset))
-        runner().run(loader(Database_freed_record_number))
-        runner().run(loader(Database_empty_freed_record_number))
-        runner().run(loader(RecordsetCursor))
-        runner().run(loader(ExistenceBitmapControl))
+    if sqlite3:
+        runner().run(loader(Database___init__Sqlite3))
+        runner().run(loader(Database_transaction_methodsSqlite3))
+        runner().run(loader(DatabaseInstanceSqlite3))
+        runner().run(loader(Database_open_databaseSqlite3))
+        runner().run(loader(Database_add_field_to_existing_databaseSqlite3))
+        runner().run(loader(Database_do_database_taskSqlite3))
+        runner().run(loader(DatabaseTransactionsSqlite3))
+        runner().run(loader(Database_put_replace_deleteSqlite3))
+        runner().run(loader(Database_methodsSqlite3))
+        runner().run(loader(Database_find_valuesSqlite3))
+        runner().run(loader(Database_make_recordsetSqlite3))
+        runner().run(loader(Database_freed_record_numberSqlite3))
+        runner().run(loader(Database_empty_freed_record_numberSqlite3))
+        runner().run(loader(RecordsetCursorSqlite3))
+        runner().run(loader(ExistenceBitmapControlSqlite3))
+    if apsw:
+        runner().run(loader(Database___init__Apsw))
+        runner().run(loader(Database_transaction_methodsApsw))
+        runner().run(loader(DatabaseInstanceApsw))
+        runner().run(loader(Database_open_databaseApsw))
+        runner().run(loader(Database_add_field_to_existing_databaseApsw))
+        runner().run(loader(Database_do_database_taskApsw))
+        runner().run(loader(DatabaseTransactionsApsw))
+        runner().run(loader(Database_put_replace_deleteApsw))
+        runner().run(loader(Database_methodsApsw))
+        runner().run(loader(Database_find_valuesApsw))
+        runner().run(loader(Database_make_recordsetApsw))
+        runner().run(loader(Database_freed_record_numberApsw))
+        runner().run(loader(Database_empty_freed_record_numberApsw))
+        runner().run(loader(RecordsetCursorApsw))
+        runner().run(loader(ExistenceBitmapControlApsw))

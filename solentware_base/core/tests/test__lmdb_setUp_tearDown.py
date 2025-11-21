@@ -2,16 +2,13 @@
 # Copyright 2023 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""_lmdb _database tests."""
+"""_lmdb _database setUp and tearDown tests wiyh lmdb interface."""
 
 import unittest
 import os
 import shutil
 
-try:
-    import lmdb
-except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
-    lmdb = None
+import lmdb
 
 from .. import _lmdb
 from .. import _lmdbdu
@@ -577,11 +574,15 @@ class RecordsetCursor(_DBOpen):
             )
 
 
+def encode(value):
+    return value
+
+
 if __name__ == "__main__":
 
     class _Module:
         def _dbe_module(self):
-            return dbe_module
+            return lmdb
 
     class _HomeNull(_Module, HomeNull):
         def test_01_HomeNull(self):
@@ -599,7 +600,7 @@ if __name__ == "__main__":
             )
 
         def test_02_HomeNull_dbe_module(self):
-            self.assertIs(self.dbe_module, dbe_module)
+            self.assertIs(self.dbe_module, lmdb)
 
     class _HomeExists(_Module, HomeExists):
         def test_01_HomeExists(self):
@@ -631,19 +632,11 @@ if __name__ == "__main__":
 
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
-    for dbe_module in (lmdb,):
-        if dbe_module is None:
-            continue
-        bdb = dbe_module  # .db
-
-        def encode(value):
-            return value
-
-        runner().run(loader(_HomeNull))
-        runner().run(loader(_HomeExists))
-        runner().run(loader(_EnvironmentExists))
-        runner().run(loader(_EnvironmentExistsReadOnly))
-        runner().run(loader(_EnvironmentExistsOneDb))
-        runner().run(loader(_DB))
-        runner().run(loader(_DBDir))
-        runner().run(loader(_DBExist))
+    runner().run(loader(_HomeNull))
+    runner().run(loader(_HomeExists))
+    runner().run(loader(_EnvironmentExists))
+    runner().run(loader(_EnvironmentExistsReadOnly))
+    runner().run(loader(_EnvironmentExistsOneDb))
+    runner().run(loader(_DB))
+    runner().run(loader(_DBDir))
+    runner().run(loader(_DBExist))

@@ -60,14 +60,6 @@ class _NoSQL(unittest.TestCase):
     def setUp(self):
         # UnQLite and Vedis are sufficiently different that the open_database()
         # call arguments have to be set differently for these engines.
-        if dbe_module is unqlite:
-            self._oda = dbe_module, dbe_module.UnQLite, dbe_module.UnQLiteError
-        elif dbe_module is vedis:
-            self._oda = dbe_module, dbe_module.Vedis, None
-        elif dbe_module is ndbm_module:
-            self._oda = dbe_module, Ndbm, None
-        elif dbe_module is gnu_module:
-            self._oda = dbe_module, Gnu, None
 
         self.__ssb = SegmentSize.db_segment_size_bytes
 
@@ -90,39 +82,9 @@ class _NoSQL(unittest.TestCase):
         self._D = None
         SegmentSize.db_segment_size_bytes = self.__ssb
 
-        # I have no idea why the database teardown for ndbm has to be like so:
-        if dbe_module is ndbm_module:
-            path = os.path.join(
-                os.path.dirname(__file__), ".".join((_NDBM_TEST_ROOT, "db"))
-            )
-            if os.path.isdir(path):
-                for f in os.listdir(path):
-                    os.remove(os.path.join(path, f))
-                os.rmdir(path)
-            elif os.path.isfile(
-                path
-            ):  # Most tests, other two each have a few.
-                os.remove(path)
-            path = os.path.join(os.path.dirname(__file__), _NDBM_TEST_ROOT)
-            if os.path.isdir(path):
-                for f in os.listdir(path):
-                    os.remove(os.path.join(path, f))
-                os.rmdir(path)
-
-        # I have no idea why the database teardown for gnu has to be like so:
-        if dbe_module is gnu_module:
-            path = os.path.join(os.path.dirname(__file__), _GNU_TEST_ROOT)
-            if os.path.isfile(path):
-                os.remove(path)
-            if os.path.isdir(path):
-                for f in os.listdir(path):
-                    os.remove(os.path.join(path, f))
-                os.rmdir(path)
-
 
 class SegmentsetCursor(_NoSQL):
-    def setUp(self):
-        super().setUp()
+    def setup_detail(self):
         segments = (
             b"".join(
                 (
@@ -150,12 +112,7 @@ class SegmentsetCursor(_NoSQL):
             self.database.dbenv, "1_1_0_", "1_1_1_", key
         )
 
-    def tearDown(self):
-        self.segmentset.close()
-        self.database.commit()
-        super().tearDown()
-
-    def test_01(self):
+    def t01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -244,7 +201,7 @@ class SegmentsetCursor(_NoSQL):
             self.segmentset.setat,
         )
 
-    def test_02_close(self):
+    def t02_close(self):
         ae = self.assertEqual
         ss = self.segmentset
         ae(ss.current_segment_number, None)
@@ -261,21 +218,21 @@ class SegmentsetCursor(_NoSQL):
         ae(ss.segments, None)
         ae(ss.sorted_segment_numbers, None)
 
-    def test_03_first(self):
+    def t03_first(self):
         ae = self.assertEqual
         ss = self.segmentset
         ae(ss.first(), 1)
         ss.sorted_segment_numbers = []
         ae(ss.first(), None)
 
-    def test_04_last(self):
+    def t04_last(self):
         ae = self.assertEqual
         ss = self.segmentset
         ae(ss.last(), 7)
         ss.sorted_segment_numbers = []
         ae(ss.last(), None)
 
-    def test_05_next(self):
+    def t05_next(self):
         ae = self.assertEqual
         ss = self.segmentset
         ae(ss.next(), 1)
@@ -289,7 +246,7 @@ class SegmentsetCursor(_NoSQL):
         ae(ss.next(), None)
         ae(ss.current_segment_number, 7)
 
-    def test_06_prev(self):
+    def t06_prev(self):
         ae = self.assertEqual
         ss = self.segmentset
         ae(ss.prev(), 7)
@@ -303,7 +260,7 @@ class SegmentsetCursor(_NoSQL):
         ae(ss.prev(), None)
         ae(ss.current_segment_number, 1)
 
-    def test_07_setat(self):
+    def t07_setat(self):
         ae = self.assertEqual
         ss = self.segmentset
         aii = self.assertIsInstance
@@ -315,7 +272,7 @@ class SegmentsetCursor(_NoSQL):
         ae(ss.current_segment_number, 7)
         aii(ss.setat(3), recordset.RecordsetSegmentList)
 
-    def test_08_get_current_segment(self):
+    def t08_get_current_segment(self):
         ae = self.assertEqual
         aii = self.assertIsInstance
         ss = self.segmentset
@@ -361,12 +318,12 @@ class SegmentsetCursor(_NoSQL):
         ae(s.segment_number, 7)
         ae(s.record_number, 50)
 
-    def test_09_count_records(self):
+    def t09_count_records(self):
         ae = self.assertEqual
         ss = self.segmentset
         ae(ss.count_records(), 60)
 
-    def test_10_count_current_segment_records(self):
+    def t10_count_current_segment_records(self):
         ae = self.assertEqual
         ss = self.segmentset
         ss.next()
@@ -380,10 +337,161 @@ class SegmentsetCursor(_NoSQL):
         ae(ss.next(), None)
 
 
+if gnu_module:
+
+    class _NoSQLGnu(_NoSQL):
+        def setUp(self):
+            self._oda = gnu_module, Gnu, None
+            super().setUp()
+
+        def tearDown(self):
+            super().tearDown()
+            # I have no idea why database teardown for gnu has to be like so:
+            path = os.path.join(os.path.dirname(__file__), _GNU_TEST_ROOT)
+            if os.path.isfile(path):
+                os.remove(path)
+            if os.path.isdir(path):
+                for f in os.listdir(path):
+                    os.remove(os.path.join(path, f))
+                os.rmdir(path)
+
+    class SegmentsetCursorGnu(_NoSQLGnu):
+        def setUp(self):
+            super().setUp()
+            SegmentsetCursor.setup_detail(self)
+
+        def tearDown(self):
+            self.segmentset.close()
+            self.database.commit()
+            super().tearDown()
+
+        test_01 = SegmentsetCursor.t01
+        test_02 = SegmentsetCursor.t02_close
+        test_03 = SegmentsetCursor.t03_first
+        test_04 = SegmentsetCursor.t04_last
+        test_05 = SegmentsetCursor.t05_next
+        test_06 = SegmentsetCursor.t06_prev
+        test_07 = SegmentsetCursor.t07_setat
+        test_08 = SegmentsetCursor.t08_get_current_segment
+        test_09 = SegmentsetCursor.t09_count_records
+        test_10 = SegmentsetCursor.t10_count_current_segment_records
+
+
+if ndbm_module:
+
+    class _NoSQLNdbm(_NoSQL):
+        def setUp(self):
+            self._oda = ndbm_module, Ndbm, None
+            super().setUp()
+
+        def tearDown(self):
+            super().tearDown()
+            # I have no idea why database teardown for gnu has to be like so:
+            path = os.path.join(
+                os.path.dirname(__file__), ".".join((_NDBM_TEST_ROOT, "db"))
+            )
+            if os.path.isdir(path):
+                for f in os.listdir(path):
+                    os.remove(os.path.join(path, f))
+                os.rmdir(path)
+            elif os.path.isfile(
+                path
+            ):  # Most tests, other two each have a few.
+                os.remove(path)
+            path = os.path.join(os.path.dirname(__file__), _NDBM_TEST_ROOT)
+            if os.path.isdir(path):
+                for f in os.listdir(path):
+                    os.remove(os.path.join(path, f))
+                os.rmdir(path)
+
+    class SegmentsetCursorNdbm(_NoSQLNdbm):
+        def setUp(self):
+            super().setUp()
+            SegmentsetCursor.setup_detail(self)
+
+        def tearDown(self):
+            self.segmentset.close()
+            self.database.commit()
+            super().tearDown()
+
+        test_01 = SegmentsetCursor.t01
+        test_02 = SegmentsetCursor.t02_close
+        test_03 = SegmentsetCursor.t03_first
+        test_04 = SegmentsetCursor.t04_last
+        test_05 = SegmentsetCursor.t05_next
+        test_06 = SegmentsetCursor.t06_prev
+        test_07 = SegmentsetCursor.t07_setat
+        test_08 = SegmentsetCursor.t08_get_current_segment
+        test_09 = SegmentsetCursor.t09_count_records
+        test_10 = SegmentsetCursor.t10_count_current_segment_records
+
+
+if unqlite:
+
+    class _NoSQLUnqlite(_NoSQL):
+        def setUp(self):
+            self._oda = unqlite, unqlite.UnQLite, unqlite.UnQLiteError
+            super().setUp()
+
+    class SegmentsetCursorUnqlite(_NoSQLUnqlite):
+        def setUp(self):
+            super().setUp()
+            SegmentsetCursor.setup_detail(self)
+
+        def tearDown(self):
+            self.segmentset.close()
+            self.database.commit()
+            super().tearDown()
+
+        test_01 = SegmentsetCursor.t01
+        test_02 = SegmentsetCursor.t02_close
+        test_03 = SegmentsetCursor.t03_first
+        test_04 = SegmentsetCursor.t04_last
+        test_05 = SegmentsetCursor.t05_next
+        test_06 = SegmentsetCursor.t06_prev
+        test_07 = SegmentsetCursor.t07_setat
+        test_08 = SegmentsetCursor.t08_get_current_segment
+        test_09 = SegmentsetCursor.t09_count_records
+        test_10 = SegmentsetCursor.t10_count_current_segment_records
+
+
+if vedis:
+
+    class _NoSQLVedis(_NoSQL):
+        def setUp(self):
+            self._oda = vedis, vedis.Vedis, None
+            super().setUp()
+
+    class SegmentsetCursorVedis(_NoSQLVedis):
+        def setUp(self):
+            super().setUp()
+            SegmentsetCursor.setup_detail(self)
+
+        def tearDown(self):
+            self.segmentset.close()
+            self.database.commit()
+            super().tearDown()
+
+        test_01 = SegmentsetCursor.t01
+        test_02 = SegmentsetCursor.t02_close
+        test_03 = SegmentsetCursor.t03_first
+        test_04 = SegmentsetCursor.t04_last
+        test_05 = SegmentsetCursor.t05_next
+        test_06 = SegmentsetCursor.t06_prev
+        test_07 = SegmentsetCursor.t07_setat
+        test_08 = SegmentsetCursor.t08_get_current_segment
+        test_09 = SegmentsetCursor.t09_count_records
+        test_10 = SegmentsetCursor.t10_count_current_segment_records
+
+
 if __name__ == "__main__":
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
-    for dbe_module in unqlite, vedis, ndbm_module, gnu_module:
-        if dbe_module is None:
-            continue
-        runner().run(loader(SegmentsetCursor))
+    if gnu_module:
+        runner().run(loader(SegmentsetCursorGnu))
+    if ndbm_module:
+        runner().run(loader(SegmentsetCursorNdbm))
+    if unqlite:
+        runner().run(loader(SegmentsetCursorUnqlite))
+    if vedis:
+        runner().run(loader(SegmentsetCursorVedis))

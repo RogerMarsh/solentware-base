@@ -2,14 +2,11 @@
 # Copyright 2023 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""_lmdb cursor tests."""
+"""_lmdb cursor tests with lmdb interface."""
 
 import unittest
 
-try:
-    import lmdb
-except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
-    lmdb = None
+import lmdb
 
 from .. import _lmdb
 from .. import filespec
@@ -31,7 +28,7 @@ class _DB(_DBOpen):
         self.database = self._D(
             filespec.FileSpec(**{"file1": {"field1"}}), segment_size_bytes=None
         )
-        self.database.open_database(dbe_module)
+        self.database.open_database(lmdb)
         self.database.start_transaction()
 
     def tearDown(self):
@@ -1267,11 +1264,8 @@ class Cursor_secondary__get_record_at_position(_DB):
 if __name__ == "__main__":
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
-    for dbe_module in (lmdb,):
-        if dbe_module is None:
-            continue
-        runner().run(loader(Cursor_exceptions))
-        runner().run(loader(Cursor_cursor))
-        runner().run(loader(Cursor_primary))
-        runner().run(loader(Cursor_secondary))
-        runner().run(loader(Cursor_secondary__get_record_at_position))
+    runner().run(loader(Cursor_exceptions))
+    runner().run(loader(Cursor_cursor))
+    runner().run(loader(Cursor_primary))
+    runner().run(loader(Cursor_secondary))
+    runner().run(loader(Cursor_secondary__get_record_at_position))

@@ -60,14 +60,6 @@ class _NoSQL(unittest.TestCase):
     def setUp(self):
         # UnQLite and Vedis are sufficiently different that the open_database()
         # call arguments have to be set differently for these engines.
-        if dbe_module is unqlite:
-            self._oda = dbe_module, dbe_module.UnQLite, dbe_module.UnQLiteError
-        elif dbe_module is vedis:
-            self._oda = dbe_module, dbe_module.Vedis, None
-        elif dbe_module is ndbm_module:
-            self._oda = dbe_module, Ndbm, None
-        elif dbe_module is gnu_module:
-            self._oda = dbe_module, Gnu, None
 
         self.__ssb = SegmentSize.db_segment_size_bytes
 
@@ -90,38 +82,9 @@ class _NoSQL(unittest.TestCase):
         self._D = None
         SegmentSize.db_segment_size_bytes = self.__ssb
 
-        # I have no idea why the database teardown for ndbm has to be like so:
-        if dbe_module is ndbm_module:
-            path = os.path.join(
-                os.path.dirname(__file__), ".".join((_NDBM_TEST_ROOT, "db"))
-            )
-            if os.path.isdir(path):
-                for f in os.listdir(path):
-                    os.remove(os.path.join(path, f))
-                os.rmdir(path)
-            elif os.path.isfile(
-                path
-            ):  # Most tests, other two each have a few.
-                os.remove(path)
-            path = os.path.join(os.path.dirname(__file__), _NDBM_TEST_ROOT)
-            if os.path.isdir(path):
-                for f in os.listdir(path):
-                    os.remove(os.path.join(path, f))
-                os.rmdir(path)
-
-        # I have no idea why the database teardown for gnu has to be like so:
-        if dbe_module is gnu_module:
-            path = os.path.join(os.path.dirname(__file__), _GNU_TEST_ROOT)
-            if os.path.isfile(path):
-                os.remove(path)
-            if os.path.isdir(path):
-                for f in os.listdir(path):
-                    os.remove(os.path.join(path, f))
-                os.rmdir(path)
-
 
 class Cursor_nosql(_NoSQL):
-    def test_01(self):
+    def t01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -187,7 +150,7 @@ class Cursor_nosql(_NoSQL):
             *(None, None),
         )
 
-    def test_02___init__(self):
+    def t02___init__(self):
         cursor = _nosql.Cursor(self.database)
         self.assertEqual(cursor._file, None)
         self.assertEqual(cursor._current_segment, None)
@@ -197,16 +160,16 @@ class Cursor_nosql(_NoSQL):
         # CursorSecondary is cursor on tree for file and field.
         self.assertEqual(cursor._cursor, None)
 
-    def test_03_close(self):
+    def t03_close(self):
         cursor = _nosql.Cursor(self.database)
         cursor.close()
         self.assertEqual(cursor._cursor, None)
 
-    def test_04_get_converted_partial(self):
+    def t04_get_converted_partial(self):
         cursor = _nosql.Cursor(self.database)
         self.assertEqual(cursor.get_converted_partial(), None)
 
-    def test_05_get_partial_with_wildcard(self):
+    def t05_get_partial_with_wildcard(self):
         cursor = _nosql.Cursor(self.database)
         self.assertRaisesRegex(
             _nosql.DatabaseError,
@@ -214,19 +177,18 @@ class Cursor_nosql(_NoSQL):
             cursor.get_partial_with_wildcard,
         )
 
-    def test_06_get_converted_partial_with_wildcard(self):
+    def t06_get_converted_partial_with_wildcard(self):
         cursor = _nosql.Cursor(self.database)
         cursor._partial = "part"
         self.assertEqual(cursor.get_converted_partial_with_wildcard(), "part")
 
-    def test_07_refresh_recordset(self):
+    def t07_refresh_recordset(self):
         cursor = _nosql.Cursor(self.database)
         self.assertEqual(cursor.refresh_recordset(), None)
 
 
 class Cursor_primary(_NoSQL):
-    def setUp(self):
-        super().setUp()
+    def setup_detail(self):
         segments = (
             b"".join(
                 (
@@ -266,11 +228,7 @@ class Cursor_primary(_NoSQL):
         )
         self.cursor = _nosql.CursorPrimary(self.database, file="file1")
 
-    def tearDown(self):
-        self.cursor.close()
-        super().tearDown()
-
-    def test_01(self):
+    def t01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -391,31 +349,31 @@ class Cursor_primary(_NoSQL):
             *(None, None),
         )
 
-    def test_02___init__(self):
+    def t02___init__(self):
         cursor = _nosql.CursorPrimary(self.database, file="file2")
         self.assertEqual(cursor._ebm.ebm_table, "2_0__ebm")
         self.assertEqual(cursor._table, "2_0")
 
-    def test_03___init__(self):
+    def t03___init__(self):
         self.assertEqual(self.cursor._ebm.ebm_table, "1_0__ebm")
         self.assertEqual(self.cursor._table, "1_0")
 
-    def test_04_count_records(self):
+    def t04_count_records(self):
         self.assertEqual(self.cursor.count_records(), 80)
         self.cursor.close()
         self.assertEqual(self.cursor.count_records(), None)
 
-    def test_05_first(self):
+    def t05_first(self):
         self.assertEqual(self.cursor.first(), (0, repr("Data for record 0")))
 
-    def test_06_get_position_of_record_01(self):
+    def t06_get_position_of_record_01(self):
         self.assertEqual(self.cursor.get_position_of_record(), 0)
 
-    def test_06_get_position_of_record_02(self):
+    def t06_get_position_of_record_02(self):
         self.assertEqual(self.cursor.get_position_of_record((5, None)), 6)
         self.assertEqual(self.cursor.get_position_of_record((170, None)), 51)
 
-    def test_06_get_position_of_record_03(self):
+    def t06_get_position_of_record_03(self):
         self.assertEqual(self.cursor.get_position_of_record((175, None)), 56)
         self.assertEqual(self.cursor.get_position_of_record((176, None)), 57)
         self.assertEqual(self.cursor.get_position_of_record((177, None)), 57)
@@ -427,13 +385,13 @@ class Cursor_primary(_NoSQL):
         self.assertEqual(self.cursor.get_position_of_record((383, None)), 81)
         self.assertEqual(self.cursor.get_position_of_record((384, None)), 81)
 
-    def test_08_get_record_at_position_01(self):
+    def t08_get_record_at_position_01(self):
         cgrap = self.cursor.get_record_at_position
         self.assertEqual(cgrap(), None)
         self.cursor._ebm.table_ebm_segments.clear()
         self.assertEqual(cgrap(30), None)
 
-    def test_08_get_record_at_position_02(self):
+    def t08_get_record_at_position_02(self):
         cgrap = self.cursor.get_record_at_position
         self.assertEqual(cgrap(-1), (319, repr("Data for record 319")))
         self.assertEqual(cgrap(-23), (297, repr("Data for record 297")))
@@ -444,7 +402,7 @@ class Cursor_primary(_NoSQL):
         self.assertEqual(cgrap(-80), (0, repr("Data for record 0")))
         self.assertEqual(cgrap(-81), None)
 
-    def test_08_get_record_at_position_03(self):
+    def t08_get_record_at_position_03(self):
         cgrap = self.cursor.get_record_at_position
         self.assertEqual(cgrap(1), (0, "'Data for record 0'"))
         self.assertEqual(cgrap(30), (29, repr("Data for record 29")))
@@ -456,12 +414,12 @@ class Cursor_primary(_NoSQL):
         self.assertEqual(cgrap(80), (319, repr("Data for record 319")))
         self.assertEqual(cgrap(81), None)
 
-    def test_12_last(self):
+    def t12_last(self):
         self.assertEqual(
             self.cursor.last(), (319, repr("Data for record 319"))
         )
 
-    def test_13_nearest(self):
+    def t13_nearest(self):
         self.assertEqual(
             self.cursor.nearest(1), (1, repr("Data for record 1"))
         )
@@ -474,7 +432,7 @@ class Cursor_primary(_NoSQL):
         self.assertEqual(self.cursor.current_segment_number, 1)
         self.assertEqual(self.cursor._current_record_number_in_segment, 24)
 
-    def test_14_next_01(self):
+    def t14_next_01(self):
         for i in range(32):
             self.assertEqual(
                 self.cursor.next(), (i, repr("Data for record " + str(i)))
@@ -501,7 +459,7 @@ class Cursor_primary(_NoSQL):
         self.assertEqual(self.cursor.current_segment_number, 2)
         self.assertEqual(self.cursor._current_record_number_in_segment, 63)
 
-    def test_15_next_02(self):
+    def t15_next_02(self):
         self.cursor.current_segment_number = 1
         self.cursor._current_record_number_in_segment = 100
         self.assertEqual(
@@ -510,7 +468,7 @@ class Cursor_primary(_NoSQL):
         self.assertEqual(self.cursor.current_segment_number, 2)
         self.assertEqual(self.cursor._current_record_number_in_segment, 40)
 
-    def test_16_next_03(self):
+    def t16_next_03(self):
         self.cursor.current_segment_number = 1
         self.cursor._current_record_number_in_segment = 10
         self.assertEqual(
@@ -519,7 +477,7 @@ class Cursor_primary(_NoSQL):
         self.assertEqual(self.cursor.current_segment_number, 1)
         self.assertEqual(self.cursor._current_record_number_in_segment, 24)
 
-    def test_17_prev_01(self):
+    def t17_prev_01(self):
         for i in range(319, 295, -1):
             self.assertEqual(
                 self.cursor.prev(), (i, repr("Data for record " + str(i)))
@@ -546,7 +504,7 @@ class Cursor_primary(_NoSQL):
         self.assertEqual(self.cursor.current_segment_number, 0)
         self.assertEqual(self.cursor._current_record_number_in_segment, 0)
 
-    def test_18_prev_02(self):
+    def t18_prev_02(self):
         self.cursor.current_segment_number = 1
         self.cursor._current_record_number_in_segment = 100
         self.assertEqual(
@@ -555,14 +513,14 @@ class Cursor_primary(_NoSQL):
         self.assertEqual(self.cursor.current_segment_number, 1)
         self.assertEqual(self.cursor._current_record_number_in_segment, 47)
 
-    def test_19_prev_03(self):
+    def t19_prev_03(self):
         self.cursor.current_segment_number = 1
         self.cursor._current_record_number_in_segment = 10
         self.assertEqual(self.cursor.prev(), (31, repr("Data for record 31")))
         self.assertEqual(self.cursor.current_segment_number, 0)
         self.assertEqual(self.cursor._current_record_number_in_segment, 31)
 
-    def test_20_setat(self):
+    def t20_setat(self):
         self.assertEqual(
             self.cursor.setat((10, None)), (10, repr("Data for record 10"))
         )
@@ -572,7 +530,7 @@ class Cursor_primary(_NoSQL):
         self.assertEqual(self.cursor.current_segment_number, 0)
         self.assertEqual(self.cursor._current_record_number_in_segment, 10)
 
-    def test_21_refresh_recordset(self):
+    def t21_refresh_recordset(self):
         self.cursor.refresh_recordset()
 
 
@@ -581,8 +539,7 @@ class Cursor_primary__get_record_at_position(_NoSQL):
     # with 'record 0' absent; which was a problem in all other database
     # engines.
     # Other get_record_at_position tests remain in Cursor_primary.
-    def setUp(self):
-        super().setUp()
+    def setup_detail(self):
         segments = (
             b"".join(
                 (
@@ -613,11 +570,7 @@ class Cursor_primary__get_record_at_position(_NoSQL):
         )
         self.cursor = _nosql.CursorPrimary(self.database, file="file1")
 
-    def tearDown(self):
-        self.cursor.close()
-        super().tearDown()
-
-    def test_01_get_record_at_position_01(self):
+    def t01_get_record_at_position_01(self):
         cgrap = self.cursor.get_record_at_position
         self.assertEqual(cgrap(0), None)
         self.assertEqual(cgrap(1), (7, "'Data for record 7'"))
@@ -631,8 +584,7 @@ class Cursor_primary__get_record_at_position(_NoSQL):
 
 
 class Cursor_secondary(_NoSQL):
-    def setUp(self):
-        super().setUp()
+    def setup_detail(self):
         segments = (
             b"".join(
                 (
@@ -704,11 +656,7 @@ class Cursor_secondary(_NoSQL):
             self.database, file="file1", field="field1"
         )
 
-    def tearDown(self):
-        self.cursor.close()
-        super().tearDown()
-
-    def test_01(self):
+    def t01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -871,7 +819,7 @@ class Cursor_secondary(_NoSQL):
             *(None, None),
         )
 
-    def test_02___init__(self):
+    def t02___init__(self):
         self.assertEqual(self.cursor._field, "field1")
         self.assertEqual(self.cursor._table, "1_0")
         self.assertEqual(self.cursor._value_prefix, "1_1_1_")
@@ -890,88 +838,88 @@ class Cursor_secondary(_NoSQL):
             **dict(file="file2", field="field2"),
         )
 
-    def test_05_count_records_01(self):
+    def t05_count_records_01(self):
         s = self.cursor.count_records()
         self.assertEqual(s, 183)
 
-    def test_06_count_records_02(self):
+    def t06_count_records_02(self):
         self.cursor._partial = "b"
         s = self.cursor.count_records()
         self.assertEqual(s, 51)
 
-    def test_07_first_01(self):
+    def t07_first_01(self):
         self.cursor._partial = False
         s = self.cursor.first()
         self.assertEqual(s, None)
 
-    def test_08_first_02(self):
+    def t08_first_02(self):
         s = self.cursor.first()
         self.assertEqual(s, ("a_o", 0))
 
-    def test_09_first_03(self):
+    def t09_first_03(self):
         self.cursor._partial = "b"
         s = self.cursor.first()
         self.assertEqual(s, ("ba_o", 40))
 
-    def test_10_first_04(self):
+    def t10_first_04(self):
         self.cursor._partial = "A"
         s = self.cursor.first()
         self.assertEqual(s, None)
 
-    def test_11_get_position_of_record_01(self):
+    def t11_get_position_of_record_01(self):
         s = self.cursor.get_position_of_record()
         self.assertEqual(s, 0)
 
-    def test_12_get_position_of_record_02(self):
+    def t12_get_position_of_record_02(self):
         s = self.cursor.get_position_of_record(("ba_o", 300))
         self.assertEqual(s, 82)
 
     # Same answer as _db, _lmdb and _sqlite because the a_o segemnt is not
     # counted: here it has 32 bits set rather than 31 bits set.  Compare with
     # other two get_position_of_record tests (12 and 14).
-    def test_13_get_position_of_record_03(self):
+    def t13_get_position_of_record_03(self):
         self.cursor._partial = "b"
         s = self.cursor.get_position_of_record(("bb_o", 20))
         self.assertEqual(s, 28)
 
-    def test_14_get_position_of_record_04(self):
+    def t14_get_position_of_record_04(self):
         s = self.cursor.get_position_of_record(("cep", 150))
         self.assertEqual(s, 155)
 
-    def test_30_last_01(self):
+    def t30_last_01(self):
         self.cursor._partial = False
         s = self.cursor.last()
         self.assertEqual(s, None)
 
-    def test_31_last_02(self):
+    def t31_last_02(self):
         s = self.cursor.last()
         self.assertEqual(s, ("twy", 196))  # ('deq', 127))
 
-    def test_32_last_03(self):
+    def t32_last_03(self):
         self.cursor._partial = "b"
         s = self.cursor.last()
         self.assertEqual(s, ("bb_o", 79))
 
-    def test_33_last_04(self):
+    def t33_last_04(self):
         self.cursor._partial = "A"
         s = self.cursor.last()
         self.assertEqual(s, None)
 
-    def test_34_nearest_01(self):
+    def t34_nearest_01(self):
         self.assertEqual(self.cursor.nearest("d"), ("deq", 104))
 
-    def test_35_nearest_02(self):
+    def t35_nearest_02(self):
         self.cursor._partial = False
         self.assertEqual(self.cursor.nearest("d"), None)
 
-    def test_36_nearest_03(self):
+    def t36_nearest_03(self):
         self.cursor._partial = "b"
         self.assertEqual(self.cursor.nearest("bb"), ("bb_o", 56))
 
-    def test_37_nearest_04(self):
+    def t37_nearest_04(self):
         self.assertEqual(self.cursor.nearest("z"), None)
 
-    def test_38_next_01(self):
+    def t38_next_01(self):
         ae = self.assertEqual
         next_ = self.cursor.next
         for i in range(0, 32):
@@ -999,11 +947,11 @@ class Cursor_secondary(_NoSQL):
             ae(next_(), ("twy", i))
         ae(next_(), None)
 
-    def test_39_next_02(self):
+    def t39_next_02(self):
         self.cursor._partial = False
         self.assertEqual(self.cursor.next(), None)
 
-    def test_40_next_03(self):
+    def t40_next_03(self):
         ae = self.assertEqual
         next_ = self.cursor.next
         ae(next_(), ("a_o", 0))
@@ -1018,7 +966,7 @@ class Cursor_secondary(_NoSQL):
         self.cursor.current_segment_number = None
         ae(next_(), ("bb_o", 56))
 
-    def test_41_next_04(self):
+    def t41_next_04(self):
         ae = self.assertEqual
         next_ = self.cursor.next
         ae(self.cursor._current_segment, None)
@@ -1042,7 +990,7 @@ class Cursor_secondary(_NoSQL):
         self.cursor.current_segment_number = None
         ae(next_(), ("ba_o", 40))
 
-    def test_44_prev_01(self):
+    def t44_prev_01(self):
         ae = self.assertEqual
         prev = self.cursor.prev
         for i in range(196, 193, -1):
@@ -1067,11 +1015,11 @@ class Cursor_secondary(_NoSQL):
             ae(prev(), ("a_o", i))
         ae(prev(), None)
 
-    def test_45_prev_02(self):
+    def t45_prev_02(self):
         self.cursor._partial = False
         self.assertEqual(self.cursor.prev(), None)
 
-    def test_46_prev_05(self):
+    def t46_prev_05(self):
         ae = self.assertEqual
         prev = self.cursor.prev
         ae(prev(), ("twy", 196))
@@ -1086,7 +1034,7 @@ class Cursor_secondary(_NoSQL):
         self.cursor.current_segment_number = None
         ae(prev(), ("aa_o", 47))
 
-    def test_47_prev_06(self):
+    def t47_prev_06(self):
         ae = self.assertEqual
         prev = self.cursor.prev
         ae(self.cursor._current_segment, None)
@@ -1110,34 +1058,34 @@ class Cursor_secondary(_NoSQL):
         self.cursor.current_segment_number = None
         ae(prev(), ("bb_o", 79))
 
-    def test_50_setat_01(self):
+    def t50_setat_01(self):
         self.cursor._partial = False
         s = self.cursor.setat(("cep", 100))
         self.assertEqual(s, None)
 
-    def test_51_setat_02(self):
+    def t51_setat_02(self):
         self.cursor._partial = "a"
         s = self.cursor.setat(("cep", 100))
         self.assertEqual(s, None)
 
-    def test_52_setat_03(self):
+    def t52_setat_03(self):
         self.cursor._partial = "c"
         s = self.cursor.setat(("cep", 100))
         self.assertEqual(s, ("cep", 100))
 
-    def test_53_setat_04(self):
+    def t53_setat_04(self):
         s = self.cursor.setat(("cep", 100))
         self.assertEqual(s, ("cep", 100))
 
-    def test_54_setat_05(self):
+    def t54_setat_05(self):
         s = self.cursor.setat(("cep", 500))
         self.assertEqual(s, None)
 
-    def test_55_setat_06(self):
+    def t55_setat_06(self):
         s = self.cursor.setat(("cep", 50))
         self.assertEqual(s, None)
 
-    def test_56_set_partial_key(self):
+    def t56_set_partial_key(self):
         self.cursor._current_segment = 2
         self.cursor.current_segment_number = 35
         self.cursor.set_partial_key("ce")
@@ -1145,7 +1093,7 @@ class Cursor_secondary(_NoSQL):
         self.assertEqual(self.cursor._current_segment, None)
         self.assertEqual(self.cursor.current_segment_number, None)
 
-    def test_60_set_current_segment_table(self):
+    def t60_set_current_segment_table(self):
         ssc = _nosql.SegmentsetCursor(
             self.database.dbenv, "1_1_0_", "1_1_1_", "cep"
         )
@@ -1154,10 +1102,10 @@ class Cursor_secondary(_NoSQL):
         self.assertIs(s, self.cursor._current_segment)
         self.assertEqual(self.cursor.current_segment_number, 2)
 
-    def test_61_refresh_recordset(self):
+    def t61_refresh_recordset(self):
         self.cursor.refresh_recordset()
 
-    def test_70_get_unique_primary_for_index_key(self):
+    def t70_get_unique_primary_for_index_key(self):
         ae = self.assertEqual
         gupfik = self.cursor.get_unique_primary_for_index_key
         self.assertRaisesRegex(
@@ -1169,8 +1117,7 @@ class Cursor_secondary(_NoSQL):
 
 
 class Cursor_secondary__get_record_at_position(_NoSQL):
-    def setUp(self):
-        super().setUp()
+    def setup_detail(self):
         segments = (
             b"".join(
                 (
@@ -1198,12 +1145,7 @@ class Cursor_secondary__get_record_at_position(_NoSQL):
             self.database, file="file1", field="field1"
         )
 
-    def tearDown(self):
-        self.cursor.close()
-        self.database.commit()
-        super().tearDown()
-
-    def test_20_get_record_at_position_06(self):
+    def t20_get_record_at_position_06(self):
         ae = self.assertEqual
         grap = self.cursor.get_record_at_position
         for i in range(32):
@@ -1224,14 +1166,538 @@ class Cursor_secondary__get_record_at_position(_NoSQL):
         ae(grap(-61), None)
 
 
+if gnu_module:
+
+    class _NoSQLGnu(_NoSQL):
+        def setUp(self):
+            self._oda = gnu_module, Gnu, None
+            super().setUp()
+
+        def tearDown(self):
+            super().tearDown()
+            # I have no idea why database teardown for gnu has to be like so:
+            path = os.path.join(os.path.dirname(__file__), _GNU_TEST_ROOT)
+            if os.path.isfile(path):
+                os.remove(path)
+            if os.path.isdir(path):
+                for f in os.listdir(path):
+                    os.remove(os.path.join(path, f))
+                os.rmdir(path)
+
+    class Cursor_nosqlGnu(_NoSQLGnu):
+        test_01 = Cursor_nosql.t01
+        test_02 = Cursor_nosql.t02___init__
+        test_03 = Cursor_nosql.t03_close
+        test_04 = Cursor_nosql.t04_get_converted_partial
+        test_05 = Cursor_nosql.t05_get_partial_with_wildcard
+        test_06 = Cursor_nosql.t06_get_converted_partial_with_wildcard
+        test_07 = Cursor_nosql.t07_refresh_recordset
+
+    class Cursor_primaryGnu(_NoSQLGnu):
+        def setUp(self):
+            super().setUp()
+            Cursor_primary.setup_detail(self)
+
+        def tearDown(self):
+            self.cursor.close()
+            super().tearDown()
+
+        test_01 = Cursor_primary.t01
+        test_02 = Cursor_primary.t02___init__
+        test_03 = Cursor_primary.t03___init__
+        test_04 = Cursor_primary.t04_count_records
+        test_05 = Cursor_primary.t05_first
+        test_06 = Cursor_primary.t06_get_position_of_record_01
+        test_06 = Cursor_primary.t06_get_position_of_record_02
+        test_06 = Cursor_primary.t06_get_position_of_record_03
+        test_08 = Cursor_primary.t08_get_record_at_position_01
+        test_08 = Cursor_primary.t08_get_record_at_position_02
+        test_08 = Cursor_primary.t08_get_record_at_position_03
+        test_12 = Cursor_primary.t12_last
+        test_13 = Cursor_primary.t13_nearest
+        test_14 = Cursor_primary.t14_next_01
+        test_15 = Cursor_primary.t15_next_02
+        test_16 = Cursor_primary.t16_next_03
+        test_17 = Cursor_primary.t17_prev_01
+        test_18 = Cursor_primary.t18_prev_02
+        test_19 = Cursor_primary.t19_prev_03
+        test_20 = Cursor_primary.t20_setat
+        test_21 = Cursor_primary.t21_refresh_recordset
+
+    class Cursor_primary__get_record_at_positionGnu(_NoSQLGnu):
+        def setUp(self):
+            super().setUp()
+            Cursor_primary__get_record_at_position.setup_detail(self)
+
+        def tearDown(self):
+            self.cursor.close()
+            super().tearDown()
+
+        test_01 = Cursor_primary__get_record_at_position.t01_get_record_at_position_01
+
+    class Cursor_secondaryGnu(_NoSQLGnu):
+        def setUp(self):
+            super().setUp()
+            Cursor_secondary.setup_detail(self)
+
+        def tearDown(self):
+            self.cursor.close()
+            super().tearDown()
+
+        test_01 = Cursor_secondary.t01
+        test_02 = Cursor_secondary.t02___init__
+        test_05 = Cursor_secondary.t05_count_records_01
+        test_06 = Cursor_secondary.t06_count_records_02
+        test_07 = Cursor_secondary.t07_first_01
+        test_08 = Cursor_secondary.t08_first_02
+        test_09 = Cursor_secondary.t09_first_03
+        test_10 = Cursor_secondary.t10_first_04
+        test_11 = Cursor_secondary.t11_get_position_of_record_01
+        test_12 = Cursor_secondary.t12_get_position_of_record_02
+        test_13 = Cursor_secondary.t13_get_position_of_record_03
+        test_14 = Cursor_secondary.t14_get_position_of_record_04
+        test_30 = Cursor_secondary.t30_last_01
+        test_31 = Cursor_secondary.t31_last_02
+        test_32 = Cursor_secondary.t32_last_03
+        test_33 = Cursor_secondary.t33_last_04
+        test_34 = Cursor_secondary.t34_nearest_01
+        test_35 = Cursor_secondary.t35_nearest_02
+        test_36 = Cursor_secondary.t36_nearest_03
+        test_37 = Cursor_secondary.t37_nearest_04
+        test_38 = Cursor_secondary.t38_next_01
+        test_39 = Cursor_secondary.t39_next_02
+        test_40 = Cursor_secondary.t40_next_03
+        test_41 = Cursor_secondary.t41_next_04
+        test_44 = Cursor_secondary.t44_prev_01
+        test_45 = Cursor_secondary.t45_prev_02
+        test_46 = Cursor_secondary.t46_prev_05
+        test_47 = Cursor_secondary.t47_prev_06
+        test_50 = Cursor_secondary.t50_setat_01
+        test_51 = Cursor_secondary.t51_setat_02
+        test_52 = Cursor_secondary.t52_setat_03
+        test_53 = Cursor_secondary.t53_setat_04
+        test_54 = Cursor_secondary.t54_setat_05
+        test_55 = Cursor_secondary.t55_setat_06
+        test_56 = Cursor_secondary.t56_set_partial_key
+        test_60 = Cursor_secondary.t60_set_current_segment_table
+        test_61 = Cursor_secondary.t61_refresh_recordset
+        test_70 = Cursor_secondary.t70_get_unique_primary_for_index_key
+
+    class Cursor_secondary__get_record_at_positionGnu(_NoSQLGnu):
+        def setUp(self):
+            super().setUp()
+            Cursor_secondary__get_record_at_position.setup_detail(self)
+
+        def tearDown(self):
+            self.cursor.close()
+            self.database.commit()
+            super().tearDown()
+
+        test_20 = Cursor_secondary__get_record_at_position.t20_get_record_at_position_06
+
+
+if ndbm_module:
+
+    class _NoSQLNdbm(_NoSQL):
+        def setUp(self):
+            self._oda = ndbm_module, Ndbm, None
+            super().setUp()
+
+        def tearDown(self):
+            super().tearDown()
+            # I have no idea why database teardown for gnu has to be like so:
+            path = os.path.join(
+                os.path.dirname(__file__), ".".join((_NDBM_TEST_ROOT, "db"))
+            )
+            if os.path.isdir(path):
+                for f in os.listdir(path):
+                    os.remove(os.path.join(path, f))
+                os.rmdir(path)
+            elif os.path.isfile(
+                path
+            ):  # Most tests, other two each have a few.
+                os.remove(path)
+            path = os.path.join(os.path.dirname(__file__), _NDBM_TEST_ROOT)
+            if os.path.isdir(path):
+                for f in os.listdir(path):
+                    os.remove(os.path.join(path, f))
+                os.rmdir(path)
+
+    class Cursor_nosqlNdbm(_NoSQLNdbm):
+        test_01 = Cursor_nosql.t01
+        test_02 = Cursor_nosql.t02___init__
+        test_03 = Cursor_nosql.t03_close
+        test_04 = Cursor_nosql.t04_get_converted_partial
+        test_05 = Cursor_nosql.t05_get_partial_with_wildcard
+        test_06 = Cursor_nosql.t06_get_converted_partial_with_wildcard
+        test_07 = Cursor_nosql.t07_refresh_recordset
+
+    class Cursor_primaryNdbm(_NoSQLNdbm):
+        def setUp(self):
+            super().setUp()
+            Cursor_primary.setup_detail(self)
+
+        def tearDown(self):
+            self.cursor.close()
+            super().tearDown()
+
+        test_01 = Cursor_primary.t01
+        test_02 = Cursor_primary.t02___init__
+        test_03 = Cursor_primary.t03___init__
+        test_04 = Cursor_primary.t04_count_records
+        test_05 = Cursor_primary.t05_first
+        test_06 = Cursor_primary.t06_get_position_of_record_01
+        test_06 = Cursor_primary.t06_get_position_of_record_02
+        test_06 = Cursor_primary.t06_get_position_of_record_03
+        test_08 = Cursor_primary.t08_get_record_at_position_01
+        test_08 = Cursor_primary.t08_get_record_at_position_02
+        test_08 = Cursor_primary.t08_get_record_at_position_03
+        test_12 = Cursor_primary.t12_last
+        test_13 = Cursor_primary.t13_nearest
+        test_14 = Cursor_primary.t14_next_01
+        test_15 = Cursor_primary.t15_next_02
+        test_16 = Cursor_primary.t16_next_03
+        test_17 = Cursor_primary.t17_prev_01
+        test_18 = Cursor_primary.t18_prev_02
+        test_19 = Cursor_primary.t19_prev_03
+        test_20 = Cursor_primary.t20_setat
+        test_21 = Cursor_primary.t21_refresh_recordset
+
+    class Cursor_primary__get_record_at_positionNdbm(_NoSQLNdbm):
+        def setUp(self):
+            super().setUp()
+            Cursor_primary__get_record_at_position.setup_detail(self)
+
+        def tearDown(self):
+            self.cursor.close()
+            super().tearDown()
+
+        test_01 = Cursor_primary__get_record_at_position.t01_get_record_at_position_01
+
+    class Cursor_secondaryNdbm(_NoSQLNdbm):
+        def setUp(self):
+            super().setUp()
+            Cursor_secondary.setup_detail(self)
+
+        def tearDown(self):
+            self.cursor.close()
+            super().tearDown()
+
+        test_01 = Cursor_secondary.t01
+        test_02 = Cursor_secondary.t02___init__
+        test_05 = Cursor_secondary.t05_count_records_01
+        test_06 = Cursor_secondary.t06_count_records_02
+        test_07 = Cursor_secondary.t07_first_01
+        test_08 = Cursor_secondary.t08_first_02
+        test_09 = Cursor_secondary.t09_first_03
+        test_10 = Cursor_secondary.t10_first_04
+        test_11 = Cursor_secondary.t11_get_position_of_record_01
+        test_12 = Cursor_secondary.t12_get_position_of_record_02
+        test_13 = Cursor_secondary.t13_get_position_of_record_03
+        test_14 = Cursor_secondary.t14_get_position_of_record_04
+        test_30 = Cursor_secondary.t30_last_01
+        test_31 = Cursor_secondary.t31_last_02
+        test_32 = Cursor_secondary.t32_last_03
+        test_33 = Cursor_secondary.t33_last_04
+        test_34 = Cursor_secondary.t34_nearest_01
+        test_35 = Cursor_secondary.t35_nearest_02
+        test_36 = Cursor_secondary.t36_nearest_03
+        test_37 = Cursor_secondary.t37_nearest_04
+        test_38 = Cursor_secondary.t38_next_01
+        test_39 = Cursor_secondary.t39_next_02
+        test_40 = Cursor_secondary.t40_next_03
+        test_41 = Cursor_secondary.t41_next_04
+        test_44 = Cursor_secondary.t44_prev_01
+        test_45 = Cursor_secondary.t45_prev_02
+        test_46 = Cursor_secondary.t46_prev_05
+        test_47 = Cursor_secondary.t47_prev_06
+        test_50 = Cursor_secondary.t50_setat_01
+        test_51 = Cursor_secondary.t51_setat_02
+        test_52 = Cursor_secondary.t52_setat_03
+        test_53 = Cursor_secondary.t53_setat_04
+        test_54 = Cursor_secondary.t54_setat_05
+        test_55 = Cursor_secondary.t55_setat_06
+        test_56 = Cursor_secondary.t56_set_partial_key
+        test_60 = Cursor_secondary.t60_set_current_segment_table
+        test_61 = Cursor_secondary.t61_refresh_recordset
+        test_70 = Cursor_secondary.t70_get_unique_primary_for_index_key
+
+    class Cursor_secondary__get_record_at_positionNdbm(_NoSQLNdbm):
+        def setUp(self):
+            super().setUp()
+            Cursor_secondary__get_record_at_position.setup_detail(self)
+
+        def tearDown(self):
+            self.cursor.close()
+            self.database.commit()
+            super().tearDown()
+
+        test_20 = Cursor_secondary__get_record_at_position.t20_get_record_at_position_06
+
+
+if unqlite:
+
+    class _NoSQLUnqlite(_NoSQL):
+        def setUp(self):
+            self._oda = unqlite, unqlite.UnQLite, unqlite.UnQLiteError
+            super().setUp()
+
+    class Cursor_nosqlUnqlite(_NoSQLUnqlite):
+        test_01 = Cursor_nosql.t01
+        test_02 = Cursor_nosql.t02___init__
+        test_03 = Cursor_nosql.t03_close
+        test_04 = Cursor_nosql.t04_get_converted_partial
+        test_05 = Cursor_nosql.t05_get_partial_with_wildcard
+        test_06 = Cursor_nosql.t06_get_converted_partial_with_wildcard
+        test_07 = Cursor_nosql.t07_refresh_recordset
+
+    class Cursor_primaryUnqlite(_NoSQLUnqlite):
+        def setUp(self):
+            super().setUp()
+            Cursor_primary.setup_detail(self)
+
+        def tearDown(self):
+            self.cursor.close()
+            super().tearDown()
+
+        test_01 = Cursor_primary.t01
+        test_02 = Cursor_primary.t02___init__
+        test_03 = Cursor_primary.t03___init__
+        test_04 = Cursor_primary.t04_count_records
+        test_05 = Cursor_primary.t05_first
+        test_06 = Cursor_primary.t06_get_position_of_record_01
+        test_06 = Cursor_primary.t06_get_position_of_record_02
+        test_06 = Cursor_primary.t06_get_position_of_record_03
+        test_08 = Cursor_primary.t08_get_record_at_position_01
+        test_08 = Cursor_primary.t08_get_record_at_position_02
+        test_08 = Cursor_primary.t08_get_record_at_position_03
+        test_12 = Cursor_primary.t12_last
+        test_13 = Cursor_primary.t13_nearest
+        test_14 = Cursor_primary.t14_next_01
+        test_15 = Cursor_primary.t15_next_02
+        test_16 = Cursor_primary.t16_next_03
+        test_17 = Cursor_primary.t17_prev_01
+        test_18 = Cursor_primary.t18_prev_02
+        test_19 = Cursor_primary.t19_prev_03
+        test_20 = Cursor_primary.t20_setat
+        test_21 = Cursor_primary.t21_refresh_recordset
+
+    class Cursor_primary__get_record_at_positionUnqlite(_NoSQLUnqlite):
+        def setUp(self):
+            super().setUp()
+            Cursor_primary__get_record_at_position.setup_detail(self)
+
+        def tearDown(self):
+            self.cursor.close()
+            super().tearDown()
+
+        test_01 = Cursor_primary__get_record_at_position.t01_get_record_at_position_01
+
+    class Cursor_secondaryUnqlite(_NoSQLUnqlite):
+        def setUp(self):
+            super().setUp()
+            Cursor_secondary.setup_detail(self)
+
+        def tearDown(self):
+            self.cursor.close()
+            super().tearDown()
+
+        test_01 = Cursor_secondary.t01
+        test_02 = Cursor_secondary.t02___init__
+        test_05 = Cursor_secondary.t05_count_records_01
+        test_06 = Cursor_secondary.t06_count_records_02
+        test_07 = Cursor_secondary.t07_first_01
+        test_08 = Cursor_secondary.t08_first_02
+        test_09 = Cursor_secondary.t09_first_03
+        test_10 = Cursor_secondary.t10_first_04
+        test_11 = Cursor_secondary.t11_get_position_of_record_01
+        test_12 = Cursor_secondary.t12_get_position_of_record_02
+        test_13 = Cursor_secondary.t13_get_position_of_record_03
+        test_14 = Cursor_secondary.t14_get_position_of_record_04
+        test_30 = Cursor_secondary.t30_last_01
+        test_31 = Cursor_secondary.t31_last_02
+        test_32 = Cursor_secondary.t32_last_03
+        test_33 = Cursor_secondary.t33_last_04
+        test_34 = Cursor_secondary.t34_nearest_01
+        test_35 = Cursor_secondary.t35_nearest_02
+        test_36 = Cursor_secondary.t36_nearest_03
+        test_37 = Cursor_secondary.t37_nearest_04
+        test_38 = Cursor_secondary.t38_next_01
+        test_39 = Cursor_secondary.t39_next_02
+        test_40 = Cursor_secondary.t40_next_03
+        test_41 = Cursor_secondary.t41_next_04
+        test_44 = Cursor_secondary.t44_prev_01
+        test_45 = Cursor_secondary.t45_prev_02
+        test_46 = Cursor_secondary.t46_prev_05
+        test_47 = Cursor_secondary.t47_prev_06
+        test_50 = Cursor_secondary.t50_setat_01
+        test_51 = Cursor_secondary.t51_setat_02
+        test_52 = Cursor_secondary.t52_setat_03
+        test_53 = Cursor_secondary.t53_setat_04
+        test_54 = Cursor_secondary.t54_setat_05
+        test_55 = Cursor_secondary.t55_setat_06
+        test_56 = Cursor_secondary.t56_set_partial_key
+        test_60 = Cursor_secondary.t60_set_current_segment_table
+        test_61 = Cursor_secondary.t61_refresh_recordset
+        test_70 = Cursor_secondary.t70_get_unique_primary_for_index_key
+
+    class Cursor_secondary__get_record_at_positionUnqlite(_NoSQLUnqlite):
+        def setUp(self):
+            super().setUp()
+            Cursor_secondary__get_record_at_position.setup_detail(self)
+
+        def tearDown(self):
+            self.cursor.close()
+            self.database.commit()
+            super().tearDown()
+
+        test_20 = Cursor_secondary__get_record_at_position.t20_get_record_at_position_06
+
+
+if vedis:
+
+    class _NoSQLVedis(_NoSQL):
+        def setUp(self):
+            self._oda = vedis, vedis.Vedis, None
+            super().setUp()
+
+    class Cursor_nosqlVedis(_NoSQLVedis):
+        test_01 = Cursor_nosql.t01
+        test_02 = Cursor_nosql.t02___init__
+        test_03 = Cursor_nosql.t03_close
+        test_04 = Cursor_nosql.t04_get_converted_partial
+        test_05 = Cursor_nosql.t05_get_partial_with_wildcard
+        test_06 = Cursor_nosql.t06_get_converted_partial_with_wildcard
+        test_07 = Cursor_nosql.t07_refresh_recordset
+
+    class Cursor_primaryVedis(_NoSQLVedis):
+        def setUp(self):
+            super().setUp()
+            Cursor_primary.setup_detail(self)
+
+        def tearDown(self):
+            self.cursor.close()
+            super().tearDown()
+
+        test_01 = Cursor_primary.t01
+        test_02 = Cursor_primary.t02___init__
+        test_03 = Cursor_primary.t03___init__
+        test_04 = Cursor_primary.t04_count_records
+        test_05 = Cursor_primary.t05_first
+        test_06 = Cursor_primary.t06_get_position_of_record_01
+        test_06 = Cursor_primary.t06_get_position_of_record_02
+        test_06 = Cursor_primary.t06_get_position_of_record_03
+        test_08 = Cursor_primary.t08_get_record_at_position_01
+        test_08 = Cursor_primary.t08_get_record_at_position_02
+        test_08 = Cursor_primary.t08_get_record_at_position_03
+        test_12 = Cursor_primary.t12_last
+        test_13 = Cursor_primary.t13_nearest
+        test_14 = Cursor_primary.t14_next_01
+        test_15 = Cursor_primary.t15_next_02
+        test_16 = Cursor_primary.t16_next_03
+        test_17 = Cursor_primary.t17_prev_01
+        test_18 = Cursor_primary.t18_prev_02
+        test_19 = Cursor_primary.t19_prev_03
+        test_20 = Cursor_primary.t20_setat
+        test_21 = Cursor_primary.t21_refresh_recordset
+
+    class Cursor_primary__get_record_at_positionVedis(_NoSQLVedis):
+        def setUp(self):
+            super().setUp()
+            Cursor_primary__get_record_at_position.setup_detail(self)
+
+        def tearDown(self):
+            self.cursor.close()
+            super().tearDown()
+
+        test_01 = Cursor_primary__get_record_at_position.t01_get_record_at_position_01
+
+    class Cursor_secondaryVedis(_NoSQLVedis):
+        def setUp(self):
+            super().setUp()
+            Cursor_secondary.setup_detail(self)
+
+        def tearDown(self):
+            self.cursor.close()
+            super().tearDown()
+
+        test_01 = Cursor_secondary.t01
+        test_02 = Cursor_secondary.t02___init__
+        test_05 = Cursor_secondary.t05_count_records_01
+        test_06 = Cursor_secondary.t06_count_records_02
+        test_07 = Cursor_secondary.t07_first_01
+        test_08 = Cursor_secondary.t08_first_02
+        test_09 = Cursor_secondary.t09_first_03
+        test_10 = Cursor_secondary.t10_first_04
+        test_11 = Cursor_secondary.t11_get_position_of_record_01
+        test_12 = Cursor_secondary.t12_get_position_of_record_02
+        test_13 = Cursor_secondary.t13_get_position_of_record_03
+        test_14 = Cursor_secondary.t14_get_position_of_record_04
+        test_30 = Cursor_secondary.t30_last_01
+        test_31 = Cursor_secondary.t31_last_02
+        test_32 = Cursor_secondary.t32_last_03
+        test_33 = Cursor_secondary.t33_last_04
+        test_34 = Cursor_secondary.t34_nearest_01
+        test_35 = Cursor_secondary.t35_nearest_02
+        test_36 = Cursor_secondary.t36_nearest_03
+        test_37 = Cursor_secondary.t37_nearest_04
+        test_38 = Cursor_secondary.t38_next_01
+        test_39 = Cursor_secondary.t39_next_02
+        test_40 = Cursor_secondary.t40_next_03
+        test_41 = Cursor_secondary.t41_next_04
+        test_44 = Cursor_secondary.t44_prev_01
+        test_45 = Cursor_secondary.t45_prev_02
+        test_46 = Cursor_secondary.t46_prev_05
+        test_47 = Cursor_secondary.t47_prev_06
+        test_50 = Cursor_secondary.t50_setat_01
+        test_51 = Cursor_secondary.t51_setat_02
+        test_52 = Cursor_secondary.t52_setat_03
+        test_53 = Cursor_secondary.t53_setat_04
+        test_54 = Cursor_secondary.t54_setat_05
+        test_55 = Cursor_secondary.t55_setat_06
+        test_56 = Cursor_secondary.t56_set_partial_key
+        test_60 = Cursor_secondary.t60_set_current_segment_table
+        test_61 = Cursor_secondary.t61_refresh_recordset
+        test_70 = Cursor_secondary.t70_get_unique_primary_for_index_key
+
+    class Cursor_secondary__get_record_at_positionVedis(_NoSQLVedis):
+        def setUp(self):
+            super().setUp()
+            Cursor_secondary__get_record_at_position.setup_detail(self)
+
+        def tearDown(self):
+            self.cursor.close()
+            self.database.commit()
+            super().tearDown()
+
+        test_20 = Cursor_secondary__get_record_at_position.t20_get_record_at_position_06
+
+
+
 if __name__ == "__main__":
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
-    for dbe_module in unqlite, vedis, ndbm_module, gnu_module:
-        if dbe_module is None:
-            continue
-        runner().run(loader(Cursor_nosql))
-        runner().run(loader(Cursor_primary))
-        runner().run(loader(Cursor_primary__get_record_at_position))
-        runner().run(loader(Cursor_secondary))
-        runner().run(loader(Cursor_secondary__get_record_at_position))
+    if gnu_module:
+        runner().run(loader(Cursor_nosqlGnu))
+        runner().run(loader(Cursor_primaryGnu))
+        runner().run(loader(Cursor_primary__get_record_at_positionGnu))
+        runner().run(loader(Cursor_secondaryGnu))
+        runner().run(loader(Cursor_secondary__get_record_at_positionGnu))
+    if ndbm_module:
+        runner().run(loader(Cursor_nosqlNdbm))
+        runner().run(loader(Cursor_primaryNdbm))
+        runner().run(loader(Cursor_primary__get_record_at_positionNdbm))
+        runner().run(loader(Cursor_secondaryNdbm))
+        runner().run(loader(Cursor_secondary__get_record_at_positionNdbm))
+    if unqlite:
+        runner().run(loader(Cursor_nosqlUnqlite))
+        runner().run(loader(Cursor_primaryUnqlite))
+        runner().run(loader(Cursor_primary__get_record_at_positionUnqlite))
+        runner().run(loader(Cursor_secondaryUnqlite))
+        runner().run(loader(Cursor_secondary__get_record_at_positionUnqlite))
+    if vedis:
+        runner().run(loader(Cursor_nosqlVedis))
+        runner().run(loader(Cursor_primaryVedis))
+        runner().run(loader(Cursor_primary__get_record_at_positionVedis))
+        runner().run(loader(Cursor_secondaryVedis))
+        runner().run(loader(Cursor_secondary__get_record_at_positionVedis))

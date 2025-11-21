@@ -13,37 +13,39 @@ except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     lmdb_database = None
 
 
-class LmdbDatabase(unittest.TestCase):
-    def test__assumptions(self):
-        msg = "Failure of this test invalidates all other tests"
-        self.assertRaisesRegex(
-            TypeError,
-            "".join(
-                (
-                    r"__init__\(\) missing 1 required positional argument: ",
-                    "'specification'$",
-                )
-            ),
-            lmdb_database.Database,
-        )
-        self.assertIsInstance(
-            lmdb_database.Database({}),
-            lmdb_database.Database,
-        )
+if lmdb_database is not None:
 
-    def test_open_database(self):
-        database = lmdb_database.Database({})
-        self.assertRaisesRegex(
-            TypeError,
-            "".join(
-                (
-                    r"mkdir: path should be string, bytes or os.PathLike, ",
-                    "not NoneType$",
-                )
-            ),
-            database.open_database,
-        )
-        self.assertEqual(database.home_directory, None)
+    class LmdbDatabase(unittest.TestCase):
+        def test__assumptions(self):
+            msg = "Failure of this test invalidates all other tests"
+            self.assertRaisesRegex(
+                TypeError,
+                "".join(
+                    (
+                        r"__init__\(\) missing 1 required positional argument: ",
+                        "'specification'$",
+                    )
+                ),
+                lmdb_database.Database,
+            )
+            self.assertIsInstance(
+                lmdb_database.Database({}),
+                lmdb_database.Database,
+            )
+
+        def test_open_database(self):
+            database = lmdb_database.Database({})
+            self.assertRaisesRegex(
+                TypeError,
+                "".join(
+                    (
+                        r"mkdir: path should be string, bytes or os.PathLike, ",
+                        "not NoneType$",
+                    )
+                ),
+                database.open_database,
+            )
+            self.assertEqual(database.home_directory, None)
 
 
 if __name__ == "__main__":

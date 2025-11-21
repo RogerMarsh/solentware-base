@@ -28,6 +28,10 @@ try:
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     bsddb3 = None
 try:
+    import berkeleydb
+except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
+    berkeleydb = None
+try:
     import sqlite3
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     sqlite3 = None
@@ -35,6 +39,10 @@ try:
     import apsw
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     apsw = None
+try:
+    import lmdb
+except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
+    lmdb = None
 try:
     from dptdb import dptapi
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
@@ -68,9 +76,17 @@ try:
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     apsw_database = None
 try:
+    from .. import lmdb_database
+except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
+    lmdb_database = None
+try:
     from .. import bsddb3_database
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     bsddb3_database = None
+try:
+    from .. import berkeleydb_database
+except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
+    berkeleydb_database = None
 try:
     from .. import dpt_database
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
@@ -87,23 +103,6 @@ except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
 
 class _Database(unittest.TestCase):
     def setUp(self):
-        self._folder = "___update_test"
-        if dbe_module is unqlite:
-            self._engine = unqlite_database
-        elif dbe_module is vedis:
-            self._engine = vedis_database
-        elif dbe_module is bsddb3:
-            self._engine = bsddb3_database
-        elif dbe_module is sqlite3:
-            self._engine = sqlite3_database
-        elif dbe_module is apsw:
-            self._engine = apsw_database
-        elif dbe_module is dptapi:
-            self._engine = dpt_database
-        elif dbe_module is ndbm_module:
-            self._engine = ndbm_database
-        elif dbe_module is gnu_module:
-            self._engine = gnu_database
         self.__ssb = SegmentSize.db_segment_size_bytes
 
         class _D(self._engine.Database):
@@ -116,14 +115,14 @@ class _Database(unittest.TestCase):
         self._D = None
         SegmentSize.db_segment_size_bytes = self.__ssb
         if os.path.exists(self._folder):
-            if dbe_module is bsddb3:
+            if self._folder in ("___update_test_bsddb3", "___update_test_berkeleydb"):
                 logdir = os.path.join(self._folder, "___logs_" + self._folder)
                 if os.path.exists(logdir):
                     for f in os.listdir(logdir):
                         if f.startswith("log."):
                             os.remove(os.path.join(logdir, f))
                     os.rmdir(logdir)
-            if dbe_module is dptapi:
+            if self._folder == "___update_test_dpt":
                 for dptsys in os.path.join("dptsys", "dptsys"), "dptsys":
                     logdir = os.path.join(self._folder, dptsys)
                     if os.path.exists(logdir):
@@ -134,7 +133,7 @@ class _Database(unittest.TestCase):
                 os.remove(os.path.join(self._folder, f))
             os.rmdir(self._folder)
 
-    def test_01_open_database__in_directory_txn_generated_filespec(self):
+    def t01_open_database__in_directory_txn_generated_filespec(self):
         # No cachesize problem for bsddb3 when database is not in memory.
         # Transaction for each record.
         self.database = self._D(
@@ -147,7 +146,7 @@ class _Database(unittest.TestCase):
                 self.database.home_directory,
                 os.path.join(os.getcwd(), self._folder),
             )
-            if dbe_module is not dptapi:
+            if self._folder != "___update_test_dpt":
                 self.assertEqual(SegmentSize.db_segment_size_bytes, 4000)
                 self.assertEqual(
                     self.database.database_file,
@@ -165,10 +164,10 @@ class _Database(unittest.TestCase):
     # size highlights the problem.  Happens on FreeBSD too.
     # On Windows 10 get KeyError at _nosql.py line 582
     # add_record_to_field_value called from _database.py line 208 put_instance.
-    def test_02_open_database__in_directory_txn_generated_filespec(self):
+    def t02_open_database__in_directory_txn_generated_filespec(self):
         # No cachesize problem for bsddb3 when database is not in memory.
         # Transaction for all records.
-        if dbe_module is vedis:
+        if self._folder == "___update_test_vedis":
             ssb = SegmentSize.db_segment_size_bytes_minimum
         else:
             ssb = 4000
@@ -183,7 +182,7 @@ class _Database(unittest.TestCase):
                 self.database.home_directory,
                 os.path.join(os.getcwd(), self._folder),
             )
-            if dbe_module is not dptapi:
+            if self._folder != "___update_test_dpt":
                 self.assertEqual(SegmentSize.db_segment_size_bytes, ssb)
                 self.assertEqual(
                     self.database.database_file,
@@ -196,21 +195,141 @@ class _Database(unittest.TestCase):
             self.database.close_database()
 
 
+if unqlite:
+
+    class _DatabaseUnqlite(_Database):
+        def setUp(self):
+            self._folder = "___update_test_unqlite"
+            self._engine = unqlite_database
+            super().setUp()
+
+        test_01 = _Database.t01_open_database__in_directory_txn_generated_filespec
+        test_02 = _Database.t02_open_database__in_directory_txn_generated_filespec
+
+if vedis:
+
+    class _DatabaseVedis(_Database):
+        def setUp(self):
+            self._folder = "___update_test_vedis"
+            self._engine = vedis_database
+            super().setUp()
+
+        test_01 = _Database.t01_open_database__in_directory_txn_generated_filespec
+        test_02 = _Database.t02_open_database__in_directory_txn_generated_filespec
+
+if bsddb3:
+
+    class _DatabaseBsddb3(_Database):
+        def setUp(self):
+            self._folder = "___update_test_bsddb3"
+            self._engine = bsddb3_database
+            super().setUp()
+
+        test_01 = _Database.t01_open_database__in_directory_txn_generated_filespec
+        test_02 = _Database.t02_open_database__in_directory_txn_generated_filespec
+
+if berkeleydb:
+
+    class _DatabaseBerkeleydb(_Database):
+        def setUp(self):
+            self._folder = "___update_test_berkeleydb"
+            self._engine = berkeleydb_database
+            super().setUp()
+
+        test_01 = _Database.t01_open_database__in_directory_txn_generated_filespec
+        test_02 = _Database.t02_open_database__in_directory_txn_generated_filespec
+
+if sqlite3:
+
+    class _DatabaseSqlite3(_Database):
+        def setUp(self):
+            self._folder = "___update_test_sqlite3"
+            self._engine = sqlite3_database
+            super().setUp()
+
+        test_01 = _Database.t01_open_database__in_directory_txn_generated_filespec
+        test_02 = _Database.t02_open_database__in_directory_txn_generated_filespec
+
+if apsw:
+
+    class _DatabaseApsw(_Database):
+        def setUp(self):
+            self._folder = "___update_test_apsw"
+            self._engine = apsw_database
+            super().setUp()
+
+        test_01 = _Database.t01_open_database__in_directory_txn_generated_filespec
+        test_02 = _Database.t02_open_database__in_directory_txn_generated_filespec
+
+if lmdb:
+
+    class _DatabaseLmdb(_Database):
+        def setUp(self):
+            self._folder = "___update_test_lmdb"
+            self._engine = lmdb_database
+            super().setUp()
+
+        test_01 = _Database.t01_open_database__in_directory_txn_generated_filespec
+        test_02 = _Database.t02_open_database__in_directory_txn_generated_filespec
+
+if dptapi:
+
+    class _DatabaseDptapi(_Database):
+        def setUp(self):
+            self._folder = "___update_test_dpt"
+            self._engine = dpt_database
+            super().setUp()
+
+        test_01 = _Database.t01_open_database__in_directory_txn_generated_filespec
+        test_02 = _Database.t02_open_database__in_directory_txn_generated_filespec
+
+if ndbm_module:
+
+    class _DatabaseNdbm(_Database):
+        def setUp(self):
+            self._folder = "___update_test_ndbm"
+            self._engine = ndbm_database
+            super().setUp()
+
+        test_01 = _Database.t01_open_database__in_directory_txn_generated_filespec
+        test_02 = _Database.t02_open_database__in_directory_txn_generated_filespec
+
+if gnu_module:
+
+    class _DatabaseGnu(_Database):
+        def setUp(self):
+            self._folder = "___update_test_gnu"
+            self._engine = gnu_database
+            super().setUp()
+
+        test_01 = _Database.t01_open_database__in_directory_txn_generated_filespec
+        test_02 = _Database.t02_open_database__in_directory_txn_generated_filespec
+
+
+dg = _data_generator._DataGenerator()
+generated_filespec = _data_generator.generate_filespec(dg)
+
+
 if __name__ == "__main__":
-    dg = _data_generator._DataGenerator()
-    generated_filespec = _data_generator.generate_filespec(dg)
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
-    for dbe_module in (
-        unqlite,
-        vedis,
-        bsddb3,
-        sqlite3,
-        apsw,
-        dptapi,
-        ndbm_module,
-        gnu_module,
-    ):
-        if dbe_module is None:
-            continue
-        runner().run(loader(_Database))
+    if unqlite:
+        runner().run(loader(_DatabaseUnqlite))
+    if vedis:
+        runner().run(loader(_DatabaseVedis))
+    if bsddb3:
+        runner().run(loader(_DatabaseBsddb3))
+    if berkeleydb:
+        runner().run(loader(_DatabaseBerkeleydb))
+    if sqlite3:
+        runner().run(loader(_DatabaseSqlite3))
+    if apsw:
+        runner().run(loader(_DatabaseApsw))
+    if lmdb:
+        runner().run(loader(_DatabaseLmdb))
+    if dptapi:
+        runner().run(loader(_DatabaseDptapi))
+    if ndbm_module:
+        runner().run(loader(_DatabaseNdbm))
+    if gnu_module:
+        runner().run(loader(_DatabaseGnu))

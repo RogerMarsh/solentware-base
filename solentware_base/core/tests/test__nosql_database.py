@@ -2,7 +2,7 @@
 # Copyright 2019 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""_nosql _database tests
+"""_nosql _database tests for gnudbm, ndbm, unqlite, and vedis, interfaces.
 
 Open and close a database on a file, not in memory.
 
@@ -10,7 +10,6 @@ Open and close a database on a file, not in memory.
 
 import unittest
 import os
-from ast import literal_eval
 
 try:
     import unqlite
@@ -32,54 +31,27 @@ except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
 from .. import _nosql
 from .. import tree
 from .. import filespec
-from .. import recordset
 from ..segmentsize import SegmentSize
-from ..wherevalues import ValuesClause
 
 
 class _NoSQL(unittest.TestCase):
     def setUp(self):
         # UnQLite and Vedis are sufficiently different that the open_database()
         # call arguments have to be set differently for these engines.
-        if dbe_module is unqlite:
-            self._oda = dbe_module, dbe_module.UnQLite, dbe_module.UnQLiteError
-        elif dbe_module is vedis:
-            self._oda = dbe_module, dbe_module.Vedis, None
-        elif dbe_module is ndbm_module:
-            self._oda = dbe_module, dbe_module.Ndbm, None
-        elif dbe_module is gnu_module:
-            self._oda = dbe_module, dbe_module.Gnu, None
 
         class _D(_nosql.Database):
             pass
 
         self._D = _D
-        self._directory = os.path.join(
-            os.path.dirname(__file__), dbe_module.__name__
-        )
 
     def tearDown(self):
         self.database = None
         self._D = None
-        if dbe_module is ndbm_module:
-            os.remove(
-                os.path.join(
-                    self._directory, ".".join((dbe_module.__name__, "db"))
-                )
-            )
-        elif dbe_module is gnu_module:
-            os.remove(os.path.join(self._directory, dbe_module.__name__))
-        else:
-            os.remove(os.path.join(self._directory, dbe_module.__name__))
-        os.rmdir(os.path.join(self._directory))
 
 
 class Database_open_database(_NoSQL):
-    def test_09(self):
-        self.assertEqual(
-            os.path.exists(os.path.join(self._directory, dbe_module.__name__)),
-            False,
-        )
+    def t09(self):
+        self.detail_does_not_exist_t09()
         self.database = self._D(
             filespec.FileSpec(
                 **{"file1": {"field1"}, "file2": (), "file3": {"field2"}}
@@ -92,18 +64,7 @@ class Database_open_database(_NoSQL):
         ] = "hash"
         self.database.open_database(*self._oda)
         self.assertEqual(SegmentSize.db_segment_size_bytes, 4000)
-        self.assertEqual(
-            self.database.home_directory,
-            os.path.join(os.path.dirname(__file__), dbe_module.__name__),
-        )
-        self.assertEqual(
-            self.database.database_file,
-            os.path.join(
-                os.path.dirname(__file__),
-                dbe_module.__name__,
-                dbe_module.__name__,
-            ),
-        )
+        self.detail_created_t09()
         self.assertEqual(
             self.database.table,
             {
@@ -138,15 +99,7 @@ class Database_open_database(_NoSQL):
         for v in self.database.ebm_control.values():
             self.assertIsInstance(v, _nosql.ExistenceBitmapControl)
         self.database.close_database()
-        if dbe_module is ndbm_module:
-            path = os.path.join(
-                self._directory, ".".join((dbe_module.__name__, "db"))
-            )
-        elif dbe_module is gnu_module:
-            path = os.path.join(self._directory, dbe_module.__name__)
-        else:
-            path = os.path.join(self._directory, dbe_module.__name__)
-        self.assertEqual(os.path.exists(path), True)
+        self.detail_exists_t09()
         self.database = self._D(
             filespec.FileSpec(
                 **{"file1": {"field1"}, "file2": (), "file3": {"field2"}}
@@ -159,11 +112,157 @@ class Database_open_database(_NoSQL):
         self.database.open_database(*self._oda)
         self.database.close_database()
 
+    def detail_does_not_exist(self, module):
+        self.assertEqual(
+            os.path.exists(os.path.join(self._directory, module.__name__)),
+            False,
+        )
+
+    def detail_created(self, module):
+        self.assertEqual(
+            self.database.home_directory,
+            os.path.join(os.path.dirname(__file__), module.__name__),
+        )
+        self.assertEqual(
+            self.database.database_file,
+            os.path.join(
+                os.path.dirname(__file__),
+                module.__name__,
+                module.__name__,
+            ),
+        )
+
+
+if gnu_module:
+
+    class _NoSQLGnu(_NoSQL):
+        def setUp(self):
+            self._oda = gnu_module, gnu_module.Gnu, None
+            super().setUp()
+            self._directory = os.path.join(
+                os.path.dirname(__file__), gnu_module.__name__
+            )
+
+        def tearDown(self):
+            super().tearDown()
+            os.remove(os.path.join(self._directory, gnu_module.__name__))
+            os.rmdir(os.path.join(self._directory))
+
+    class Database_open_databaseGnu(_NoSQLGnu):
+        test_09 = Database_open_database.t09
+
+        def detail_exists_t09(self):
+            path = os.path.join(self._directory, gnu_module.__name__)
+            self.assertEqual(os.path.exists(path), True)
+
+        def detail_does_not_exist_t09(self):
+            Database_open_database.detail_does_not_exist(self, gnu_module)
+
+        def detail_created_t09(self):
+            Database_open_database.detail_created(self, gnu_module)
+
+
+if ndbm_module:
+
+    class _NoSQLNdbm(_NoSQL):
+        def setUp(self):
+            self._oda = ndbm_module, ndbm_module.Ndbm, None
+            super().setUp()
+            self._directory = os.path.join(
+                os.path.dirname(__file__), ndbm_module.__name__
+            )
+
+        def tearDown(self):
+            super().tearDown()
+            os.remove(
+                os.path.join(
+                    self._directory, ".".join((ndbm_module.__name__, "db"))
+                )
+            )
+            os.rmdir(os.path.join(self._directory))
+
+    class Database_open_databaseNdbm(_NoSQLNdbm):
+        test_09 = Database_open_database.t09
+
+        def detail_exists_t09(self):
+            path = os.path.join(
+                self._directory, ".".join((ndbm_module.__name__, "db"))
+            )
+            self.assertEqual(os.path.exists(path), True)
+
+        def detail_does_not_exist_t09(self):
+            Database_open_database.detail_does_not_exist(self, ndbm_module)
+
+        def detail_created_t09(self):
+            Database_open_database.detail_created(self, ndbm_module)
+
+
+if unqlite:
+
+    class _NoSQLUnqlite(_NoSQL):
+        def setUp(self):
+            self._oda = unqlite, unqlite.UnQLite, unqlite.UnQLiteError
+            super().setUp()
+            self._directory = os.path.join(
+                os.path.dirname(__file__), unqlite.__name__
+            )
+
+        def tearDown(self):
+            super().tearDown()
+            os.remove(os.path.join(self._directory, unqlite.__name__))
+            os.rmdir(os.path.join(self._directory))
+
+    class Database_open_databaseUnqlite(_NoSQLUnqlite):
+        test_09 = Database_open_database.t09
+
+        def detail_exists_t09(self):
+            path = os.path.join(self._directory, unqlite.__name__)
+            self.assertEqual(os.path.exists(path), True)
+
+        def detail_does_not_exist_t09(self):
+            Database_open_database.detail_does_not_exist(self, unqlite)
+
+        def detail_created_t09(self):
+            Database_open_database.detail_created(self, unqlite)
+
+
+if vedis:
+
+    class _NoSQLVedis(_NoSQL):
+        def setUp(self):
+            self._oda = vedis, vedis.Vedis, None
+            super().setUp()
+            self._directory = os.path.join(
+                os.path.dirname(__file__), vedis.__name__
+            )
+
+        def tearDown(self):
+            super().tearDown()
+            os.remove(os.path.join(self._directory, vedis.__name__))
+            os.rmdir(os.path.join(self._directory))
+
+    class Database_open_databaseVedis(_NoSQLVedis):
+        test_09 = Database_open_database.t09
+
+        def detail_exists_t09(self):
+            path = os.path.join(self._directory, vedis.__name__)
+            self.assertEqual(os.path.exists(path), True)
+
+        def detail_does_not_exist_t09(self):
+            Database_open_database.detail_does_not_exist(self, vedis)
+
+        def detail_created_t09(self):
+            Database_open_database.detail_created(self, vedis)
+
 
 if __name__ == "__main__":
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
-    for dbe_module in unqlite, vedis, ndbm_module, gnu_module:
-        if dbe_module is None:
-            continue
-        runner().run(loader(Database_open_database))
+    if gnu_module:
+        runner().run(loader(Database_open_databaseGnu))
+    if ndbm_module:
+        runner().run(loader(Database_open_databaseNdbm))
+    if unqlite:
+        runner().run(loader(Database_open_databaseUnqlite))
+    if vedis:
+        runner().run(loader(Database_open_databaseVedis))

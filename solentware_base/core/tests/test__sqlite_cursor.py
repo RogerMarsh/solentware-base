@@ -30,7 +30,7 @@ class _SQLite(unittest.TestCase):
         self.database = self._D(
             filespec.FileSpec(**{"file1": {"field1"}}), segment_size_bytes=None
         )
-        self.database.open_database(dbe_module)
+        self.open_database()
 
     def tearDown(self):
         self.database.close_database()
@@ -39,7 +39,7 @@ class _SQLite(unittest.TestCase):
 
 
 class Cursor_sqlite(_SQLite):
-    def test_01(self):
+    def t01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -105,7 +105,7 @@ class Cursor_sqlite(_SQLite):
             *(None, None),
         )
 
-    def test_02___init__(self):
+    def t02___init__(self):
         cursor = _sqlite.Cursor(self.database.dbenv)
         self.assertEqual(cursor._table, None)
         self.assertEqual(cursor._file, None)
@@ -116,11 +116,11 @@ class Cursor_sqlite(_SQLite):
             cursor._cursor, self.database.dbenv.cursor().__class__
         )
 
-    def test_04_get_converted_partial(self):
+    def t04_get_converted_partial(self):
         cursor = _sqlite.Cursor(self.database.dbenv)
         self.assertEqual(cursor.get_converted_partial(), None)
 
-    def test_05_get_partial_with_wildcard(self):
+    def t05_get_partial_with_wildcard(self):
         cursor = _sqlite.Cursor(self.database.dbenv)
         self.assertRaisesRegex(
             _sqlite.DatabaseError,
@@ -128,7 +128,7 @@ class Cursor_sqlite(_SQLite):
             cursor.get_partial_with_wildcard,
         )
 
-    def test_06_get_converted_partial_with_wildcard(self):
+    def t06_get_converted_partial_with_wildcard(self):
         cursor = _sqlite.Cursor(self.database.dbenv)
         self.assertRaisesRegex(
             TypeError,
@@ -138,7 +138,7 @@ class Cursor_sqlite(_SQLite):
         cursor._partial = "part"
         self.assertEqual(cursor.get_converted_partial_with_wildcard(), "part*")
 
-    def test_07_refresh_recordset(self):
+    def t07_refresh_recordset(self):
         cursor = _sqlite.Cursor(self.database.dbenv)
         self.assertEqual(cursor.refresh_recordset(), None)
 
@@ -157,7 +157,7 @@ class Cursor_primary(_SQLite):
         self.cursor.close()
         super().tearDown()
 
-    def test_01(self):
+    def t01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -278,28 +278,28 @@ class Cursor_primary(_SQLite):
             *(None, None),
         )
 
-    def test_02___init__(self):
+    def t02___init__(self):
         self.assertEqual(self.cursor._most_recent_row_read, False)
         self.assertEqual(self.cursor._ebm, "file1__ebm")
 
-    def test_03_close(self):
+    def t03_close(self):
         cursor = _sqlite.Cursor(self.database.dbenv)
         cursor.close()
         self.assertEqual(cursor._cursor, None)
 
-    def test_04_count_records(self):
+    def t04_count_records(self):
         self.assertEqual(self.cursor.count_records(), 0)
 
-    def test_05_first(self):
+    def t05_first(self):
         self.assertEqual(self.cursor.first(), None)
 
-    def test_06_get_position_of_record_01(self):
+    def t06_get_position_of_record_01(self):
         self.assertEqual(self.cursor.get_position_of_record(), 0)
 
-    def test_06_get_position_of_record_02(self):
+    def t06_get_position_of_record_02(self):
         self.assertEqual(self.cursor.get_position_of_record((5, None)), 0)
 
-    def test_06_get_position_of_record_03(self):
+    def t06_get_position_of_record_03(self):
         self.create_ebm()
         self.create_ebm_extra(2)
         # Records 304 and 317, in segment 3, have bits set.
@@ -318,16 +318,16 @@ class Cursor_primary(_SQLite):
         self.assertEqual(self.cursor.get_position_of_record((319, None)), 258)
         self.assertEqual(self.cursor.get_position_of_record((320, None)), 258)
 
-    def test_08_get_record_at_position_01(self):
+    def t08_get_record_at_position_01(self):
         self.assertEqual(self.cursor.get_record_at_position(), None)
 
-    def test_08_get_record_at_position_02(self):
+    def t08_get_record_at_position_02(self):
         self.assertEqual(self.cursor.get_record_at_position(-1), None)
 
-    def test_08_get_record_at_position_03(self):
+    def t08_get_record_at_position_03(self):
         self.assertEqual(self.cursor.get_record_at_position(0), None)
 
-    def test_08_get_record_at_position_04(self):
+    def t08_get_record_at_position_04(self):
         # Records 1 to 255, 299, 304 and 317, in segment 3, exist.
         for start, stop in ((1, 256), (299, 300), (304, 305), (317, 318)):
             for record_number in range(start, stop):
@@ -362,7 +362,7 @@ class Cursor_primary(_SQLite):
         # Same as self.cursor.get_record_at_position(-259)
         self.assertEqual(self.cursor.get_record_at_position(0), None)
 
-    def test_08_get_record_at_position_05(self):
+    def t08_get_record_at_position_05(self):
         # Records 1 to 255, 299, 304 and 317, in segment 3, exist.
         for start, stop in ((1, 256), (299, 300), (304, 305), (317, 318)):
             for record_number in range(start, stop):
@@ -376,46 +376,46 @@ class Cursor_primary(_SQLite):
             self.cursor.get_record_at_position(-1), (317, str(317))
         )
 
-    def test_12_last(self):
+    def t12_last(self):
         self.assertEqual(self.cursor.last(), None)
 
-    def test_13_nearest(self):
+    def t13_nearest(self):
         self.assertEqual(self.cursor.nearest("d"), None)
 
-    def test_14_next_01(self):
+    def t14_next_01(self):
         self.assertEqual(self.cursor._most_recent_row_read, False)
         self.assertEqual(self.cursor.next(), None)
         self.assertEqual(self.cursor._most_recent_row_read, None)
 
-    def test_15_next_02(self):
+    def t15_next_02(self):
         self.cursor._most_recent_row_read = None
         self.assertEqual(self.cursor.next(), None)
         self.assertEqual(self.cursor._most_recent_row_read, None)
 
-    def test_16_next_03(self):
+    def t16_next_03(self):
         self.cursor._most_recent_row_read = (10, None)
         self.assertEqual(self.cursor.next(), None)
         self.assertEqual(self.cursor._most_recent_row_read, None)
 
-    def test_17_prev_01(self):
+    def t17_prev_01(self):
         self.assertEqual(self.cursor._most_recent_row_read, False)
         self.assertEqual(self.cursor.prev(), None)
         self.assertEqual(self.cursor._most_recent_row_read, None)
 
-    def test_18_prev_02(self):
+    def t18_prev_02(self):
         self.cursor._most_recent_row_read = None
         self.assertEqual(self.cursor.prev(), None)
         self.assertEqual(self.cursor._most_recent_row_read, None)
 
-    def test_19_prev_03(self):
+    def t19_prev_03(self):
         self.cursor._most_recent_row_read = (10, None)
         self.assertEqual(self.cursor.prev(), None)
         self.assertEqual(self.cursor._most_recent_row_read, None)
 
-    def test_20_setat(self):
+    def t20_setat(self):
         self.assertEqual(self.cursor.setat((10, None)), None)
 
-    def test_21_refresh_recordset(self):
+    def t21_refresh_recordset(self):
         self.cursor.refresh_recordset()
 
     def create_ebm(self, bmb=None):
@@ -475,8 +475,7 @@ class Cursor_primary(_SQLite):
 
 
 class Cursor_secondary(_SQLite):
-    def setUp(self):
-        super().setUp()
+    def setup_detail(self):
         segments = (
             b"".join(
                 (
@@ -589,7 +588,7 @@ class Cursor_secondary(_SQLite):
         self.cursor.close()
         super().tearDown()
 
-    def test_01(self):
+    def t01(self):
         self.assertRaisesRegex(
             TypeError,
             "".join(
@@ -751,11 +750,11 @@ class Cursor_secondary(_SQLite):
             *(None, None),
         )
 
-    def test_02___init__(self):
+    def t02___init__(self):
         self.assertEqual(self.cursor._field, "field1")
         self.assertEqual(self.cursor._segment, "file1__segment")
 
-    def test_03_get_segment_records_01(self):
+    def t03_get_segment_records_01(self):
         self.assertRaisesRegex(
             _sqlite.DatabaseError,
             "Segment record 0 missing in 'file1__segment'$",
@@ -763,39 +762,39 @@ class Cursor_secondary(_SQLite):
             *(0,),
         )
 
-    def test_04_get_segment_records_02(self):
+    def t04_get_segment_records_02(self):
         s = self.cursor.get_segment_records(2)
         self.assertEqual(s, self.segments[2])
 
-    def test_05_count_records_01(self):
+    def t05_count_records_01(self):
         s = self.cursor.count_records()
         self.assertEqual(s, 182)
 
-    def test_06_count_records_02(self):
+    def t06_count_records_02(self):
         self.cursor._partial = "b"
         s = self.cursor.count_records()
         self.assertEqual(s, 51)
 
-    def test_07_first_01(self):
+    def t07_first_01(self):
         self.cursor._partial = False
         s = self.cursor.first()
         self.assertEqual(s, None)
 
-    def test_08_first_02(self):
+    def t08_first_02(self):
         s = self.cursor.first()
         self.assertEqual(s, ("a_o", 1))
 
-    def test_09_first_03(self):
+    def t09_first_03(self):
         self.cursor._partial = "b"
         s = self.cursor.first()
         self.assertEqual(s, ("ba_o", 40))
 
-    def test_10_first_04(self):
+    def t10_first_04(self):
         self.cursor._partial = "A"
         s = self.cursor.first()
         self.assertEqual(s, None)
 
-    def test_11_get_position_of_record_01(self):
+    def t11_get_position_of_record_01(self):
         s = self.cursor.get_position_of_record()
         self.assertEqual(s, 0)
 
@@ -803,53 +802,53 @@ class Cursor_secondary(_SQLite):
     # on 'cursor.execute(...)' between them.  Tried arguments till set that did
     # so was found.
 
-    def test_12_get_position_of_record_02(self):
+    def t12_get_position_of_record_02(self):
         s = self.cursor.get_position_of_record(("ba_o", 300))
         self.assertEqual(s, 81)
 
-    def test_13_get_position_of_record_03(self):
+    def t13_get_position_of_record_03(self):
         self.cursor._partial = "b"
         s = self.cursor.get_position_of_record(("ba_o", 20))
         self.assertEqual(s, 1)
 
-    def test_14_get_position_of_record_04(self):
+    def t14_get_position_of_record_04(self):
         s = self.cursor.get_position_of_record(("cep", 150))
         self.assertEqual(s, 154)
 
-    def test_30_last_01(self):
+    def t30_last_01(self):
         self.cursor._partial = False
         s = self.cursor.last()
         self.assertEqual(s, None)
 
-    def test_31_last_02(self):
+    def t31_last_02(self):
         s = self.cursor.last()
         self.assertEqual(s, ("twy", 196))  # ('deq', 127))
 
-    def test_32_last_03(self):
+    def t32_last_03(self):
         self.cursor._partial = "b"
         s = self.cursor.last()
         self.assertEqual(s, ("bb_o", 79))
 
-    def test_33_last_04(self):
+    def t33_last_04(self):
         self.cursor._partial = "A"
         s = self.cursor.last()
         self.assertEqual(s, None)
 
-    def test_34_nearest_01(self):
+    def t34_nearest_01(self):
         self.assertEqual(self.cursor.nearest("d"), ("deq", 104))
 
-    def test_35_nearest_02(self):
+    def t35_nearest_02(self):
         self.cursor._partial = False
         self.assertEqual(self.cursor.nearest("d"), None)
 
-    def test_36_nearest_03(self):
+    def t36_nearest_03(self):
         self.cursor._partial = "b"
         self.assertEqual(self.cursor.nearest("bb"), ("bb_o", 56))
 
-    def test_37_nearest_04(self):
+    def t37_nearest_04(self):
         self.assertEqual(self.cursor.nearest("z"), None)
 
-    def test_38_next_01(self):
+    def t38_next_01(self):
         ae = self.assertEqual
         next_ = self.cursor.next
         for i in range(1, 32):
@@ -877,11 +876,11 @@ class Cursor_secondary(_SQLite):
             ae(next_(), ("twy", i))
         ae(next_(), None)
 
-    def test_39_next_02(self):
+    def t39_next_02(self):
         self.cursor._partial = False
         self.assertEqual(self.cursor.next(), None)
 
-    def test_40_next_03(self):
+    def t40_next_03(self):
         ae = self.assertEqual
         next_ = self.cursor.next
         ae(next_(), ("a_o", 1))
@@ -896,7 +895,7 @@ class Cursor_secondary(_SQLite):
         self.cursor.current_segment_number = None
         ae(next_(), ("bb_o", 56))
 
-    def test_41_next_04(self):
+    def t41_next_04(self):
         ae = self.assertEqual
         next_ = self.cursor.next
         ae(self.cursor._current_segment, None)
@@ -920,7 +919,7 @@ class Cursor_secondary(_SQLite):
         self.cursor.current_segment_number = None
         ae(next_(), ("ba_o", 40))
 
-    def test_44_prev_01(self):
+    def t44_prev_01(self):
         ae = self.assertEqual
         prev = self.cursor.prev
         for i in range(196, 193, -1):
@@ -945,11 +944,11 @@ class Cursor_secondary(_SQLite):
             ae(prev(), ("a_o", i))
         ae(prev(), None)
 
-    def test_45_prev_02(self):
+    def t45_prev_02(self):
         self.cursor._partial = False
         self.assertEqual(self.cursor.prev(), None)
 
-    def test_46_prev_05(self):
+    def t46_prev_05(self):
         ae = self.assertEqual
         prev = self.cursor.prev
         ae(prev(), ("twy", 196))
@@ -964,7 +963,7 @@ class Cursor_secondary(_SQLite):
         self.cursor.current_segment_number = None
         ae(prev(), ("aa_o", 47))
 
-    def test_47_prev_06(self):
+    def t47_prev_06(self):
         ae = self.assertEqual
         prev = self.cursor.prev
         ae(self.cursor._current_segment, None)
@@ -988,47 +987,47 @@ class Cursor_secondary(_SQLite):
         self.cursor.current_segment_number = None
         ae(prev(), ("bb_o", 79))
 
-    def test_50_setat_01(self):
+    def t50_setat_01(self):
         self.cursor._partial = False
         s = self.cursor.setat(("cep", 100))
         self.assertEqual(s, None)
 
-    def test_51_setat_02(self):
+    def t51_setat_02(self):
         self.cursor._partial = "a"
         s = self.cursor.setat(("cep", 100))
         self.assertEqual(s, None)
 
-    def test_52_setat_03(self):
+    def t52_setat_03(self):
         self.cursor._partial = "c"
         s = self.cursor.setat(("cep", 100))
         self.assertEqual(s, ("cep", 100))
 
-    def test_53_setat_04(self):
+    def t53_setat_04(self):
         s = self.cursor.setat(("cep", 100))
         self.assertEqual(s, ("cep", 100))
 
-    def test_54_setat_05(self):
+    def t54_setat_05(self):
         s = self.cursor.setat(("cep", 500))
         self.assertEqual(s, None)
 
-    def test_55_setat_06(self):
+    def t55_setat_06(self):
         s = self.cursor.setat(("cep", 50))
         self.assertEqual(s, None)
 
-    def test_56_set_partial_key(self):
+    def t56_set_partial_key(self):
         self.cursor.set_partial_key("ce")
         self.assertEqual(self.cursor._partial, "ce")
 
-    def test_57__get_segment_01(self):
+    def t57__get_segment_01(self):
         s = self.cursor._get_segment("cep", 2, 1, 100)
         self.assertIsInstance(s, recordset.RecordsetSegmentInt)
 
-    def test_58__get_segment_02(self):
+    def t58__get_segment_02(self):
         self.assertEqual(self.cursor.current_segment_number, None)
         s = self.cursor._get_segment("aa_o", 0, 24, 2)
         self.assertIsInstance(s, recordset.RecordsetSegmentBitarray)
 
-    def test_59__get_segment_03(self):
+    def t59__get_segment_03(self):
         self.assertEqual(self.cursor.current_segment_number, None)
         s = self.cursor._get_segment("cep", 1, 3, 9)
         self.assertIsInstance(s, recordset.RecordsetSegmentList)
@@ -1038,19 +1037,18 @@ class Cursor_secondary(_SQLite):
         t = self.cursor._get_segment("cep", 1, 3, 9)
         self.assertIs(s, t)
 
-    def test_60_set_current_segment(self):
+    def t60_set_current_segment(self):
         s = self.cursor.set_current_segment(("cep", 2, 1, 100))
         self.assertIsInstance(s, recordset.RecordsetSegmentInt)
         self.assertIs(s, self.cursor._current_segment)
         self.assertEqual(self.cursor.current_segment_number, 2)
 
-    def test_61_refresh_recordset(self):
+    def t61_refresh_recordset(self):
         self.cursor.refresh_recordset()
 
 
 class Cursor_secondary__get_record_at_position(_SQLite):
-    def setUp(self):
-        super().setUp()
+    def setup_detail(self):
         segments = (
             b"".join(
                 (
@@ -1117,7 +1115,7 @@ class Cursor_secondary__get_record_at_position(_SQLite):
         self.cursor.close()
         super().tearDown()
 
-    def test_20_get_record_at_position_06(self):
+    def t20_get_record_at_position_06(self):
         ae = self.assertEqual
         grat = self.cursor.get_record_at_position
         for i in range(31):
@@ -1138,13 +1136,254 @@ class Cursor_secondary__get_record_at_position(_SQLite):
         ae(grat(-60), None)
 
 
+if sqlite3:
+
+    class _SQLiteSqlite3(_SQLite):
+        def open_database(self):
+            self.database.open_database(sqlite3)
+
+    class Cursor_sqliteSqlite3(_SQLiteSqlite3):
+        test_01 = Cursor_sqlite.t01
+        test_02 = Cursor_sqlite.t02___init__
+        test_04 = Cursor_sqlite.t04_get_converted_partial
+        test_05 = Cursor_sqlite.t05_get_partial_with_wildcard
+        test_06 = Cursor_sqlite.t06_get_converted_partial_with_wildcard
+        test_07 = Cursor_sqlite.t07_refresh_recordset
+
+    class Cursor_primarySqlite3(_SQLiteSqlite3):
+        def setUp(self):
+            super().setUp()
+            self.cursor = _sqlite.CursorPrimary(
+                self.database.dbenv,
+                table=self.database.table["file1"],
+                ebm=self.database.ebm_control["file1"].ebm_table,
+                file="file1",
+            )
+
+        def tearDown(self):
+            self.cursor.close()
+            super().tearDown()
+
+        test_01 = Cursor_primary.t01
+        test_02 = Cursor_primary.t02___init__
+        test_03 = Cursor_primary.t03_close
+        test_04 = Cursor_primary.t04_count_records
+        test_05 = Cursor_primary.t05_first
+        test_06 = Cursor_primary.t06_get_position_of_record_01
+        test_06 = Cursor_primary.t06_get_position_of_record_02
+        test_06 = Cursor_primary.t06_get_position_of_record_03
+        test_08 = Cursor_primary.t08_get_record_at_position_01
+        test_08 = Cursor_primary.t08_get_record_at_position_02
+        test_08 = Cursor_primary.t08_get_record_at_position_03
+        test_08 = Cursor_primary.t08_get_record_at_position_04
+        test_08 = Cursor_primary.t08_get_record_at_position_05
+        test_12 = Cursor_primary.t12_last
+        test_13 = Cursor_primary.t13_nearest
+        test_14 = Cursor_primary.t14_next_01
+        test_15 = Cursor_primary.t15_next_02
+        test_16 = Cursor_primary.t16_next_03
+        test_17 = Cursor_primary.t17_prev_01
+        test_18 = Cursor_primary.t18_prev_02
+        test_19 = Cursor_primary.t19_prev_03
+        test_20 = Cursor_primary.t20_setat
+        test_21 = Cursor_primary.t21_refresh_recordset
+        create_ebm = Cursor_primary.create_ebm
+        create_ebm_extra = Cursor_primary.create_ebm_extra
+        create_record = Cursor_primary.create_record
+
+    class Cursor_secondarySqlite3(_SQLiteSqlite3):
+        def setUp(self):
+            super().setUp()
+            Cursor_secondary.setup_detail(self)
+
+        def tearDown(self):
+            self.cursor.close()
+            super().tearDown()
+
+        test_01 = Cursor_secondary.t01
+        test_02 = Cursor_secondary.t02___init__
+        test_03 = Cursor_secondary.t03_get_segment_records_01
+        test_04 = Cursor_secondary.t04_get_segment_records_02
+        test_05 = Cursor_secondary.t05_count_records_01
+        test_06 = Cursor_secondary.t06_count_records_02
+        test_07 = Cursor_secondary.t07_first_01
+        test_08 = Cursor_secondary.t08_first_02
+        test_09 = Cursor_secondary.t09_first_03
+        test_10 = Cursor_secondary.t10_first_04
+        test_11 = Cursor_secondary.t11_get_position_of_record_01
+        test_12 = Cursor_secondary.t12_get_position_of_record_02
+        test_13 = Cursor_secondary.t13_get_position_of_record_03
+        test_14 = Cursor_secondary.t14_get_position_of_record_04
+        test_30 = Cursor_secondary.t30_last_01
+        test_31 = Cursor_secondary.t31_last_02
+        test_32 = Cursor_secondary.t32_last_03
+        test_33 = Cursor_secondary.t33_last_04
+        test_34 = Cursor_secondary.t34_nearest_01
+        test_35 = Cursor_secondary.t35_nearest_02
+        test_36 = Cursor_secondary.t36_nearest_03
+        test_37 = Cursor_secondary.t37_nearest_04
+        test_38 = Cursor_secondary.t38_next_01
+        test_39 = Cursor_secondary.t39_next_02
+        test_40 = Cursor_secondary.t40_next_03
+        test_41 = Cursor_secondary.t41_next_04
+        test_44 = Cursor_secondary.t44_prev_01
+        test_45 = Cursor_secondary.t45_prev_02
+        test_46 = Cursor_secondary.t46_prev_05
+        test_47 = Cursor_secondary.t47_prev_06
+        test_50 = Cursor_secondary.t50_setat_01
+        test_51 = Cursor_secondary.t51_setat_02
+        test_52 = Cursor_secondary.t52_setat_03
+        test_53 = Cursor_secondary.t53_setat_04
+        test_54 = Cursor_secondary.t54_setat_05
+        test_55 = Cursor_secondary.t55_setat_06
+        test_56 = Cursor_secondary.t56_set_partial_key
+        test_57 = Cursor_secondary.t57__get_segment_01
+        test_58 = Cursor_secondary.t58__get_segment_02
+        test_59 = Cursor_secondary.t59__get_segment_03
+        test_60 = Cursor_secondary.t60_set_current_segment
+        test_61 = Cursor_secondary.t61_refresh_recordset
+
+    class Cursor_secondary__get_record_at_positionSqlite3(_SQLiteSqlite3):
+        def setUp(self):
+            super().setUp()
+            Cursor_secondary__get_record_at_position.setup_detail(self)
+
+        def tearDown(self):
+            self.cursor.close()
+            super().tearDown()
+
+        test_20 = Cursor_secondary__get_record_at_position.t20_get_record_at_position_06
+
+
+if apsw:
+
+    class _SQLiteApsw(_SQLite):
+        def open_database(self):
+            self.database.open_database(apsw)
+
+    class Cursor_sqliteApsw(_SQLiteApsw):
+        test_01 = Cursor_sqlite.t01
+        test_02 = Cursor_sqlite.t02___init__
+        test_04 = Cursor_sqlite.t04_get_converted_partial
+        test_05 = Cursor_sqlite.t05_get_partial_with_wildcard
+        test_06 = Cursor_sqlite.t06_get_converted_partial_with_wildcard
+        test_07 = Cursor_sqlite.t07_refresh_recordset
+
+    class Cursor_primaryApsw(_SQLiteApsw):
+        def setUp(self):
+            super().setUp()
+            self.cursor = _sqlite.CursorPrimary(
+                self.database.dbenv,
+                table=self.database.table["file1"],
+                ebm=self.database.ebm_control["file1"].ebm_table,
+                file="file1",
+            )
+
+        def tearDown(self):
+            self.cursor.close()
+            super().tearDown()
+
+        test_01 = Cursor_primary.t01
+        test_02 = Cursor_primary.t02___init__
+        test_03 = Cursor_primary.t03_close
+        test_04 = Cursor_primary.t04_count_records
+        test_05 = Cursor_primary.t05_first
+        test_06 = Cursor_primary.t06_get_position_of_record_01
+        test_06 = Cursor_primary.t06_get_position_of_record_02
+        test_06 = Cursor_primary.t06_get_position_of_record_03
+        test_08 = Cursor_primary.t08_get_record_at_position_01
+        test_08 = Cursor_primary.t08_get_record_at_position_02
+        test_08 = Cursor_primary.t08_get_record_at_position_03
+        test_08 = Cursor_primary.t08_get_record_at_position_04
+        test_08 = Cursor_primary.t08_get_record_at_position_05
+        test_12 = Cursor_primary.t12_last
+        test_13 = Cursor_primary.t13_nearest
+        test_14 = Cursor_primary.t14_next_01
+        test_15 = Cursor_primary.t15_next_02
+        test_16 = Cursor_primary.t16_next_03
+        test_17 = Cursor_primary.t17_prev_01
+        test_18 = Cursor_primary.t18_prev_02
+        test_19 = Cursor_primary.t19_prev_03
+        test_20 = Cursor_primary.t20_setat
+        test_21 = Cursor_primary.t21_refresh_recordset
+        create_ebm = Cursor_primary.create_ebm
+        create_ebm_extra = Cursor_primary.create_ebm_extra
+        create_record = Cursor_primary.create_record
+
+    class Cursor_secondaryApsw(_SQLiteApsw):
+        def setUp(self):
+            super().setUp()
+            Cursor_secondary.setup_detail(self)
+
+        def tearDown(self):
+            self.cursor.close()
+            super().tearDown()
+
+        test_01 = Cursor_secondary.t01
+        test_02 = Cursor_secondary.t02___init__
+        test_03 = Cursor_secondary.t03_get_segment_records_01
+        test_04 = Cursor_secondary.t04_get_segment_records_02
+        test_05 = Cursor_secondary.t05_count_records_01
+        test_06 = Cursor_secondary.t06_count_records_02
+        test_07 = Cursor_secondary.t07_first_01
+        test_08 = Cursor_secondary.t08_first_02
+        test_09 = Cursor_secondary.t09_first_03
+        test_10 = Cursor_secondary.t10_first_04
+        test_11 = Cursor_secondary.t11_get_position_of_record_01
+        test_12 = Cursor_secondary.t12_get_position_of_record_02
+        test_13 = Cursor_secondary.t13_get_position_of_record_03
+        test_14 = Cursor_secondary.t14_get_position_of_record_04
+        test_30 = Cursor_secondary.t30_last_01
+        test_31 = Cursor_secondary.t31_last_02
+        test_32 = Cursor_secondary.t32_last_03
+        test_33 = Cursor_secondary.t33_last_04
+        test_34 = Cursor_secondary.t34_nearest_01
+        test_35 = Cursor_secondary.t35_nearest_02
+        test_36 = Cursor_secondary.t36_nearest_03
+        test_37 = Cursor_secondary.t37_nearest_04
+        test_38 = Cursor_secondary.t38_next_01
+        test_39 = Cursor_secondary.t39_next_02
+        test_40 = Cursor_secondary.t40_next_03
+        test_41 = Cursor_secondary.t41_next_04
+        test_44 = Cursor_secondary.t44_prev_01
+        test_45 = Cursor_secondary.t45_prev_02
+        test_46 = Cursor_secondary.t46_prev_05
+        test_47 = Cursor_secondary.t47_prev_06
+        test_50 = Cursor_secondary.t50_setat_01
+        test_51 = Cursor_secondary.t51_setat_02
+        test_52 = Cursor_secondary.t52_setat_03
+        test_53 = Cursor_secondary.t53_setat_04
+        test_54 = Cursor_secondary.t54_setat_05
+        test_55 = Cursor_secondary.t55_setat_06
+        test_56 = Cursor_secondary.t56_set_partial_key
+        test_57 = Cursor_secondary.t57__get_segment_01
+        test_58 = Cursor_secondary.t58__get_segment_02
+        test_59 = Cursor_secondary.t59__get_segment_03
+        test_60 = Cursor_secondary.t60_set_current_segment
+        test_61 = Cursor_secondary.t61_refresh_recordset
+
+    class Cursor_secondary__get_record_at_positionApsw(_SQLiteApsw):
+        def setUp(self):
+            super().setUp()
+            Cursor_secondary__get_record_at_position.setup_detail(self)
+
+        def tearDown(self):
+            self.cursor.close()
+            super().tearDown()
+
+        test_20 = Cursor_secondary__get_record_at_position.t20_get_record_at_position_06
+
+
 if __name__ == "__main__":
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
-    for dbe_module in sqlite3, apsw:
-        if dbe_module is None:
-            continue
-        runner().run(loader(Cursor_sqlite))
-        runner().run(loader(Cursor_primary))
-        runner().run(loader(Cursor_secondary))
-        runner().run(loader(Cursor_secondary__get_record_at_position))
+    if sqlite3:
+        runner().run(loader(Cursor_sqliteSqlite3))
+        runner().run(loader(Cursor_primarySqlite3))
+        runner().run(loader(Cursor_secondarySqlite3))
+        runner().run(loader(Cursor_secondary__get_record_at_positionSqlite3))
+    if apsw:
+        runner().run(loader(Cursor_sqliteApsw))
+        runner().run(loader(Cursor_primaryApsw))
+        runner().run(loader(Cursor_secondaryApsw))
+        runner().run(loader(Cursor_secondary__get_record_at_positionApsw))

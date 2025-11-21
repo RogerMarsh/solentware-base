@@ -10,8 +10,8 @@
 # See ports@openbsd.org thread 'Python access to Berkeley DB' started
 # December 2022 for details.
 export $2
-python$1 -m solentware_base.core.tests.test__db_tkinter
-python$1 -m solentware_base.core.tests.test__db_tkinter_cursor
-python$1 -m solentware_base.core.tests.test__dbdu_tkinter
-python$1 -m solentware_base.tests.test_db_tkinter_database
-python$1 -m solentware_base.tests.test_db_tkinterdu_database
+python$1 -m solentware_base.core.tests_isolated.test__db_tkinter
+python$1 -m solentware_base.core.tests_isolated.test__db_tkinter_cursor
+python$1 -m solentware_base.core.tests_isolated.test__dbdu_tkinter
+python$1 -m solentware_base.tests_isolated.test_db_tkinter_database
+python$1 -m solentware_base.tests_isolated.test_db_tkinterdu_database

@@ -924,6 +924,8 @@ class Database_06_subclass_methods(unittest.TestCase):
                     "environment_flags",
                     "_get_segment_record_numbers",
                     "file_name_for_database",
+                    "get_application_control",
+                    "set_application_control",
                     "checkpoint_before_close_dbenv",
                     "SegmentSizeError",
                     "_MINIMUM_CHECKPOINT_INTERVAL",
@@ -941,7 +943,9 @@ class Database_06_subclass_methods(unittest.TestCase):
             sorted(
                 (
                     "delete_segment_records",
+                    "get_application_control",
                     "get_segment_records",
+                    "set_application_control",
                     "set_segment_records",
                     "insert_segment_records",
                     "SegmentSizeError",

@@ -12,22 +12,24 @@ except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     gnudu_database = None
 
 
-class GnuduDatabase(unittest.TestCase):
-    def test__assumptions(self):
-        msg = "Failure of this test invalidates all other tests"
-        self.assertRaisesRegex(
-            TypeError,
-            "".join(
-                (
-                    r"__init__\(\) missing 1 required positional argument: ",
-                    "'specification'$",
-                )
-            ),
-            gnudu_database.Database,
-        )
-        self.assertIsInstance(
-            gnudu_database.Database({}), gnudu_database.Database
-        )
+if gnudu_database is not None:
+
+    class GnuduDatabase(unittest.TestCase):
+        def test__assumptions(self):
+            msg = "Failure of this test invalidates all other tests"
+            self.assertRaisesRegex(
+                TypeError,
+                "".join(
+                    (
+                        r"__init__\(\) missing 1 required positional argument: ",
+                        "'specification'$",
+                    )
+                ),
+                gnudu_database.Database,
+            )
+            self.assertIsInstance(
+                gnudu_database.Database({}), gnudu_database.Database
+            )
 
 
 if __name__ == "__main__":

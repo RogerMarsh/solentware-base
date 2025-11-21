@@ -8,10 +8,7 @@ import unittest
 import os
 import shutil
 
-try:
-    import lmdb
-except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
-    lmdb = None
+import lmdb
 
 from .. import _lmdb
 from .. import filespec
@@ -48,7 +45,7 @@ from ._test_case_constants import (
 
 class _Module:
     def _dbe_module(self):
-        return dbe_module
+        return lmdb
 
 
 class _Specification:
@@ -501,7 +498,7 @@ class Database___init__(DB):
         self.assertEqual(database.ebm_control, {})
         self.assertEqual(database._real_segment_size_bytes, False)
         self.assertEqual(database._initial_segment_size_bytes, 4000)
-        self.assertEqual(SegmentSize.db_segment_size_bytes, 4096)
+        #self.assertEqual(SegmentSize.db_segment_size_bytes, 4096)
         database.set_segment_size()
         self.assertEqual(SegmentSize.db_segment_size_bytes, 4000)
 
@@ -763,7 +760,7 @@ class DatabaseInstance(DB):
             self.database.environment_flags,
         )
         self.assertEqual(
-            self.database.environment_flags(bdb),
+            self.database.environment_flags(lmdb),
             dict(subdir=False, readahead=False),
         )
 
@@ -1138,7 +1135,7 @@ class Database_do_database_task(unittest.TestCase):
                 )
 
             def open_database(self, **k):
-                super().open_database(dbe_module, **k)
+                super().open_database(lmdb, **k)
 
         class _AD(_ED):
             def __init__(self, folder, **k):
@@ -3031,57 +3028,55 @@ class RecordsetCursor(_DBOpen):
         self.assertEqual(rc._get_record(155), (155, "155Any value"))
 
 
+def encode(value):
+    return value.encode()
+
+
+def encode_test_key(key):
+    if isinstance(key, int):
+        return key.to_bytes(4, byteorder="big")
+    return encode(key)
+
+
+def encode_test_record(record):
+    return (encode_test_key(record[0]), record[1])
+
+
 if __name__ == "__main__":
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
-    for dbe_module in (lmdb,):
-        if dbe_module is None:
-            continue
-        bdb = dbe_module
-
-        def encode(value):
-            return value.encode()
-
-        def encode_test_key(key):
-            if isinstance(key, int):
-                return key.to_bytes(4, byteorder="big")
-            return encode(key)
-
-        def encode_test_record(record):
-            return (encode_test_key(record[0]), record[1])
-
-        runner().run(loader(_DBtxn))
-        runner().run(loader(_DBtxn_start_transaction))
-        runner().run(loader(_Datastore___init__))
-        runner().run(loader(_Datastore))
-        runner().run(loader(_Datastore_open_datastore))
-        runner().run(loader(_Datastore_open_datastore_write))
-        runner().run(loader(_Datastore_close_datastore))
-        runner().run(loader(Database___init__))
-        runner().run(loader(Database_transaction_bad_calls))
-        runner().run(loader(Database_start_transaction))
-        runner().run(loader(Database_backout_and_commit))
-        runner().run(loader(Database_database_contexts_bad_calls))
-        runner().run(loader(DatabaseInstance))
-        runner().run(loader(Database_open_database))
-        runner().run(loader(Database_add_field_to_existing_database))
-        runner().run(loader(DatabaseDir_open_database))
-        runner().run(loader(DatabaseExist_open_database))
-        runner().run(loader(Database_close_database))
-        runner().run(loader(Database_open_database_contexts))
-        runner().run(loader(Database_do_database_task))
-        runner().run(loader(DatabaseTransactions))
-        runner().run(loader(Database_put_replace_delete))
-        runner().run(loader(Database_methods))
-        runner().run(loader(Database_find_values_empty))
-        runner().run(loader(Database_find_values))
-        runner().run(loader(Database_make_recordset))
-        runner().run(loader(Database_populate_recordset))
-        runner().run(loader(Database_make_recordset_key))
-        runner().run(loader(Database_file_records))
-        runner().run(loader(Database__get_segment_record_numbers))
-        runner().run(loader(Database_populate_recordset_segment))
-        runner().run(loader(Database_database_cursor))
-        runner().run(loader(Database_freed_record_number))
-        runner().run(loader(Database_empty_freed_record_number))
-        runner().run(loader(RecordsetCursor))
+    runner().run(loader(_DBtxn))
+    runner().run(loader(_DBtxn_start_transaction))
+    runner().run(loader(_Datastore___init__))
+    runner().run(loader(_Datastore))
+    runner().run(loader(_Datastore_open_datastore))
+    runner().run(loader(_Datastore_open_datastore_write))
+    runner().run(loader(_Datastore_close_datastore))
+    runner().run(loader(Database___init__))
+    runner().run(loader(Database_transaction_bad_calls))
+    runner().run(loader(Database_start_transaction))
+    runner().run(loader(Database_backout_and_commit))
+    runner().run(loader(Database_database_contexts_bad_calls))
+    runner().run(loader(DatabaseInstance))
+    runner().run(loader(Database_open_database))
+    runner().run(loader(Database_add_field_to_existing_database))
+    runner().run(loader(DatabaseDir_open_database))
+    runner().run(loader(DatabaseExist_open_database))
+    runner().run(loader(Database_close_database))
+    runner().run(loader(Database_open_database_contexts))
+    runner().run(loader(Database_do_database_task))
+    runner().run(loader(DatabaseTransactions))
+    runner().run(loader(Database_put_replace_delete))
+    runner().run(loader(Database_methods))
+    runner().run(loader(Database_find_values_empty))
+    runner().run(loader(Database_find_values))
+    runner().run(loader(Database_make_recordset))
+    runner().run(loader(Database_populate_recordset))
+    runner().run(loader(Database_make_recordset_key))
+    runner().run(loader(Database_file_records))
+    runner().run(loader(Database__get_segment_record_numbers))
+    runner().run(loader(Database_populate_recordset_segment))
+    runner().run(loader(Database_database_cursor))
+    runner().run(loader(Database_freed_record_number))
+    runner().run(loader(Database_empty_freed_record_number))
+    runner().run(loader(RecordsetCursor))

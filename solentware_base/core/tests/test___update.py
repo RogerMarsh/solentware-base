@@ -69,30 +69,8 @@ except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
 class _Database(unittest.TestCase):
     def setUp(self):
         self._folder = "___update_test"
-        if dbe_module is unqlite:
-            self._oda = dbe_module, dbe_module.UnQLite, dbe_module.UnQLiteError
-            self._engine = _nosql
-        elif dbe_module is vedis:
-            self._oda = dbe_module, dbe_module.Vedis, None
-            self._engine = _nosql
-        elif dbe_module in {berkeleydb, bsddb3}:
-            self._oda = (dbe_module.db,)
-            self._engine = _db
-        elif dbe_module is sqlite3:
-            self._oda = (dbe_module,)
-            self._engine = _sqlite
-        elif dbe_module is apsw:
-            self._oda = (dbe_module,)
-            self._engine = _sqlite
-        elif dbe_module is dptapi:
-            self._oda = ()
-            self._engine = _dpt
-        elif dbe_module is ndbm_module:
-            self._oda = dbe_module, dbe_module.Ndbm, None
-            self._engine = _nosql
-        elif dbe_module is gnu_module:
-            self._oda = dbe_module, dbe_module.Gnu, None
-            self._engine = _nosql
+        self.dg = _data_generator._DataGenerator()
+        self.generated_filespec = _data_generator.generate_filespec(self.dg)
         self.__ssb = SegmentSize.db_segment_size_bytes
 
         class _D(self._engine.Database):
@@ -104,7 +82,7 @@ class _Database(unittest.TestCase):
         self.database = None
         self._D = None
         SegmentSize.db_segment_size_bytes = self.__ssb
-        if dbe_module in {berkeleydb, bsddb3}:
+        if self._engine and self._engine is _db:
             logdir = "___memlogs_memory_db"
             if os.path.exists(logdir):
                 for f in os.listdir(logdir):
@@ -112,14 +90,14 @@ class _Database(unittest.TestCase):
                         os.remove(os.path.join(logdir, f))
                 os.rmdir(logdir)
         if os.path.exists(self._folder):
-            if dbe_module in {berkeleydb, bsddb3}:
+            if self._engine and self._engine is _db:
                 logdir = os.path.join(self._folder, "___logs_" + self._folder)
                 if os.path.exists(logdir):
                     for f in os.listdir(logdir):
                         if f.startswith("log."):
                             os.remove(os.path.join(logdir, f))
                     os.rmdir(logdir)
-            if dbe_module is dptapi:
+            if not self._oda:
                 for dptsys in os.path.join("dptsys", "dptsys"), "dptsys":
                     logdir = os.path.join(self._folder, dptsys)
                     if os.path.exists(logdir):
@@ -130,9 +108,9 @@ class _Database(unittest.TestCase):
                 os.remove(os.path.join(self._folder, f))
             os.rmdir(self._folder)
 
-    def test_01_open_database__no_files(self):
+    def _open_database__no_files(self):
         # DPT, ndbm, and gnu, do not do memory databases.
-        if dbe_module not in (dptapi, ndbm_module, gnu_module):
+        if self._oda and self._oda[0] not in (ndbm_module, gnu_module):
             self.database = self._D({}, segment_size_bytes=None)
             self.database.open_database(*self._oda)
             try:
@@ -142,15 +120,15 @@ class _Database(unittest.TestCase):
             finally:
                 self.database.close_database()
 
-    def test_02_open_database__in_memory_txn_generated_filespec(self):
+    def _open_database__in_memory_txn_generated_filespec(self):
         # The default cachesize in Berkeley DB is too small for the number of
         # DB objects created: a Segmentation fault (core dumped) occurs when
         # the 13th index one is being opened.  See call to set_cachesize().
         # The environment argument is ignored for the other engines.
         # DPT, ndbm, and gnu, do not do memory databases.
-        if dbe_module not in (dptapi, ndbm_module, gnu_module):
+        if self._oda and self._oda[0] not in (ndbm_module, gnu_module):
             self.database = self._D(
-                generated_filespec,
+                self.generated_filespec,
                 segment_size_bytes=None,
                 environment={"bytes": 20000000},
             )
@@ -159,19 +137,19 @@ class _Database(unittest.TestCase):
                 self.assertEqual(SegmentSize.db_segment_size_bytes, 16)
                 self.assertEqual(self.database.home_directory, None)
                 self.assertEqual(self.database.database_file, None)
-                _data_generator.populate(self.database, dg)
+                _data_generator.populate(self.database, self.dg)
             finally:
                 self.database.close_database()
 
-    def test_03_open_database__in_memory_no_txn_generated_filespec(self):
+    def _open_database__in_memory_no_txn_generated_filespec(self):
         # The default cachesize in Berkeley DB is too small for the number of
         # DB objects created: a Segmentation fault (core dumped) occurs when
         # the 13th index one is being opened.  See call to set_cachesize().
         # The environment argument is ignored for the other engines.
         # DPT, ndbm, and gnu, do not do memory databases.
-        if dbe_module not in (dptapi, ndbm_module, gnu_module):
+        if self._oda and self._oda[0] not in (ndbm_module, gnu_module):
             self.database = self._D(
-                generated_filespec,
+                self.generated_filespec,
                 segment_size_bytes=None,
                 environment={"bytes": 20000000},
             )
@@ -182,19 +160,19 @@ class _Database(unittest.TestCase):
                 self.assertEqual(self.database.database_file, None)
                 _data_generator.populate(
                     self.database,
-                    dg,
+                    self.dg,
                     transaction=(
-                        True if dbe_module in {berkeleydb, bsddb3} else False
+                        True if self._engine and self._engine is _db else False
                     ),
                 )
             finally:
                 self.database.close_database()
 
-    def test_04_open_database__in_directory_txn_generated_filespec(self):
+    def _open_database__in_directory_txn_generated_filespec(self):
         # No cachesize problem for bsddb3 when database is not in memory.
         # Transaction for each record.
         self.database = self._D(
-            generated_filespec,
+            self.generated_filespec,
             folder=self._folder,
             segment_size_bytes=None,
         )
@@ -204,21 +182,21 @@ class _Database(unittest.TestCase):
                 self.database.home_directory,
                 os.path.join(os.getcwd(), self._folder),
             )
-            if dbe_module is not dptapi:
+            if self._oda:
                 self.assertEqual(SegmentSize.db_segment_size_bytes, 16)
                 self.assertEqual(
                     self.database.database_file,
                     os.path.join(os.getcwd(), self._folder, self._folder),
                 )
-            _data_generator.populate(self.database, dg)
+            _data_generator.populate(self.database, self.dg)
         finally:
             self.database.close_database()
 
-    def test_05_open_database__in_directory_txn_generated_filespec(self):
+    def _open_database__in_directory_txn_generated_filespec(self):
         # No cachesize problem for bsddb3 when database is not in memory.
         # Transaction for all records.
         self.database = self._D(
-            generated_filespec,
+            self.generated_filespec,
             folder=self._folder,
             segment_size_bytes=None,
         )
@@ -228,35 +206,154 @@ class _Database(unittest.TestCase):
                 self.database.home_directory,
                 os.path.join(os.getcwd(), self._folder),
             )
-            if dbe_module is not dptapi:
+            if self._oda:
                 self.assertEqual(SegmentSize.db_segment_size_bytes, 16)
                 self.assertEqual(
                     self.database.database_file,
                     os.path.join(os.getcwd(), self._folder, self._folder),
                 )
             self.database.start_transaction()
-            _data_generator.populate(self.database, dg, transaction=False)
+            _data_generator.populate(self.database, self.dg, transaction=False)
             self.database.commit()
         finally:
             self.database.close_database()
 
 
+if unqlite:
+    class _DatabaseUnqlite(_Database):
+        def setUp(self):
+            self._oda = unqlite, unqlite.UnQLite, unqlite.UnQLiteError
+            self._engine = _nosql
+            super().setUp()
+        test_01 = _Database._open_database__no_files
+        test_02 = _Database._open_database__in_memory_txn_generated_filespec
+        test_03 = _Database._open_database__in_memory_no_txn_generated_filespec
+        test_04 = _Database._open_database__in_directory_txn_generated_filespec
+        test_05 = _Database._open_database__in_directory_txn_generated_filespec
+
+
+if vedis:
+    class _DatabaseVedis(_Database):
+        def setUp(self):
+            self._oda = vedis, vedis.Vedis, None
+            self._engine = _nosql
+            super().setUp()
+        test_01 = _Database._open_database__no_files
+        test_02 = _Database._open_database__in_memory_txn_generated_filespec
+        test_03 = _Database._open_database__in_memory_no_txn_generated_filespec
+        test_04 = _Database._open_database__in_directory_txn_generated_filespec
+        test_05 = _Database._open_database__in_directory_txn_generated_filespec
+
+
+if berkeleydb:
+    class _DatabaseBerkeleydb(_Database):
+        def setUp(self):
+            self._oda = (berkeleydb.db,)
+            self._engine = _db
+            super().setUp()
+        test_01 = _Database._open_database__no_files
+        test_02 = _Database._open_database__in_memory_txn_generated_filespec
+        test_03 = _Database._open_database__in_memory_no_txn_generated_filespec
+        test_04 = _Database._open_database__in_directory_txn_generated_filespec
+        test_05 = _Database._open_database__in_directory_txn_generated_filespec
+
+
+if bsddb3:
+    class _DatabaseBsddb3(_Database):
+        def setUp(self):
+            self._oda = (bsddb3.db,)
+            self._engine = _db
+            super().setUp()
+        test_01 = _Database._open_database__no_files
+        test_02 = _Database._open_database__in_memory_txn_generated_filespec
+        test_03 = _Database._open_database__in_memory_no_txn_generated_filespec
+        test_04 = _Database._open_database__in_directory_txn_generated_filespec
+        test_05 = _Database._open_database__in_directory_txn_generated_filespec
+
+
+if sqlite3:
+    class _DatabaseSqlite3(_Database):
+        def setUp(self):
+            self._oda = (sqlite3,)
+            self._engine = _sqlite
+            super().setUp()
+        test_01 = _Database._open_database__no_files
+        test_02 = _Database._open_database__in_memory_txn_generated_filespec
+        test_03 = _Database._open_database__in_memory_no_txn_generated_filespec
+        test_04 = _Database._open_database__in_directory_txn_generated_filespec
+        test_05 = _Database._open_database__in_directory_txn_generated_filespec
+
+
+if apsw:
+    class _DatabaseApsw(_Database):
+        def setUp(self):
+            self._oda = (apsw,)
+            self._engine = _sqlite
+            super().setUp()
+        test_01 = _Database._open_database__no_files
+        test_02 = _Database._open_database__in_memory_txn_generated_filespec
+        test_03 = _Database._open_database__in_memory_no_txn_generated_filespec
+        test_04 = _Database._open_database__in_directory_txn_generated_filespec
+        test_05 = _Database._open_database__in_directory_txn_generated_filespec
+
+
+if dptapi:
+    class _DatabaseDpt(_Database):
+        def setUp(self):
+            self._oda = ()
+            self._engine = _dpt
+            super().setUp()
+        test_01 = _Database._open_database__no_files
+        test_02 = _Database._open_database__in_memory_txn_generated_filespec
+        test_03 = _Database._open_database__in_memory_no_txn_generated_filespec
+        test_04 = _Database._open_database__in_directory_txn_generated_filespec
+        test_05 = _Database._open_database__in_directory_txn_generated_filespec
+
+
+if ndbm_module:
+    class _DatabaseNdbm(_Database):
+        def setUp(self):
+            self._oda = ndbm_module, ndbm_module.Ndbm, None
+            self._engine = _nosql
+            super().setUp()
+        test_01 = _Database._open_database__no_files
+        test_02 = _Database._open_database__in_memory_txn_generated_filespec
+        test_03 = _Database._open_database__in_memory_no_txn_generated_filespec
+        test_04 = _Database._open_database__in_directory_txn_generated_filespec
+        test_05 = _Database._open_database__in_directory_txn_generated_filespec
+
+
+if gnu_module:
+    class _DatabaseGnu(_Database):
+        def setUp(self):
+            self._oda = gnu_module, gnu_module.Gnu, None
+            self._engine = _nosql
+            super().setUp()
+        test_01 = _Database._open_database__no_files
+        test_02 = _Database._open_database__in_memory_txn_generated_filespec
+        test_03 = _Database._open_database__in_memory_no_txn_generated_filespec
+        test_04 = _Database._open_database__in_directory_txn_generated_filespec
+        test_05 = _Database._open_database__in_directory_txn_generated_filespec
+
+
 if __name__ == "__main__":
-    dg = _data_generator._DataGenerator()
-    generated_filespec = _data_generator.generate_filespec(dg)
     runner = unittest.TextTestRunner
     loader = unittest.defaultTestLoader.loadTestsFromTestCase
-    for dbe_module in (
-        unqlite,
-        vedis,
-        berkeleydb,
-        bsddb3,
-        sqlite3,
-        apsw,
-        dptapi,
-        ndbm_module,
-        gnu_module,
-    ):
-        if dbe_module is None:
-            continue
-        runner().run(loader(_Database))
+    if unqlite:
+        runner().run(loader(_DatabaseUnqlite))
+    if vedis:
+        runner().run(loader(_DatabaseVedis))
+    if berkeleydb:
+        runner().run(loader(_DatabaseBerkeleydb))
+    if bsddb3:
+        runner().run(loader(_DatabaseBsddb3))
+    if sqlite3:
+        runner().run(loader(_DatabaseSqlite3))
+    if apsw:
+        runner().run(loader(_DatabaseApsw))
+    if dptapi:
+        runner().run(loader(_DatabaseDpt))
+    if ndbm_module:
+        runner().run(loader(_DatabaseNdbm))
+    if gnu_module:
+        runner().run(loader(_DatabaseGnu))
