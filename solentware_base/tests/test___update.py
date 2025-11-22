@@ -114,27 +114,6 @@ class _Database(unittest.TestCase):
         self.database = None
         self._D = None
         SegmentSize.db_segment_size_bytes = self.__ssb
-        if os.path.exists(self._folder):
-            if self._folder in (
-                "___update_test_bsddb3",
-                "___update_test_berkeleydb",
-            ):
-                logdir = os.path.join(self._folder, "___logs_" + self._folder)
-                if os.path.exists(logdir):
-                    for f in os.listdir(logdir):
-                        if f.startswith("log."):
-                            os.remove(os.path.join(logdir, f))
-                    os.rmdir(logdir)
-            if self._folder == "___update_test_dpt":
-                for dptsys in os.path.join("dptsys", "dptsys"), "dptsys":
-                    logdir = os.path.join(self._folder, dptsys)
-                    if os.path.exists(logdir):
-                        for f in os.listdir(logdir):
-                            os.remove(os.path.join(logdir, f))
-                        os.rmdir(logdir)
-            for f in os.listdir(self._folder):
-                os.remove(os.path.join(self._folder, f))
-            os.rmdir(self._folder)
 
     def t01_open_database__in_directory_txn_generated_filespec(self):
         # No cachesize problem for bsddb3 when database is not in memory.
@@ -198,9 +177,48 @@ class _Database(unittest.TestCase):
             self.database.close_database()
 
 
+class _DatabaseBerkeley(_Database):
+    def tearDown(self):
+        super().tearDown()
+        if os.path.exists(self._folder):
+            logdir = os.path.join(self._folder, "___logs_" + self._folder)
+            if os.path.exists(logdir):
+                for f in os.listdir(logdir):
+                    if f.startswith("log."):
+                        os.remove(os.path.join(logdir, f))
+                os.rmdir(logdir)
+            for f in os.listdir(self._folder):
+                os.remove(os.path.join(self._folder, f))
+            os.rmdir(self._folder)
+
+
+class _DatabaseDpt(_Database):
+    def tearDown(self):
+        super().tearDown()
+        if os.path.exists(self._folder):
+            for dptsys in os.path.join("dptsys", "dptsys"), "dptsys":
+                logdir = os.path.join(self._folder, dptsys)
+                if os.path.exists(logdir):
+                    for f in os.listdir(logdir):
+                        os.remove(os.path.join(logdir, f))
+                    os.rmdir(logdir)
+            for f in os.listdir(self._folder):
+                os.remove(os.path.join(self._folder, f))
+            os.rmdir(self._folder)
+
+
+class _DatabaseOther(_Database):
+    def tearDown(self):
+        super().tearDown()
+        if os.path.exists(self._folder):
+            for f in os.listdir(self._folder):
+                os.remove(os.path.join(self._folder, f))
+            os.rmdir(self._folder)
+
+
 if unqlite:
 
-    class _DatabaseUnqlite(_Database):
+    class _DatabaseUnqlite(_DatabaseOther):
         def setUp(self):
             self._folder = "___update_test_unqlite"
             self._engine = unqlite_database
@@ -216,7 +234,7 @@ if unqlite:
 
 if vedis:
 
-    class _DatabaseVedis(_Database):
+    class _DatabaseVedis(_DatabaseOther):
         def setUp(self):
             self._folder = "___update_test_vedis"
             self._engine = vedis_database
@@ -232,7 +250,7 @@ if vedis:
 
 if bsddb3:
 
-    class _DatabaseBsddb3(_Database):
+    class _DatabaseBsddb3(_DatabaseBerkeley):
         def setUp(self):
             self._folder = "___update_test_bsddb3"
             self._engine = bsddb3_database
@@ -248,7 +266,7 @@ if bsddb3:
 
 if berkeleydb:
 
-    class _DatabaseBerkeleydb(_Database):
+    class _DatabaseBerkeleydb(_DatabaseBerkeley):
         def setUp(self):
             self._folder = "___update_test_berkeleydb"
             self._engine = berkeleydb_database
@@ -264,7 +282,7 @@ if berkeleydb:
 
 if sqlite3:
 
-    class _DatabaseSqlite3(_Database):
+    class _DatabaseSqlite3(_DatabaseOther):
         def setUp(self):
             self._folder = "___update_test_sqlite3"
             self._engine = sqlite3_database
@@ -280,7 +298,7 @@ if sqlite3:
 
 if apsw:
 
-    class _DatabaseApsw(_Database):
+    class _DatabaseApsw(_DatabaseOther):
         def setUp(self):
             self._folder = "___update_test_apsw"
             self._engine = apsw_database
@@ -296,7 +314,7 @@ if apsw:
 
 if lmdb:
 
-    class _DatabaseLmdb(_Database):
+    class _DatabaseLmdb(_DatabaseOther):
         def setUp(self):
             self._folder = "___update_test_lmdb"
             self._engine = lmdb_database
@@ -312,7 +330,7 @@ if lmdb:
 
 if dptapi:
 
-    class _DatabaseDptapi(_Database):
+    class _DatabaseDptapi(_DatabaseDpt):
         def setUp(self):
             self._folder = "___update_test_dpt"
             self._engine = dpt_database
@@ -328,7 +346,7 @@ if dptapi:
 
 if ndbm_module:
 
-    class _DatabaseNdbm(_Database):
+    class _DatabaseNdbm(_DatabaseOther):
         def setUp(self):
             self._folder = "___update_test_ndbm"
             self._engine = ndbm_database
@@ -344,7 +362,7 @@ if ndbm_module:
 
 if gnu_module:
 
-    class _DatabaseGnu(_Database):
+    class _DatabaseGnu(_DatabaseOther):
         def setUp(self):
             self._folder = "___update_test_gnu"
             self._engine = gnu_database
