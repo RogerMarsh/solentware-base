@@ -41,7 +41,7 @@ class Tree(unittest.TestCase):
         self._D = None
 
 
-class Tree___init__(Tree):
+class Tree___init__:
     def t01___init__(self):
         self.assertRaisesRegex(
             TypeError,
@@ -257,7 +257,7 @@ class Tree_file1_field1(Tree):
             self.assertEqual(leaf_keys, sorted(all_keys))
 
 
-class Tree_insert_branching_5(Tree_file1_field1):
+class Tree_insert_branching_5:
     def t01_insert__arguments(self):
         self.assertRaisesRegex(
             TypeError,
@@ -537,10 +537,6 @@ class Tree_insert_branching_5(Tree_file1_field1):
 
 
 class Tree_insert_branching_4(Tree_file1_field1):
-    def setUp(self):
-        super().setUp()
-        self.tree.branching_factor = 4
-
     def t01__populate_branching_factor_2n(self):
         self.assertEqual(self.tree.branching_factor, 4)
         # self.print_nodes()
@@ -725,10 +721,6 @@ class Tree_insert_branching_4(Tree_file1_field1):
 
 
 class Tree_insert_branching_6(Tree_file1_field1):
-    def setUp(self):
-        super().setUp()
-        self.tree.branching_factor = 6
-
     def t01_insert__keys_in_order(self):
         self.assertEqual(self.tree.branching_factor, 6)
         for i in range(100):
@@ -764,7 +756,7 @@ class Tree_insert_branching_6(Tree_file1_field1):
             self.check_nodes()
 
 
-class Tree_delete_branching_5(Tree_file1_field1):
+class Tree_delete_branching_5:
     def t01_delete__arguments(self):
         self.assertRaisesRegex(
             TypeError,
@@ -1122,11 +1114,7 @@ class Tree_delete_branching_5(Tree_file1_field1):
         self.check_nodes()
 
 
-class Tree_delete_branching_4(Tree_file1_field1):
-    def setUp(self):
-        super().setUp()
-        self.tree.branching_factor = 4
-
+class Tree_delete_branching_4:
     def t01_delete__keys_in_solo_root(self):
         self.assertEqual(self.tree.branching_factor, 4)
         self.tree.insert("k3")
@@ -1356,13 +1344,7 @@ class Tree_delete_branching_4(Tree_file1_field1):
         # Rest would copy tests 01, 02, 03, 04, or 05.
 
 
-class Tree_delete_branching_6(Tree_file1_field1):
-    def setUp(self):
-        super().setUp()
-        self.tree.branching_factor = 6
-        for i in range(50):
-            self.tree.insert("k" + str(i))
-
+class Tree_delete_branching_6:
     def t01_delete__keys_in_order(self):
         self.assertEqual(self.tree.branching_factor, 6)
         # self.print_nodes()
@@ -1411,7 +1393,7 @@ class Tree_delete_branching_6(Tree_file1_field1):
             self.check_nodes()
 
 
-class Tree_locate(Tree_file1_field1):
+class Tree_locate:
     def t01_locate__arguments(self):
         self.assertRaisesRegex(
             TypeError,
@@ -1452,7 +1434,7 @@ class Tree_locate(Tree_file1_field1):
         self.assertEqual(location[-1], None)
 
 
-class Tree_search(Tree_file1_field1):
+class Tree_search:
     def t01_search__arguments(self):
         self.assertRaisesRegex(
             TypeError,
@@ -1490,7 +1472,7 @@ class Tree__splitters(Tree_file1_field1):
         self.database.dbenv[self.tree.high_node] = repr(30)
 
 
-class Tree__split_solo_root(Tree__splitters):
+class Tree__split_solo_root:
     def t01__split_solo_root__arguments(self):
         self.assertRaisesRegex(
             TypeError,
@@ -1543,7 +1525,7 @@ class Tree__split_solo_root(Tree__splitters):
         )
 
 
-class Tree__split_leaf(Tree__splitters):
+class Tree__split_leaf:
     def t01__split_leaf__arguments(self):
         self.assertRaisesRegex(
             TypeError,
@@ -1590,7 +1572,7 @@ class Tree__split_leaf(Tree__splitters):
         )
 
 
-class Tree__split_root(Tree__splitters):
+class Tree__split_root:
     def t01__split_root__arguments(self):
         self.assertRaisesRegex(
             TypeError,
@@ -1647,7 +1629,7 @@ class Tree__split_root(Tree__splitters):
         )
 
 
-class Tree__split_branch(Tree__splitters):
+class Tree__split_branch:
     def t01__split_branch__arguments(self):
         self.assertRaisesRegex(
             TypeError,
@@ -1698,7 +1680,7 @@ class Tree__split_branch(Tree__splitters):
         )
 
 
-class Tree__read_root(Tree__splitters):
+class Tree__read_root:
     def t01__read_root__arguments(self):
         self.assertRaisesRegex(
             TypeError,
@@ -1719,7 +1701,7 @@ class Tree__read_root(Tree__splitters):
         self.assertEqual(self.tree.read_root(), b"True")
 
 
-class Tree__write_root(Tree__splitters):
+class Tree__write_root:
     def t01__write_root__arguments(self):
         self.assertRaisesRegex(
             TypeError,
@@ -1751,7 +1733,7 @@ class Tree__write_root(Tree__splitters):
         self.assertEqual(self.database.dbenv["1_1"], b"True")
 
 
-class Tree__read_node(Tree__splitters):
+class Tree__read_node:
     def t01__read_node__arguments(self):
         self.assertRaisesRegex(
             TypeError,
@@ -1788,7 +1770,7 @@ class Tree__read_node(Tree__splitters):
         self.assertEqual(self.tree.read_node(0), b"'None'")
 
 
-class Tree__write_node(Tree__splitters):
+class Tree__write_node:
     def t01__write_node__arguments(self):
         self.assertRaisesRegex(
             TypeError,
@@ -1820,7 +1802,7 @@ class Tree__write_node(Tree__splitters):
         self.assertEqual(self.database.dbenv["1_1_2_1"], b"[1, None]")
 
 
-class Tree__delete_root(Tree__splitters):
+class Tree__delete_root:
     def t01__delete_root__arguments(self):
         self.assertRaisesRegex(
             TypeError,
@@ -1844,7 +1826,7 @@ class Tree__delete_root(Tree__splitters):
         self.assertEqual("1_1" in self.database.dbenv, False)
 
 
-class Tree__delete_node(Tree__splitters):
+class Tree__delete_node:
     def t01__delete_node__arguments(self):
         self.assertRaisesRegex(
             TypeError,
@@ -1878,16 +1860,7 @@ class Tree__delete_node(Tree__splitters):
         self.assertEqual("1_1_2_2" in self.database.dbenv, False)
 
 
-class Tree__write_modified_nodes(Tree__splitters):
-    def setUp(self):
-        super().setUp()
-        self.node10 = tree._Node(10, 0)
-        self.node11 = tree._Node(11, tree._Node.ROOT)
-        self.node12 = tree._Node(12, tree._Node.SOLO_ROOT)
-        self.node13 = tree._Node(13, tree._Node.BRANCH)
-        self.node14 = tree._Node(14, tree._Node.LEAF)
-        # del self.database.dbenv['1_1']
-
+class Tree__write_modified_nodes:
     def t01__write_modified_nodes__arguments(self):
         self.assertRaisesRegex(
             TypeError,
@@ -2027,15 +2000,7 @@ class Tree__write_modified_nodes(Tree__splitters):
         self.assertEqual(self.node12.modified, False)
 
 
-class TreeSplitterNodeForKey(Tree__splitters):
-    def setUp(self):
-        super().setUp()
-        self.nodepath = [
-            tree._Node(5, tree._Node.ROOT, keys=["k2"]),
-            tree._Node(6, tree._Node.BRANCH, keys=["k4"]),
-            tree._Node(7, tree._Node.LEAF),
-        ]
-
+class TreeSplitterNodeForKey:
     def t01__splitter_node_for_key__arguments(self):
         self.assertRaisesRegex(
             TypeError,
@@ -2107,7 +2072,7 @@ class TreeSplitterNodeForKey(Tree__splitters):
         self.assertEqual(poffset, 0)
 
 
-class TreeReplaceSplitterInBranchOrRoot(Tree__splitters):
+class TreeReplaceSplitterInBranchOrRoot:
     def t01__replace_split_branch_or_root(self):
         self.assertRaisesRegex(
             TypeError,
@@ -2150,7 +2115,7 @@ class TreeReplaceSplitterInBranchOrRoot(Tree__splitters):
 # _merge_leaf is called in one place, in delete(), and exists to park the code
 # in a more convenient place.  For now rely on delete's unittests apart from
 # arguments tests.
-class Tree__merge_leaf(Tree__splitters):
+class Tree__merge_leaf:
     def t01__merge_leaf__arguments(self):
         self.assertRaisesRegex(
             TypeError,
@@ -2180,7 +2145,7 @@ class Tree__merge_leaf(Tree__splitters):
 # _merge_branch is called in one place, in delete(), and exists to park the
 # code in a more convenient place.  For now rely on delete's unittests apart
 # from arguments tests.
-class Tree__merge_branch(Tree__splitters):
+class Tree__merge_branch:
     def t01__merge_branch__arguments(self):
         self.assertRaisesRegex(
             TypeError,
@@ -2207,7 +2172,7 @@ class Tree__merge_branch(Tree__splitters):
         )
 
 
-class Cursor___init__(Tree_file1_field1):
+class Cursor___init__:
     def t01___init____arguments(self):
         self.assertRaisesRegex(
             TypeError,
@@ -2250,11 +2215,7 @@ class Cursor___init__(Tree_file1_field1):
         self.assertIs(c.tree, self.tree)
 
 
-class Cursor_methods_empty_database(Tree_file1_field1):
-    def setUp(self):
-        super().setUp()
-        self.cursor = tree.Cursor(self.tree)
-
+class Cursor_methods_empty_database:
     def t01_first__arguments(self):
         self.assertRaisesRegex(
             TypeError,
@@ -2368,7 +2329,7 @@ class Cursor_methods_empty_database(Tree_file1_field1):
         self.assertEqual(self.cursor.setat(""), None)
 
 
-class Cursor_methods_populated_database(Tree_file1_field1):
+class Cursor_methods_populated_database:
     def setUp(self):
         super().setUp()
         self.cursor = tree.Cursor(self.tree)

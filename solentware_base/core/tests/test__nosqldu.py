@@ -80,7 +80,7 @@ class _NoSQLdu(unittest.TestCase):
 
 # Same tests as test__sqlite.Database___init__ with relevant additions.
 # Alternative is one test method with just the additional tests.
-class Database___init__(_NoSQLdu):
+class Database___init__:
     def t01(self):
         self.assertRaisesRegex(
             TypeError,
@@ -208,7 +208,7 @@ class _NoSQLOpen(_NoSQLdu):
         super().tearDown()
 
 
-class Database_methods(_NoSQLOpen):
+class Database_methods:
     def t01(self):
         self.assertRaisesRegex(
             _nosqldu.DatabaseError,
@@ -382,7 +382,7 @@ class Database_methods(_NoSQLOpen):
         )
 
 
-class Database_do_final_segment_deferred_updates(_NoSQLOpen):
+class Database_do_final_segment_deferred_updates:
     def t01(self):
         database = self._D({}, segment_size_bytes=None)
         self.assertRaisesRegex(
@@ -465,7 +465,7 @@ class Database_do_final_segment_deferred_updates(_NoSQLOpen):
         self.database.do_final_segment_deferred_updates()
 
 
-class Database_sort_and_write(_NoSQLOpen):
+class Database_sort_and_write:
     def t01(self):
         database = self._D({}, segment_size_bytes=None)
         self.assertRaisesRegex(

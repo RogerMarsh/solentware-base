@@ -115,31 +115,32 @@ class _Database(unittest.TestCase):
         self._D = None
         SegmentSize.db_segment_size_bytes = self.__ssb
 
-    def t01_open_database__in_directory_no_txn_generated_filespec(self):
-        # No cachesize problem for bsddb3 when database is not in memory.
-        # No problem on OpenBSD for vedis as in .test___update module.
-        # Transaction for each record.
-        self.database = self._D(
-            generated_filespec,
-            folder=self._folder,
+
+def t01_open_database__in_directory_no_txn_generated_filespec(self):
+    # No cachesize problem for bsddb3 when database is not in memory.
+    # No problem on OpenBSD for vedis as in .test___update module.
+    # Transaction for each record.
+    self.database = self._D(
+        generated_filespec,
+        folder=self._folder,
+    )
+    self.database.open_database()
+    try:
+        self.assertEqual(
+            self.database.home_directory,
+            os.path.join(os.getcwd(), self._folder),
         )
-        self.database.open_database()
-        try:
+        if self._folder != "___update_test_dpt":
+            self.assertEqual(SegmentSize.db_segment_size_bytes, 4000)
             self.assertEqual(
-                self.database.home_directory,
-                os.path.join(os.getcwd(), self._folder),
+                self.database.database_file,
+                os.path.join(os.getcwd(), self._folder, self._folder),
             )
-            if self._folder != "___update_test_dpt":
-                self.assertEqual(SegmentSize.db_segment_size_bytes, 4000)
-                self.assertEqual(
-                    self.database.database_file,
-                    os.path.join(os.getcwd(), self._folder, self._folder),
-                )
-            self.database.set_defer_update()
-            _data_generator.populate(self.database, dg, transaction=False)
-            self.database.unset_defer_update()
-        finally:
-            self.database.close_database()
+        self.database.set_defer_update()
+        _data_generator.populate(self.database, dg, transaction=False)
+        self.database.unset_defer_update()
+    finally:
+        self.database.close_database()
 
 
 class _DatabaseBerkeley(_Database):
@@ -189,9 +190,7 @@ if unqlite:
             self._engine = unqlitedu_database
             super().setUp()
 
-        test_01 = (
-            _Database.t01_open_database__in_directory_no_txn_generated_filespec
-        )
+        test_01 = t01_open_database__in_directory_no_txn_generated_filespec
 
 
 if vedis:
@@ -202,9 +201,7 @@ if vedis:
             self._engine = vedisdu_database
             super().setUp()
 
-        test_01 = (
-            _Database.t01_open_database__in_directory_no_txn_generated_filespec
-        )
+        test_01 = t01_open_database__in_directory_no_txn_generated_filespec
 
 
 if bsddb3:
@@ -215,9 +212,7 @@ if bsddb3:
             self._engine = bsddb3du_database
             super().setUp()
 
-        test_01 = (
-            _Database.t01_open_database__in_directory_no_txn_generated_filespec
-        )
+        test_01 = t01_open_database__in_directory_no_txn_generated_filespec
 
 
 if berkeleydb:
@@ -228,9 +223,7 @@ if berkeleydb:
             self._engine = berkeleydbdu_database
             super().setUp()
 
-        test_01 = (
-            _Database.t01_open_database__in_directory_no_txn_generated_filespec
-        )
+        test_01 = t01_open_database__in_directory_no_txn_generated_filespec
 
 
 if sqlite3:
@@ -241,9 +234,7 @@ if sqlite3:
             self._engine = sqlite3du_database
             super().setUp()
 
-        test_01 = (
-            _Database.t01_open_database__in_directory_no_txn_generated_filespec
-        )
+        test_01 = t01_open_database__in_directory_no_txn_generated_filespec
 
 
 if apsw:
@@ -254,9 +245,7 @@ if apsw:
             self._engine = apswdu_database
             super().setUp()
 
-        test_01 = (
-            _Database.t01_open_database__in_directory_no_txn_generated_filespec
-        )
+        test_01 = t01_open_database__in_directory_no_txn_generated_filespec
 
 
 if lmdb:
@@ -267,9 +256,7 @@ if lmdb:
             self._engine = lmdbdu_database
             super().setUp()
 
-        test_01 = (
-            _Database.t01_open_database__in_directory_no_txn_generated_filespec
-        )
+        test_01 = t01_open_database__in_directory_no_txn_generated_filespec
 
 
 if dptapi:
@@ -280,9 +267,7 @@ if dptapi:
             self._engine = dptdu_database
             super().setUp()
 
-        test_01 = (
-            _Database.t01_open_database__in_directory_no_txn_generated_filespec
-        )
+        test_01 = t01_open_database__in_directory_no_txn_generated_filespec
 
 
 if ndbm_module:
@@ -293,9 +278,7 @@ if ndbm_module:
             self._engine = ndbmdu_database
             super().setUp()
 
-        test_01 = (
-            _Database.t01_open_database__in_directory_no_txn_generated_filespec
-        )
+        test_01 = t01_open_database__in_directory_no_txn_generated_filespec
 
 
 if gnu_module:
@@ -306,9 +289,7 @@ if gnu_module:
             self._engine = gnudu_database
             super().setUp()
 
-        test_01 = (
-            _Database.t01_open_database__in_directory_no_txn_generated_filespec
-        )
+        test_01 = t01_open_database__in_directory_no_txn_generated_filespec
 
 
 dg = _data_generator._DataGenerator()

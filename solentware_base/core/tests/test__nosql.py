@@ -102,7 +102,7 @@ class _NoSQL(unittest.TestCase):
         SegmentSize.db_segment_size_bytes = self.__ssb
 
 
-class Database___init__(_NoSQL):
+class Database___init__:
     def t01(self):
         self.assertRaisesRegex(
             TypeError,
@@ -203,7 +203,7 @@ class Database___init__(_NoSQL):
 
 # Transaction methods do not raise exceptions if called when no database open
 # but do nothing.
-class Database_transaction_methods(_NoSQL):
+class Database_transaction_methods:
 
     def t01_start_transaction(self):
         self.assertEqual(self.database.dbenv, None)
@@ -254,7 +254,7 @@ class Database_transaction_methods(_NoSQL):
 
 
 # Methods which do not require database to be open.
-class DatabaseInstance(_NoSQL):
+class DatabaseInstance:
 
     def t01_validate_segment_size_bytes(self):
         self.assertRaisesRegex(
@@ -345,7 +345,7 @@ class DatabaseInstance(_NoSQL):
 
 
 # Memory databases are used for these tests.
-class Database_open_database(_NoSQL):
+class Database_open_database:
     def t01(self):
         self.database = self._D({})
         self.assertRaisesRegex(
@@ -514,7 +514,7 @@ class Database_open_database(_NoSQL):
 
 
 # Memory databases cannot be used for these tests.
-class DatabaseAddFieldToExistingDatabase(_NoSQL):
+class DatabaseAddFieldToExistingDatabase:
 
     def t13_add_field_to_open_database(self):
         folder = "aaaa"
@@ -587,7 +587,7 @@ class _NoSQLOpen(_NoSQL):
         self.database.close_database()
 
 
-class DatabaseTransactions(_NoSQLOpen):
+class DatabaseTransactions:
     def t01(self):
         self.database.start_transaction()
         self.assertEqual(self.database.start_transaction(), None)
@@ -607,7 +607,7 @@ class DatabaseTransactions(_NoSQLOpen):
         self.assertEqual(self.database.commit(), None)
 
 
-class Database_put_replace_delete(_NoSQLOpen):
+class Database_put_replace_delete:
     # These tests are copied and modified from test__sqlite.
     # The tests on put assume a correct add_record_to_ebm method, and those on
     # delete assume a correct remove_record_from_ebm() method because the
@@ -742,7 +742,7 @@ class Database_put_replace_delete(_NoSQLOpen):
 
 
 # These tests need fully working put, replace, and delete, methods.
-class Database_methods(_NoSQLOpen):
+class Database_methods:
     def t01(self):
         self.assertRaisesRegex(
             TypeError,
@@ -1011,7 +1011,7 @@ class Database_methods(_NoSQLOpen):
         )
 
 
-class Database_find_values__empty(_NoSQLOpen):
+class Database_find_values__empty:
     def setup_detail(self):
         self.valuespec = ValuesClause()
         self.valuespec.field = "field1"
@@ -1086,7 +1086,7 @@ class Database_find_values__empty(_NoSQLOpen):
         )
 
 
-class Database_find_values__populated(_NoSQLOpen):
+class Database_find_values__populated:
     def setup_detail(self):
         self.valuespec = ValuesClause()
         self.valuespec.field = "field1"
@@ -1163,7 +1163,7 @@ class Database_find_values__populated(_NoSQLOpen):
         )
 
 
-class DatabaseAddRecordToFieldValue(_NoSQLOpen):
+class DatabaseAddRecordToFieldValue:
     def t01(self):
         self.assertRaisesRegex(
             TypeError,
@@ -1323,7 +1323,7 @@ class DatabaseAddRecordToFieldValue(_NoSQLOpen):
         )
 
 
-class DatabaseRemoveRecordFieldValue(_NoSQLOpen):
+class DatabaseRemoveRecordFieldValue:
     def t01(self):
         self.assertRaisesRegex(
             TypeError,
@@ -1473,7 +1473,7 @@ class DatabaseRemoveRecordFieldValue(_NoSQLOpen):
         self.assertEqual(db.exists("2_1_0_indexvalue"), False)
 
 
-class Database_populate_segment(_NoSQLOpen):
+class Database_populate_segment:
     def t01(self):
         self.assertRaisesRegex(
             TypeError,
@@ -1511,7 +1511,7 @@ class Database_populate_segment(_NoSQLOpen):
         self.assertEqual(s.count_records(), 24)
 
 
-class _NoSQLOpenPopulated(_NoSQLOpen):
+class _NoSQLOpenPopulated:
     def setup_detail(self):
         segments = (
             b"".join(
@@ -1589,7 +1589,7 @@ class _NoSQLOpenPopulated(_NoSQLOpen):
         db["1_1_0_" + "www"] = repr({0: ("L", 3), 1: ("L", 3)})
 
 
-class Database_make_recordset(_NoSQLOpenPopulated):
+class Database_make_recordset:
     def t01(self):
         self.assertRaisesRegex(
             TypeError,
@@ -1911,7 +1911,7 @@ class Database_make_recordset(_NoSQLOpenPopulated):
         self.assertEqual(len(rs), 0)
 
 
-class Database_file_unfile_records(_NoSQLOpenPopulated):
+class Database_file_unfile_records:
     def t01(self):
         self.assertRaisesRegex(
             TypeError,
@@ -2154,7 +2154,7 @@ class Database_file_unfile_records(_NoSQLOpenPopulated):
         self.assertEqual(db.exists("1_1_1_1_www"), False)
 
 
-class Database_database_create_cursors(_NoSQLOpen):
+class Database_database_create_cursors:
     def t01(self):
         self.assertRaisesRegex(
             TypeError,
@@ -2213,7 +2213,7 @@ class Database_database_create_cursors(_NoSQLOpen):
         )
 
 
-class Database_freed_record_number(_NoSQLOpen):
+class Database_freed_record_number:
     def setup_detail(self):
         for i in range(SegmentSize.db_segment_size * 3):
             self.database.dbenv["_".join(("1_0", str(i)))] = repr(
@@ -2382,11 +2382,7 @@ class Database_freed_record_number(_NoSQLOpen):
 
 
 # Does this test add anything beyond Database_freed_record_number?
-class Database_empty_freed_record_number(_NoSQLOpen):
-    def setUp(self):
-        super().setUp()
-        self.high_record = self.database.get_high_record_number("file1")
-
+class Database_empty_freed_record_number:
     def t01(self):
         self.assertEqual(
             self.database.ebm_control["file1"].freed_record_number_pages, None
@@ -2402,7 +2398,7 @@ class Database_empty_freed_record_number(_NoSQLOpen):
         )
 
 
-class RecordsetCursor(_NoSQLOpen):
+class RecordsetCursor:
     def setup_detail(self):
         segments = (
             b"".join(
@@ -2485,10 +2481,7 @@ class RecordsetCursor(_NoSQLOpen):
         self.assertEqual(rc._get_record(155), (155, "'155Any value'"))
 
 
-class ExistenceBitmapControl(_NoSQLOpen):
-    def setUp(self):
-        super().setUp()
-
+class ExistenceBitmapControl:
     def t01(self):
         self.assertRaisesRegex(
             TypeError,

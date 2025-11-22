@@ -38,7 +38,7 @@ class _SQLite(unittest.TestCase):
         self._D = None
 
 
-class Cursor_sqlite(_SQLite):
+class Cursor_sqlite:
     def t01(self):
         self.assertRaisesRegex(
             TypeError,
@@ -143,20 +143,7 @@ class Cursor_sqlite(_SQLite):
         self.assertEqual(cursor.refresh_recordset(), None)
 
 
-class Cursor_primary(_SQLite):
-    def setUp(self):
-        super().setUp()
-        self.cursor = _sqlite.CursorPrimary(
-            self.database.dbenv,
-            table=self.database.table["file1"],
-            ebm=self.database.ebm_control["file1"].ebm_table,
-            file="file1",
-        )
-
-    def tearDown(self):
-        self.cursor.close()
-        super().tearDown()
-
+class Cursor_primary:
     def t01(self):
         self.assertRaisesRegex(
             TypeError,
@@ -474,7 +461,7 @@ class Cursor_primary(_SQLite):
         cursor.execute(statement, values)
 
 
-class Cursor_secondary(_SQLite):
+class Cursor_secondary:
     def setup_detail(self):
         segments = (
             b"".join(
@@ -1047,7 +1034,7 @@ class Cursor_secondary(_SQLite):
         self.cursor.refresh_recordset()
 
 
-class CursorSecondaryGetRecordAtPosition(_SQLite):
+class CursorSecondaryGetRecordAtPosition:
     def setup_detail(self):
         segments = (
             b"".join(

@@ -49,7 +49,7 @@ class _NoSQL(unittest.TestCase):
         self._D = None
 
 
-class Database_open_database(_NoSQL):
+class Database_open_database:
     def t09(self):
         self.detail_does_not_exist_t09()
         self.database = self._D(

@@ -83,7 +83,7 @@ class _NoSQL(unittest.TestCase):
         SegmentSize.db_segment_size_bytes = self.__ssb
 
 
-class Cursor_nosql(_NoSQL):
+class Cursor_nosql:
     def t01(self):
         self.assertRaisesRegex(
             TypeError,
@@ -187,7 +187,7 @@ class Cursor_nosql(_NoSQL):
         self.assertEqual(cursor.refresh_recordset(), None)
 
 
-class Cursor_primary(_NoSQL):
+class Cursor_primary:
     def setup_detail(self):
         segments = (
             b"".join(
@@ -534,7 +534,7 @@ class Cursor_primary(_NoSQL):
         self.cursor.refresh_recordset()
 
 
-class CursorPrimaryGetRecordAtPosition(_NoSQL):
+class CursorPrimaryGetRecordAtPosition:
     # The Cursor_primary setup does not allow 'get_record_at_position(0)'
     # with 'record 0' absent; which was a problem in all other database
     # engines.
@@ -583,7 +583,7 @@ class CursorPrimaryGetRecordAtPosition(_NoSQL):
         self.assertEqual(cgrap(-27), None)
 
 
-class Cursor_secondary(_NoSQL):
+class Cursor_secondary:
     def setup_detail(self):
         segments = (
             b"".join(
@@ -1116,7 +1116,7 @@ class Cursor_secondary(_NoSQL):
         )
 
 
-class CursorSecondaryGetRecordAtPosition(_NoSQL):
+class CursorSecondaryGetRecordAtPosition:
     def setup_detail(self):
         segments = (
             b"".join(

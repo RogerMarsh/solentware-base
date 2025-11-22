@@ -83,7 +83,7 @@ class _NoSQL(unittest.TestCase):
         SegmentSize.db_segment_size_bytes = self.__ssb
 
 
-class SegmentsetCursor(_NoSQL):
+class SegmentsetCursor:
     def setup_detail(self):
         segments = (
             b"".join(

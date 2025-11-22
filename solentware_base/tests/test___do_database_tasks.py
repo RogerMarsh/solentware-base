@@ -141,160 +141,140 @@ class _Database(unittest.TestCase):
         return
 
 
-class DatabaseFiles(_Database):
-    def t01_database_names(self):
-        ae = self.assertEqual
-        self.database = self._ED(
-            empty_filespec, folder=self._folder, segment_size_bytes=None
-        )
-        ae(os.path.exists(self.database.home_directory), False)
-        self.database.open_database()
-        ae(os.path.exists(self.database.home_directory), True)
-        ae(os.path.basename(self.database.home_directory), self._folder)
-        ae(
-            os.path.splitext(os.path.basename(self.database.database_file))[0],
-            self._folder,
-        )
-        files = os.listdir(self.database.home_directory)
-        if self._folder in (
-            "___update_test_bsddb3",
-            "___update_test_berkeleydb",
-        ):
-            ae("___logs_" + self._folder in files, True)
-            ae(len(files), 2)
-        elif self._oda[0] is lmdb:
-            ae(self._folder + "-lock" in files, True)
-            ae(len(files), 2)
-        else:
-            ae(len(files), 1)
-        if self._oda[0] is ndbm_module:
-            ae(".".join((self._folder, "db")) in files, True)
-        else:
-            ae(self._folder in files, True)
-
-    def t02_database_names(self):
-        ae = self.assertEqual
-        self.database = self._ED(
-            simple_filespec, folder=self._folder, segment_size_bytes=None
-        )
-        ae(os.path.exists(self.database.home_directory), False)
-        self.database.open_database()
-        ae(os.path.exists(self.database.home_directory), True)
-        ae(os.path.basename(self.database.home_directory), self._folder)
-        ae(
-            os.path.splitext(os.path.basename(self.database.database_file))[0],
-            self._folder,
-        )
-        files = os.listdir(self.database.home_directory)
-        if self._folder in (
-            "___update_test_bsddb3",
-            "___update_test_berkeleydb",
-        ):
-            ae("___logs_" + self._folder in files, True)
-            ae(len(files), 2)
-        elif self._oda[0] is lmdb:
-            ae(self._folder + "-lock" in files, True)
-            ae(len(files), 2)
-        else:
-            ae(len(files), 1)
-        if self._oda[0] is ndbm_module:
-            ae(".".join((self._folder, "db")) in files, True)
-        else:
-            ae(self._folder in files, True)
+def t01_database_names(self):
+    ae = self.assertEqual
+    self.database = self._ED(
+        empty_filespec, folder=self._folder, segment_size_bytes=None
+    )
+    ae(os.path.exists(self.database.home_directory), False)
+    self.database.open_database()
+    ae(os.path.exists(self.database.home_directory), True)
+    ae(os.path.basename(self.database.home_directory), self._folder)
+    ae(
+        os.path.splitext(os.path.basename(self.database.database_file))[0],
+        self._folder,
+    )
+    files = os.listdir(self.database.home_directory)
+    if self._folder in (
+        "___update_test_bsddb3",
+        "___update_test_berkeleydb",
+    ):
+        ae("___logs_" + self._folder in files, True)
+        ae(len(files), 2)
+    elif self._oda[0] is lmdb:
+        ae(self._folder + "-lock" in files, True)
+        ae(len(files), 2)
+    else:
+        ae(len(files), 1)
+    if self._oda[0] is ndbm_module:
+        ae(".".join((self._folder, "db")) in files, True)
+    else:
+        ae(self._folder in files, True)
 
 
-class DoDatabaseTaskEmptySpec(_Database):
-    def setUp(self):
-        super().setUp()
-
-        class _AD(self._ED):
-            def __init__(self, folder, **k):
-                super().__init__(empty_filespec, folder, **k)
-
-        self._AD = _AD
-
-    def tearDown(self):
-        self._AD = None
-        super().tearDown()
-
-    def t01_do_database_task_empty_spec(self):
-        ae = self.assertEqual
-        self.database = self._AD(folder=self._folder)
-        self.database.open_database()
-        ae(self.database.do_database_task(self.task), None)
-
-    def t02_do_database_task_empty_spec(self):
-        ae = self.assertEqual
-        self.database = self._AD(folder=self._folder)
-        self.database.open_database()
-        self.database.close_database()
-        ae(self.database.do_database_task(self.task), None)
-
-    def t03_do_database_task_empty_spec(self):
-        ae = self.assertEqual
-        self.database = self._AD(folder=self._folder)
-        ae(self.database.do_database_task(self.task), None)
-
-    def t04_do_database_task_empty_spec(self):
-        ae = self.assertEqual
-        self.database = self._AD(folder=self._folder)
-        self.database.open_database()
-        ae(self.database.do_database_task(self.task), None)
-        self.database.close_database()
-
-    def t05_do_database_task_empty_spec(self):
-        ae = self.assertEqual
-        self.database = self._AD(folder=self._folder)
-        ae(self.database.do_database_task(self.task), None)
-        self.database.open_database()
-        self.database.close_database()
+def t02_database_names(self):
+    ae = self.assertEqual
+    self.database = self._ED(
+        simple_filespec, folder=self._folder, segment_size_bytes=None
+    )
+    ae(os.path.exists(self.database.home_directory), False)
+    self.database.open_database()
+    ae(os.path.exists(self.database.home_directory), True)
+    ae(os.path.basename(self.database.home_directory), self._folder)
+    ae(
+        os.path.splitext(os.path.basename(self.database.database_file))[0],
+        self._folder,
+    )
+    files = os.listdir(self.database.home_directory)
+    if self._folder in (
+        "___update_test_bsddb3",
+        "___update_test_berkeleydb",
+    ):
+        ae("___logs_" + self._folder in files, True)
+        ae(len(files), 2)
+    elif self._oda[0] is lmdb:
+        ae(self._folder + "-lock" in files, True)
+        ae(len(files), 2)
+    else:
+        ae(len(files), 1)
+    if self._oda[0] is ndbm_module:
+        ae(".".join((self._folder, "db")) in files, True)
+    else:
+        ae(self._folder in files, True)
 
 
-class DoDatabaseTaskSimpleSpec(_Database):
-    def setUp(self):
-        super().setUp()
+def t01_do_database_task_empty_spec(self):
+    ae = self.assertEqual
+    self.database = self._AD(folder=self._folder)
+    self.database.open_database()
+    ae(self.database.do_database_task(self.task), None)
 
-        class _AD(self._ED):
-            def __init__(self, folder, **k):
-                super().__init__(simple_filespec, folder, **k)
 
-        self._AD = _AD
+def t02_do_database_task_empty_spec(self):
+    ae = self.assertEqual
+    self.database = self._AD(folder=self._folder)
+    self.database.open_database()
+    self.database.close_database()
+    ae(self.database.do_database_task(self.task), None)
 
-    def tearDown(self):
-        self._AD = None
-        super().tearDown()
 
-    def t01_do_database_task_simple_spec(self):
-        ae = self.assertEqual
-        self.database = self._AD(folder=self._folder)
-        self.database.open_database()
-        ae(self.database.do_database_task(self.task), None)
+def t03_do_database_task_empty_spec(self):
+    ae = self.assertEqual
+    self.database = self._AD(folder=self._folder)
+    ae(self.database.do_database_task(self.task), None)
 
-    def t02_do_database_task_simple_spec(self):
-        ae = self.assertEqual
-        self.database = self._AD(folder=self._folder)
-        self.database.open_database()
-        self.database.close_database()
-        ae(self.database.do_database_task(self.task), None)
 
-    def t03_do_database_task_simple_spec(self):
-        ae = self.assertEqual
-        self.database = self._AD(folder=self._folder)
-        ae(self.database.do_database_task(self.task), None)
+def t04_do_database_task_empty_spec(self):
+    ae = self.assertEqual
+    self.database = self._AD(folder=self._folder)
+    self.database.open_database()
+    ae(self.database.do_database_task(self.task), None)
+    self.database.close_database()
 
-    def t04_do_database_task_simple_spec(self):
-        ae = self.assertEqual
-        self.database = self._AD(folder=self._folder)
-        self.database.open_database()
-        ae(self.database.do_database_task(self.task), None)
-        self.database.close_database()
 
-    def t05_do_database_task_simple_spec(self):
-        ae = self.assertEqual
-        self.database = self._AD(folder=self._folder)
-        ae(self.database.do_database_task(self.task), None)
-        self.database.open_database()
-        self.database.close_database()
+def t05_do_database_task_empty_spec(self):
+    ae = self.assertEqual
+    self.database = self._AD(folder=self._folder)
+    ae(self.database.do_database_task(self.task), None)
+    self.database.open_database()
+    self.database.close_database()
+
+
+def t01_do_database_task_simple_spec(self):
+    ae = self.assertEqual
+    self.database = self._AD(folder=self._folder)
+    self.database.open_database()
+    ae(self.database.do_database_task(self.task), None)
+
+
+def t02_do_database_task_simple_spec(self):
+    ae = self.assertEqual
+    self.database = self._AD(folder=self._folder)
+    self.database.open_database()
+    self.database.close_database()
+    ae(self.database.do_database_task(self.task), None)
+
+
+def t03_do_database_task_simple_spec(self):
+    ae = self.assertEqual
+    self.database = self._AD(folder=self._folder)
+    ae(self.database.do_database_task(self.task), None)
+
+
+def t04_do_database_task_simple_spec(self):
+    ae = self.assertEqual
+    self.database = self._AD(folder=self._folder)
+    self.database.open_database()
+    ae(self.database.do_database_task(self.task), None)
+    self.database.close_database()
+
+
+def t05_do_database_task_simple_spec(self):
+    ae = self.assertEqual
+    self.database = self._AD(folder=self._folder)
+    ae(self.database.do_database_task(self.task), None)
+    self.database.open_database()
+    self.database.close_database()
 
 
 if unqlite:
@@ -307,8 +287,8 @@ if unqlite:
             super().setUp()
 
     class DatabaseFilesUnqlite(_DatabaseUnqlite):
-        test_01 = DatabaseFiles.t01_database_names
-        test_02 = DatabaseFiles.t02_database_names
+        test_01 = t01_database_names
+        test_02 = t02_database_names
 
     class DoDatabaseTaskUnqlite(_DatabaseUnqlite):
         def setUp(self):
@@ -330,22 +310,22 @@ if unqlite:
             self._filespec = empty_filespec
             super().setUp()
 
-        test_01 = DoDatabaseTaskEmptySpec.t01_do_database_task_empty_spec
-        test_02 = DoDatabaseTaskEmptySpec.t02_do_database_task_empty_spec
-        test_03 = DoDatabaseTaskEmptySpec.t03_do_database_task_empty_spec
-        test_04 = DoDatabaseTaskEmptySpec.t04_do_database_task_empty_spec
-        test_05 = DoDatabaseTaskEmptySpec.t05_do_database_task_empty_spec
+        test_01 = t01_do_database_task_empty_spec
+        test_02 = t02_do_database_task_empty_spec
+        test_03 = t03_do_database_task_empty_spec
+        test_04 = t04_do_database_task_empty_spec
+        test_05 = t05_do_database_task_empty_spec
 
     class DoDatabaseTaskSimpleSpecUnqlite(DoDatabaseTaskUnqlite):
         def setUp(self):
             self._filespec = simple_filespec
             super().setUp()
 
-        test_01 = DoDatabaseTaskSimpleSpec.t01_do_database_task_simple_spec
-        test_02 = DoDatabaseTaskSimpleSpec.t02_do_database_task_simple_spec
-        test_03 = DoDatabaseTaskSimpleSpec.t03_do_database_task_simple_spec
-        test_04 = DoDatabaseTaskSimpleSpec.t04_do_database_task_simple_spec
-        test_05 = DoDatabaseTaskSimpleSpec.t05_do_database_task_simple_spec
+        test_01 = t01_do_database_task_simple_spec
+        test_02 = t02_do_database_task_simple_spec
+        test_03 = t03_do_database_task_simple_spec
+        test_04 = t04_do_database_task_simple_spec
+        test_05 = t05_do_database_task_simple_spec
 
 
 if vedis:
@@ -362,8 +342,8 @@ if vedis:
             super().tearDown()
 
     class DatabaseFilesVedis(_DatabaseVedis):
-        test_01 = DatabaseFiles.t01_database_names
-        test_02 = DatabaseFiles.t02_database_names
+        test_01 = t01_database_names
+        test_02 = t02_database_names
 
     class DoDatabaseTaskVedis(_DatabaseVedis):
         def setUp(self):
@@ -385,22 +365,22 @@ if vedis:
             self._filespec = empty_filespec
             super().setUp()
 
-        test_01 = DoDatabaseTaskEmptySpec.t01_do_database_task_empty_spec
-        test_02 = DoDatabaseTaskEmptySpec.t02_do_database_task_empty_spec
-        test_03 = DoDatabaseTaskEmptySpec.t03_do_database_task_empty_spec
-        test_04 = DoDatabaseTaskEmptySpec.t04_do_database_task_empty_spec
-        test_05 = DoDatabaseTaskEmptySpec.t05_do_database_task_empty_spec
+        test_01 = t01_do_database_task_empty_spec
+        test_02 = t02_do_database_task_empty_spec
+        test_03 = t03_do_database_task_empty_spec
+        test_04 = t04_do_database_task_empty_spec
+        test_05 = t05_do_database_task_empty_spec
 
     class DoDatabaseTaskSimpleSpecVedis(DoDatabaseTaskVedis):
         def setUp(self):
             self._filespec = simple_filespec
             super().setUp()
 
-        test_01 = DoDatabaseTaskSimpleSpec.t01_do_database_task_simple_spec
-        test_02 = DoDatabaseTaskSimpleSpec.t02_do_database_task_simple_spec
-        test_03 = DoDatabaseTaskSimpleSpec.t03_do_database_task_simple_spec
-        test_04 = DoDatabaseTaskSimpleSpec.t04_do_database_task_simple_spec
-        test_05 = DoDatabaseTaskSimpleSpec.t05_do_database_task_simple_spec
+        test_01 = t01_do_database_task_simple_spec
+        test_02 = t02_do_database_task_simple_spec
+        test_03 = t03_do_database_task_simple_spec
+        test_04 = t04_do_database_task_simple_spec
+        test_05 = t05_do_database_task_simple_spec
 
 
 if bsddb3:
@@ -417,8 +397,8 @@ if bsddb3:
             super().tearDown()
 
     class DatabaseFilesBsddb3(_DatabaseBsddb3):
-        test_01 = DatabaseFiles.t01_database_names
-        test_02 = DatabaseFiles.t02_database_names
+        test_01 = t01_database_names
+        test_02 = t02_database_names
 
     class DoDatabaseTaskBsddb3(_DatabaseBsddb3):
         def setUp(self):
@@ -440,22 +420,22 @@ if bsddb3:
             self._filespec = empty_filespec
             super().setUp()
 
-        test_01 = DoDatabaseTaskEmptySpec.t01_do_database_task_empty_spec
-        test_02 = DoDatabaseTaskEmptySpec.t02_do_database_task_empty_spec
-        test_03 = DoDatabaseTaskEmptySpec.t03_do_database_task_empty_spec
-        test_04 = DoDatabaseTaskEmptySpec.t04_do_database_task_empty_spec
-        test_05 = DoDatabaseTaskEmptySpec.t05_do_database_task_empty_spec
+        test_01 = t01_do_database_task_empty_spec
+        test_02 = t02_do_database_task_empty_spec
+        test_03 = t03_do_database_task_empty_spec
+        test_04 = t04_do_database_task_empty_spec
+        test_05 = t05_do_database_task_empty_spec
 
     class DoDatabaseTaskSimpleSpecBsddb3(DoDatabaseTaskBsddb3):
         def setUp(self):
             self._filespec = simple_filespec
             super().setUp()
 
-        test_01 = DoDatabaseTaskSimpleSpec.t01_do_database_task_simple_spec
-        test_02 = DoDatabaseTaskSimpleSpec.t02_do_database_task_simple_spec
-        test_03 = DoDatabaseTaskSimpleSpec.t03_do_database_task_simple_spec
-        test_04 = DoDatabaseTaskSimpleSpec.t04_do_database_task_simple_spec
-        test_05 = DoDatabaseTaskSimpleSpec.t05_do_database_task_simple_spec
+        test_01 = t01_do_database_task_simple_spec
+        test_02 = t02_do_database_task_simple_spec
+        test_03 = t03_do_database_task_simple_spec
+        test_04 = t04_do_database_task_simple_spec
+        test_05 = t05_do_database_task_simple_spec
 
 
 if berkeleydb:
@@ -472,8 +452,8 @@ if berkeleydb:
             super().tearDown()
 
     class DatabaseFilesBerkeleydb(_DatabaseBerkeleydb):
-        test_01 = DatabaseFiles.t01_database_names
-        test_02 = DatabaseFiles.t02_database_names
+        test_01 = t01_database_names
+        test_02 = t02_database_names
 
     class DoDatabaseTaskBerkeleydb(_DatabaseBerkeleydb):
         def setUp(self):
@@ -495,22 +475,22 @@ if berkeleydb:
             self._filespec = empty_filespec
             super().setUp()
 
-        test_01 = DoDatabaseTaskEmptySpec.t01_do_database_task_empty_spec
-        test_02 = DoDatabaseTaskEmptySpec.t02_do_database_task_empty_spec
-        test_03 = DoDatabaseTaskEmptySpec.t03_do_database_task_empty_spec
-        test_04 = DoDatabaseTaskEmptySpec.t04_do_database_task_empty_spec
-        test_05 = DoDatabaseTaskEmptySpec.t05_do_database_task_empty_spec
+        test_01 = t01_do_database_task_empty_spec
+        test_02 = t02_do_database_task_empty_spec
+        test_03 = t03_do_database_task_empty_spec
+        test_04 = t04_do_database_task_empty_spec
+        test_05 = t05_do_database_task_empty_spec
 
     class DoDatabaseTaskSimpleSpecBerkeleydb(DoDatabaseTaskBerkeleydb):
         def setUp(self):
             self._filespec = simple_filespec
             super().setUp()
 
-        test_01 = DoDatabaseTaskSimpleSpec.t01_do_database_task_simple_spec
-        test_02 = DoDatabaseTaskSimpleSpec.t02_do_database_task_simple_spec
-        test_03 = DoDatabaseTaskSimpleSpec.t03_do_database_task_simple_spec
-        test_04 = DoDatabaseTaskSimpleSpec.t04_do_database_task_simple_spec
-        test_05 = DoDatabaseTaskSimpleSpec.t05_do_database_task_simple_spec
+        test_01 = t01_do_database_task_simple_spec
+        test_02 = t02_do_database_task_simple_spec
+        test_03 = t03_do_database_task_simple_spec
+        test_04 = t04_do_database_task_simple_spec
+        test_05 = t05_do_database_task_simple_spec
 
 
 if sqlite3:
@@ -527,8 +507,8 @@ if sqlite3:
             super().tearDown()
 
     class DatabaseFilesSqlite3(_DatabaseSqlite3):
-        test_01 = DatabaseFiles.t01_database_names
-        test_02 = DatabaseFiles.t02_database_names
+        test_01 = t01_database_names
+        test_02 = t02_database_names
 
     class DoDatabaseTaskSqlite3(_DatabaseSqlite3):
         def setUp(self):
@@ -550,22 +530,22 @@ if sqlite3:
             self._filespec = empty_filespec
             super().setUp()
 
-        test_01 = DoDatabaseTaskEmptySpec.t01_do_database_task_empty_spec
-        test_02 = DoDatabaseTaskEmptySpec.t02_do_database_task_empty_spec
-        test_03 = DoDatabaseTaskEmptySpec.t03_do_database_task_empty_spec
-        test_04 = DoDatabaseTaskEmptySpec.t04_do_database_task_empty_spec
-        test_05 = DoDatabaseTaskEmptySpec.t05_do_database_task_empty_spec
+        test_01 = t01_do_database_task_empty_spec
+        test_02 = t02_do_database_task_empty_spec
+        test_03 = t03_do_database_task_empty_spec
+        test_04 = t04_do_database_task_empty_spec
+        test_05 = t05_do_database_task_empty_spec
 
     class DoDatabaseTaskSimpleSpecSqlite3(DoDatabaseTaskSqlite3):
         def setUp(self):
             self._filespec = simple_filespec
             super().setUp()
 
-        test_01 = DoDatabaseTaskSimpleSpec.t01_do_database_task_simple_spec
-        test_02 = DoDatabaseTaskSimpleSpec.t02_do_database_task_simple_spec
-        test_03 = DoDatabaseTaskSimpleSpec.t03_do_database_task_simple_spec
-        test_04 = DoDatabaseTaskSimpleSpec.t04_do_database_task_simple_spec
-        test_05 = DoDatabaseTaskSimpleSpec.t05_do_database_task_simple_spec
+        test_01 = t01_do_database_task_simple_spec
+        test_02 = t02_do_database_task_simple_spec
+        test_03 = t03_do_database_task_simple_spec
+        test_04 = t04_do_database_task_simple_spec
+        test_05 = t05_do_database_task_simple_spec
 
 
 if apsw:
@@ -578,8 +558,8 @@ if apsw:
             super().setUp()
 
     class DatabaseFilesApsw(_DatabaseApsw):
-        test_01 = DatabaseFiles.t01_database_names
-        test_02 = DatabaseFiles.t02_database_names
+        test_01 = t01_database_names
+        test_02 = t02_database_names
 
     class DoDatabaseTaskApsw(_DatabaseApsw):
         def setUp(self):
@@ -601,22 +581,22 @@ if apsw:
             self._filespec = empty_filespec
             super().setUp()
 
-        test_01 = DoDatabaseTaskEmptySpec.t01_do_database_task_empty_spec
-        test_02 = DoDatabaseTaskEmptySpec.t02_do_database_task_empty_spec
-        test_03 = DoDatabaseTaskEmptySpec.t03_do_database_task_empty_spec
-        test_04 = DoDatabaseTaskEmptySpec.t04_do_database_task_empty_spec
-        test_05 = DoDatabaseTaskEmptySpec.t05_do_database_task_empty_spec
+        test_01 = t01_do_database_task_empty_spec
+        test_02 = t02_do_database_task_empty_spec
+        test_03 = t03_do_database_task_empty_spec
+        test_04 = t04_do_database_task_empty_spec
+        test_05 = t05_do_database_task_empty_spec
 
     class DoDatabaseTaskSimpleSpecApsw(DoDatabaseTaskApsw):
         def setUp(self):
             self._filespec = simple_filespec
             super().setUp()
 
-        test_01 = DoDatabaseTaskSimpleSpec.t01_do_database_task_simple_spec
-        test_02 = DoDatabaseTaskSimpleSpec.t02_do_database_task_simple_spec
-        test_03 = DoDatabaseTaskSimpleSpec.t03_do_database_task_simple_spec
-        test_04 = DoDatabaseTaskSimpleSpec.t04_do_database_task_simple_spec
-        test_05 = DoDatabaseTaskSimpleSpec.t05_do_database_task_simple_spec
+        test_01 = t01_do_database_task_simple_spec
+        test_02 = t02_do_database_task_simple_spec
+        test_03 = t03_do_database_task_simple_spec
+        test_04 = t04_do_database_task_simple_spec
+        test_05 = t05_do_database_task_simple_spec
 
 
 if lmdb:
@@ -629,8 +609,8 @@ if lmdb:
             super().setUp()
 
     class DatabaseFilesLmdb(_DatabaseLmdb):
-        test_01 = DatabaseFiles.t01_database_names
-        test_02 = DatabaseFiles.t02_database_names
+        test_01 = t01_database_names
+        test_02 = t02_database_names
 
     class DoDatabaseTaskLmdb(_DatabaseLmdb):
         def setUp(self):
@@ -652,22 +632,22 @@ if lmdb:
             self._filespec = empty_filespec
             super().setUp()
 
-        test_01 = DoDatabaseTaskEmptySpec.t01_do_database_task_empty_spec
-        test_02 = DoDatabaseTaskEmptySpec.t02_do_database_task_empty_spec
-        test_03 = DoDatabaseTaskEmptySpec.t03_do_database_task_empty_spec
-        test_04 = DoDatabaseTaskEmptySpec.t04_do_database_task_empty_spec
-        test_05 = DoDatabaseTaskEmptySpec.t05_do_database_task_empty_spec
+        test_01 = t01_do_database_task_empty_spec
+        test_02 = t02_do_database_task_empty_spec
+        test_03 = t03_do_database_task_empty_spec
+        test_04 = t04_do_database_task_empty_spec
+        test_05 = t05_do_database_task_empty_spec
 
     class DoDatabaseTaskSimpleSpecLmdb(DoDatabaseTaskLmdb):
         def setUp(self):
             self._filespec = simple_filespec
             super().setUp()
 
-        test_01 = DoDatabaseTaskSimpleSpec.t01_do_database_task_simple_spec
-        test_02 = DoDatabaseTaskSimpleSpec.t02_do_database_task_simple_spec
-        test_03 = DoDatabaseTaskSimpleSpec.t03_do_database_task_simple_spec
-        test_04 = DoDatabaseTaskSimpleSpec.t04_do_database_task_simple_spec
-        test_05 = DoDatabaseTaskSimpleSpec.t05_do_database_task_simple_spec
+        test_01 = t01_do_database_task_simple_spec
+        test_02 = t02_do_database_task_simple_spec
+        test_03 = t03_do_database_task_simple_spec
+        test_04 = t04_do_database_task_simple_spec
+        test_05 = t05_do_database_task_simple_spec
 
 
 if dptapi:
@@ -684,8 +664,8 @@ if dptapi:
             super().tearDown()
 
     class DatabaseFilesDptapi(_DatabaseDptapi):
-        test_01 = DatabaseFiles.t01_database_names
-        test_02 = DatabaseFiles.t02_database_names
+        test_01 = t01_database_names
+        test_02 = t02_database_names
 
     class DoDatabaseTaskDptapi(_DatabaseDptapi):
         def setUp(self):
@@ -707,22 +687,22 @@ if dptapi:
             self._filespec = empty_filespec
             super().setUp()
 
-        test_01 = DoDatabaseTaskEmptySpec.t01_do_database_task_empty_spec
-        test_02 = DoDatabaseTaskEmptySpec.t02_do_database_task_empty_spec
-        test_03 = DoDatabaseTaskEmptySpec.t03_do_database_task_empty_spec
-        test_04 = DoDatabaseTaskEmptySpec.t04_do_database_task_empty_spec
-        test_05 = DoDatabaseTaskEmptySpec.t05_do_database_task_empty_spec
+        test_01 = t01_do_database_task_empty_spec
+        test_02 = t02_do_database_task_empty_spec
+        test_03 = t03_do_database_task_empty_spec
+        test_04 = t04_do_database_task_empty_spec
+        test_05 = t05_do_database_task_empty_spec
 
     class DoDatabaseTaskSimpleSpecDptapi(DoDatabaseTaskDptapi):
         def setUp(self):
             self._filespec = simple_filespec
             super().setUp()
 
-        test_01 = DoDatabaseTaskSimpleSpec.t01_do_database_task_simple_spec
-        test_02 = DoDatabaseTaskSimpleSpec.t02_do_database_task_simple_spec
-        test_03 = DoDatabaseTaskSimpleSpec.t03_do_database_task_simple_spec
-        test_04 = DoDatabaseTaskSimpleSpec.t04_do_database_task_simple_spec
-        test_05 = DoDatabaseTaskSimpleSpec.t05_do_database_task_simple_spec
+        test_01 = t01_do_database_task_simple_spec
+        test_02 = t02_do_database_task_simple_spec
+        test_03 = t03_do_database_task_simple_spec
+        test_04 = t04_do_database_task_simple_spec
+        test_05 = t05_do_database_task_simple_spec
 
 
 if ndbm_module:
@@ -739,8 +719,8 @@ if ndbm_module:
             super().tearDown()
 
     class DatabaseFilesNdbm(_DatabaseNdbm):
-        test_01 = DatabaseFiles.t01_database_names
-        test_02 = DatabaseFiles.t02_database_names
+        test_01 = t01_database_names
+        test_02 = t02_database_names
 
     class DoDatabaseTaskNdbm(_DatabaseNdbm):
         def setUp(self):
@@ -762,22 +742,22 @@ if ndbm_module:
             self._filespec = empty_filespec
             super().setUp()
 
-        test_01 = DoDatabaseTaskEmptySpec.t01_do_database_task_empty_spec
-        test_02 = DoDatabaseTaskEmptySpec.t02_do_database_task_empty_spec
-        test_03 = DoDatabaseTaskEmptySpec.t03_do_database_task_empty_spec
-        test_04 = DoDatabaseTaskEmptySpec.t04_do_database_task_empty_spec
-        test_05 = DoDatabaseTaskEmptySpec.t05_do_database_task_empty_spec
+        test_01 = t01_do_database_task_empty_spec
+        test_02 = t02_do_database_task_empty_spec
+        test_03 = t03_do_database_task_empty_spec
+        test_04 = t04_do_database_task_empty_spec
+        test_05 = t05_do_database_task_empty_spec
 
     class DoDatabaseTaskSimpleSpecNdbm(DoDatabaseTaskNdbm):
         def setUp(self):
             self._filespec = simple_filespec
             super().setUp()
 
-        test_01 = DoDatabaseTaskSimpleSpec.t01_do_database_task_simple_spec
-        test_02 = DoDatabaseTaskSimpleSpec.t02_do_database_task_simple_spec
-        test_03 = DoDatabaseTaskSimpleSpec.t03_do_database_task_simple_spec
-        test_04 = DoDatabaseTaskSimpleSpec.t04_do_database_task_simple_spec
-        test_05 = DoDatabaseTaskSimpleSpec.t05_do_database_task_simple_spec
+        test_01 = t01_do_database_task_simple_spec
+        test_02 = t02_do_database_task_simple_spec
+        test_03 = t03_do_database_task_simple_spec
+        test_04 = t04_do_database_task_simple_spec
+        test_05 = t05_do_database_task_simple_spec
 
 
 if gnu_module:
@@ -790,8 +770,8 @@ if gnu_module:
             super().setUp()
 
     class DatabaseFilesGnu(_DatabaseGnu):
-        test_01 = DatabaseFiles.t01_database_names
-        test_02 = DatabaseFiles.t02_database_names
+        test_01 = t01_database_names
+        test_02 = t02_database_names
 
     class DoDatabaseTaskGnu(_DatabaseGnu):
         def setUp(self):
@@ -813,22 +793,22 @@ if gnu_module:
             self._filespec = empty_filespec
             super().setUp()
 
-        test_01 = DoDatabaseTaskEmptySpec.t01_do_database_task_empty_spec
-        test_02 = DoDatabaseTaskEmptySpec.t02_do_database_task_empty_spec
-        test_03 = DoDatabaseTaskEmptySpec.t03_do_database_task_empty_spec
-        test_04 = DoDatabaseTaskEmptySpec.t04_do_database_task_empty_spec
-        test_05 = DoDatabaseTaskEmptySpec.t05_do_database_task_empty_spec
+        test_01 = t01_do_database_task_empty_spec
+        test_02 = t02_do_database_task_empty_spec
+        test_03 = t03_do_database_task_empty_spec
+        test_04 = t04_do_database_task_empty_spec
+        test_05 = t05_do_database_task_empty_spec
 
     class DoDatabaseTaskSimpleSpecGnu(DoDatabaseTaskGnu):
         def setUp(self):
             self._filespec = simple_filespec
             super().setUp()
 
-        test_01 = DoDatabaseTaskSimpleSpec.t01_do_database_task_simple_spec
-        test_02 = DoDatabaseTaskSimpleSpec.t02_do_database_task_simple_spec
-        test_03 = DoDatabaseTaskSimpleSpec.t03_do_database_task_simple_spec
-        test_04 = DoDatabaseTaskSimpleSpec.t04_do_database_task_simple_spec
-        test_05 = DoDatabaseTaskSimpleSpec.t05_do_database_task_simple_spec
+        test_01 = t01_do_database_task_simple_spec
+        test_02 = t02_do_database_task_simple_spec
+        test_03 = t03_do_database_task_simple_spec
+        test_04 = t04_do_database_task_simple_spec
+        test_05 = t05_do_database_task_simple_spec
 
 
 empty_filespec = {}

@@ -45,7 +45,7 @@ class _SQLite(unittest.TestCase):
         SegmentSize.db_segment_size_bytes = self._ssb
 
 
-class Database___init__(_SQLite):
+class Database___init__:
     def t01(self):
         self.assertRaisesRegex(
             TypeError,
@@ -126,11 +126,7 @@ class Database___init__(_SQLite):
 
 # Transaction methods do not raise exceptions if called when no database open
 # but do nothing.
-class Database_transaction_methods(_SQLite):
-    def setUp(self):
-        super().setUp()
-        self.database = self._D({})
-
+class Database_transaction_methods:
     def t01_start_transaction(self):
         self.assertEqual(self.database.dbenv, None)
         self.database.start_transaction()
@@ -180,11 +176,7 @@ class Database_transaction_methods(_SQLite):
 
 
 # Methods which do not require database to be open.
-class DatabaseInstance(_SQLite):
-    def setUp(self):
-        super().setUp()
-        self.database = self._D({})
-
+class DatabaseInstance:
     def t01_validate_segment_size_bytes(self):
         self.assertRaisesRegex(
             TypeError,
@@ -270,7 +262,7 @@ class DatabaseInstance(_SQLite):
 
 
 # Memory databases are used for these tests.
-class Database_open_database(_SQLite):
+class Database_open_database:
     def t01(self):
         self.database = self._D({})
         self.assertRaisesRegex(
@@ -423,7 +415,7 @@ class Database_open_database(_SQLite):
 
 
 # Memory databases cannot be used for these tests.
-class DatabaseAddFieldToExistingDatabase(_SQLite):
+class DatabaseAddFieldToExistingDatabase:
 
     def t13_add_field_to_open_database(self):
         folder = "aaaa"
@@ -486,7 +478,7 @@ class _SQLiteOpen(_SQLite):
         super().tearDown()
 
 
-class DatabaseTransactions(_SQLiteOpen):
+class DatabaseTransactions:
     # apsw exception is apsw.SQLError
     # sqlite3 exception is sqlite3.OperationalError
     def t01(self):
@@ -524,7 +516,7 @@ class DatabaseTransactions(_SQLiteOpen):
         )
 
 
-class Database_put_replace_delete(_SQLiteOpen):
+class Database_put_replace_delete:
     def t01(self):
         self.assertRaisesRegex(
             TypeError,
@@ -582,7 +574,7 @@ class Database_put_replace_delete(_SQLiteOpen):
         self.assertEqual(self.database.delete("file1", 1, "new value"), None)
 
 
-class Database_methods(_SQLiteOpen):
+class Database_methods:
     def t01(self):
         self.assertRaisesRegex(
             TypeError,
@@ -976,12 +968,7 @@ class Database_methods(_SQLiteOpen):
         cursor.execute(statement, values)
 
 
-class Database_find_values(_SQLiteOpen):
-    def setUp(self):
-        super().setUp()
-        self.valuespec = ValuesClause()
-        self.valuespec.field = "field1"
-
+class Database_find_values:
     def t01_find_values(self):
         self.assertRaisesRegex(
             TypeError,
@@ -1071,7 +1058,7 @@ class Database_find_values(_SQLiteOpen):
         )
 
 
-class Database_make_recordset(_SQLiteOpen):
+class Database_make_recordset:
     def setup_detail(self):
         segments = (
             b"".join(
@@ -1653,7 +1640,7 @@ class Database_make_recordset(_SQLiteOpen):
         )
 
 
-class Database_freed_record_number(_SQLiteOpen):
+class Database_freed_record_number:
     def setup_detail(self):
         self.database.ebm_control["file1"] = _sqlite.ExistenceBitmapControl(
             "file1", self.database
@@ -1842,11 +1829,7 @@ class Database_freed_record_number(_SQLiteOpen):
 
 
 # Does this test add anything beyond Database_freed_record_number?
-class Database_empty_freed_record_number(_SQLiteOpen):
-    def setUp(self):
-        super().setUp()
-        self.high_record = self.database.get_high_record_number("file1")
-
+class Database_empty_freed_record_number:
     def t01(self):
         self.assertEqual(
             self.database.ebm_control["file1"].freed_record_number_pages, None
@@ -1862,7 +1845,7 @@ class Database_empty_freed_record_number(_SQLiteOpen):
         )
 
 
-class RecordsetCursor(_SQLiteOpen):
+class RecordsetCursor:
     def setup_detail(self):
         segments = (
             b"".join(
@@ -1983,10 +1966,7 @@ class RecordsetCursor(_SQLiteOpen):
         self.assertEqual(rc._get_record(155), (155, "155Any value"))
 
 
-class ExistenceBitmapControl(_SQLiteOpen):
-    def setUp(self):
-        super().setUp()
-
+class ExistenceBitmapControl:
     def t01(self):
         self.assertRaisesRegex(
             TypeError,

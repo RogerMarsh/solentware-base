@@ -39,7 +39,7 @@ class _SQLitedu(unittest.TestCase):
 
 # Same tests as test__sqlite.Database___init__ with relevant additions.
 # Alternative is one test method with just the additional tests.
-class Database___init__(_SQLitedu):
+class Database___init__:
     def t01(self):
         self.assertRaisesRegex(
             TypeError,
@@ -127,7 +127,7 @@ class Database___init__(_SQLitedu):
 
 
 # Memory databases are used for these tests.
-class Database_open_database(_SQLitedu):
+class Database_open_database:
     def t01(self):
         self.database = self._D({})
         self.assertEqual(
@@ -169,7 +169,7 @@ class _SQLiteOpen(_SQLitedu):
         super().tearDown()
 
 
-class Database_methods(_SQLiteOpen):
+class Database_methods:
     def t01(self):
         self.assertRaisesRegex(
             _sqlitedu.DatabaseError,
@@ -293,7 +293,7 @@ class Database_methods(_SQLiteOpen):
         )
 
 
-class Database__rows(_SQLitedu):
+class Database__rows:
     def t01(self):
         database = self._D({}, segment_size_bytes=None)
         self.assertRaisesRegex(
@@ -320,7 +320,7 @@ class Database__rows(_SQLitedu):
         )
 
 
-class Database_do_final_segment_deferred_updates(_SQLiteOpen):
+class Database_do_final_segment_deferred_updates:
     def t01(self):
         database = self._D({}, segment_size_bytes=None)
         self.assertRaisesRegex(
@@ -419,7 +419,7 @@ class Database_do_final_segment_deferred_updates(_SQLiteOpen):
         self.database.do_final_segment_deferred_updates()
 
 
-class Database_sort_and_write(_SQLiteOpen):
+class Database_sort_and_write:
     def t01(self):
         database = self._D({}, segment_size_bytes=None)
         self.assertRaisesRegex(
@@ -662,7 +662,7 @@ class Database_merge(_SQLiteOpen):
             SegmentSize._segment_sort_scale = _segment_sort_scale
 
 
-class Database_delete_index(_SQLiteOpen):
+class Database_delete_index:
     def t01(self):
         database = self._D({}, segment_size_bytes=None)
         self.assertRaisesRegex(
@@ -682,7 +682,7 @@ class Database_delete_index(_SQLiteOpen):
         )
 
 
-class Database_find_value_segments(_SQLiteOpen):
+class Database_find_value_segments:
     def t01(self):
         database = self._D({}, segment_size_bytes=None)
         self.assertRaisesRegex(
@@ -752,7 +752,7 @@ class _SQLiteMerge(_SQLitedu):
         super().tearDown()
 
 
-class Database_merge_import(_SQLiteMerge):
+class Database_merge_import:
     def t01(self):
         database = self._D({}, segment_size_bytes=None)
         self.assertRaisesRegex(

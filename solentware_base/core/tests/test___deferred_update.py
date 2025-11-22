@@ -111,66 +111,67 @@ class _Database(unittest.TestCase):
         self._D = None
         SegmentSize.db_segment_size_bytes = self.__ssb
 
-    def _open_database__no_files(self):
-        # DPT, lmdb, ndbm, and gnu, do not do memory databases.
-        self.database = self._D({}, segment_size_bytes=None)
-        self.database.open_database()
-        try:
-            self.assertEqual(SegmentSize.db_segment_size_bytes, 16)
-            self.assertEqual(self.database.home_directory, None)
-            self.assertEqual(self.database.database_file, None)
-        finally:
-            self.database.close_database()
 
-    def _open_database__in_memory_no_txn_generated_filespec(self):
-        # The default cachesize in Berkeley DB is too small for the number of
-        # DB objects created: a Segmentation fault (core dumped) occurs when
-        # the 13th index one is being opened.  See call to set_cachesize().
-        # The environment argument is ignored for the other engines.
-        # DPT, lmdb, ndbm, and gnu, do not do memory databases.
-        self.database = self._D(
-            self.generated_filespec,
-            segment_size_bytes=None,
-            environment={"bytes": 20000000},
-        )
-        self.database.open_database()
-        try:
-            self.assertEqual(SegmentSize.db_segment_size_bytes, 16)
-            self.assertEqual(self.database.home_directory, None)
-            self.assertEqual(self.database.database_file, None)
-            self.database.set_defer_update()
-            _data_generator.populate(
-                self.database, self.dg, transaction=False
-            )
-            self.database.unset_defer_update()
-        finally:
-            self.database.close_database()
+def _open_database__no_files(self):
+    # DPT, lmdb, ndbm, and gnu, do not do memory databases.
+    self.database = self._D({}, segment_size_bytes=None)
+    self.database.open_database()
+    try:
+        self.assertEqual(SegmentSize.db_segment_size_bytes, 16)
+        self.assertEqual(self.database.home_directory, None)
+        self.assertEqual(self.database.database_file, None)
+    finally:
+        self.database.close_database()
 
-    def _open_database__in_file_no_txn_generated_filespec(self):
-        # No cachesize problem for bsddb3 when database is not in memory.
-        # Transaction for each record.
-        self.database = self._D(
-            self.generated_filespec,
-            folder=self._folder,
-            segment_size_bytes=None,
+
+def _open_database__in_memory_no_txn_generated_filespec(self):
+    # The default cachesize in Berkeley DB is too small for the number of
+    # DB objects created: a Segmentation fault (core dumped) occurs when
+    # the 13th index one is being opened.  See call to set_cachesize().
+    # The environment argument is ignored for the other engines.
+    # DPT, lmdb, ndbm, and gnu, do not do memory databases.
+    self.database = self._D(
+        self.generated_filespec,
+        segment_size_bytes=None,
+        environment={"bytes": 20000000},
+    )
+    self.database.open_database()
+    try:
+        self.assertEqual(SegmentSize.db_segment_size_bytes, 16)
+        self.assertEqual(self.database.home_directory, None)
+        self.assertEqual(self.database.database_file, None)
+        self.database.set_defer_update()
+        _data_generator.populate(self.database, self.dg, transaction=False)
+        self.database.unset_defer_update()
+    finally:
+        self.database.close_database()
+
+
+def _open_database__in_file_no_txn_generated_filespec(self):
+    # No cachesize problem for bsddb3 when database is not in memory.
+    # Transaction for each record.
+    self.database = self._D(
+        self.generated_filespec,
+        folder=self._folder,
+        segment_size_bytes=None,
+    )
+    self.database.open_database()
+    try:
+        self.assertEqual(
+            self.database.home_directory,
+            os.path.join(os.getcwd(), self._folder),
         )
-        self.database.open_database()
-        try:
+        if self._engine is not dptdu_database:
+            self.assertEqual(SegmentSize.db_segment_size_bytes, 16)
             self.assertEqual(
-                self.database.home_directory,
-                os.path.join(os.getcwd(), self._folder),
+                self.database.database_file,
+                os.path.join(os.getcwd(), self._folder, self._folder),
             )
-            if self._engine is not dptdu_database:
-                self.assertEqual(SegmentSize.db_segment_size_bytes, 16)
-                self.assertEqual(
-                    self.database.database_file,
-                    os.path.join(os.getcwd(), self._folder, self._folder),
-                )
-            self.database.set_defer_update()
-            _data_generator.populate(self.database, self.dg, transaction=False)
-            self.database.unset_defer_update()
-        finally:
-            self.database.close_database()
+        self.database.set_defer_update()
+        _data_generator.populate(self.database, self.dg, transaction=False)
+        self.database.unset_defer_update()
+    finally:
+        self.database.close_database()
 
 
 class _DatabaseBerkeley(_Database):
@@ -225,9 +226,9 @@ if unqlite:
             self._engine = unqlitedu_database
             super().setUp()
 
-        test_01 = _Database._open_database__no_files
-        test_02 = _Database._open_database__in_memory_no_txn_generated_filespec
-        test_03 = _Database._open_database__in_file_no_txn_generated_filespec
+        test_01 = _open_database__no_files
+        test_02 = _open_database__in_memory_no_txn_generated_filespec
+        test_03 = _open_database__in_file_no_txn_generated_filespec
 
 
 if vedis:
@@ -237,9 +238,9 @@ if vedis:
             self._engine = vedisdu_database
             super().setUp()
 
-        test_01 = _Database._open_database__no_files
-        test_02 = _Database._open_database__in_memory_no_txn_generated_filespec
-        test_03 = _Database._open_database__in_file_no_txn_generated_filespec
+        test_01 = _open_database__no_files
+        test_02 = _open_database__in_memory_no_txn_generated_filespec
+        test_03 = _open_database__in_file_no_txn_generated_filespec
 
 
 if berkeleydb:
@@ -249,9 +250,9 @@ if berkeleydb:
             self._engine = berkeleydbdu_database
             super().setUp()
 
-        test_01 = _Database._open_database__no_files
-        test_02 = _Database._open_database__in_memory_no_txn_generated_filespec
-        test_03 = _Database._open_database__in_file_no_txn_generated_filespec
+        test_01 = _open_database__no_files
+        test_02 = _open_database__in_memory_no_txn_generated_filespec
+        test_03 = _open_database__in_file_no_txn_generated_filespec
 
 
 if bsddb3:
@@ -261,9 +262,9 @@ if bsddb3:
             self._engine = bsddb3du_database
             super().setUp()
 
-        test_01 = _Database._open_database__no_files
-        test_02 = _Database._open_database__in_memory_no_txn_generated_filespec
-        test_03 = _Database._open_database__in_file_no_txn_generated_filespec
+        test_01 = _open_database__no_files
+        test_02 = _open_database__in_memory_no_txn_generated_filespec
+        test_03 = _open_database__in_file_no_txn_generated_filespec
 
 
 if sqlite3:
@@ -273,9 +274,9 @@ if sqlite3:
             self._engine = sqlite3du_database
             super().setUp()
 
-        test_01 = _Database._open_database__no_files
-        test_02 = _Database._open_database__in_memory_no_txn_generated_filespec
-        test_03 = _Database._open_database__in_file_no_txn_generated_filespec
+        test_01 = _open_database__no_files
+        test_02 = _open_database__in_memory_no_txn_generated_filespec
+        test_03 = _open_database__in_file_no_txn_generated_filespec
 
 
 if apsw:
@@ -285,9 +286,9 @@ if apsw:
             self._engine = apswdu_database
             super().setUp()
 
-        test_01 = _Database._open_database__no_files
-        test_02 = _Database._open_database__in_memory_no_txn_generated_filespec
-        test_03 = _Database._open_database__in_file_no_txn_generated_filespec
+        test_01 = _open_database__no_files
+        test_02 = _open_database__in_memory_no_txn_generated_filespec
+        test_03 = _open_database__in_file_no_txn_generated_filespec
 
 
 if lmdb:
@@ -297,7 +298,7 @@ if lmdb:
             self._engine = lmdbdu_database
             super().setUp()
 
-        test_03 = _Database._open_database__in_file_no_txn_generated_filespec
+        test_03 = _open_database__in_file_no_txn_generated_filespec
 
 
 if dptapi:
@@ -307,7 +308,7 @@ if dptapi:
             self._engine = dptdu_database
             super().setUp()
 
-        test_03 = _Database._open_database__in_file_no_txn_generated_filespec
+        test_03 = _open_database__in_file_no_txn_generated_filespec
 
 
 if ndbm_module:
@@ -317,7 +318,7 @@ if ndbm_module:
             self._engine = ndbmdu_database
             super().setUp()
 
-        test_03 = _Database._open_database__in_file_no_txn_generated_filespec
+        test_03 = _open_database__in_file_no_txn_generated_filespec
 
 
 if gnu_module:
@@ -327,7 +328,7 @@ if gnu_module:
             self._engine = gnudu_database
             super().setUp()
 
-        test_03 = _Database._open_database__in_file_no_txn_generated_filespec
+        test_03 = _open_database__in_file_no_txn_generated_filespec
 
 
 if __name__ == "__main__":

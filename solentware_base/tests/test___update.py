@@ -115,66 +115,68 @@ class _Database(unittest.TestCase):
         self._D = None
         SegmentSize.db_segment_size_bytes = self.__ssb
 
-    def t01_open_database__in_directory_txn_generated_filespec(self):
-        # No cachesize problem for bsddb3 when database is not in memory.
-        # Transaction for each record.
-        self.database = self._D(
-            generated_filespec,
-            folder=self._folder,
-        )
-        self.database.open_database()
-        try:
-            self.assertEqual(
-                self.database.home_directory,
-                os.path.join(os.getcwd(), self._folder),
-            )
-            if self._folder != "___update_test_dpt":
-                self.assertEqual(SegmentSize.db_segment_size_bytes, 4000)
-                self.assertEqual(
-                    self.database.database_file,
-                    os.path.join(os.getcwd(), self._folder, self._folder),
-                )
-            _data_generator.populate(self.database, dg)
-        finally:
-            self.database.close_database()
 
-    # The very first run of this test for vedis gave an error parsing an ebm
-    # segment data record starting at _nosql.py line 515 then line 2039: EOL
-    # missing?  The repeat was fine but next two failed the same way.
-    # Reducing the segment size seems to fix the problem.  Is it a memory limit
-    # on OpenBSD? Could just increase the memory limit but adjusting segment
-    # size highlights the problem.  Happens on FreeBSD too.
-    # On Windows 10 get KeyError at _nosql.py line 582
-    # add_record_to_field_value called from _database.py line 208 put_instance.
-    def t02_open_database__in_directory_txn_generated_filespec(self):
-        # No cachesize problem for bsddb3 when database is not in memory.
-        # Transaction for all records.
-        if self._folder == "___update_test_vedis":
-            ssb = SegmentSize.db_segment_size_bytes_minimum
-        else:
-            ssb = 4000
-        self.database = self._D(
-            generated_filespec,
-            folder=self._folder,
-            segment_size_bytes=ssb,
+def t01_open_database__in_directory_txn_generated_filespec(self):
+    # No cachesize problem for bsddb3 when database is not in memory.
+    # Transaction for each record.
+    self.database = self._D(
+        generated_filespec,
+        folder=self._folder,
+    )
+    self.database.open_database()
+    try:
+        self.assertEqual(
+            self.database.home_directory,
+            os.path.join(os.getcwd(), self._folder),
         )
-        self.database.open_database()
-        try:
+        if self._folder != "___update_test_dpt":
+            self.assertEqual(SegmentSize.db_segment_size_bytes, 4000)
             self.assertEqual(
-                self.database.home_directory,
-                os.path.join(os.getcwd(), self._folder),
+                self.database.database_file,
+                os.path.join(os.getcwd(), self._folder, self._folder),
             )
-            if self._folder != "___update_test_dpt":
-                self.assertEqual(SegmentSize.db_segment_size_bytes, ssb)
-                self.assertEqual(
-                    self.database.database_file,
-                    os.path.join(os.getcwd(), self._folder, self._folder),
-                )
-            self.database.start_transaction()
-            _data_generator.populate(self.database, dg, transaction=False)
-            self.database.commit()
-        finally:
-            self.database.close_database()
+        _data_generator.populate(self.database, dg)
+    finally:
+        self.database.close_database()
+
+
+# The very first run of this test for vedis gave an error parsing an ebm
+# segment data record starting at _nosql.py line 515 then line 2039: EOL
+# missing?  The repeat was fine but next two failed the same way.
+# Reducing the segment size seems to fix the problem.  Is it a memory limit
+# on OpenBSD? Could just increase the memory limit but adjusting segment
+# size highlights the problem.  Happens on FreeBSD too.
+# On Windows 10 get KeyError at _nosql.py line 582
+# add_record_to_field_value called from _database.py line 208 put_instance.
+def t02_open_database__in_directory_txn_generated_filespec(self):
+    # No cachesize problem for bsddb3 when database is not in memory.
+    # Transaction for all records.
+    if self._folder == "___update_test_vedis":
+        ssb = SegmentSize.db_segment_size_bytes_minimum
+    else:
+        ssb = 4000
+    self.database = self._D(
+        generated_filespec,
+        folder=self._folder,
+        segment_size_bytes=ssb,
+    )
+    self.database.open_database()
+    try:
+        self.assertEqual(
+            self.database.home_directory,
+            os.path.join(os.getcwd(), self._folder),
+        )
+        if self._folder != "___update_test_dpt":
+            self.assertEqual(SegmentSize.db_segment_size_bytes, ssb)
+            self.assertEqual(
+                self.database.database_file,
+                os.path.join(os.getcwd(), self._folder, self._folder),
+            )
+        self.database.start_transaction()
+        _data_generator.populate(self.database, dg, transaction=False)
+        self.database.commit()
+    finally:
+        self.database.close_database()
 
 
 class _DatabaseBerkeley(_Database):
@@ -224,12 +226,8 @@ if unqlite:
             self._engine = unqlite_database
             super().setUp()
 
-        test_01 = (
-            _Database.t01_open_database__in_directory_txn_generated_filespec
-        )
-        test_02 = (
-            _Database.t02_open_database__in_directory_txn_generated_filespec
-        )
+        test_01 = t01_open_database__in_directory_txn_generated_filespec
+        test_02 = t02_open_database__in_directory_txn_generated_filespec
 
 
 if vedis:
@@ -240,12 +238,8 @@ if vedis:
             self._engine = vedis_database
             super().setUp()
 
-        test_01 = (
-            _Database.t01_open_database__in_directory_txn_generated_filespec
-        )
-        test_02 = (
-            _Database.t02_open_database__in_directory_txn_generated_filespec
-        )
+        test_01 = t01_open_database__in_directory_txn_generated_filespec
+        test_02 = t02_open_database__in_directory_txn_generated_filespec
 
 
 if bsddb3:
@@ -256,12 +250,8 @@ if bsddb3:
             self._engine = bsddb3_database
             super().setUp()
 
-        test_01 = (
-            _Database.t01_open_database__in_directory_txn_generated_filespec
-        )
-        test_02 = (
-            _Database.t02_open_database__in_directory_txn_generated_filespec
-        )
+        test_01 = t01_open_database__in_directory_txn_generated_filespec
+        test_02 = t02_open_database__in_directory_txn_generated_filespec
 
 
 if berkeleydb:
@@ -272,12 +262,8 @@ if berkeleydb:
             self._engine = berkeleydb_database
             super().setUp()
 
-        test_01 = (
-            _Database.t01_open_database__in_directory_txn_generated_filespec
-        )
-        test_02 = (
-            _Database.t02_open_database__in_directory_txn_generated_filespec
-        )
+        test_01 = t01_open_database__in_directory_txn_generated_filespec
+        test_02 = t02_open_database__in_directory_txn_generated_filespec
 
 
 if sqlite3:
@@ -288,12 +274,8 @@ if sqlite3:
             self._engine = sqlite3_database
             super().setUp()
 
-        test_01 = (
-            _Database.t01_open_database__in_directory_txn_generated_filespec
-        )
-        test_02 = (
-            _Database.t02_open_database__in_directory_txn_generated_filespec
-        )
+        test_01 = t01_open_database__in_directory_txn_generated_filespec
+        test_02 = t02_open_database__in_directory_txn_generated_filespec
 
 
 if apsw:
@@ -304,12 +286,8 @@ if apsw:
             self._engine = apsw_database
             super().setUp()
 
-        test_01 = (
-            _Database.t01_open_database__in_directory_txn_generated_filespec
-        )
-        test_02 = (
-            _Database.t02_open_database__in_directory_txn_generated_filespec
-        )
+        test_01 = t01_open_database__in_directory_txn_generated_filespec
+        test_02 = t02_open_database__in_directory_txn_generated_filespec
 
 
 if lmdb:
@@ -320,12 +298,8 @@ if lmdb:
             self._engine = lmdb_database
             super().setUp()
 
-        test_01 = (
-            _Database.t01_open_database__in_directory_txn_generated_filespec
-        )
-        test_02 = (
-            _Database.t02_open_database__in_directory_txn_generated_filespec
-        )
+        test_01 = t01_open_database__in_directory_txn_generated_filespec
+        test_02 = t02_open_database__in_directory_txn_generated_filespec
 
 
 if dptapi:
@@ -336,12 +310,8 @@ if dptapi:
             self._engine = dpt_database
             super().setUp()
 
-        test_01 = (
-            _Database.t01_open_database__in_directory_txn_generated_filespec
-        )
-        test_02 = (
-            _Database.t02_open_database__in_directory_txn_generated_filespec
-        )
+        test_01 = t01_open_database__in_directory_txn_generated_filespec
+        test_02 = t02_open_database__in_directory_txn_generated_filespec
 
 
 if ndbm_module:
@@ -352,12 +322,8 @@ if ndbm_module:
             self._engine = ndbm_database
             super().setUp()
 
-        test_01 = (
-            _Database.t01_open_database__in_directory_txn_generated_filespec
-        )
-        test_02 = (
-            _Database.t02_open_database__in_directory_txn_generated_filespec
-        )
+        test_01 = t01_open_database__in_directory_txn_generated_filespec
+        test_02 = t02_open_database__in_directory_txn_generated_filespec
 
 
 if gnu_module:
@@ -368,12 +334,8 @@ if gnu_module:
             self._engine = gnu_database
             super().setUp()
 
-        test_01 = (
-            _Database.t01_open_database__in_directory_txn_generated_filespec
-        )
-        test_02 = (
-            _Database.t02_open_database__in_directory_txn_generated_filespec
-        )
+        test_01 = t01_open_database__in_directory_txn_generated_filespec
+        test_02 = t02_open_database__in_directory_txn_generated_filespec
 
 
 dg = _data_generator._DataGenerator()
