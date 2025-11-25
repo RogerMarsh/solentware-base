@@ -389,6 +389,8 @@ class Database(_database.Database):
             self._real_segment_size_bytes = False
         if segment_size != self.segment_size_bytes:
             self._real_segment_size_bytes = segment_size
+            self.dbenv.close()
+            self.dbenv = None
             raise self.SegmentSizeError(
                 " ".join(
                     (
