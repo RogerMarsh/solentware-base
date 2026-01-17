@@ -598,6 +598,147 @@ class Database(_database.Database):
         finally:
             self.table[file].opencontext.CloseDirectValueCursor(dvcursor)
 
+    # Defined for compatibility with _sqlite module.
+    find_values_ascending = find_values
+
+    # find_values_descending will use dptapi.CURSOR_DESCENDING as second
+    # argument to OpenDirectValueCursor and GotoLast() method in loops.
+    # Advance(1), the default, is correct because cursor is CURSOR_DESCENDING.
+    # The value tests will change too.
+    def find_values_descending(self, valuespec, file):
+        """Yield index file values in valuespec range in descending order."""
+        # DPT provides two ways of doing this.  The FindValues construct which
+        # returns the selected values accessed by a Value Set Cursor, and the
+        # direct b-tree cursor construct which walks the database b-tree.
+        # This method uses the direct b-tree cursor approach.
+        dvcursor = self.table[file].opencontext.OpenDirectValueCursor(
+            dptapi.APIFindValuesSpecification(
+                self.table[file].secondary[valuespec.field]
+            ),
+            dptapi.CURSOR_DESCENDING,
+        )
+        try:
+            dvcursor.SetOptions(dptapi.CURSOR_POSFAIL_NEXT)
+            if valuespec.above_value and valuespec.below_value:
+                dvcursor.SetPosition(
+                    dptapi.APIFieldValue(valuespec.below_value)
+                )
+                if dvcursor.Accessible():
+                    if (
+                        dvcursor.GetCurrentValue().ExtractString()
+                        >= valuespec.below_value
+                    ):
+                        dvcursor.Advance()
+                while dvcursor.Accessible():
+                    value = dvcursor.GetCurrentValue().ExtractString()
+                    if value <= valuespec.above_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(value):
+                        yield value
+                    dvcursor.Advance()
+            elif valuespec.above_value and valuespec.to_value:
+                dvcursor.SetPosition(dptapi.APIFieldValue(valuespec.to_value))
+                if dvcursor.Accessible():
+                    if (
+                        dvcursor.GetCurrentValue().ExtractString()
+                        > valuespec.to_value
+                    ):
+                        dvcursor.Advance()
+                while dvcursor.Accessible():
+                    value = dvcursor.GetCurrentValue().ExtractString()
+                    if value <= valuespec.above_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(value):
+                        yield value
+                    dvcursor.Advance()
+            elif valuespec.from_value and valuespec.to_value:
+                dvcursor.SetPosition(dptapi.APIFieldValue(valuespec.to_value))
+                if dvcursor.Accessible():
+                    if (
+                        dvcursor.GetCurrentValue().ExtractString()
+                        > valuespec.to_value
+                    ):
+                        dvcursor.Advance()
+                while dvcursor.Accessible():
+                    value = dvcursor.GetCurrentValue().ExtractString()
+                    if value < valuespec.from_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(value):
+                        yield value
+                    dvcursor.Advance()
+            elif valuespec.from_value and valuespec.below_value:
+                dvcursor.SetPosition(
+                    dptapi.APIFieldValue(valuespec.below_value)
+                )
+                if dvcursor.Accessible():
+                    if (
+                        dvcursor.GetCurrentValue().ExtractString()
+                        >= valuespec.below_value
+                    ):
+                        dvcursor.Advance()
+                while dvcursor.Accessible():
+                    value = dvcursor.GetCurrentValue().ExtractString()
+                    if value < valuespec.from_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(value):
+                        yield value
+                    dvcursor.Advance()
+            elif valuespec.above_value:
+                dvcursor.GotoLast()
+                while dvcursor.Accessible():
+                    value = dvcursor.GetCurrentValue().ExtractString()
+                    if value <= valuespec.above_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(value):
+                        yield value
+                    dvcursor.Advance()
+            elif valuespec.from_value:
+                dvcursor.GotoLast()
+                while dvcursor.Accessible():
+                    value = dvcursor.GetCurrentValue().ExtractString()
+                    if value < valuespec.from_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(value):
+                        yield value
+                    dvcursor.Advance()
+            elif valuespec.to_value:
+                dvcursor.SetPosition(dptapi.APIFieldValue(valuespec.to_value))
+                if dvcursor.Accessible():
+                    if (
+                        dvcursor.GetCurrentValue().ExtractString()
+                        > valuespec.to_value
+                    ):
+                        dvcursor.Advance()
+                while dvcursor.Accessible():
+                    value = dvcursor.GetCurrentValue().ExtractString()
+                    if valuespec.apply_pattern_and_set_filters_to_value(value):
+                        yield value
+                    dvcursor.Advance()
+            elif valuespec.below_value:
+                dvcursor.SetPosition(
+                    dptapi.APIFieldValue(valuespec.below_value)
+                )
+                if dvcursor.Accessible():
+                    if (
+                        dvcursor.GetCurrentValue().ExtractString()
+                        >= valuespec.below_value
+                    ):
+                        dvcursor.Advance()
+                while dvcursor.Accessible():
+                    value = dvcursor.GetCurrentValue().ExtractString()
+                    if valuespec.apply_pattern_and_set_filters_to_value(value):
+                        yield value
+                    dvcursor.Advance()
+            else:
+                dvcursor.GotoLast()
+                while dvcursor.Accessible():
+                    value = dvcursor.GetCurrentValue().ExtractString()
+                    if valuespec.apply_pattern_and_set_filters_to_value(value):
+                        yield value
+                    dvcursor.Advance()
+        finally:
+            self.table[file].opencontext.CloseDirectValueCursor(dvcursor)
+
     def allocate_and_open_contexts(self, files=None):
         """Override, open contexts which had been closed and possibly freed.
 

@@ -968,7 +968,10 @@ class Database_methods:
         cursor.execute(statement, values)
 
 
-class Database_find_values:
+class Database_find_values_empty:
+    def get_keys(self):
+        return [i for i in self.database.find_values(self.valuespec, "file1")]
+
     def t01_find_values(self):
         self.assertRaisesRegex(
             TypeError,
@@ -984,78 +987,386 @@ class Database_find_values:
     def t02_find_values(self):
         self.valuespec.above_value = "b"
         self.valuespec.below_value = "d"
-        self.assertEqual(
-            [i for i in self.database.find_values(self.valuespec, "file1")], []
-        )
+        self.assertEqual(self.get_keys(), [])
 
     def t03_find_values(self):
         self.valuespec.above_value = "b"
         self.valuespec.to_value = "d"
-        self.assertEqual(
-            [i for i in self.database.find_values(self.valuespec, "file1")], []
-        )
+        self.assertEqual(self.get_keys(), [])
 
     def t04_find_values(self):
         self.valuespec.from_value = "b"
         self.valuespec.to_value = "d"
-        self.assertEqual(
-            [i for i in self.database.find_values(self.valuespec, "file1")], []
-        )
+        self.assertEqual(self.get_keys(), [])
 
     def t05_find_values(self):
         self.valuespec.from_value = "b"
         self.valuespec.below_value = "d"
-        self.assertEqual(
-            [i for i in self.database.find_values(self.valuespec, "file1")], []
-        )
+        self.assertEqual(self.get_keys(), [])
 
     def t06_find_values(self):
         self.valuespec.above_value = "b"
-        self.assertEqual(
-            [i for i in self.database.find_values(self.valuespec, "file1")], []
-        )
+        self.assertEqual(self.get_keys(), [])
 
     def t07_find_values(self):
         self.valuespec.from_value = "b"
-        self.assertEqual(
-            [i for i in self.database.find_values(self.valuespec, "file1")], []
-        )
+        self.assertEqual(self.get_keys(), [])
 
     def t08_find_values(self):
         self.valuespec.to_value = "d"
-        self.assertEqual(
-            [i for i in self.database.find_values(self.valuespec, "file1")], []
-        )
+        self.assertEqual(self.get_keys(), [])
 
     def t09_find_values(self):
         self.valuespec.below_value = "d"
-        self.assertEqual(
-            [i for i in self.database.find_values(self.valuespec, "file1")], []
-        )
+        self.assertEqual(self.get_keys(), [])
 
     def t10_find_values(self):
-        self.assertEqual(
-            [i for i in self.database.find_values(self.valuespec, "file1")], []
+        self.assertEqual(self.get_keys(), [])
+
+
+class Database_find_values:
+    def get_keys(self):
+        return [i for i in self.database.find_values(self.valuespec, "file1")]
+
+    def t11_find_values_01(self):
+        ae = self.assertEqual
+        keys = self.get_keys()
+        ae(len(keys), 5)
+        ae(set(keys), set(("d", "e", "c", "dk", "f")))
+
+    def t11_find_values_02_above_below(self):
+        ae = self.assertEqual
+        self.valuespec.above_value = "c"
+        self.valuespec.below_value = "f"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(set(keys), set(("d", "e", "dk")))
+
+    def t11_find_values_03_above_to(self):
+        ae = self.assertEqual
+        self.valuespec.above_value = "c"
+        self.valuespec.to_value = "e"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(set(keys), set(("d", "e", "dk")))
+
+    def t11_find_values_04_from_to(self):
+        ae = self.assertEqual
+        self.valuespec.from_value = "c"
+        self.valuespec.to_value = "dr"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(set(keys), set(("d", "c", "dk")))
+
+    def t11_find_values_05_from_below(self):
+        ae = self.assertEqual
+        self.valuespec.from_value = "d"
+        self.valuespec.below_value = "e"
+        keys = self.get_keys()
+        ae(len(keys), 2)
+        ae(set(keys), set(("d", "dk")))
+
+    def t11_find_values_06_above(self):
+        ae = self.assertEqual
+        self.valuespec.above_value = "d"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(set(keys), set(("e", "dk", "f")))
+
+    def t11_find_values_07_from(self):
+        ae = self.assertEqual
+        self.valuespec.from_value = "d"
+        keys = self.get_keys()
+        ae(len(keys), 4)
+        ae(set(keys), set(("d", "e", "dk", "f")))
+
+    def t11_find_values_08_to(self):
+        ae = self.assertEqual
+        self.valuespec.to_value = "dk"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(set(keys), set(("d", "c", "dk")))
+
+    def t11_find_values_09_below(self):
+        ae = self.assertEqual
+        self.valuespec.below_value = "dk"
+        keys = self.get_keys()
+        ae(len(keys), 2)
+        ae(set(keys), set(("d", "c")))
+
+
+class Database_find_values_ascending_empty:
+    def get_keys(self):
+        return [
+            i
+            for i in self.database.find_values_ascending(
+                self.valuespec, "file1"
+            )
+        ]
+
+    def t01_find_values_ascending(self):
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"find_values_ascending\(\) missing 2 required ",
+                    "positional arguments: 'valuespec' and 'file'$",
+                )
+            ),
+            self.database.find_values_ascending,
         )
 
-    def t11_find_values(self):
-        cursor = self.database.dbenv.cursor()
-        statement = " ".join(
-            (
-                "insert into",
-                "file1_field1",
-                "(",
-                "field1",
-                ")",
-                "values ( ? )",
+    def t02_find_values_ascending(self):
+        self.valuespec.above_value = "b"
+        self.valuespec.below_value = "d"
+        self.assertEqual(self.get_keys(), [])
+
+    def t03_find_values_ascending(self):
+        self.valuespec.above_value = "b"
+        self.valuespec.to_value = "d"
+        self.assertEqual(self.get_keys(), [])
+
+    def t04_find_values_ascending(self):
+        self.valuespec.from_value = "b"
+        self.valuespec.to_value = "d"
+        self.assertEqual(self.get_keys(), [])
+
+    def t05_find_values_ascending(self):
+        self.valuespec.from_value = "b"
+        self.valuespec.below_value = "d"
+        self.assertEqual(self.get_keys(), [])
+
+    def t06_find_values_ascending(self):
+        self.valuespec.above_value = "b"
+        self.assertEqual(self.get_keys(), [])
+
+    def t07_find_values_ascending(self):
+        self.valuespec.from_value = "b"
+        self.assertEqual(self.get_keys(), [])
+
+    def t08_find_values_ascending(self):
+        self.valuespec.to_value = "d"
+        self.assertEqual(self.get_keys(), [])
+
+    def t09_find_values_ascending(self):
+        self.valuespec.below_value = "d"
+        self.assertEqual(self.get_keys(), [])
+
+    def t10_find_values_ascending(self):
+        self.assertEqual(self.get_keys(), [])
+
+
+class Database_find_values_ascending:
+    def get_keys(self):
+        return [
+            i
+            for i in self.database.find_values_ascending(
+                self.valuespec, "file1"
             )
+        ]
+
+    def t11_find_values_ascending_01(self):
+        ae = self.assertEqual
+        keys = self.get_keys()
+        ae(len(keys), 5)
+        ae(keys, ["c", "d", "dk", "e", "f"])
+
+    def t11_find_values_ascending_02_above_below(self):
+        ae = self.assertEqual
+        self.valuespec.above_value = "c"
+        self.valuespec.below_value = "f"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(keys, ["d", "dk", "e"])
+
+    def t11_find_values_ascending_03_above_to(self):
+        ae = self.assertEqual
+        self.valuespec.above_value = "c"
+        self.valuespec.to_value = "e"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(keys, ["d", "dk", "e"])
+
+    def t11_find_values_ascending_04_from_to(self):
+        ae = self.assertEqual
+        self.valuespec.from_value = "c"
+        self.valuespec.to_value = "dr"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(keys, ["c", "d", "dk"])
+
+    def t11_find_values_ascending_05_from_below(self):
+        ae = self.assertEqual
+        self.valuespec.from_value = "d"
+        self.valuespec.below_value = "e"
+        keys = self.get_keys()
+        ae(len(keys), 2)
+        ae(keys, ["d", "dk"])
+
+    def t11_find_values_ascending_06_above(self):
+        ae = self.assertEqual
+        self.valuespec.above_value = "d"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(keys, ["dk", "e", "f"])
+
+    def t11_find_values_ascending_07_from(self):
+        ae = self.assertEqual
+        self.valuespec.from_value = "d"
+        keys = self.get_keys()
+        ae(len(keys), 4)
+        ae(keys, ["d", "dk", "e", "f"])
+
+    def t11_find_values_ascending_08_to(self):
+        ae = self.assertEqual
+        self.valuespec.to_value = "dk"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(keys, ["c", "d", "dk"])
+
+    def t11_find_values_ascending_09_below(self):
+        ae = self.assertEqual
+        self.valuespec.below_value = "dk"
+        keys = self.get_keys()
+        ae(len(keys), 2)
+        ae(keys, ["c", "d"])
+
+
+class Database_find_values_descending_empty:
+    def get_keys(self):
+        return [
+            i
+            for i in self.database.find_values_descending(
+                self.valuespec, "file1"
+            )
+        ]
+
+    def t01_find_values_descending(self):
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"find_values_descending\(\) missing 2 required ",
+                    "positional arguments: 'valuespec' and 'file'$",
+                )
+            ),
+            self.database.find_values_descending,
         )
-        values = ("d",)
-        cursor.execute(statement, values)
-        self.assertEqual(
-            [i for i in self.database.find_values(self.valuespec, "file1")],
-            ["d"],
-        )
+
+    def t02_find_values_descending(self):
+        self.valuespec.above_value = "b"
+        self.valuespec.below_value = "d"
+        self.assertEqual(self.get_keys(), [])
+
+    def t03_find_values_descending(self):
+        self.valuespec.above_value = "b"
+        self.valuespec.to_value = "d"
+        self.assertEqual(self.get_keys(), [])
+
+    def t04_find_values_descending(self):
+        self.valuespec.from_value = "b"
+        self.valuespec.to_value = "d"
+        self.assertEqual(self.get_keys(), [])
+
+    def t05_find_values_descending(self):
+        self.valuespec.from_value = "b"
+        self.valuespec.below_value = "d"
+        self.assertEqual(self.get_keys(), [])
+
+    def t06_find_values_descending(self):
+        self.valuespec.above_value = "b"
+        self.assertEqual(self.get_keys(), [])
+
+    def t07_find_values_descending(self):
+        self.valuespec.from_value = "b"
+        self.assertEqual(self.get_keys(), [])
+
+    def t08_find_values_descending(self):
+        self.valuespec.to_value = "d"
+        self.assertEqual(self.get_keys(), [])
+
+    def t09_find_values_descending(self):
+        self.valuespec.below_value = "d"
+        self.assertEqual(self.get_keys(), [])
+
+    def t10_find_values_descending(self):
+        self.assertEqual(self.get_keys(), [])
+
+
+class Database_find_values_descending:
+    def get_keys(self):
+        return [
+            i
+            for i in self.database.find_values_descending(
+                self.valuespec, "file1"
+            )
+        ]
+
+    def t11_find_values_descending_01(self):
+        ae = self.assertEqual
+        keys = self.get_keys()
+        ae(len(keys), 5)
+        ae(keys, ["f", "e", "dk", "d", "c"])
+
+    def t11_find_values_descending_02_above_below(self):
+        ae = self.assertEqual
+        self.valuespec.above_value = "c"
+        self.valuespec.below_value = "f"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(keys, ["e", "dk", "d"])
+
+    def t11_find_values_descending_03_above_to(self):
+        ae = self.assertEqual
+        self.valuespec.above_value = "c"
+        self.valuespec.to_value = "e"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(keys, ["e", "dk", "d"])
+
+    def t11_find_values_descending_04_from_to(self):
+        ae = self.assertEqual
+        self.valuespec.from_value = "c"
+        self.valuespec.to_value = "dr"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(keys, ["dk", "d", "c"])
+
+    def t11_find_values_descending_05_from_below(self):
+        ae = self.assertEqual
+        self.valuespec.from_value = "d"
+        self.valuespec.below_value = "e"
+        keys = self.get_keys()
+        ae(len(keys), 2)
+        ae(keys, ["dk", "d"])
+
+    def t11_find_values_descending_06_above(self):
+        ae = self.assertEqual
+        self.valuespec.above_value = "d"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(keys, ["f", "e", "dk"])
+
+    def t11_find_values_descending_07_from(self):
+        ae = self.assertEqual
+        self.valuespec.from_value = "d"
+        keys = self.get_keys()
+        ae(len(keys), 4)
+        ae(keys, ["f", "e", "dk", "d"])
+
+    def t11_find_values_descending_08_to(self):
+        ae = self.assertEqual
+        self.valuespec.to_value = "dk"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(keys, ["dk", "d", "c"])
+
+    def t11_find_values_descending_09_below(self):
+        ae = self.assertEqual
+        self.valuespec.below_value = "dk"
+        keys = self.get_keys()
+        ae(len(keys), 2)
+        ae(keys, ["d", "c"])
 
 
 class Database_make_recordset:
@@ -2259,23 +2570,156 @@ if sqlite3:
         create_ebm = Database_methods.create_ebm
         create_ebm_extra = Database_methods.create_ebm_extra
 
-    class Database_find_valuesSqlite3(_SQLiteOpenSqlite3):
+    class Database_find_values_emptySqlite3(_SQLiteOpenSqlite3):
         def setUp(self):
             super().setUp()
             self.valuespec = ValuesClause()
             self.valuespec.field = "field1"
 
-        test_01 = Database_find_values.t01_find_values
-        test_02 = Database_find_values.t02_find_values
-        test_03 = Database_find_values.t03_find_values
-        test_04 = Database_find_values.t04_find_values
-        test_05 = Database_find_values.t05_find_values
-        test_06 = Database_find_values.t06_find_values
-        test_07 = Database_find_values.t07_find_values
-        test_08 = Database_find_values.t08_find_values
-        test_09 = Database_find_values.t09_find_values
-        test_10 = Database_find_values.t10_find_values
-        test_11 = Database_find_values.t11_find_values
+        get_keys = Database_find_values_empty.get_keys
+        test_01 = Database_find_values_empty.t01_find_values
+        test_02 = Database_find_values_empty.t02_find_values
+        test_03 = Database_find_values_empty.t03_find_values
+        test_04 = Database_find_values_empty.t04_find_values
+        test_05 = Database_find_values_empty.t05_find_values
+        test_06 = Database_find_values_empty.t06_find_values
+        test_07 = Database_find_values_empty.t07_find_values
+        test_08 = Database_find_values_empty.t08_find_values
+        test_09 = Database_find_values_empty.t09_find_values
+        test_10 = Database_find_values_empty.t10_find_values
+
+    class Database_find_valuesSqlite3(_SQLiteOpenSqlite3):
+        def setUp(self):
+            super().setUp()
+            cursor = self.database.dbenv.cursor()
+            statement = " ".join(
+                (
+                    "insert into",
+                    "file1_field1",
+                    "(",
+                    "field1",
+                    ")",
+                    "values ( ? )",
+                )
+            )
+            for key in ("d", "e", "c", "dk", "f"):
+                values = (key,)
+                cursor.execute(statement, values)
+            self.valuespec = ValuesClause()
+            self.valuespec.field = "field1"
+
+        get_keys = Database_find_values.get_keys
+        test_11_01 = Database_find_values.t11_find_values_01
+        test_11_02 = Database_find_values.t11_find_values_02_above_below
+        test_11_03 = Database_find_values.t11_find_values_03_above_to
+        test_11_04 = Database_find_values.t11_find_values_04_from_to
+        test_11_05 = Database_find_values.t11_find_values_05_from_below
+        test_11_06 = Database_find_values.t11_find_values_06_above
+        test_11_07 = Database_find_values.t11_find_values_07_from
+        test_11_08 = Database_find_values.t11_find_values_08_to
+        test_11_09 = Database_find_values.t11_find_values_09_below
+
+    class Database_find_values_ascending_emptySqlite3(_SQLiteOpenSqlite3):
+        def setUp(self):
+            super().setUp()
+            self.valuespec = ValuesClause()
+            self.valuespec.field = "field1"
+
+        Dfvae = Database_find_values_ascending_empty
+        get_keys = Dfvae.get_keys
+        test_01 = Dfvae.t01_find_values_ascending
+        test_02 = Dfvae.t02_find_values_ascending
+        test_03 = Dfvae.t03_find_values_ascending
+        test_04 = Dfvae.t04_find_values_ascending
+        test_05 = Dfvae.t05_find_values_ascending
+        test_06 = Dfvae.t06_find_values_ascending
+        test_07 = Dfvae.t07_find_values_ascending
+        test_08 = Dfvae.t08_find_values_ascending
+        test_09 = Dfvae.t09_find_values_ascending
+        test_10 = Dfvae.t10_find_values_ascending
+
+    class Database_find_values_ascendingSqlite3(_SQLiteOpenSqlite3):
+        def setUp(self):
+            super().setUp()
+            cursor = self.database.dbenv.cursor()
+            statement = " ".join(
+                (
+                    "insert into",
+                    "file1_field1",
+                    "(",
+                    "field1",
+                    ")",
+                    "values ( ? )",
+                )
+            )
+            for key in ("d", "e", "c", "dk", "f"):
+                values = (key,)
+                cursor.execute(statement, values)
+            self.valuespec = ValuesClause()
+            self.valuespec.field = "field1"
+
+        Dfva = Database_find_values_ascending
+        get_keys = Dfva.get_keys
+        test_11_01 = Dfva.t11_find_values_ascending_01
+        test_11_02 = Dfva.t11_find_values_ascending_02_above_below
+        test_11_03 = Dfva.t11_find_values_ascending_03_above_to
+        test_11_04 = Dfva.t11_find_values_ascending_04_from_to
+        test_11_05 = Dfva.t11_find_values_ascending_05_from_below
+        test_11_06 = Dfva.t11_find_values_ascending_06_above
+        test_11_07 = Dfva.t11_find_values_ascending_07_from
+        test_11_08 = Dfva.t11_find_values_ascending_08_to
+        test_11_09 = Dfva.t11_find_values_ascending_09_below
+
+    class Database_find_values_descending_emptySqlite3(_SQLiteOpenSqlite3):
+        def setUp(self):
+            super().setUp()
+            self.valuespec = ValuesClause()
+            self.valuespec.field = "field1"
+
+        Dfvde = Database_find_values_descending_empty
+        get_keys = Dfvde.get_keys
+        test_01 = Dfvde.t01_find_values_descending
+        test_02 = Dfvde.t02_find_values_descending
+        test_03 = Dfvde.t03_find_values_descending
+        test_04 = Dfvde.t04_find_values_descending
+        test_05 = Dfvde.t05_find_values_descending
+        test_06 = Dfvde.t06_find_values_descending
+        test_07 = Dfvde.t07_find_values_descending
+        test_08 = Dfvde.t08_find_values_descending
+        test_09 = Dfvde.t09_find_values_descending
+        test_10 = Dfvde.t10_find_values_descending
+
+    class Database_find_values_descendingSqlite3(_SQLiteOpenSqlite3):
+        def setUp(self):
+            super().setUp()
+            cursor = self.database.dbenv.cursor()
+            statement = " ".join(
+                (
+                    "insert into",
+                    "file1_field1",
+                    "(",
+                    "field1",
+                    ")",
+                    "values ( ? )",
+                )
+            )
+            for key in ("d", "e", "c", "dk", "f"):
+                values = (key,)
+                cursor.execute(statement, values)
+            self.valuespec = ValuesClause()
+            self.valuespec.field = "field1"
+
+        Dfvd = Database_find_values_descending
+        get_keys = Dfvd.get_keys
+        test_11_01 = Dfvd.t11_find_values_descending_01
+        test_11_02 = Dfvd.t11_find_values_descending_02_above_below
+        test_11_03 = Dfvd.t11_find_values_descending_03_above_to
+        test_11_04 = Dfvd.t11_find_values_descending_04_from_to
+        test_11_05 = Dfvd.t11_find_values_descending_05_from_below
+        test_11_06 = Dfvd.t11_find_values_descending_06_above
+        test_11_07 = Dfvd.t11_find_values_descending_07_from
+        test_11_08 = Dfvd.t11_find_values_descending_08_to
+        test_11_09 = Dfvd.t11_find_values_descending_09_below
 
     class Database_make_recordsetSqlite3(_SQLiteOpenSqlite3):
         def setUp(self):
@@ -2533,23 +2977,156 @@ if apsw:
         create_ebm = Database_methods.create_ebm
         create_ebm_extra = Database_methods.create_ebm_extra
 
-    class Database_find_valuesApsw(_SQLiteOpenApsw):
+    class Database_find_values_emptyApsw(_SQLiteOpenApsw):
         def setUp(self):
             super().setUp()
             self.valuespec = ValuesClause()
             self.valuespec.field = "field1"
 
-        test_01 = Database_find_values.t01_find_values
-        test_02 = Database_find_values.t02_find_values
-        test_03 = Database_find_values.t03_find_values
-        test_04 = Database_find_values.t04_find_values
-        test_05 = Database_find_values.t05_find_values
-        test_06 = Database_find_values.t06_find_values
-        test_07 = Database_find_values.t07_find_values
-        test_08 = Database_find_values.t08_find_values
-        test_09 = Database_find_values.t09_find_values
-        test_10 = Database_find_values.t10_find_values
-        test_11 = Database_find_values.t11_find_values
+        get_keys = Database_find_values_empty.get_keys
+        test_01 = Database_find_values_empty.t01_find_values
+        test_02 = Database_find_values_empty.t02_find_values
+        test_03 = Database_find_values_empty.t03_find_values
+        test_04 = Database_find_values_empty.t04_find_values
+        test_05 = Database_find_values_empty.t05_find_values
+        test_06 = Database_find_values_empty.t06_find_values
+        test_07 = Database_find_values_empty.t07_find_values
+        test_08 = Database_find_values_empty.t08_find_values
+        test_09 = Database_find_values_empty.t09_find_values
+        test_10 = Database_find_values_empty.t10_find_values
+
+    class Database_find_valuesApsw(_SQLiteOpenApsw):
+        def setUp(self):
+            super().setUp()
+            cursor = self.database.dbenv.cursor()
+            statement = " ".join(
+                (
+                    "insert into",
+                    "file1_field1",
+                    "(",
+                    "field1",
+                    ")",
+                    "values ( ? )",
+                )
+            )
+            for key in ("d", "e", "c", "dk", "f"):
+                values = (key,)
+                cursor.execute(statement, values)
+            self.valuespec = ValuesClause()
+            self.valuespec.field = "field1"
+
+        get_keys = Database_find_values.get_keys
+        test_11_01 = Database_find_values.t11_find_values_01
+        test_11_02 = Database_find_values.t11_find_values_02_above_below
+        test_11_03 = Database_find_values.t11_find_values_03_above_to
+        test_11_04 = Database_find_values.t11_find_values_04_from_to
+        test_11_05 = Database_find_values.t11_find_values_05_from_below
+        test_11_06 = Database_find_values.t11_find_values_06_above
+        test_11_07 = Database_find_values.t11_find_values_07_from
+        test_11_08 = Database_find_values.t11_find_values_08_to
+        test_11_09 = Database_find_values.t11_find_values_09_below
+
+    class Database_find_values_ascending_emptyApsw(_SQLiteOpenApsw):
+        def setUp(self):
+            super().setUp()
+            self.valuespec = ValuesClause()
+            self.valuespec.field = "field1"
+
+        Dfvae = Database_find_values_ascending_empty
+        get_keys = Dfvae.get_keys
+        test_01 = Dfvae.t01_find_values_ascending
+        test_02 = Dfvae.t02_find_values_ascending
+        test_03 = Dfvae.t03_find_values_ascending
+        test_04 = Dfvae.t04_find_values_ascending
+        test_05 = Dfvae.t05_find_values_ascending
+        test_06 = Dfvae.t06_find_values_ascending
+        test_07 = Dfvae.t07_find_values_ascending
+        test_08 = Dfvae.t08_find_values_ascending
+        test_09 = Dfvae.t09_find_values_ascending
+        test_10 = Dfvae.t10_find_values_ascending
+
+    class Database_find_values_ascendingApsw(_SQLiteOpenApsw):
+        def setUp(self):
+            super().setUp()
+            cursor = self.database.dbenv.cursor()
+            statement = " ".join(
+                (
+                    "insert into",
+                    "file1_field1",
+                    "(",
+                    "field1",
+                    ")",
+                    "values ( ? )",
+                )
+            )
+            for key in ("d", "e", "c", "dk", "f"):
+                values = (key,)
+                cursor.execute(statement, values)
+            self.valuespec = ValuesClause()
+            self.valuespec.field = "field1"
+
+        Dfva = Database_find_values_ascending
+        get_keys = Dfva.get_keys
+        test_11_01 = Dfva.t11_find_values_ascending_01
+        test_11_02 = Dfva.t11_find_values_ascending_02_above_below
+        test_11_03 = Dfva.t11_find_values_ascending_03_above_to
+        test_11_04 = Dfva.t11_find_values_ascending_04_from_to
+        test_11_05 = Dfva.t11_find_values_ascending_05_from_below
+        test_11_06 = Dfva.t11_find_values_ascending_06_above
+        test_11_07 = Dfva.t11_find_values_ascending_07_from
+        test_11_08 = Dfva.t11_find_values_ascending_08_to
+        test_11_09 = Dfva.t11_find_values_ascending_09_below
+
+    class Database_find_values_descending_emptyApsw(_SQLiteOpenApsw):
+        def setUp(self):
+            super().setUp()
+            self.valuespec = ValuesClause()
+            self.valuespec.field = "field1"
+
+        Dfvde = Database_find_values_descending_empty
+        get_keys = Dfvde.get_keys
+        test_01 = Dfvde.t01_find_values_descending
+        test_02 = Dfvde.t02_find_values_descending
+        test_03 = Dfvde.t03_find_values_descending
+        test_04 = Dfvde.t04_find_values_descending
+        test_05 = Dfvde.t05_find_values_descending
+        test_06 = Dfvde.t06_find_values_descending
+        test_07 = Dfvde.t07_find_values_descending
+        test_08 = Dfvde.t08_find_values_descending
+        test_09 = Dfvde.t09_find_values_descending
+        test_10 = Dfvde.t10_find_values_descending
+
+    class Database_find_values_descendingApsw(_SQLiteOpenApsw):
+        def setUp(self):
+            super().setUp()
+            cursor = self.database.dbenv.cursor()
+            statement = " ".join(
+                (
+                    "insert into",
+                    "file1_field1",
+                    "(",
+                    "field1",
+                    ")",
+                    "values ( ? )",
+                )
+            )
+            for key in ("d", "e", "c", "dk", "f"):
+                values = (key,)
+                cursor.execute(statement, values)
+            self.valuespec = ValuesClause()
+            self.valuespec.field = "field1"
+
+        Dfvd = Database_find_values_descending
+        get_keys = Dfvd.get_keys
+        test_11_01 = Dfvd.t11_find_values_descending_01
+        test_11_02 = Dfvd.t11_find_values_descending_02_above_below
+        test_11_03 = Dfvd.t11_find_values_descending_03_above_to
+        test_11_04 = Dfvd.t11_find_values_descending_04_from_to
+        test_11_05 = Dfvd.t11_find_values_descending_05_from_below
+        test_11_06 = Dfvd.t11_find_values_descending_06_above
+        test_11_07 = Dfvd.t11_find_values_descending_07_from
+        test_11_08 = Dfvd.t11_find_values_descending_08_to
+        test_11_09 = Dfvd.t11_find_values_descending_09_below
 
     class Database_make_recordsetApsw(_SQLiteOpenApsw):
         def setUp(self):
@@ -2685,6 +3262,8 @@ if __name__ == "__main__":
         runner().run(loader(Database_put_replace_deleteSqlite3))
         runner().run(loader(Database_methodsSqlite3))
         runner().run(loader(Database_find_valuesSqlite3))
+        runner().run(loader(Database_find_values_ascendingSqlite3))
+        runner().run(loader(Database_find_values_descendingSqlite3))
         runner().run(loader(Database_make_recordsetSqlite3))
         runner().run(loader(Database_freed_record_numberSqlite3))
         runner().run(loader(Database_empty_freed_record_numberSqlite3))
@@ -2701,6 +3280,8 @@ if __name__ == "__main__":
         runner().run(loader(Database_put_replace_deleteApsw))
         runner().run(loader(Database_methodsApsw))
         runner().run(loader(Database_find_valuesApsw))
+        runner().run(loader(Database_find_values_ascendingApsw))
+        runner().run(loader(Database_find_values_descendingApsw))
         runner().run(loader(Database_make_recordsetApsw))
         runner().run(loader(Database_freed_record_numberApsw))
         runner().run(loader(Database_empty_freed_record_numberApsw))

@@ -1699,7 +1699,12 @@ class Database_find_values(_DBOpen):
         sdb = self.database
         sdb.start_transaction()
         txn = sdb.dbtxn.transaction
-        txn.put(b"d", encode("values"), db=sdb.table["file1_field1"].datastore)
+        for key in ("d", "e", "c", "dk", "f"):
+            txn.put(
+                key.encode(),
+                encode("values"),
+                db=sdb.table["file1_field1"].datastore,
+            )
         sdb.commit()
         self.valuespec = ValuesClause()
         self.valuespec.field = "field1"
@@ -1707,11 +1712,748 @@ class Database_find_values(_DBOpen):
         # Most tests can be done with read-only.
         sdb.start_read_only_transaction()
 
-    def test_11_find_values(self):
-        self.assertEqual(
-            [i for i in self.database.find_values(self.valuespec, "file1")],
-            ["d"],
+    def get_keys(self):
+        return [i for i in self.database.find_values(self.valuespec, "file1")]
+
+    def tearDown(self):
+        self.database.end_read_only_transaction()
+        super().tearDown()
+
+    def test_11_find_values_01(self):
+        ae = self.assertEqual
+        keys = self.get_keys()
+        ae(len(keys), 5)
+        ae(set(keys), set(("d", "e", "c", "dk", "f")))
+
+    def test_11_find_values_02_above_below(self):
+        ae = self.assertEqual
+        self.valuespec.above_value = "c"
+        self.valuespec.below_value = "f"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(set(keys), set(("d", "e", "dk")))
+
+    def test_11_find_values_03_above_to(self):
+        ae = self.assertEqual
+        self.valuespec.above_value = "c"
+        self.valuespec.to_value = "e"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(set(keys), set(("d", "e", "dk")))
+
+    def test_11_find_values_04_from_to(self):
+        ae = self.assertEqual
+        self.valuespec.from_value = "c"
+        self.valuespec.to_value = "dr"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(set(keys), set(("d", "c", "dk")))
+
+    def test_11_find_values_05_from_below(self):
+        ae = self.assertEqual
+        self.valuespec.from_value = "d"
+        self.valuespec.below_value = "e"
+        keys = self.get_keys()
+        ae(len(keys), 2)
+        ae(set(keys), set(("d", "dk")))
+
+    def test_11_find_values_06_above(self):
+        ae = self.assertEqual
+        self.valuespec.above_value = "d"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(set(keys), set(("e", "dk", "f")))
+
+    def test_11_find_values_07_from(self):
+        ae = self.assertEqual
+        self.valuespec.from_value = "d"
+        keys = self.get_keys()
+        ae(len(keys), 4)
+        ae(set(keys), set(("d", "e", "dk", "f")))
+
+    def test_11_find_values_08_to(self):
+        ae = self.assertEqual
+        self.valuespec.to_value = "dk"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(set(keys), set(("d", "c", "dk")))
+
+    def test_11_find_values_09_below(self):
+        ae = self.assertEqual
+        self.valuespec.below_value = "dk"
+        keys = self.get_keys()
+        ae(len(keys), 2)
+        ae(set(keys), set(("d", "c")))
+
+
+class Database_find_values_ascending_empty(_DBOpen):
+    def setUp(self):
+        super().setUp()
+        # Need a cursor in a transaction to do 'find_values_ascending'.
+        # Most tests can be done with read-only.
+        self.database.start_read_only_transaction()
+        self.valuespec = ValuesClause()
+        self.valuespec.field = "field1"
+
+    def test_01_find_values_ascending(self):
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"find_values\(\) missing 2 required ",
+                    "positional arguments: 'valuespec' and 'file'$",
+                )
+            ),
+            self.database.find_values_ascending,
         )
+
+    def test_02_find_values_ascending(self):
+        self.valuespec.above_value = "b"
+        self.valuespec.below_value = "d"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_03_find_values_ascending(self):
+        self.valuespec.above_value = "b"
+        self.valuespec.to_value = "d"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_04_find_values_ascending(self):
+        self.valuespec.from_value = "b"
+        self.valuespec.to_value = "d"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_05_find_values_ascending(self):
+        self.valuespec.from_value = "b"
+        self.valuespec.below_value = "d"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_06_find_values_ascending(self):
+        self.valuespec.above_value = "b"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_07_find_values_ascending(self):
+        self.valuespec.from_value = "b"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_08_find_values_ascending(self):
+        self.valuespec.to_value = "d"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_09_find_values_ascending(self):
+        self.valuespec.below_value = "d"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_10_find_values_ascending(self):
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_12_find_values_ascending(self):
+        self.valuespec.above_value = ""
+        self.valuespec.below_value = ""
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_13_find_values_ascending(self):
+        self.valuespec.above_value = ""
+        self.valuespec.to_value = ""
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_14_find_values_ascending(self):
+        self.valuespec.from_value = ""
+        self.valuespec.to_value = ""
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_15_find_values_ascending(self):
+        self.valuespec.from_value = ""
+        self.valuespec.below_value = ""
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_16_find_values_ascending(self):
+        self.valuespec.above_value = ""
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_17_find_values_ascending(self):
+        self.valuespec.from_value = ""
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_18_find_values_ascending(self):
+        self.valuespec.to_value = ""
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_19_find_values_ascending(self):
+        self.valuespec.below_value = ""
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+
+class Database_find_values_ascending(_DBOpen):
+    def setUp(self):
+        super().setUp()
+        sdb = self.database
+        sdb.start_transaction()
+        txn = sdb.dbtxn.transaction
+        for key in ("d", "e", "c", "dk", "f"):
+            txn.put(
+                key.encode(),
+                encode("values"),
+                db=sdb.table["file1_field1"].datastore,
+            )
+        sdb.commit()
+        self.valuespec = ValuesClause()
+        self.valuespec.field = "field1"
+        # Need a cursor in a transaction to do 'find_values_ascending'.
+        # Most tests can be done with read-only.
+        sdb.start_read_only_transaction()
+
+    def tearDown(self):
+        self.database.end_read_only_transaction()
+        super().tearDown()
+
+    def get_keys(self):
+        return [
+            i
+            for i in self.database.find_values_ascending(
+                self.valuespec, "file1"
+            )
+        ]
+
+    def tearDown(self):
+        self.database.end_read_only_transaction()
+        super().tearDown()
+
+    def test_11_find_values_ascending_01(self):
+        ae = self.assertEqual
+        keys = self.get_keys()
+        ae(len(keys), 5)
+        ae(keys, ["c", "d", "dk", "e", "f"])
+
+    def test_11_find_values_ascending_02_above_below(self):
+        ae = self.assertEqual
+        self.valuespec.above_value = "c"
+        self.valuespec.below_value = "f"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(keys, ["d", "dk", "e"])
+
+    def test_11_find_values_ascending_03_above_to(self):
+        ae = self.assertEqual
+        self.valuespec.above_value = "c"
+        self.valuespec.to_value = "e"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(keys, ["d", "dk", "e"])
+
+    def test_11_find_values_ascending_04_from_to(self):
+        ae = self.assertEqual
+        self.valuespec.from_value = "c"
+        self.valuespec.to_value = "dr"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(keys, ["c", "d", "dk"])
+
+    def test_11_find_values_ascending_05_from_below(self):
+        ae = self.assertEqual
+        self.valuespec.from_value = "d"
+        self.valuespec.below_value = "e"
+        keys = self.get_keys()
+        ae(len(keys), 2)
+        ae(keys, ["d", "dk"])
+
+    def test_11_find_values_ascending_06_above(self):
+        ae = self.assertEqual
+        self.valuespec.above_value = "d"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(keys, ["dk", "e", "f"])
+
+    def test_11_find_values_ascending_07_from(self):
+        ae = self.assertEqual
+        self.valuespec.from_value = "d"
+        keys = self.get_keys()
+        ae(len(keys), 4)
+        ae(keys, ["d", "dk", "e", "f"])
+
+    def test_11_find_values_ascending_08_to(self):
+        ae = self.assertEqual
+        self.valuespec.to_value = "dk"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(keys, ["c", "d", "dk"])
+
+    def test_11_find_values_ascending_09_below(self):
+        ae = self.assertEqual
+        self.valuespec.below_value = "dk"
+        keys = self.get_keys()
+        ae(len(keys), 2)
+        ae(keys, ["c", "d"])
+
+
+class Database_find_values_descending_empty(_DBOpen):
+    def setUp(self):
+        super().setUp()
+        # Need a cursor in a transaction to do 'find_values_descending'.
+        # Most tests can be done with read-only.
+        self.database.start_read_only_transaction()
+        self.valuespec = ValuesClause()
+        self.valuespec.field = "field1"
+
+    def test_01_find_values_descending(self):
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"find_values_descending\(\) missing 2 required ",
+                    "positional arguments: 'valuespec' and 'file'$",
+                )
+            ),
+            self.database.find_values_descending,
+        )
+
+    def test_02_find_values_descending(self):
+        self.valuespec.above_value = "b"
+        self.valuespec.below_value = "d"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_03_find_values_descending(self):
+        self.valuespec.above_value = "b"
+        self.valuespec.to_value = "d"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_04_find_values_descending(self):
+        self.valuespec.from_value = "b"
+        self.valuespec.to_value = "d"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_05_find_values_descending(self):
+        self.valuespec.from_value = "b"
+        self.valuespec.below_value = "d"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_06_find_values_descending(self):
+        self.valuespec.above_value = "b"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_07_find_values_descending(self):
+        self.valuespec.from_value = "b"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_08_find_values_descending(self):
+        self.valuespec.to_value = "d"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_09_find_values_descending(self):
+        self.valuespec.below_value = "d"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_10_find_values_descending(self):
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_12_find_values_descending(self):
+        self.valuespec.above_value = ""
+        self.valuespec.below_value = ""
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_13_find_values_descending(self):
+        self.valuespec.above_value = ""
+        self.valuespec.to_value = ""
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_14_find_values_descending(self):
+        self.valuespec.from_value = ""
+        self.valuespec.to_value = ""
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_15_find_values_descending(self):
+        self.valuespec.from_value = ""
+        self.valuespec.below_value = ""
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_16_find_values_descending(self):
+        self.valuespec.above_value = ""
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_17_find_values_descending(self):
+        self.valuespec.from_value = ""
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_18_find_values_descending(self):
+        self.valuespec.to_value = ""
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def test_19_find_values_descending(self):
+        self.valuespec.below_value = ""
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+
+class Database_find_values_descending(_DBOpen):
+    def setUp(self):
+        super().setUp()
+        sdb = self.database
+        sdb.start_transaction()
+        txn = sdb.dbtxn.transaction
+        for key in ("d", "e", "c", "dk", "f"):
+            txn.put(
+                key.encode(),
+                encode("values"),
+                db=sdb.table["file1_field1"].datastore,
+            )
+        sdb.commit()
+        self.valuespec = ValuesClause()
+        self.valuespec.field = "field1"
+        # Need a cursor in a transaction to do 'find_values_descending'.
+        # Most tests can be done with read-only.
+        sdb.start_read_only_transaction()
+
+    def tearDown(self):
+        self.database.end_read_only_transaction()
+        super().tearDown()
+
+    def get_keys(self):
+        return [
+            i
+            for i in self.database.find_values_descending(
+                self.valuespec, "file1"
+            )
+        ]
+
+    def tearDown(self):
+        self.database.end_read_only_transaction()
+        super().tearDown()
+
+    def test_11_find_values_descending_01(self):
+        ae = self.assertEqual
+        keys = self.get_keys()
+        ae(len(keys), 5)
+        ae(keys, ["f", "e", "dk", "d", "c"])
+
+    def test_11_find_values_descending_02_above_below(self):
+        ae = self.assertEqual
+        self.valuespec.above_value = "c"
+        self.valuespec.below_value = "f"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(keys, ["e", "dk", "d"])
+
+    def test_11_find_values_descending_03_above_to(self):
+        ae = self.assertEqual
+        self.valuespec.above_value = "c"
+        self.valuespec.to_value = "e"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(keys, ["e", "dk", "d"])
+
+    def test_11_find_values_descending_04_from_to(self):
+        ae = self.assertEqual
+        self.valuespec.from_value = "c"
+        self.valuespec.to_value = "dr"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(keys, ["dk", "d", "c"])
+
+    def test_11_find_values_descending_05_from_below(self):
+        ae = self.assertEqual
+        self.valuespec.from_value = "d"
+        self.valuespec.below_value = "e"
+        keys = self.get_keys()
+        ae(len(keys), 2)
+        ae(keys, ["dk", "d"])
+
+    def test_11_find_values_descending_06_above(self):
+        ae = self.assertEqual
+        self.valuespec.above_value = "d"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(keys, ["f", "e", "dk"])
+
+    def test_11_find_values_descending_07_from(self):
+        ae = self.assertEqual
+        self.valuespec.from_value = "d"
+        keys = self.get_keys()
+        ae(len(keys), 4)
+        ae(keys, ["f", "e", "dk", "d"])
+
+    def test_11_find_values_descending_08_to(self):
+        ae = self.assertEqual
+        self.valuespec.to_value = "dk"
+        keys = self.get_keys()
+        ae(len(keys), 3)
+        ae(keys, ["dk", "d", "c"])
+
+    def test_11_find_values_descending_09_below(self):
+        ae = self.assertEqual
+        self.valuespec.below_value = "dk"
+        keys = self.get_keys()
+        ae(len(keys), 2)
+        ae(keys, ["d", "c"])
 
 
 class _Database_recordset(_DBOpen):
@@ -3070,6 +3812,10 @@ if __name__ == "__main__":
     runner().run(loader(Database_methods))
     runner().run(loader(Database_find_values_empty))
     runner().run(loader(Database_find_values))
+    runner().run(loader(Database_find_values_ascending_empty))
+    runner().run(loader(Database_find_values_ascending))
+    runner().run(loader(Database_find_values_descending_empty))
+    runner().run(loader(Database_find_values_descending))
     runner().run(loader(Database_make_recordset))
     runner().run(loader(Database_populate_recordset))
     runner().run(loader(Database_make_recordset_key))

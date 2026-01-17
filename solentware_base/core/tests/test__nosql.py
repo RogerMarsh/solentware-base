@@ -1163,6 +1163,508 @@ class Database_find_values__populated:
         )
 
 
+class Database_find_values_ascending__empty:
+    def setup_detail(self):
+        self.valuespec = ValuesClause()
+        self.valuespec.field = "field1"
+
+    def t01_find_values_ascending(self):
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"find_values\(\) missing 2 required ",
+                    "positional arguments: 'valuespec' and 'file'$",
+                )
+            ),
+            self.database.find_values_ascending,
+        )
+
+    def t02_find_values_ascending(self):
+        self.valuespec.above_value = "b"
+        self.valuespec.below_value = "d"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def t03_find_values_ascending(self):
+        self.valuespec.above_value = "b"
+        self.valuespec.to_value = "d"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def t04_find_values_ascending(self):
+        self.valuespec.from_value = "b"
+        self.valuespec.to_value = "d"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def t05_find_values_ascending(self):
+        self.valuespec.from_value = "b"
+        self.valuespec.below_value = "d"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def t06_find_values_ascending(self):
+        self.valuespec.above_value = "b"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def t07_find_values_ascending(self):
+        self.valuespec.from_value = "b"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def t08_find_values_ascending(self):
+        self.valuespec.to_value = "d"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def t09_find_values_ascending(self):
+        self.valuespec.below_value = "d"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def t10_find_values_ascending(self):
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+
+class Database_find_values_ascending__populated:
+    def setup_detail(self):
+        self.valuespec = ValuesClause()
+        self.valuespec.field = "field1"
+        self.database.trees["file1_field1"].insert("c")
+        self.database.trees["file1_field1"].insert("d")
+        self.database.trees["file1_field1"].insert("dk")
+        self.database.trees["file1_field1"].insert("e")
+        self.database.trees["file1_field1"].insert("f")
+
+    def t01_find_values_ascending(self):
+        self.valuespec.above_value = "d"
+        self.valuespec.below_value = "e"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            ["dk"],
+        )
+
+    def t02_find_values_ascending(self):
+        self.valuespec.above_value = "d"
+        self.valuespec.to_value = "e"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            ["dk", "e"],
+        )
+
+    def t03_find_values_ascending(self):
+        self.valuespec.from_value = "d"
+        self.valuespec.to_value = "e"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            ["d", "dk", "e"],
+        )
+
+    def t04_find_values_ascending(self):
+        self.valuespec.from_value = "d"
+        self.valuespec.below_value = "e"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            ["d", "dk"],
+        )
+
+    def t05_find_values_ascending(self):
+        self.valuespec.above_value = "d"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            ["dk", "e", "f"],
+        )
+
+    def t06_find_values_ascending(self):
+        self.valuespec.from_value = "d"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            ["d", "dk", "e", "f"],
+        )
+
+    def t07_find_values_ascending(self):
+        self.valuespec.to_value = "e"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            ["c", "d", "dk", "e"],
+        )
+
+    def t08_find_values_ascending(self):
+        self.valuespec.below_value = "e"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            ["c", "d", "dk"],
+        )
+
+    def t09_find_values_ascending(self):
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_ascending(
+                    self.valuespec, "file1"
+                )
+            ],
+            ["c", "d", "dk", "e", "f"],
+        )
+
+
+class Database_find_values_descending__empty:
+    def setup_detail(self):
+        self.valuespec = ValuesClause()
+        self.valuespec.field = "field1"
+
+    def t01_find_values_descending(self):
+        self.assertRaisesRegex(
+            TypeError,
+            "".join(
+                (
+                    r"find_values_descending\(\) missing 2 required ",
+                    "positional arguments: 'valuespec' and 'file'$",
+                )
+            ),
+            self.database.find_values_descending,
+        )
+
+    def t02_find_values_descending(self):
+        self.valuespec.above_value = "b"
+        self.valuespec.below_value = "d"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def t03_find_values_descending(self):
+        self.valuespec.above_value = "b"
+        self.valuespec.to_value = "d"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def t04_find_values_descending(self):
+        self.valuespec.from_value = "b"
+        self.valuespec.to_value = "d"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def t05_find_values_descending(self):
+        self.valuespec.from_value = "b"
+        self.valuespec.below_value = "d"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def t06_find_values_descending(self):
+        self.valuespec.above_value = "b"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def t07_find_values_descending(self):
+        self.valuespec.from_value = "b"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def t08_find_values_descending(self):
+        self.valuespec.to_value = "d"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def t09_find_values_descending(self):
+        self.valuespec.below_value = "d"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+    def t10_find_values_descending(self):
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            [],
+        )
+
+
+class Database_find_values_descending__populated:
+    def setup_detail(self):
+        self.valuespec = ValuesClause()
+        self.valuespec.field = "field1"
+        self.database.trees["file1_field1"].insert("c")
+        self.database.trees["file1_field1"].insert("d")
+        self.database.trees["file1_field1"].insert("dk")
+        self.database.trees["file1_field1"].insert("e")
+        self.database.trees["file1_field1"].insert("f")
+
+    def t01_find_values_descending(self):
+        self.valuespec.above_value = "d"
+        self.valuespec.below_value = "e"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            ["dk"],
+        )
+
+    def t02_find_values_descending(self):
+        self.valuespec.above_value = "d"
+        self.valuespec.to_value = "e"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            ["e", "dk"],
+        )
+
+    def t03_find_values_descending(self):
+        self.valuespec.from_value = "d"
+        self.valuespec.to_value = "e"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            ["e", "dk", "d"],
+        )
+
+    def t04_find_values_descending(self):
+        self.valuespec.from_value = "d"
+        self.valuespec.below_value = "e"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            ["dk", "d"],
+        )
+
+    def t05_find_values_descending(self):
+        self.valuespec.above_value = "d"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            ["f", "e", "dk"],
+        )
+
+    def t06_find_values_descending(self):
+        self.valuespec.from_value = "d"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            ["f", "e", "dk", "d"],
+        )
+
+    def t07_find_values_descending(self):
+        self.valuespec.to_value = "e"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            ["e", "dk", "d", "c"],
+        )
+
+    def t08_find_values_descending(self):
+        self.valuespec.below_value = "e"
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            ["dk", "d", "c"],
+        )
+
+    def t09_find_values_descending(self):
+        self.assertEqual(
+            [
+                i
+                for i in self.database.find_values_descending(
+                    self.valuespec, "file1"
+                )
+            ],
+            ["f", "e", "dk", "d", "c"],
+        )
+
+
 class DatabaseAddRecordToFieldValue:
     def t01(self):
         self.assertRaisesRegex(
@@ -2869,6 +3371,127 @@ if gnu_module:
         test_08 = Database_find_values__populated.t08_find_values
         test_09 = Database_find_values__populated.t09_find_values
 
+    class Database_find_values_ascending__emptyGnu(_NoSQLOpenGnu):
+        def setUp(self):
+            super().setUp()
+            Database_find_values_ascending__empty.setup_detail(self)
+
+        test_01 = (
+            Database_find_values_ascending__empty.t01_find_values_ascending
+        )
+        test_02 = (
+            Database_find_values_ascending__empty.t02_find_values_ascending
+        )
+        test_03 = (
+            Database_find_values_ascending__empty.t03_find_values_ascending
+        )
+        test_04 = (
+            Database_find_values_ascending__empty.t04_find_values_ascending
+        )
+        test_05 = (
+            Database_find_values_ascending__empty.t05_find_values_ascending
+        )
+        test_06 = (
+            Database_find_values_ascending__empty.t06_find_values_ascending
+        )
+        test_07 = (
+            Database_find_values_ascending__empty.t07_find_values_ascending
+        )
+        test_08 = (
+            Database_find_values_ascending__empty.t08_find_values_ascending
+        )
+        test_09 = (
+            Database_find_values_ascending__empty.t09_find_values_ascending
+        )
+        test_10 = (
+            Database_find_values_ascending__empty.t10_find_values_ascending
+        )
+
+    class Database_find_values_ascending__populatedGnu(_NoSQLOpenGnu):
+        def setUp(self):
+            super().setUp()
+            Database_find_values_ascending__populated.setup_detail(self)
+
+        test_01 = (
+            Database_find_values_ascending__populated.t01_find_values_ascending
+        )
+        test_02 = (
+            Database_find_values_ascending__populated.t02_find_values_ascending
+        )
+        test_03 = (
+            Database_find_values_ascending__populated.t03_find_values_ascending
+        )
+        test_04 = (
+            Database_find_values_ascending__populated.t04_find_values_ascending
+        )
+        test_05 = (
+            Database_find_values_ascending__populated.t05_find_values_ascending
+        )
+        test_06 = (
+            Database_find_values_ascending__populated.t06_find_values_ascending
+        )
+        test_07 = (
+            Database_find_values_ascending__populated.t07_find_values_ascending
+        )
+        test_08 = (
+            Database_find_values_ascending__populated.t08_find_values_ascending
+        )
+        test_09 = (
+            Database_find_values_ascending__populated.t09_find_values_ascending
+        )
+
+    class Database_find_values_descending__emptyGnu(_NoSQLOpenGnu):
+        def setUp(self):
+            super().setUp()
+            Database_find_values_descending__empty.setup_detail(self)
+
+        test_01 = (
+            Database_find_values_descending__empty.t01_find_values_descending
+        )
+        test_02 = (
+            Database_find_values_descending__empty.t02_find_values_descending
+        )
+        test_03 = (
+            Database_find_values_descending__empty.t03_find_values_descending
+        )
+        test_04 = (
+            Database_find_values_descending__empty.t04_find_values_descending
+        )
+        test_05 = (
+            Database_find_values_descending__empty.t05_find_values_descending
+        )
+        test_06 = (
+            Database_find_values_descending__empty.t06_find_values_descending
+        )
+        test_07 = (
+            Database_find_values_descending__empty.t07_find_values_descending
+        )
+        test_08 = (
+            Database_find_values_descending__empty.t08_find_values_descending
+        )
+        test_09 = (
+            Database_find_values_descending__empty.t09_find_values_descending
+        )
+        test_10 = (
+            Database_find_values_descending__empty.t10_find_values_descending
+        )
+
+    class Database_find_values_descending__populatedGnu(_NoSQLOpenGnu):
+        def setUp(self):
+            super().setUp()
+            Database_find_values_descending__populated.setup_detail(self)
+
+        Dfv_descending__populated = Database_find_values_descending__populated
+        test_01 = Dfv_descending__populated.t01_find_values_descending
+        test_02 = Dfv_descending__populated.t02_find_values_descending
+        test_03 = Dfv_descending__populated.t03_find_values_descending
+        test_04 = Dfv_descending__populated.t04_find_values_descending
+        test_05 = Dfv_descending__populated.t05_find_values_descending
+        test_06 = Dfv_descending__populated.t06_find_values_descending
+        test_07 = Dfv_descending__populated.t07_find_values_descending
+        test_08 = Dfv_descending__populated.t08_find_values_descending
+        test_09 = Dfv_descending__populated.t09_find_values_descending
+
     class Database_add_record_to_field_valueGnu(_NoSQLOpenGnu):
         test_01 = DatabaseAddRecordToFieldValue.t01
         test_02 = DatabaseAddRecordToFieldValue.t02__assumptions
@@ -3211,6 +3834,127 @@ if ndbm_module:
         test_08 = Database_find_values__populated.t08_find_values
         test_09 = Database_find_values__populated.t09_find_values
 
+    class Database_find_values_ascending__emptyNdbm(_NoSQLOpenNdbm):
+        def setUp(self):
+            super().setUp()
+            Database_find_values_ascending__empty.setup_detail(self)
+
+        test_01 = (
+            Database_find_values_ascending__empty.t01_find_values_ascending
+        )
+        test_02 = (
+            Database_find_values_ascending__empty.t02_find_values_ascending
+        )
+        test_03 = (
+            Database_find_values_ascending__empty.t03_find_values_ascending
+        )
+        test_04 = (
+            Database_find_values_ascending__empty.t04_find_values_ascending
+        )
+        test_05 = (
+            Database_find_values_ascending__empty.t05_find_values_ascending
+        )
+        test_06 = (
+            Database_find_values_ascending__empty.t06_find_values_ascending
+        )
+        test_07 = (
+            Database_find_values_ascending__empty.t07_find_values_ascending
+        )
+        test_08 = (
+            Database_find_values_ascending__empty.t08_find_values_ascending
+        )
+        test_09 = (
+            Database_find_values_ascending__empty.t09_find_values_ascending
+        )
+        test_10 = (
+            Database_find_values_ascending__empty.t10_find_values_ascending
+        )
+
+    class Database_find_values_ascending__populatedNdbm(_NoSQLOpenNdbm):
+        def setUp(self):
+            super().setUp()
+            Database_find_values_ascending__populated.setup_detail(self)
+
+        test_01 = (
+            Database_find_values_ascending__populated.t01_find_values_ascending
+        )
+        test_02 = (
+            Database_find_values_ascending__populated.t02_find_values_ascending
+        )
+        test_03 = (
+            Database_find_values_ascending__populated.t03_find_values_ascending
+        )
+        test_04 = (
+            Database_find_values_ascending__populated.t04_find_values_ascending
+        )
+        test_05 = (
+            Database_find_values_ascending__populated.t05_find_values_ascending
+        )
+        test_06 = (
+            Database_find_values_ascending__populated.t06_find_values_ascending
+        )
+        test_07 = (
+            Database_find_values_ascending__populated.t07_find_values_ascending
+        )
+        test_08 = (
+            Database_find_values_ascending__populated.t08_find_values_ascending
+        )
+        test_09 = (
+            Database_find_values_ascending__populated.t09_find_values_ascending
+        )
+
+    class Database_find_values_descending__emptyNdbm(_NoSQLOpenNdbm):
+        def setUp(self):
+            super().setUp()
+            Database_find_values_descending__empty.setup_detail(self)
+
+        test_01 = (
+            Database_find_values_descending__empty.t01_find_values_descending
+        )
+        test_02 = (
+            Database_find_values_descending__empty.t02_find_values_descending
+        )
+        test_03 = (
+            Database_find_values_descending__empty.t03_find_values_descending
+        )
+        test_04 = (
+            Database_find_values_descending__empty.t04_find_values_descending
+        )
+        test_05 = (
+            Database_find_values_descending__empty.t05_find_values_descending
+        )
+        test_06 = (
+            Database_find_values_descending__empty.t06_find_values_descending
+        )
+        test_07 = (
+            Database_find_values_descending__empty.t07_find_values_descending
+        )
+        test_08 = (
+            Database_find_values_descending__empty.t08_find_values_descending
+        )
+        test_09 = (
+            Database_find_values_descending__empty.t09_find_values_descending
+        )
+        test_10 = (
+            Database_find_values_descending__empty.t10_find_values_descending
+        )
+
+    class Database_find_values_descending__populatedNdbm(_NoSQLOpenNdbm):
+        def setUp(self):
+            super().setUp()
+            Database_find_values_descending__populated.setup_detail(self)
+
+        Dfv_descending__populated = Database_find_values_descending__populated
+        test_01 = Dfv_descending__populated.t01_find_values_descending
+        test_02 = Dfv_descending__populated.t02_find_values_descending
+        test_03 = Dfv_descending__populated.t03_find_values_descending
+        test_04 = Dfv_descending__populated.t04_find_values_descending
+        test_05 = Dfv_descending__populated.t05_find_values_descending
+        test_06 = Dfv_descending__populated.t06_find_values_descending
+        test_07 = Dfv_descending__populated.t07_find_values_descending
+        test_08 = Dfv_descending__populated.t08_find_values_descending
+        test_09 = Dfv_descending__populated.t09_find_values_descending
+
     class Database_add_record_to_field_valueNdbm(_NoSQLOpenNdbm):
         test_01 = DatabaseAddRecordToFieldValue.t01
         test_02 = DatabaseAddRecordToFieldValue.t02__assumptions
@@ -3532,6 +4276,127 @@ if unqlite:
         test_07 = Database_find_values__populated.t07_find_values
         test_08 = Database_find_values__populated.t08_find_values
         test_09 = Database_find_values__populated.t09_find_values
+
+    class Database_find_values_ascending__emptyUnqlite(_NoSQLOpenUnqlite):
+        def setUp(self):
+            super().setUp()
+            Database_find_values_ascending__empty.setup_detail(self)
+
+        test_01 = (
+            Database_find_values_ascending__empty.t01_find_values_ascending
+        )
+        test_02 = (
+            Database_find_values_ascending__empty.t02_find_values_ascending
+        )
+        test_03 = (
+            Database_find_values_ascending__empty.t03_find_values_ascending
+        )
+        test_04 = (
+            Database_find_values_ascending__empty.t04_find_values_ascending
+        )
+        test_05 = (
+            Database_find_values_ascending__empty.t05_find_values_ascending
+        )
+        test_06 = (
+            Database_find_values_ascending__empty.t06_find_values_ascending
+        )
+        test_07 = (
+            Database_find_values_ascending__empty.t07_find_values_ascending
+        )
+        test_08 = (
+            Database_find_values_ascending__empty.t08_find_values_ascending
+        )
+        test_09 = (
+            Database_find_values_ascending__empty.t09_find_values_ascending
+        )
+        test_10 = (
+            Database_find_values_ascending__empty.t10_find_values_ascending
+        )
+
+    class Database_find_values_ascending__populatedUnqlite(_NoSQLOpenUnqlite):
+        def setUp(self):
+            super().setUp()
+            Database_find_values_ascending__populated.setup_detail(self)
+
+        test_01 = (
+            Database_find_values_ascending__populated.t01_find_values_ascending
+        )
+        test_02 = (
+            Database_find_values_ascending__populated.t02_find_values_ascending
+        )
+        test_03 = (
+            Database_find_values_ascending__populated.t03_find_values_ascending
+        )
+        test_04 = (
+            Database_find_values_ascending__populated.t04_find_values_ascending
+        )
+        test_05 = (
+            Database_find_values_ascending__populated.t05_find_values_ascending
+        )
+        test_06 = (
+            Database_find_values_ascending__populated.t06_find_values_ascending
+        )
+        test_07 = (
+            Database_find_values_ascending__populated.t07_find_values_ascending
+        )
+        test_08 = (
+            Database_find_values_ascending__populated.t08_find_values_ascending
+        )
+        test_09 = (
+            Database_find_values_ascending__populated.t09_find_values_ascending
+        )
+
+    class Database_find_values_descending__emptyUnqlite(_NoSQLOpenUnqlite):
+        def setUp(self):
+            super().setUp()
+            Database_find_values_descending__empty.setup_detail(self)
+
+        test_01 = (
+            Database_find_values_descending__empty.t01_find_values_descending
+        )
+        test_02 = (
+            Database_find_values_descending__empty.t02_find_values_descending
+        )
+        test_03 = (
+            Database_find_values_descending__empty.t03_find_values_descending
+        )
+        test_04 = (
+            Database_find_values_descending__empty.t04_find_values_descending
+        )
+        test_05 = (
+            Database_find_values_descending__empty.t05_find_values_descending
+        )
+        test_06 = (
+            Database_find_values_descending__empty.t06_find_values_descending
+        )
+        test_07 = (
+            Database_find_values_descending__empty.t07_find_values_descending
+        )
+        test_08 = (
+            Database_find_values_descending__empty.t08_find_values_descending
+        )
+        test_09 = (
+            Database_find_values_descending__empty.t09_find_values_descending
+        )
+        test_10 = (
+            Database_find_values_descending__empty.t10_find_values_descending
+        )
+
+    class Database_find_values_descending__populatedUnqlite(_NoSQLOpenUnqlite):
+        def setUp(self):
+            super().setUp()
+            Database_find_values_descending__populated.setup_detail(self)
+
+        Dfv_descending__populated = Database_find_values_descending__populated
+        test_01 = Dfv_descending__populated.t01_find_values_descending
+        test_02 = Dfv_descending__populated.t02_find_values_descending
+        test_03 = Dfv_descending__populated.t03_find_values_descending
+        test_04 = Dfv_descending__populated.t04_find_values_descending
+        test_05 = Dfv_descending__populated.t05_find_values_descending
+        test_06 = Dfv_descending__populated.t06_find_values_descending
+        test_07 = Dfv_descending__populated.t07_find_values_descending
+        test_08 = Dfv_descending__populated.t08_find_values_descending
+        test_09 = Dfv_descending__populated.t09_find_values_descending
 
     class Database_add_record_to_field_valueUnqlite(_NoSQLOpenUnqlite):
         test_01 = DatabaseAddRecordToFieldValue.t01
@@ -3855,6 +4720,127 @@ if vedis:
         test_08 = Database_find_values__populated.t08_find_values
         test_09 = Database_find_values__populated.t09_find_values
 
+    class Database_find_values_ascending__emptyVedis(_NoSQLOpenVedis):
+        def setUp(self):
+            super().setUp()
+            Database_find_values_ascending__empty.setup_detail(self)
+
+        test_01 = (
+            Database_find_values_ascending__empty.t01_find_values_ascending
+        )
+        test_02 = (
+            Database_find_values_ascending__empty.t02_find_values_ascending
+        )
+        test_03 = (
+            Database_find_values_ascending__empty.t03_find_values_ascending
+        )
+        test_04 = (
+            Database_find_values_ascending__empty.t04_find_values_ascending
+        )
+        test_05 = (
+            Database_find_values_ascending__empty.t05_find_values_ascending
+        )
+        test_06 = (
+            Database_find_values_ascending__empty.t06_find_values_ascending
+        )
+        test_07 = (
+            Database_find_values_ascending__empty.t07_find_values_ascending
+        )
+        test_08 = (
+            Database_find_values_ascending__empty.t08_find_values_ascending
+        )
+        test_09 = (
+            Database_find_values_ascending__empty.t09_find_values_ascending
+        )
+        test_10 = (
+            Database_find_values_ascending__empty.t10_find_values_ascending
+        )
+
+    class Database_find_values_ascending__populatedVedis(_NoSQLOpenVedis):
+        def setUp(self):
+            super().setUp()
+            Database_find_values_ascending__populated.setup_detail(self)
+
+        test_01 = (
+            Database_find_values_ascending__populated.t01_find_values_ascending
+        )
+        test_02 = (
+            Database_find_values_ascending__populated.t02_find_values_ascending
+        )
+        test_03 = (
+            Database_find_values_ascending__populated.t03_find_values_ascending
+        )
+        test_04 = (
+            Database_find_values_ascending__populated.t04_find_values_ascending
+        )
+        test_05 = (
+            Database_find_values_ascending__populated.t05_find_values_ascending
+        )
+        test_06 = (
+            Database_find_values_ascending__populated.t06_find_values_ascending
+        )
+        test_07 = (
+            Database_find_values_ascending__populated.t07_find_values_ascending
+        )
+        test_08 = (
+            Database_find_values_ascending__populated.t08_find_values_ascending
+        )
+        test_09 = (
+            Database_find_values_ascending__populated.t09_find_values_ascending
+        )
+
+    class Database_find_values_descending__emptyVedis(_NoSQLOpenVedis):
+        def setUp(self):
+            super().setUp()
+            Database_find_values_descending__empty.setup_detail(self)
+
+        test_01 = (
+            Database_find_values_descending__empty.t01_find_values_descending
+        )
+        test_02 = (
+            Database_find_values_descending__empty.t02_find_values_descending
+        )
+        test_03 = (
+            Database_find_values_descending__empty.t03_find_values_descending
+        )
+        test_04 = (
+            Database_find_values_descending__empty.t04_find_values_descending
+        )
+        test_05 = (
+            Database_find_values_descending__empty.t05_find_values_descending
+        )
+        test_06 = (
+            Database_find_values_descending__empty.t06_find_values_descending
+        )
+        test_07 = (
+            Database_find_values_descending__empty.t07_find_values_descending
+        )
+        test_08 = (
+            Database_find_values_descending__empty.t08_find_values_descending
+        )
+        test_09 = (
+            Database_find_values_descending__empty.t09_find_values_descending
+        )
+        test_10 = (
+            Database_find_values_descending__empty.t10_find_values_descending
+        )
+
+    class Database_find_values_descending__populatedVedis(_NoSQLOpenVedis):
+        def setUp(self):
+            super().setUp()
+            Database_find_values_descending__populated.setup_detail(self)
+
+        Dfv_descending__populated = Database_find_values_descending__populated
+        test_01 = Dfv_descending__populated.t01_find_values_descending
+        test_02 = Dfv_descending__populated.t02_find_values_descending
+        test_03 = Dfv_descending__populated.t03_find_values_descending
+        test_04 = Dfv_descending__populated.t04_find_values_descending
+        test_05 = Dfv_descending__populated.t05_find_values_descending
+        test_06 = Dfv_descending__populated.t06_find_values_descending
+        test_07 = Dfv_descending__populated.t07_find_values_descending
+        test_08 = Dfv_descending__populated.t08_find_values_descending
+        test_09 = Dfv_descending__populated.t09_find_values_descending
+
     class Database_add_record_to_field_valueVedis(_NoSQLOpenVedis):
         test_01 = DatabaseAddRecordToFieldValue.t01
         test_02 = DatabaseAddRecordToFieldValue.t02__assumptions
@@ -4026,6 +5012,10 @@ if __name__ == "__main__":
         runner().run(loader(Database_methodsGnu))
         runner().run(loader(Database_find_values__emptyGnu))
         runner().run(loader(Database_find_values__populatedGnu))
+        runner().run(loader(Database_find_values_ascending__emptyGnu))
+        runner().run(loader(Database_find_values_ascending__populatedGnu))
+        runner().run(loader(Database_find_values_descending__emptyGnu))
+        runner().run(loader(Database_find_values_descending__populatedGnu))
         runner().run(loader(Database_add_record_to_field_valueGnu))
         runner().run(loader(Database_remove_record_from_field_valueGnu))
         runner().run(loader(Database_populate_segmentGnu))
@@ -4048,6 +5038,10 @@ if __name__ == "__main__":
         runner().run(loader(Database_methodsNdbm))
         runner().run(loader(Database_find_values__emptyNdbm))
         runner().run(loader(Database_find_values__populatedNdbm))
+        runner().run(loader(Database_find_values_ascending__emptyNdbm))
+        runner().run(loader(Database_find_values_ascending__populatedNdbm))
+        runner().run(loader(Database_find_values_descending__emptyNdbm))
+        runner().run(loader(Database_find_values_descending__populatedNdbm))
         runner().run(loader(Database_add_record_to_field_valueNdbm))
         runner().run(loader(Database_remove_record_from_field_valueNdbm))
         runner().run(loader(Database_populate_segmentNdbm))
@@ -4070,6 +5064,10 @@ if __name__ == "__main__":
         runner().run(loader(Database_methodsUnqlite))
         runner().run(loader(Database_find_values__emptyUnqlite))
         runner().run(loader(Database_find_values__populatedUnqlite))
+        runner().run(loader(Database_find_values_ascending__emptyUnqlite))
+        runner().run(loader(Database_find_values_ascending__populatedUnqlite))
+        runner().run(loader(Database_find_values_descending__emptyUnqlite))
+        runner().run(loader(Database_find_values_descending__populatedUnqlite))
         runner().run(loader(Database_add_record_to_field_valueUnqlite))
         runner().run(loader(Database_remove_record_from_field_valueUnqlite))
         runner().run(loader(Database_populate_segmentUnqlite))
@@ -4092,6 +5090,10 @@ if __name__ == "__main__":
         runner().run(loader(Database_methodsVedis))
         runner().run(loader(Database_find_values__emptyVedis))
         runner().run(loader(Database_find_values__populatedVedis))
+        runner().run(loader(Database_find_values_ascending__emptyVedis))
+        runner().run(loader(Database_find_values_ascending__populatedVedis))
+        runner().run(loader(Database_find_values_descending__emptyVedis))
+        runner().run(loader(Database_find_values_descending__populatedVedis))
         runner().run(loader(Database_add_record_to_field_valueVedis))
         runner().run(loader(Database_remove_record_from_field_valueVedis))
         runner().run(loader(Database_populate_segmentVedis))

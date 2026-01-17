@@ -1323,6 +1323,312 @@ class Database(_database.Database):
         finally:
             cursor.close()
 
+    def find_values_ascending(self, valuespec, file):
+        """Yield index file values in valuespec range in ascending order."""
+        field = valuespec.field
+        if valuespec.above_value and valuespec.below_value:
+            statement = " ".join(
+                (
+                    "select distinct",
+                    field,
+                    "from",
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
+                    "where",
+                    field,
+                    "> ? and",
+                    field,
+                    "< ? order by",
+                    field,
+                    "asc",
+                )
+            )
+            values = valuespec.above_value, valuespec.below_value
+        elif valuespec.above_value and valuespec.to_value:
+            statement = " ".join(
+                (
+                    "select distinct",
+                    field,
+                    "from",
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
+                    "where",
+                    field,
+                    "> ? and",
+                    field,
+                    "<= ? order by",
+                    field,
+                    "asc",
+                )
+            )
+            values = valuespec.above_value, valuespec.to_value
+        elif valuespec.from_value and valuespec.to_value:
+            statement = " ".join(
+                (
+                    "select distinct",
+                    field,
+                    "from",
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
+                    "where",
+                    field,
+                    ">= ? and",
+                    field,
+                    "<= ? order by",
+                    field,
+                    "asc",
+                )
+            )
+            values = valuespec.from_value, valuespec.to_value
+        elif valuespec.from_value and valuespec.below_value:
+            statement = " ".join(
+                (
+                    "select distinct",
+                    field,
+                    "from",
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
+                    "where",
+                    field,
+                    ">= ? and",
+                    field,
+                    "< ? order by",
+                    field,
+                    "asc",
+                )
+            )
+            values = valuespec.from_value, valuespec.below_value
+        elif valuespec.above_value:
+            statement = " ".join(
+                (
+                    "select distinct",
+                    field,
+                    "from",
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
+                    "where",
+                    field,
+                    "> ? order by",
+                    field,
+                    "asc",
+                )
+            )
+            values = (valuespec.above_value,)
+        elif valuespec.from_value:
+            statement = " ".join(
+                (
+                    "select distinct",
+                    field,
+                    "from",
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
+                    "where",
+                    field,
+                    ">= ? order by",
+                    field,
+                    "asc",
+                )
+            )
+            values = (valuespec.from_value,)
+        elif valuespec.to_value:
+            statement = " ".join(
+                (
+                    "select distinct",
+                    field,
+                    "from",
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
+                    "where",
+                    field,
+                    "<= ? order by",
+                    field,
+                    "asc",
+                )
+            )
+            values = (valuespec.to_value,)
+        elif valuespec.below_value:
+            statement = " ".join(
+                (
+                    "select distinct",
+                    field,
+                    "from",
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
+                    "where",
+                    field,
+                    "< ? order by",
+                    field,
+                    "asc",
+                )
+            )
+            values = (valuespec.below_value,)
+        else:
+            statement = " ".join(
+                (
+                    "select distinct",
+                    field,
+                    "from",
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
+                    "order by",
+                    field,
+                    "asc",
+                )
+            )
+            values = ()
+        apply_to_value = valuespec.apply_pattern_and_set_filters_to_value
+        cursor = self.dbenv.cursor()
+        try:
+            for row in cursor.execute(statement, values):
+                if apply_to_value(row[0]):
+                    yield row[0]
+        finally:
+            cursor.close()
+
+    def find_values_descending(self, valuespec, file):
+        """Yield index file values in valuespec range in descending order."""
+        field = valuespec.field
+        if valuespec.above_value and valuespec.below_value:
+            statement = " ".join(
+                (
+                    "select distinct",
+                    field,
+                    "from",
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
+                    "where",
+                    field,
+                    "> ? and",
+                    field,
+                    "< ? order by",
+                    field,
+                    "desc",
+                )
+            )
+            values = valuespec.above_value, valuespec.below_value
+        elif valuespec.above_value and valuespec.to_value:
+            statement = " ".join(
+                (
+                    "select distinct",
+                    field,
+                    "from",
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
+                    "where",
+                    field,
+                    "> ? and",
+                    field,
+                    "<= ? order by",
+                    field,
+                    "desc",
+                )
+            )
+            values = valuespec.above_value, valuespec.to_value
+        elif valuespec.from_value and valuespec.to_value:
+            statement = " ".join(
+                (
+                    "select distinct",
+                    field,
+                    "from",
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
+                    "where",
+                    field,
+                    ">= ? and",
+                    field,
+                    "<= ? order by",
+                    field,
+                    "desc",
+                )
+            )
+            values = valuespec.from_value, valuespec.to_value
+        elif valuespec.from_value and valuespec.below_value:
+            statement = " ".join(
+                (
+                    "select distinct",
+                    field,
+                    "from",
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
+                    "where",
+                    field,
+                    ">= ? and",
+                    field,
+                    "< ? order by",
+                    field,
+                    "desc",
+                )
+            )
+            values = valuespec.from_value, valuespec.below_value
+        elif valuespec.above_value:
+            statement = " ".join(
+                (
+                    "select distinct",
+                    field,
+                    "from",
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
+                    "where",
+                    field,
+                    "> ? order by",
+                    field,
+                    "desc",
+                )
+            )
+            values = (valuespec.above_value,)
+        elif valuespec.from_value:
+            statement = " ".join(
+                (
+                    "select distinct",
+                    field,
+                    "from",
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
+                    "where",
+                    field,
+                    ">= ? order by",
+                    field,
+                    "desc",
+                )
+            )
+            values = (valuespec.from_value,)
+        elif valuespec.to_value:
+            statement = " ".join(
+                (
+                    "select distinct",
+                    field,
+                    "from",
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
+                    "where",
+                    field,
+                    "<= ? order by",
+                    field,
+                    "desc",
+                )
+            )
+            values = (valuespec.to_value,)
+        elif valuespec.below_value:
+            statement = " ".join(
+                (
+                    "select distinct",
+                    field,
+                    "from",
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
+                    "where",
+                    field,
+                    "< ? order by",
+                    field,
+                    "desc",
+                )
+            )
+            values = (valuespec.below_value,)
+        else:
+            statement = " ".join(
+                (
+                    "select distinct",
+                    field,
+                    "from",
+                    self.table[SUBFILE_DELIMITER.join((file, field))],
+                    "order by",
+                    field,
+                    "desc",
+                )
+            )
+            values = ()
+        apply_to_value = valuespec.apply_pattern_and_set_filters_to_value
+        cursor = self.dbenv.cursor()
+        try:
+            for row in cursor.execute(statement, values):
+                if apply_to_value(row[0]):
+                    yield row[0]
+        finally:
+            cursor.close()
+
     # The bit setting in existence bit map decides if a record is put on the
     # recordset created by the make_recordset_*() methods.
 

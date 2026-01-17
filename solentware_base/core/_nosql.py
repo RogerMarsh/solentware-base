@@ -1118,6 +1118,96 @@ class Database(_database.Database):
         finally:
             cursor.close()
 
+    # Defined for compatibility with _sqlite module.
+    find_values_ascending = find_values
+
+    def find_values_descending(self, valuespec, file):
+        """Yield index file values in valuespec range in descending order."""
+        cursor = tree.Cursor(
+            self.trees[SUBFILE_DELIMITER.join((file, valuespec.field))]
+        )
+        try:
+            if valuespec.above_value and valuespec.below_value:
+                k = cursor.nearest(valuespec.below_value)
+                if k and k >= valuespec.below_value:
+                    k = cursor.prev()
+                while k:
+                    if k <= valuespec.above_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(k):
+                        yield k
+                    k = cursor.prev()
+            elif valuespec.above_value and valuespec.to_value:
+                k = cursor.nearest(valuespec.to_value)
+                if k and k > valuespec.to_value:
+                    k = cursor.prev()
+                while k:
+                    if k <= valuespec.above_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(k):
+                        yield k
+                    k = cursor.prev()
+            elif valuespec.from_value and valuespec.to_value:
+                k = cursor.nearest(valuespec.to_value)
+                if k and k > valuespec.to_value:
+                    k = cursor.prev()
+                while k:
+                    if k < valuespec.from_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(k):
+                        yield k
+                    k = cursor.prev()
+            elif valuespec.from_value and valuespec.below_value:
+                k = cursor.nearest(valuespec.below_value)
+                if k and k >= valuespec.below_value:
+                    k = cursor.prev()
+                while k:
+                    if k < valuespec.from_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(k):
+                        yield k
+                    k = cursor.prev()
+            elif valuespec.above_value:
+                k = cursor.last()
+                while k:
+                    if k <= valuespec.above_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(k):
+                        yield k
+                    k = cursor.prev()
+            elif valuespec.from_value:
+                k = cursor.last()
+                while k:
+                    if k < valuespec.from_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(k):
+                        yield k
+                    k = cursor.prev()
+            elif valuespec.to_value:
+                k = cursor.nearest(valuespec.to_value)
+                if k and k > valuespec.to_value:
+                    k = cursor.prev()
+                while k:
+                    if valuespec.apply_pattern_and_set_filters_to_value(k):
+                        yield k
+                    k = cursor.prev()
+            elif valuespec.below_value:
+                k = cursor.nearest(valuespec.below_value)
+                if k and k >= valuespec.below_value:
+                    k = cursor.prev()
+                while k:
+                    if valuespec.apply_pattern_and_set_filters_to_value(k):
+                        yield k
+                    k = cursor.prev()
+            else:
+                k = cursor.last()
+                while k:
+                    if valuespec.apply_pattern_and_set_filters_to_value(k):
+                        yield k
+                    k = cursor.prev()
+        finally:
+            cursor.close()
+
     # The bit setting in existence bit map decides if a record is put on the
     # recordset created by the make_recordset_*() methods.
 

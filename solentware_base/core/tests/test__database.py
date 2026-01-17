@@ -835,6 +835,12 @@ class Database_06_subclass_methods(unittest.TestCase):
             def find_values(self, valuespec, file):
                 pass
 
+            def find_values_ascending(self, valuespec, file):
+                pass
+
+            def find_values_descending(self, valuespec, file):
+                pass
+
             def recordlist_record_number(self, file, key=None, cache_size=1):
                 pass
 

@@ -1256,6 +1256,111 @@ class Database(_database.Database):
         finally:
             cursor.close()
 
+    # Defined for compatibility with _sqlite module.
+    find_values_ascending = find_values
+
+    def find_values_descending(self, valuespec, file):
+        """Yield index file values in valuespec range in descending order."""
+        cursor = self.table[
+            SUBFILE_DELIMITER.join((file, valuespec.field))
+        ].cursor(txn=self.dbtxn)
+        try:
+            if valuespec.above_value and valuespec.below_value:
+                record = cursor.set_range(valuespec.below_value.encode())
+                if record:
+                    if record[0] >= valuespec.below_value.encode():
+                        record = cursor.prev_nodup()
+                while record:
+                    key = record[0].decode()
+                    if key <= valuespec.above_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(key):
+                        yield key
+                    record = cursor.prev_nodup()
+            elif valuespec.above_value and valuespec.to_value:
+                record = cursor.set_range(valuespec.to_value.encode())
+                if record:
+                    if record[0] > valuespec.to_value.encode():
+                        record = cursor.prev_nodup()
+                while record:
+                    key = record[0].decode()
+                    if key <= valuespec.above_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(key):
+                        yield key
+                    record = cursor.prev_nodup()
+            elif valuespec.from_value and valuespec.to_value:
+                record = cursor.set_range(valuespec.to_value.encode())
+                if record:
+                    if record[0] > valuespec.to_value.encode():
+                        record = cursor.prev_nodup()
+                while record:
+                    key = record[0].decode()
+                    if key < valuespec.from_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(key):
+                        yield key
+                    record = cursor.prev_nodup()
+            elif valuespec.from_value and valuespec.below_value:
+                record = cursor.set_range(valuespec.below_value.encode())
+                if record:
+                    if record[0] >= valuespec.below_value.encode():
+                        record = cursor.prev_nodup()
+                while record:
+                    key = record[0].decode()
+                    if key < valuespec.from_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(key):
+                        yield key
+                    record = cursor.prev_nodup()
+            elif valuespec.above_value:
+                record = cursor.last()
+                while record:
+                    key = record[0].decode()
+                    if key <= valuespec.above_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(key):
+                        yield key
+                    record = cursor.prev_nodup()
+            elif valuespec.from_value:
+                record = cursor.last()
+                while record:
+                    key = record[0].decode()
+                    if key < valuespec.from_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(key):
+                        yield key
+                    record = cursor.prev_nodup()
+            elif valuespec.to_value:
+                record = cursor.set_range(valuespec.to_value.encode())
+                if record:
+                    if record[0] > valuespec.to_value.encode():
+                        record = cursor.prev_nodup()
+                while record:
+                    key = record[0].decode()
+                    if valuespec.apply_pattern_and_set_filters_to_value(key):
+                        yield key
+                    record = cursor.prev_nodup()
+            elif valuespec.below_value:
+                record = cursor.set_range(valuespec.below_value.encode())
+                if record:
+                    if record[0] >= valuespec.below_value.encode():
+                        record = cursor.prev_nodup()
+                while record:
+                    key = record[0].decode()
+                    if valuespec.apply_pattern_and_set_filters_to_value(key):
+                        yield key
+                    record = cursor.prev_nodup()
+            else:
+                record = cursor.last()
+                while record:
+                    key = record[0].decode()
+                    if valuespec.apply_pattern_and_set_filters_to_value(key):
+                        yield key
+                    record = cursor.prev_nodup()
+        finally:
+            cursor.close()
+
     # The bit setting in existence bit map decides if a record is put on the
     # recordset created by the make_recordset_*() methods.
 

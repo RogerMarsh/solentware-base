@@ -1616,6 +1616,157 @@ class Database(_database.Database):
         finally:
             tcl_tk_call((cursor, "close"))
 
+    # Defined for compatibility with _sqlite module.
+    find_values_ascending = find_values
+
+    def find_values_descending(self, valuespec, file):
+        """Yield index file values in valuespec range in descending order."""
+        command = [
+            self.table[SUBFILE_DELIMITER.join((file, valuespec.field))],
+            "cursor",
+        ]
+        if self.dbtxn:
+            command.extend(["-txn", self.dbtxn])
+        cursor = tcl_tk_call(tuple(command))
+        try:
+            if valuespec.above_value and valuespec.below_value:
+                record = tcl_tk_call(
+                    (
+                        cursor,
+                        "get",
+                        "-set_range",
+                        valuespec.below_value.encode(),
+                    )
+                )
+                if record:
+                    if record[0][0] >= valuespec.below_value.encode():
+                        record = tcl_tk_call((cursor, "get", "-prevnodup"))
+                while record:
+                    key = record[0][0].decode()
+                    if key <= valuespec.above_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(key):
+                        yield key
+                    record = tcl_tk_call((cursor, "get", "-prevnodup"))
+            elif valuespec.above_value and valuespec.to_value:
+                record = tcl_tk_call(
+                    (
+                        cursor,
+                        "get",
+                        "-set_range",
+                        valuespec.to_value.encode(),
+                    )
+                )
+                if record:
+                    if record[0][0] > valuespec.to_value.encode():
+                        record = tcl_tk_call((cursor, "get", "-prevnodup"))
+                while record:
+                    key = record[0][0].decode()
+                    if key <= valuespec.above_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(key):
+                        yield key
+                    record = tcl_tk_call((cursor, "get", "-prevnodup"))
+            elif valuespec.from_value and valuespec.to_value:
+                record = tcl_tk_call(
+                    (
+                        cursor,
+                        "get",
+                        "-set_range",
+                        valuespec.to_value.encode(),
+                    )
+                )
+                if record:
+                    if record[0][0] > valuespec.to_value.encode():
+                        record = tcl_tk_call((cursor, "get", "-prevnodup"))
+                while record:
+                    key = record[0][0].decode()
+                    if key < valuespec.from_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(key):
+                        yield key
+                    record = tcl_tk_call((cursor, "get", "-prevnodup"))
+            elif valuespec.from_value and valuespec.below_value:
+                record = tcl_tk_call(
+                    (
+                        cursor,
+                        "get",
+                        "-set_range",
+                        valuespec.below_value.encode(),
+                    )
+                )
+                if record:
+                    if record[0][0] >= valuespec.below_value.encode():
+                        record = tcl_tk_call((cursor, "get", "-prevnodup"))
+                while record:
+                    key = record[0][0].decode()
+                    if key < valuespec.from_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(key):
+                        yield key
+                    record = tcl_tk_call((cursor, "get", "-prevnodup"))
+            elif valuespec.above_value:
+                record = tcl_tk_call((cursor, "get", "-last"))
+                while record:
+                    key = record[0][0].decode()
+                    if key <= valuespec.above_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(key):
+                        yield key
+                    record = tcl_tk_call((cursor, "get", "-prevnodup"))
+            elif valuespec.from_value:
+                record = tcl_tk_call((cursor, "get", "-last"))
+                while record:
+                    key = record[0][0].decode()
+                    if key < valuespec.from_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(key):
+                        yield key
+                    record = tcl_tk_call((cursor, "get", "-prevnodup"))
+            elif valuespec.to_value:
+                record = tcl_tk_call(
+                    (
+                        cursor,
+                        "get",
+                        "-set_range",
+                        valuespec.to_value.encode(),
+                    )
+                )
+                if record:
+                    if record[0][0] > valuespec.to_value.encode():
+                        record = tcl_tk_call((cursor, "get", "-prevnodup"))
+                while record:
+                    key = record[0][0].decode()
+                    if valuespec.apply_pattern_and_set_filters_to_value(key):
+                        yield key
+                    record = tcl_tk_call((cursor, "get", "-prevnodup"))
+            elif valuespec.below_value:
+                record = tcl_tk_call(
+                    (
+                        cursor,
+                        "get",
+                        "-set_range",
+                        valuespec.below_value.encode(),
+                    )
+                )
+                if record:
+                    if record[0][0] >= valuespec.below_value.encode():
+                        record = tcl_tk_call((cursor, "get", "-prevnodup"))
+                while record:
+                    key = record[0][0].decode()
+                    if valuespec.apply_pattern_and_set_filters_to_value(key):
+                        yield key
+                    record = tcl_tk_call((cursor, "get", "-prevnodup"))
+            else:
+                record = tcl_tk_call((cursor, "get", "-last"))
+                while record:
+                    key = record[0][0].decode()
+                    if valuespec.apply_pattern_and_set_filters_to_value(key):
+                        yield key
+                    record = tcl_tk_call((cursor, "get", "-prevnodup"))
+        finally:
+            tcl_tk_call((cursor, "close"))
+
     # The bit setting in existence bit map decides if a record is put on the
     # recordset created by the make_recordset_*() methods.
 
