@@ -1248,6 +1248,15 @@ class Database(_database.Database):
         """Override, return path to DPT file for name."""
         return self.table[name].file
 
+    # Return empty dict until feature is implemented correctly on DPT.
+    def get_application_control(self):
+        """Return dict of application control items."""
+        return {}
+
+    # Do nothing until feature is implemented correctly on DPT.
+    def set_application_control(self, appcontrol):
+        """Set dict of application control items."""
+
 
 class DPTFile:
     """This class is used to access files in a DPT database.
