@@ -1699,6 +1699,15 @@ class Database(_database.Database):
     def _write_key(self, key, value):
         self.database.dbenv[key] = repr(value)
 
+    # Return empty dict until feature is implemented correctly in _nosql.
+    def get_application_control(self):
+        """Return dict of application control items."""
+        return {}
+
+    # Do nothing until feature is implemented correctly in _nosql.
+    def set_application_control(self, appcontrol):
+        """Set dict of application control items."""
+
 
 class Cursor(_cursor.Cursor):
     """Define a cursor on the underlying database engine dbset.
