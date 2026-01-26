@@ -62,7 +62,7 @@ class Database:
         """
         return self._file_per_database
 
-    def _generate_database_file_name(self, name):
+    def generate_database_file_name(self, name):
         """Return path to database file.
 
         By default this is a file where os.path.basename(path) is same as

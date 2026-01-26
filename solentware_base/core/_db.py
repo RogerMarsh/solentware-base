@@ -1860,7 +1860,7 @@ class Database(_database.Database):
         finally:
             db.close_database()
 
-    def _generate_database_file_name(self, name):
+    def generate_database_file_name(self, name):
         """Extend, return path to Berkeley DB file for name.
 
         Delegate to superclass if all databases are in one file.
@@ -1869,7 +1869,7 @@ class Database(_database.Database):
 
         """
         if not self._file_per_database:
-            return super()._generate_database_file_name(name)
+            return super().generate_database_file_name(name)
         return os.path.join(self.home_directory, name)
 
     def get_application_control(self):

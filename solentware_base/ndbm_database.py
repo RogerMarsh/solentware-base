@@ -49,7 +49,7 @@ class Database(_nosql.Database):
         """Override to use the default commit on close scheme."""
         self._default_commit_implementation()
 
-    def _generate_database_file_name(self, name):
+    def generate_database_file_name(self, name):
         """Override and return path to ndbm database file."""
         del name
         return ".".join((self.database_file, "db"))

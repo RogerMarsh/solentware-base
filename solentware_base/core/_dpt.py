@@ -1244,7 +1244,7 @@ class Database(_database.Database):
         """
         raise DatabaseError("Segment size is a constant set internally by DPT")
 
-    def _generate_database_file_name(self, name):
+    def generate_database_file_name(self, name):
         """Override, return path to DPT file for name."""
         return self.table[name].file
 

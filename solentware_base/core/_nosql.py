@@ -166,7 +166,7 @@ class Database(_database.Database):
         if self.database_file is None:
             return
 
-        name = self._generate_database_file_name(self.database_file)
+        name = self.generate_database_file_name(self.database_file)
         if os.path.exists(os.path.join(".".join((name, "stage1")))):
             raise DatabaseError(
                 "".join(
@@ -194,7 +194,7 @@ class Database(_database.Database):
         database engine does not support transaction commit and backout.
 
         """
-        name = self._generate_database_file_name(self.database_file)
+        name = self.generate_database_file_name(self.database_file)
         if os.path.isfile(os.path.join(".".join((name, "commit")))):
             os.replace(
                 os.path.join(".".join((name, "commit"))),
@@ -209,7 +209,7 @@ class Database(_database.Database):
         database engine does not support transaction commit and backout.
 
         """
-        name = self._generate_database_file_name(self.database_file)
+        name = self.generate_database_file_name(self.database_file)
         with open(os.path.join(".".join((name, "stage1"))), "xb") as stage1:
             with open(name, "rb") as original:
                 stage1.write(original.read())

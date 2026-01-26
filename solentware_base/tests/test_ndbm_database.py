@@ -54,12 +54,12 @@ if ndbm_module is not None or ndbm_database is not None:
                 os.remove(os.path.join(path, f))
             os.rmdir(path)
 
-        def test_02__generate_database_file_name_01(self):
+        def test_02_generate_database_file_name_01(self):
             path = os.path.join(os.path.dirname("__file__"), "___ndbmtest")
             d = ndbm_database.Database({}, path)
             d.open_database()
             self.assertEqual(
-                os.path.basename(d._generate_database_file_name("a")),
+                os.path.basename(d.generate_database_file_name("a")),
                 ".".join((path, "db")),
             )
             for f in os.listdir(path):

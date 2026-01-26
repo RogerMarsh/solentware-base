@@ -340,8 +340,8 @@ class DatabaseInstance:
         )
 
     # Attribute database file is None at this point.
-    def t06__generate_database_file_name(self):
-        self.assertEqual(self.database._generate_database_file_name("a"), None)
+    def t06_generate_database_file_name(self):
+        self.assertEqual(self.database.generate_database_file_name("a"), None)
 
 
 # Memory databases are used for these tests.
@@ -3229,7 +3229,7 @@ if gnu_module:
         test_03 = DatabaseInstance.t03_decode_record_number
         test_04 = DatabaseInstance.t04_encode_record_selector
         test_05 = DatabaseInstance.t05_make_recordset
-        test_06 = DatabaseInstance.t06__generate_database_file_name
+        test_06 = DatabaseInstance.t06_generate_database_file_name
 
     class Database_open_databaseGnu(_NoSQLGnu):
         test_01 = Database_open_database.t01
@@ -3703,7 +3703,7 @@ if ndbm_module:
         test_03 = DatabaseInstance.t03_decode_record_number
         test_04 = DatabaseInstance.t04_encode_record_selector
         test_05 = DatabaseInstance.t05_make_recordset
-        test_06 = DatabaseInstance.t06__generate_database_file_name
+        test_06 = DatabaseInstance.t06_generate_database_file_name
 
     class Database_open_databaseNdbm(_NoSQLNdbm):
         test_01 = Database_open_database.t01
@@ -4146,7 +4146,7 @@ if unqlite:
         test_03 = DatabaseInstance.t03_decode_record_number
         test_04 = DatabaseInstance.t04_encode_record_selector
         test_05 = DatabaseInstance.t05_make_recordset
-        test_06 = DatabaseInstance.t06__generate_database_file_name
+        test_06 = DatabaseInstance.t06_generate_database_file_name
 
     class Database_open_databaseUnqlite(_NoSQLUnqlite):
         test_01 = Database_open_database.t01
@@ -4589,7 +4589,7 @@ if vedis:
         test_03 = DatabaseInstance.t03_decode_record_number
         test_04 = DatabaseInstance.t04_encode_record_selector
         test_05 = DatabaseInstance.t05_make_recordset
-        test_06 = DatabaseInstance.t06__generate_database_file_name
+        test_06 = DatabaseInstance.t06_generate_database_file_name
 
     class Database_open_databaseVedis(_NoSQLVedis):
         test_01 = Database_open_database.t01
