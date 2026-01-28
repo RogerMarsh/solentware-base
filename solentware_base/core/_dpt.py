@@ -301,7 +301,7 @@ class Database(_database.Database):
             if foundset.count_records() == 0:
                 recordcopy = dptapi.APIStoreRecordTemplate()
                 pyappendstdstring = dptapi.pyAppendStdString
-                fieldvalue = control.fieldvalue
+                fieldvalue = dptapi.APIFieldValue()
                 fieldname = control.dpt_field_names[control.primary]
                 safe_length = control.dpt_primary_field_length
                 for value in (repr(self.specification), repr({})):
@@ -1377,8 +1377,6 @@ class DPTFile:
     ):
         """Create description of a DPT file."""
         self._dbe = None
-        self.fieldvalue = None
-        self._putrecordcopy = None
         self.opencontext = None
         self.primary = primary
         self.ddname = ddname
@@ -1457,6 +1455,7 @@ class DPTFile:
         dbenv.CloseContext(self.opencontext)
         self.opencontext = None
         dbenv.Free(self.ddname)
+        self._dbe = None
 
     def open_file(self, dbenv):
         """Open file, after creation if file's dataset does not exist.
@@ -1532,10 +1531,6 @@ class DPTFile:
         # A RuntimeError is raised by GetFieldAtts() if field does not exist.
         for field in self.fields:
             self.opencontext.GetFieldAtts(field)
-
-        # Permanent instances for efficient file updates.
-        self.fieldvalue = dptapi.APIFieldValue()
-        self._putrecordcopy = dptapi.APIStoreRecordTemplate()
 
     def open_existing_file(self, dbenv):
         """Allocate file and open a context if the file exists."""
@@ -1852,7 +1847,7 @@ class DPTFile:
         sri = instance.srindex
         sec = self.secondary
         dcb = instance.deletecallbacks
-        fieldvalue = self.fieldvalue
+        fieldvalue = dptapi.APIFieldValue()
         assign = fieldvalue.Assign
         foundset = self.foundset_record_number(instance.key.pack())
         rscursor = foundset.recordset.OpenCursor()
@@ -1904,7 +1899,7 @@ class DPTFile:
             if indexname not in sri:
                 nionly.append(indexname)
         sec = self.secondary
-        fieldvalue = self.fieldvalue
+        fieldvalue = dptapi.APIFieldValue()
         assign = fieldvalue.Assign
         foundset = self.foundset_record_number(instance.key.pack())
         rscursor = foundset.recordset.OpenCursor()
@@ -1951,9 +1946,9 @@ class DPTFile:
     def put_instance(self, instance):
         """Put new instance on database."""
         instance.set_packed_value_and_indexes()
-        recordcopy = self._putrecordcopy
+        recordcopy = dptapi.APIStoreRecordTemplate()
         pyappendstdstring = self._dbe.pyAppendStdString
-        fieldvalue = self.fieldvalue
+        fieldvalue = dptapi.APIFieldValue()
         srv = instance.srvalue
         fieldname = self.dpt_field_names[self.primary]
         safe_length = self.dpt_primary_field_length
@@ -2655,7 +2650,6 @@ class _CursorDPT:
         #    fac.Advance(1)
         # dptdb.CloseFieldAttCursor(fac)
 
-        self.fieldvalue = dptapi.APIFieldValue()
         self.nonorderedfield = dptprimaryfieldname == dptfieldname
 
         # self._foundset is over-used but currently safe and resolving this
@@ -2956,8 +2950,9 @@ class _CursorDPT:
 
         dvcursor = self.dvcursor
         try:
-            self.fieldvalue.Assign(key)
-            dvcursor.SetRestriction_LoLimit(self.fieldvalue, True)
+            fieldvalue = dptapi.APIFieldValue()
+            fieldvalue.Assign(key)
+            dvcursor.SetRestriction_LoLimit(fieldvalue, True)
             dvcursor.GotoFirst()
         except AttributeError:
             if dvcursor is None:
@@ -3010,8 +3005,9 @@ class _CursorDPT:
                     advance = 1
                 else:
                     advance = -1
-                self.fieldvalue.Assign(key)
-                dvcursor.SetPosition(self.fieldvalue)
+                fieldvalue = dptapi.APIFieldValue()
+                fieldvalue.Assign(key)
+                dvcursor.SetPosition(fieldvalue)
                 pos = dvcursor.GetCurrentValue().ExtractString()
                 if pos == key:
                     npos = pos
