@@ -83,7 +83,6 @@ class Database(_database.Database):
     """
 
     _file_per_database = True
-
     segment_size_bytes = SegmentSize.db_segment_size_bytes
 
     # Not used by _dpt: segment size follows page size defined by DPT.
@@ -113,6 +112,7 @@ class Database(_database.Database):
         msgctl=None,
         audit=None,
         username=None,
+        use_specification_items=None,
         **soak
     ):
         """Create definition of database in folder from specification."""
@@ -129,7 +129,11 @@ class Database(_database.Database):
             )
             raise DatabaseError(msg) from exc
         if not isinstance(specification, filespec.FileSpec):
-            specification = filespec.FileSpec(**specification)
+            specification = filespec.FileSpec(
+                use_specification_items=use_specification_items,
+                **specification,
+            )
+        self._use_specification_items = use_specification_items
 
         # Copy the FileSpec workaround from chesstab commit 94104994...
         # dated Fri 23 Jun 2023 to allow Fast Load (which currently
@@ -258,7 +262,7 @@ class Database(_database.Database):
                 dbset=file,
                 default_dataset_folder=self.home_directory,
                 sfi=i,
-                **specification
+                **specification,
             )
         for table in self.table.values():
             table.open_file(self.dbenv)
