@@ -47,6 +47,13 @@ from .constants import (
     DPT_PATTERN_CHARS,
     PRIMARY,
     FIELDS,
+    DEFAULT_INCREASE_FACTOR,
+    DDNAME,
+    FILE,
+    RRN,
+    CONTROL_FILE,
+    SPECIFICATION_KEY,
+    APPLICATION_CONTROL_KEY,
 )
 
 from .segmentsize import SegmentSize
@@ -60,6 +67,7 @@ FILE_PARAMETER_LIST = (
     "DSIZE",
     "FIFLAGS",
 )
+CONTROL_FIELD_DEF = "control"
 SegmentSize.db_segment_size_bytes = TABLE_B_SIZE
 
 
@@ -83,6 +91,13 @@ class Database(_database.Database):
     """
 
     _file_per_database = True
+
+    # Map control file bytestring keys to record number in APPCNTRL file.
+    _app_control_key_map = {
+        SPECIFICATION_KEY: 0,
+        APPLICATION_CONTROL_KEY: 1,
+    }
+
     segment_size_bytes = SegmentSize.db_segment_size_bytes
 
     # Not used by _dpt: segment size follows page size defined by DPT.
@@ -253,6 +268,70 @@ class Database(_database.Database):
             )
             os.chdir(cwd)
 
+        control_specification = filespec.FileSpec(
+            **{
+                "application": {
+                    DDNAME: "APPCNTRL",
+                    FILE: filespec.FileSpec.dpt_dsn(CONTROL_FILE),
+                    FILEDESC: {
+                        BRECPPG: 1,
+                        FILEORG: RRN,
+                    },
+                    BTOD_FACTOR: 1.0,
+                    BTOD_CONSTANT: 2,
+                    DEFAULT_RECORDS: 10,
+                    DEFAULT_INCREASE_FACTOR: 0.01,
+                    PRIMARY: filespec.FileSpec.field_name(CONTROL_FIELD_DEF),
+                    SECONDARY: {},
+                    FIELDS: {
+                        filespec.FileSpec.field_name(CONTROL_FIELD_DEF): None,
+                    },
+                }
+            }
+        )["application"]
+        control = self._dptfileclass()(
+            dbset=CONTROL_FILE,
+            default_dataset_folder=self.home_directory,
+            **control_specification,
+        )
+        control.open_file(self.dbenv)
+        self.table[CONTROL_FILE] = control
+        foundset = self.recordlist_ebm(CONTROL_FILE)
+        try:
+            if foundset.count_records() == 0:
+                recordcopy = dptapi.APIStoreRecordTemplate()
+                pyappendstdstring = dptapi.pyAppendStdString
+                fieldvalue = control.fieldvalue
+                fieldname = control.dpt_field_names[control.primary]
+                safe_length = control.dpt_primary_field_length
+                for value in (repr(self.specification), repr({})):
+                    for i in range(0, len(value), safe_length):
+                        pyappendstdstring(
+                            recordcopy,
+                            fieldname,
+                            fieldvalue,
+                            value[i : i + safe_length],
+                        )
+                    control.table_connection.StoreRecord(recordcopy)
+                    recordcopy.Clear()
+                self.commit()
+        finally:
+            foundset.close()
+        spec_from_db = literal_eval(
+            self.get_primary_record(
+                CONTROL_FILE, self._app_control_key_map[SPECIFICATION_KEY]
+            )[1]
+        )
+        if self._use_specification_items is not None:
+            self.specification.is_consistent_with(
+                {
+                    k: v
+                    for k, v in spec_from_db.items()
+                    if k in self._use_specification_items
+                }
+            )
+        else:
+            self.specification.is_consistent_with(spec_from_db)
         if files is None:
             files = self.specification.keys()
         for i, (file, specification) in enumerate(self.specification.items()):
@@ -265,7 +344,8 @@ class Database(_database.Database):
                 **specification,
             )
         for table in self.table.values():
-            table.open_file(self.dbenv)
+            if table.dbset != CONTROL_FILE:  # Opened earlier.
+                table.open_file(self.dbenv)
 
     def open_database_contexts(self, files=None):
         """Override, open all files in normal mode.
@@ -279,6 +359,7 @@ class Database(_database.Database):
         The overridden method was introduced for compatibity with DPT.
 
         """
+        self.table[CONTROL_FILE].open_existing_file(self.dbenv)
         if files is None:
             files = self.specification.keys()
         for file in self.specification:
@@ -295,6 +376,7 @@ class Database(_database.Database):
         the Database Services object is left open and usable.
 
         """
+        self.table[CONTROL_FILE].close_file(self.dbenv)
         if files is None:
             files = self.specification.keys()
         for file in self.specification:
