@@ -1334,14 +1334,39 @@ class Database(_database.Database):
         """Override, return path to DPT file for name."""
         return self.table[name].file
 
-    # Return empty dict until feature is implemented correctly on DPT.
     def get_application_control(self):
         """Return dict of application control items."""
-        return {}
+        return literal_eval(
+            self.get_primary_record(
+                CONTROL_FILE,
+                self._app_control_key_map[APPLICATION_CONTROL_KEY],
+            )[1]
+        )
 
-    # Do nothing until feature is implemented correctly on DPT.
     def set_application_control(self, appcontrol):
         """Set dict of application control items."""
+        value = repr(appcontrol)
+        key = self._app_control_key_map[APPLICATION_CONTROL_KEY]
+        table = self.table[CONTROL_FILE]
+        fieldvalue = dptapi.APIFieldValue()
+        assign = fieldvalue.Assign
+        safe_length = table.dpt_primary_field_length
+        fieldname = table.dpt_field_names[table.primary]
+        foundset = table.foundset_record_number(key)
+        try:
+            rscursor = foundset.recordset.OpenCursor()
+            try:
+                while rscursor.Accessible():
+                    current = rscursor.AccessCurrentRecordForReadWrite()
+                    current.DeleteEachOccurrence(fieldname)
+                    for i in range(0, len(value), safe_length):
+                        assign(value[i : i + safe_length])
+                        current.AddField(fieldname, fieldvalue)
+                    rscursor.Advance(1)
+            finally:
+                foundset.recordset.CloseCursor(rscursor)
+        finally:
+            foundset.close()
 
 
 class DPTFile:
