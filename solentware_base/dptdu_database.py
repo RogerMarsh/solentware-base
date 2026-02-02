@@ -11,8 +11,15 @@ but adding lots of new records will be a lot slower.
 """
 import os
 
+from dptdb import dptapi
+
 from .core import _dpt
-from .core.constants import DPT_SYSDU_FOLDER, BRECPPG
+from .core.constants import (
+    DPT_SYSDU_FOLDER,
+    BRECPPG,
+    EXISTING_SEGMENT_REFERENCE,
+)
+from .core.segmentsize import SegmentSize
 
 
 class DptduDatabaseError(Exception):
@@ -112,6 +119,36 @@ class Database(_dpt.Database):
 
         Merge for deferred updates is an internal function in DPT.
         """
+
+    def set_int_to_bytes_lookup(self, lookup=True):
+        """Override and do nothing.
+
+        Conversion not needed for DPT interface.
+        """
+
+    def find_value_segments(self, field, file):
+        """Yield segment references for field in file."""
+        yield from self.table[file].find_value_segments(field)
+
+    def get_merge_import_sort_area(self):
+        """Return database directory.
+
+        The directory containing database is used for sorting by default,
+        subclasses should override as required.
+
+        There is little point in doing so unless the sort area is then on
+        a different drive or mount point.
+
+        """
+        return self.home_directory
+
+    def merge_writer(self, file, field):
+        """Return a Writer instance for the field index on table file.
+
+        Call the Writer.write() method with an object yielded by the
+        merge.next_sorted_item() function.
+        """
+        return self.table[file].merge_writer(field)
 
 
 class DPTFile(_dpt.DPTFile):
@@ -232,3 +269,138 @@ class DPTFile(_dpt.DPTFile):
             opencontext.Increase(d_pages_needed, True)
         elif d_pages_needed > dsize - dpgsused:
             opencontext.Increase(d_pages_needed - dsize + dpgsused, True)
+
+    def find_value_segments(self, field):
+        """Yield segment references for each field value."""
+        segment_size = SegmentSize.db_segment_size
+        record_numbers = []
+        previous_segment = None
+        opencontext = self.opencontext
+        dpt_field = self.dpt_field_names[field]
+        dvcursor = opencontext.OpenDirectValueCursor(
+            dptapi.APIFindValuesSpecification(dpt_field)
+        )
+        try:
+            get_current_value = dvcursor.GetCurrentValue
+            find_specification = dptapi.APIFindSpecification
+            while dvcursor.Accessible():
+                value = get_current_value()
+                foundset = opencontext.FindRecords(
+                    find_specification(dpt_field, dptapi.FD_EQ, value)
+                )
+                try:
+                    rscursor = foundset.OpenCursor()
+                    try:
+                        while rscursor.Accessible():
+                            segment, recnum = divmod(
+                                rscursor.LastAdvancedRecNum(), segment_size
+                            )
+                            if segment != previous_segment and record_numbers:
+                                yield [
+                                    value.ExtractString(),
+                                    segment,
+                                    EXISTING_SEGMENT_REFERENCE,
+                                    record_numbers,
+                                ]
+                                previous_segment = segment
+                                record_numbers = []
+                            record_numbers.append(recnum)
+                            rscursor.Advance()
+                        if record_numbers:
+                            yield [
+                                value.ExtractString(),
+                                segment,
+                                EXISTING_SEGMENT_REFERENCE,
+                                record_numbers,
+                            ]
+                            previous_segment = segment
+                            record_numbers = []
+                    finally:
+                        foundset.CloseCursor(rscursor)
+                finally:
+                    opencontext.DestroyRecordSet(foundset)
+                dvcursor.Advance(1)
+        finally:
+            opencontext.CloseDirectValueCursor(dvcursor)
+
+    def merge_writer(self, field):
+        """Return a Writer instance for the field index.
+
+        Call the Writer.write() method with an object yielded by the
+        merge.next_sorted_item() function.
+        """
+
+        class Writer:
+            """Write index entries to database."""
+
+            def __init__(self, database, field):
+                """Initialise writer for field in database file."""
+                self.prev_key = None
+                self.database = database
+                self.field = database.dpt_field_names[field]
+                self.recordlist = database.opencontext.CreateRecordList()
+
+            def __del__(self):
+                """Ensure self.recordlist is closed."""
+                self.close_recordlist()
+
+            def close_recordlist(self):
+                """Close the recordlist open on database."""
+                if self.recordlist is not None:
+                    self.database.opencontext.DestroyRecordSet(self.recordlist)
+                    self.recordlist = None
+
+            def new_recordlist(self):
+                """Populate instance recordlist for field and prev_key."""
+                self.recordlist = self.database.opencontext.CreateRecordList()
+                foundset = self.database.opencontext.FindRecords(
+                    dptapi.APIFindSpecification(
+                        self.field,
+                        dptapi.FD_EQ,
+                        dptapi.APIFieldValue(self.prev_key),
+                    )
+                )
+                try:
+                    self.recordlist.Place(foundset)
+                finally:
+                    self.database.opencontext.DestroyRecordSet(foundset)
+
+            def write(self, item):
+                """Write item to index on database."""
+                key, segment, valuelist = item
+                segment_base = segment * SegmentSize.db_segment_size
+                findspecification = dptapi.APIFindSpecification
+                opencontext = self.database.opencontext
+                findrecords = opencontext.FindRecords
+                destroyrecordset = opencontext.DestroyRecordSet
+                fd_singlerec = dptapi.FD_SINGLEREC
+                if key != self.prev_key:
+                    if self.prev_key is not None:
+                        opencontext.FileRecordsUnder(
+                            self.recordlist,
+                            self.field,
+                            dptapi.APIFieldValue(self.prev_key),
+                        )
+                    self.prev_key = key
+                    self.new_recordlist()
+                place = self.recordlist.Place
+                for number in valuelist:
+                    foundset = findrecords(
+                        findspecification(fd_singlerec, segment_base + number)
+                    )
+                    try:
+                        place(foundset)
+                    finally:
+                        destroyrecordset(foundset)
+
+            def flush_key_to_index(self):
+                """Write items for key to index on database."""
+                if self.recordlist is not None:
+                    if self.recordlist.Count():
+                        self.database.opencontext.FileRecordsUnder(
+                            self.recordlist,
+                            self.field,
+                            dptapi.APIFieldValue(self.prev_key),
+                        )
+
+        return Writer(self, field)

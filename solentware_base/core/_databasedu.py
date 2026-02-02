@@ -265,12 +265,6 @@ class Database(_database.Database):
             self.deferred_update_housekeeping()
             self.start_transaction()
 
-    def next_sorted_item(self, index_directory):
-        """Yield sorted items from files in index_directory."""
-        merger = merge.Merge(index_directory)
-        for item in merger.sorter():
-            yield item
-
     def get_merge_import_sort_area(self):
         """Return database directory.
 

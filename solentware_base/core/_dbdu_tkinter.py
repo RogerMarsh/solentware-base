@@ -522,9 +522,8 @@ class Database(_databasedu.Database):
     def merge_writer(self, file, field):
         """Return a Writer instance for the field index on table file.
 
-        Call the write() method with object returned by next_sorted_item
-        method.
-
+        Call the Writer.write() method with an object yielded by the
+        merge.next_sorted_item() function.
         """
 
         def make_segment_from_high(high, get_segment_value):
