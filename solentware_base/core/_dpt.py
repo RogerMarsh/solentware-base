@@ -2244,7 +2244,7 @@ class Cursor(cursor.Cursor):
         if _cursor.nonorderedfield:
             foundset = _cursor.foundset_records_before_record_number(record[0])
             count = foundset.recordset.Count()
-            # context.DestroyRecordSet(foundset)
+            foundset.close()
             return count
         index_key, record_number = record
         dvcursor = context.OpenDirectValueCursor(
@@ -2255,28 +2255,26 @@ class Cursor(cursor.Cursor):
             dvcursor.SetRestriction_Pattern(
                 self.get_converted_partial_with_wildcard()
             )
-        games = context.CreateRecordList()
-        foundset = _cursor.foundset_all_records()
+        position = 0
         dvcursor.GotoFirst()
         while dvcursor.Accessible():
             value = dvcursor.GetCurrentValue()
             if value.ExtractString() >= index_key:
                 if value.ExtractString() == index_key:
-                    foundset = _cursor.foundset_recordset_before_record_number(
+                    foundset = _cursor.foundset_field_equals_value(value)
+                    before = _cursor.foundset_recordset_before_record_number(
                         record_number, foundset
                     )
-                    games.Place(foundset.recordset)
-                    # context.DestroyRecordSet(fs)
-                # context.DestroyRecordSet(foundset)
+                    position += before.recordset.Count()
+                    before.close()
+                    foundset.close()
                 break
             foundset = _cursor.foundset_field_equals_value(value)
-            games.Place(foundset.recordset)
-            # context.DestroyRecordSet(foundset)
+            position += foundset.recordset.Count()
+            foundset.close()
             dvcursor.Advance(1)
         context.CloseDirectValueCursor(dvcursor)
-        count = games.Count()
-        context.DestroyRecordSet(games)
-        return count
+        return position
 
     def get_record_at_position(self, position=None):
         """Return record for positionth record in file or None."""
