@@ -909,8 +909,7 @@ class Database(_database.Database):
     def close_datasourcecursor_recordset(self, datasourcecursor):
         """Override, destroy the APIRecordSet which implements recordset."""
         if datasourcecursor.recordset is not None:
-            # self.table[self.dbset].get_database(
-            #    ).DestroyRecordSet(datasourcecursor.recordset)
+            datasourcecursor.recordset.close()
             datasourcecursor.recordset = None
 
     def set_datasourcecursor_recordset(self, datasourcecursor, recordset):
@@ -1001,9 +1000,8 @@ class Database(_database.Database):
                 dptapi.APIFindSpecification(dptapi.FD_SINGLEREC, key)
             ),
         )
-        # recordlist.Place(foundset)
         recordlist |= foundset
-        # dptfile.DestroyRecordSet(foundset)
+        foundset.close()
         return recordlist
 
     def recordlist_record_number_range(
@@ -1029,9 +1027,8 @@ class Database(_database.Database):
             dptfile,
             dptfile.table_connection.FindRecords(spec),
         )
-        # recordlist.Place(foundset)
         recordlist |= foundset
-        # dptfile.DestroyRecordSet(foundset)
+        foundset.close()
         return recordlist
 
     def recordlist_ebm(self, file, cache_size=1):
@@ -1052,9 +1049,8 @@ class Database(_database.Database):
                 )
             ),
         )
-        # recordlist.Place(foundset)
         recordlist |= foundset
-        # dptfile.DestroyRecordSet(foundset)
+        foundset.close()
         return recordlist
 
     def recordlist_key_like(self, file, field, keylike=None, cache_size=1):
@@ -1095,9 +1091,8 @@ class Database(_database.Database):
                         foundset,
                     ),
                 )
-                # recordlist.Place(vfs)
                 recordlist |= vfs
-                # dptfile.DestroyRecordSet(vfs)
+                vfs.close()
             dvcursor.Advance(1)
         dptfile.table_connection.CloseDirectValueCursor(dvcursor)
         dptfile.table_connection.DestroyRecordSet(foundset)
@@ -1124,9 +1119,8 @@ class Database(_database.Database):
                 dptapi.FD_LOCK_SHR,
             ),
         )
-        # recordlist.Place(foundset)
         recordlist |= foundset
-        # dptfile.DestroyRecordSet(foundset)
+        foundset.close()
         return recordlist
 
     def recordlist_key_startswith(
@@ -1171,9 +1165,8 @@ class Database(_database.Database):
                     foundset,
                 ),
             )
-            # recordlist.Place(vfs)
             recordlist |= vfs
-            # dptfile.DestroyRecordSet(vfs)
+            vfs.close()
             dvcursor.Advance(1)
         dptfile.table_connection.CloseDirectValueCursor(dvcursor)
         dptfile.table_connection.DestroyRecordSet(foundset)
@@ -1242,9 +1235,8 @@ class Database(_database.Database):
                     )
                 ),
             )
-        # recordlist.Place(foundset)
         recordlist |= foundset
-        # dptfile.DestroyRecordSet(foundset)
+        foundset.close()
         return recordlist
 
     def recordlist_all(self, file, field, cache_size=1):
@@ -1266,9 +1258,8 @@ class Database(_database.Database):
                 dptapi.FD_LOCK_SHR,
             ),
         )
-        # recordlist.Place(foundset)
         recordlist |= foundset
-        # dptfile.DestroyRecordSet(foundset)
+        foundset.close()
         return recordlist
 
     def recordlist_nil(self, file, cache_size=1):
@@ -1847,7 +1838,7 @@ class DPTFile:
                 record = None
         finally:
             foundset.recordset.CloseCursor(rscursor)
-            # self.opencontext.DestroyRecordSet(foundset)
+            foundset.close()
         return record
 
     def join_primary_field_occurrences(self, record):
@@ -1889,7 +1880,7 @@ class DPTFile:
             current.Delete()
             rscursor.Advance(1)
         foundset.recordset.CloseCursor(rscursor)
-        # self.opencontext.DestroyRecordSet(foundset)
+        foundset.close()
 
     def edit_instance(self, instance):
         """Edit an existing instance on database."""
@@ -1966,7 +1957,7 @@ class DPTFile:
                         current.AddField(fieldname, fieldvalue)
             rscursor.Advance(1)
         foundset.recordset.CloseCursor(rscursor)
-        # self.opencontext.DestroyRecordSet(foundset)
+        foundset.close()
 
     def put_instance(self, instance):
         """Put new instance on database."""
@@ -2194,7 +2185,7 @@ class Cursor(cursor.Cursor):
         if _cursor.nonorderedfield:
             foundset = _cursor.foundset_all_records()
             count = foundset.recordset.Count()
-            # context.DestroyRecordSet(foundset)
+            foundset.close()
         else:
             dvcursor = context.OpenDirectValueCursor(
                 dptapi.APIFindValuesSpecification(fieldname)
@@ -2211,7 +2202,7 @@ class Cursor(cursor.Cursor):
                     dvcursor.GetCurrentValue()
                 )
                 games.Place(foundset.recordset)
-                # context.DestroyRecordSet(foundset)
+                foundset.close()
                 dvcursor.Advance(1)
             context.CloseDirectValueCursor(dvcursor)
             count = games.Count()
@@ -2302,7 +2293,7 @@ class Cursor(cursor.Cursor):
                     rscursor.GotoLast()
                 if not rscursor.Accessible():
                     foundset.recordset.CloseCursor(rscursor)
-                    # context.DestroyRecordSet(foundset)
+                    foundset.close()
                     return None
                 current = rscursor.AccessCurrentRecordForRead()
                 record = (
@@ -2310,16 +2301,16 @@ class Cursor(cursor.Cursor):
                     _cursor.join_primary_field_occs(current),
                 )
                 foundset.recordset.CloseCursor(rscursor)
-                # context.DestroyRecordSet(foundset)
+                foundset.close()
                 return record
             rscursor.GotoLast()
             if not rscursor.Accessible():
                 foundset.recordset.CloseCursor(rscursor)
-                # context.DestroyRecordSet(foundset)
+                foundset.close()
                 return None
             # highrecnum = rscursor.LastAdvancedRecNum()
             foundset.recordset.CloseCursor(rscursor)
-            # context.DestroyRecordSet(foundset)
+            foundset.close()
             foundset = _cursor.foundset_records_before_record_number(position)
             recordcount = foundset.recordset.Count()
             if recordcount > position:
@@ -2327,7 +2318,7 @@ class Cursor(cursor.Cursor):
                 rscursor.GotoLast()
                 if not rscursor.Accessible():
                     foundset.recordset.CloseCursor(rscursor)
-                    # context.DestroyRecordSet(foundset)
+                    foundset.close()
                     return None
                 current = rscursor.AccessCurrentRecordForRead()
                 record = (
@@ -2335,9 +2326,9 @@ class Cursor(cursor.Cursor):
                     _cursor.join_primary_field_occs(current),
                 )
                 foundset.recordset.CloseCursor(rscursor)
-                # context.DestroyRecordSet(foundset)
+                foundset.close()
                 return record
-            # context.DestroyRecordSet(foundset)
+            foundset.close()
             foundset = _cursor.foundset_records_not_before_record_number(
                 position
             )
@@ -2346,7 +2337,7 @@ class Cursor(cursor.Cursor):
             while recordcount < position:
                 if not rscursor.Accessible():
                     foundset.recordset.CloseCursor(rscursor)
-                    # context.DestroyRecordSet(foundset)
+                    foundset.close()
                     return None
                 rscursor.Advance(1)
                 recordcount += 1
@@ -2356,7 +2347,7 @@ class Cursor(cursor.Cursor):
                 _cursor.join_primary_field_occs(current),
             )
             foundset.recordset.CloseCursor(rscursor)
-            # context.DestroyRecordSet(foundset)
+            foundset.close()
             return record
         # it is more efficient to scan from the nearest edge of the file
         dvcursor = context.OpenDirectValueCursor(
@@ -2384,13 +2375,13 @@ class Cursor(cursor.Cursor):
                 rscursor.GotoFirst()
                 if not rscursor.Accessible():
                     foundset.recordset.CloseCursor(rscursor)
-                    # context.DestroyRecordSet(foundset)
+                    foundset.close()
                     record = None
                     break
                 rscursor.Advance(position - count + recordcount)
                 if not rscursor.Accessible():
                     foundset.recordset.CloseCursor(rscursor)
-                    # context.DestroyRecordSet(foundset)
+                    foundset.close()
                     record = None
                     break
                 record = (
@@ -2398,9 +2389,9 @@ class Cursor(cursor.Cursor):
                     rscursor.AccessCurrentRecordForRead().RecNum(),
                 )
                 foundset.recordset.CloseCursor(rscursor)
-                # context.DestroyRecordSet(foundset)
+                foundset.close()
                 break
-            # context.DestroyRecordSet(foundset)
+            foundset.close()
             dvcursor.Advance(1)
         context.CloseDirectValueCursor(dvcursor)
         return record
@@ -2542,7 +2533,7 @@ class Cursor(cursor.Cursor):
                 recno = None
         finally:
             foundset.recordset.CloseCursor(rscursor)
-            # self._cursor.dptdb.DestroyRecordSet(foundset)
+            foundset.close()
         return recno
 
 
@@ -2725,8 +2716,8 @@ class _CursorDPT:
         if self._foundset:
             if self._foundset.recordset and self._rscursor:
                 self._foundset.recordset.CloseCursor(self._rscursor)
-            # if self._delete_foundset_on_close_cursor:
-            #    self.dptdb.DestroyRecordSet(self._foundset)
+            if self._delete_foundset_on_close_cursor:
+                self._foundset.close()
         self.dvcursor = None
         self._rscursor = None
         self._foundset = None
@@ -2796,12 +2787,11 @@ class _CursorDPT:
             raise
 
         if self.dvcursor is not None:
-            # context = self.dptdb
             while not self._rscursor.Accessible():
                 self.dvcursor.Advance(1)
                 if self.dvcursor.Accessible():
                     self._foundset.recordset.CloseCursor(self._rscursor)
-                    # context.DestroyRecordSet(self._foundset)
+                    self._foundset.close()
                     self._foundset = self.foundset_field_equals_value(
                         self.dvcursor.GetCurrentValue()
                     )
@@ -2846,12 +2836,11 @@ class _CursorDPT:
             raise
 
         if self.dvcursor is not None:
-            # context = self.dptdb
             while not self._rscursor.Accessible():
                 self.dvcursor.Advance(-1)
                 if self.dvcursor.Accessible():
                     self._foundset.recordset.CloseCursor(self._rscursor)
-                    # context.DestroyRecordSet(self._foundset)
+                    self._foundset.close()
                     self._foundset = self.foundset_field_equals_value(
                         self.dvcursor.GetCurrentValue()
                     )
@@ -2892,7 +2881,7 @@ class _CursorDPT:
         if self._foundset:
             key = self._rscursor.LastAdvancedRecNum()
             self._foundset.recordset.CloseCursor(self._rscursor)
-            # self.dptdb.DestroyRecordSet(self._foundset)
+            self._foundset.close()
         else:
             key = -1  # (first + last) < key * 2
         if self.nonorderedfield:
@@ -2982,10 +2971,9 @@ class _CursorDPT:
                 return None
             raise
 
-        # context = self.dptdb
         while dvcursor.Accessible():
             self._foundset.recordset.CloseCursor(self._rscursor)
-            # context.DestroyRecordSet(self._foundset)
+            self._foundset.close()
             self._foundset = self.foundset_field_equals_value(
                 dvcursor.GetCurrentValue()
             )
@@ -3045,9 +3033,8 @@ class _CursorDPT:
             if key != npos:
                 return None
             if key != cpos:
-                # context = self.dptdb
                 self._foundset.recordset.CloseCursor(self._rscursor)
-                # context.DestroyRecordSet(self._foundset)
+                self._foundset.close()
                 self._foundset = self.foundset_field_equals_value(
                     dvcursor.GetCurrentValue()
                 )
@@ -3247,7 +3234,7 @@ class _CursorDPT:
                 self._foundset = foundset
                 return
             foundset.recordset.CloseCursor(rscursor)
-            # context.DestroyRecordSet(foundset)
+            foundset.close()
             dvcursor.Advance(1)
         context.CloseDirectValueCursor(dvcursor)
         self.dvcursor = None
@@ -3291,7 +3278,7 @@ class _CursorDPT:
                 self._foundset = foundset
                 return
             foundset.recordset.CloseCursor(rscursor)
-            # context.DestroyRecordSet(foundset)
+            foundset.close()
             dvcursor.Advance(-1)
         context.CloseDirectValueCursor(dvcursor)
         self.dvcursor = None
@@ -3302,7 +3289,7 @@ class _CursorDPT:
         context = self.dptdb
         context.CloseDirectValueCursor(self.dvcursor)
         self._foundset.recordset.CloseCursor(self._rscursor)
-        # context.DestroyRecordSet(self._foundset)
+        self._foundset.close()
         self.dvcursor = context.OpenDirectValueCursor(
             dptapi.APIFindValuesSpecification(self.dptfieldname)
         )
