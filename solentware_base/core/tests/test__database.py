@@ -163,8 +163,8 @@ class Database_01(unittest.TestCase):
             TypeError,
             "".join(
                 (
-                    r"repair_cursor\(\) missing 1 required ",
-                    "positional argument: 'oldcursor'$",
+                    r"repair_cursor\(\) missing 3 required positional ",
+                    "arguments: 'oldcursor', 'file', and 'field'$",
                 )
             ),
             self.database.repair_cursor,
@@ -348,7 +348,7 @@ class Database_01(unittest.TestCase):
             pass
 
         a = A()
-        self.assertIs(self.database.repair_cursor(a, "ignored"), a)
+        self.assertIs(self.database.repair_cursor(a, "file1", "file1"), a)
 
     def test_allocate_and_open_contexts_01(self):
         self.assertEqual(self.database.allocate_and_open_contexts(), None)

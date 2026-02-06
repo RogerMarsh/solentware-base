@@ -467,12 +467,13 @@ class Database(_database.Database):
                 self.dbenv, sizing_record_counts=files.get(k)
             )
 
-    def increase_database_record_capacity(self, files=None):
+    def increase_database_record_capacity(self, files=None, **kwargs):
         """Override, increase file sizes.
 
         The overridden method was introduced for compatibity with DPT.
 
         """
+        del kwargs
         if files is None:
             return
         for key, value in files.items():
@@ -498,8 +499,9 @@ class Database(_database.Database):
                 )
         return sizes
 
-    def get_database_table_sizes(self, files=None):
+    def get_database_table_sizes(self, files=None, **kwargs):
         """Return Table B and D page sizes and usage for files."""
+        del kwargs
         if files is None:
             files = set()
         sizes = {}
@@ -991,14 +993,12 @@ class Database(_database.Database):
         """
         del cache_size
         dptfile = self.table[file]
-        recordlist = _DPTRecordList(dptfile)
+        recordlist = new_dptrecordlist(dptfile)
         if key is None:
             return recordlist
-        foundset = _DPTFoundSet(
+        foundset = new_dptfoundset(
             dptfile,
-            dptfile.table_connection.FindRecords(
-                dptapi.APIFindSpecification(dptapi.FD_SINGLEREC, key)
-            ),
+            dptapi.APIFindSpecification(dptapi.FD_SINGLEREC, key),
         )
         recordlist |= foundset
         foundset.close()
@@ -1017,15 +1017,15 @@ class Database(_database.Database):
         if keystart is None and keyend is None:
             return self.recordlist_ebm(file, cache_size=cache_size)
         dptfile = self.table[file]
-        recordlist = _DPTRecordList(dptfile)
+        recordlist = new_dptrecordlist(dptfile)
         if keystart is None:
             keystart = 0
         spec = dptapi.APIFindSpecification(dptapi.FD_POINT, keystart)
         if keyend is not None:
             spec &= dptapi.APIFindSpecification(dptapi.FD_NOT_POINT, keyend)
-        foundset = _DPTFoundSet(
+        foundset = new_dptfoundset(
             dptfile,
-            dptfile.table_connection.FindRecords(spec),
+            spec,
         )
         recordlist |= foundset
         foundset.close()
@@ -1038,15 +1038,13 @@ class Database(_database.Database):
         """
         del cache_size
         dptfile = self.table[file]
-        recordlist = _DPTRecordList(dptfile)
-        foundset = _DPTFoundSet(
+        recordlist = new_dptrecordlist(dptfile)
+        foundset = new_dptfoundset(
             dptfile,
-            dptfile.table_connection.FindRecords(
-                dptapi.APIFindSpecification(
-                    dptfile.dpt_field_names[dptfile.primary],
-                    dptapi.FD_ALLRECS,
-                    dptapi.APIFieldValue(""),
-                )
+            dptapi.APIFindSpecification(
+                dptfile.dpt_field_names[dptfile.primary],
+                dptapi.FD_ALLRECS,
+                dptapi.APIFieldValue(""),
             ),
         )
         recordlist |= foundset
@@ -1062,7 +1060,7 @@ class Database(_database.Database):
         """
         del cache_size
         dptfile = self.table[file]
-        recordlist = _DPTRecordList(dptfile)
+        recordlist = new_dptrecordlist(dptfile)
         if keylike is None:
             return recordlist
         foundset = dptfile.table_connection.FindRecords(
@@ -1080,16 +1078,14 @@ class Database(_database.Database):
         while dvcursor.Accessible():
             value = dvcursor.GetCurrentValue()
             if matcher.search(value.ExtractString()):
-                vfs = _DPTFoundSet(
+                vfs = new_dptfoundset(
                     dptfile,
-                    dptfile.table_connection.FindRecords(
-                        dptapi.APIFindSpecification(
-                            dptfile.secondary[field],
-                            dptapi.FD_EQ,
-                            dptapi.APIFieldValue(value),
-                        ),
-                        foundset,
+                    dptapi.APIFindSpecification(
+                        dptfile.secondary[field],
+                        dptapi.FD_EQ,
+                        dptapi.APIFieldValue(value),
                     ),
+                    foundset,
                 )
                 recordlist |= vfs
                 vfs.close()
@@ -1105,19 +1101,17 @@ class Database(_database.Database):
         """
         del cache_size
         dptfile = self.table[file]
-        recordlist = _DPTRecordList(dptfile)
+        recordlist = new_dptrecordlist(dptfile)
         if key is None:
             return recordlist
-        foundset = _DPTFoundSet(
+        foundset = new_dptfoundset(
             dptfile,
-            dptfile.table_connection.FindRecords(
-                dptapi.APIFindSpecification(
-                    dptfile.secondary[field],
-                    dptapi.FD_EQ,
-                    dptapi.APIFieldValue(self.encode_record_selector(key)),
-                ),
-                dptapi.FD_LOCK_SHR,
+            dptapi.APIFindSpecification(
+                dptfile.secondary[field],
+                dptapi.FD_EQ,
+                dptapi.APIFieldValue(self.encode_record_selector(key)),
             ),
+            dptapi.FD_LOCK_SHR,
         )
         recordlist |= foundset
         foundset.close()
@@ -1134,7 +1128,7 @@ class Database(_database.Database):
         """
         del cache_size
         dptfile = self.table[file]
-        recordlist = _DPTRecordList(dptfile)
+        recordlist = new_dptrecordlist(dptfile)
         if keystart is None:
             return recordlist
         foundset = dptfile.table_connection.FindRecords(
@@ -1154,16 +1148,14 @@ class Database(_database.Database):
             value = dvcursor.GetCurrentValue()
             if not value.ExtractString().startswith(keystart):
                 break
-            vfs = _DPTFoundSet(
+            vfs = new_dptfoundset(
                 dptfile,
-                dptfile.table_connection.FindRecords(
-                    dptapi.APIFindSpecification(
-                        dptfile.secondary[field],
-                        dptapi.FD_EQ,
-                        dptapi.APIFieldValue(value),
-                    ),
-                    foundset,
+                dptapi.APIFindSpecification(
+                    dptfile.secondary[field],
+                    dptapi.FD_EQ,
+                    dptapi.APIFieldValue(value),
                 ),
+                foundset,
             )
             recordlist |= vfs
             vfs.close()
@@ -1188,27 +1180,23 @@ class Database(_database.Database):
         if ge is None and gt is None and le is None and lt is None:
             return self.recordlist_all(file, field, cache_size=cache_size)
         dptfile = self.table[file]
-        recordlist = _DPTRecordList(dptfile)
+        recordlist = new_dptrecordlist(dptfile)
         if le is None and lt is None:
-            foundset = _DPTFoundSet(
+            foundset = new_dptfoundset(
                 dptfile,
-                dptfile.table_connection.FindRecords(
-                    dptapi.APIFindSpecification(
-                        dptfile.secondary[field],
-                        dptapi.FD_GE if ge is not None else dptapi.FD_GT,
-                        dptapi.APIFieldValue(ge or gt or ""),
-                    )
+                dptapi.APIFindSpecification(
+                    dptfile.secondary[field],
+                    dptapi.FD_GE if ge is not None else dptapi.FD_GT,
+                    dptapi.APIFieldValue(ge or gt or ""),
                 ),
             )
         elif ge is None and gt is None:
-            foundset = _DPTFoundSet(
+            foundset = new_dptfoundset(
                 dptfile,
-                dptfile.table_connection.FindRecords(
-                    dptapi.APIFindSpecification(
-                        dptfile.secondary[field],
-                        dptapi.FD_LE if le is not None else dptapi.FD_LT,
-                        dptapi.APIFieldValue(le or lt or ""),
-                    )
+                dptapi.APIFindSpecification(
+                    dptfile.secondary[field],
+                    dptapi.FD_LE if le is not None else dptapi.FD_LT,
+                    dptapi.APIFieldValue(le or lt or ""),
                 ),
             )
         else:
@@ -1224,15 +1212,13 @@ class Database(_database.Database):
                     if le is not None
                     else dptapi.FD_RANGE_GT_LT
                 )
-            foundset = _DPTFoundSet(
+            foundset = new_dptfoundset(
                 dptfile,
-                dptfile.table_connection.FindRecords(
-                    dptapi.APIFindSpecification(
-                        dptfile.secondary[field],
-                        range_,
-                        dptapi.APIFieldValue(ge or gt or ""),
-                        dptapi.APIFieldValue(le or lt or ""),
-                    )
+                dptapi.APIFindSpecification(
+                    dptfile.secondary[field],
+                    range_,
+                    dptapi.APIFieldValue(ge or gt or ""),
+                    dptapi.APIFieldValue(le or lt or ""),
                 ),
             )
         recordlist |= foundset
@@ -1246,17 +1232,15 @@ class Database(_database.Database):
         """
         del cache_size
         dptfile = self.table[file]
-        recordlist = _DPTRecordList(dptfile)
-        foundset = _DPTFoundSet(
+        recordlist = new_dptrecordlist(dptfile)
+        foundset = new_dptfoundset(
             dptfile,
-            dptfile.table_connection.FindRecords(
-                dptapi.APIFindSpecification(
-                    dptfile.secondary[field],
-                    dptapi.FD_GE,
-                    dptapi.APIFieldValue(self.encode_record_selector("")),
-                ),
-                dptapi.FD_LOCK_SHR,
+            dptapi.APIFindSpecification(
+                dptfile.secondary[field],
+                dptapi.FD_GE,
+                dptapi.APIFieldValue(self.encode_record_selector("")),
             ),
+            dptapi.FD_LOCK_SHR,
         )
         recordlist |= foundset
         foundset.close()
@@ -1268,7 +1252,7 @@ class Database(_database.Database):
         cache_size is not relevant to DPT.
         """
         del cache_size
-        return _DPTRecordList(self.table[file])
+        return new_dptrecordlist(self.table[file])
 
     def unfile_records_under(self, file, field, key):
         """Delete the reference to records for index field[key].
@@ -2033,75 +2017,61 @@ class DPTFile:
             self.opencontext.DestroyRecordSet(recordset)
 
     def foundset_all_records(self, fieldname):
-        """Return APIFoundset containing all records on DPT file."""
-        return _DPTFoundSet(
+        """Return _DPTFoundSet containing all records on DPT file."""
+        return new_dptfoundset(
             self,
-            self.opencontext.FindRecords(
-                self._dbe.APIFindSpecification(
-                    self.dpt_field_names.get(fieldname, self.primary),
-                    self._dbe.FD_ALLRECS,
-                    self._dbe.APIFieldValue(""),
-                )
+            self._dbe.APIFindSpecification(
+                self.dpt_field_names.get(fieldname, self.primary),
+                self._dbe.FD_ALLRECS,
+                self._dbe.APIFieldValue(""),
             ),
         )
 
     def foundset_field_equals_value(self, fieldname, value):
-        """Return APIFoundset with records where fieldname contains value."""
+        """Return _DPTFoundSet with records where fieldname contains value."""
         if isinstance(value, self._dbe.APIFieldValue):
-            return _DPTFoundSet(
+            return new_dptfoundset(
                 self,
-                self.opencontext.FindRecords(
-                    self._dbe.APIFindSpecification(
-                        self.dpt_field_names[fieldname], self._dbe.FD_EQ, value
-                    )
+                self._dbe.APIFindSpecification(
+                    self.dpt_field_names[fieldname], self._dbe.FD_EQ, value
                 ),
             )
-        return _DPTFoundSet(
+        return new_dptfoundset(
             self,
-            self.opencontext.FindRecords(
-                self._dbe.APIFindSpecification(
-                    self.dpt_field_names[fieldname],
-                    self._dbe.FD_EQ,
-                    self._dbe.APIFieldValue(value),
-                )
+            self._dbe.APIFindSpecification(
+                self.dpt_field_names[fieldname],
+                self._dbe.FD_EQ,
+                self._dbe.APIFieldValue(value),
             ),
         )
 
     def foundset_record_number(self, recnum):
-        """Return APIFoundset of record whose record number is recnum."""
-        return _DPTFoundSet(
+        """Return _DPTFoundSet of record whose record number is recnum."""
+        return new_dptfoundset(
             self,
-            self.opencontext.FindRecords(
-                self._dbe.APIFindSpecification(self._dbe.FD_SINGLEREC, recnum)
-            ),
+            self._dbe.APIFindSpecification(self._dbe.FD_SINGLEREC, recnum),
         )
 
     def foundset_records_before_record_number(self, recnum):
-        """Return APIFoundset of records before recnum in file."""
-        return _DPTFoundSet(
+        """Return _DPTFoundSet of records before recnum in file."""
+        return new_dptfoundset(
             self,
-            self.opencontext.FindRecords(
-                self._dbe.APIFindSpecification(self._dbe.FD_NOT_POINT, recnum)
-            ),
+            self._dbe.APIFindSpecification(self._dbe.FD_NOT_POINT, recnum),
         )
 
     def foundset_records_not_before_record_number(self, recnum):
-        """Return APIFoundset of records at and after recnum in file."""
-        return _DPTFoundSet(
+        """Return _DPTFoundSet of records at and after recnum in file."""
+        return new_dptfoundset(
             self,
-            self.opencontext.FindRecords(
-                self._dbe.APIFindSpecification(self._dbe.FD_POINT, recnum)
-            ),
+            self._dbe.APIFindSpecification(self._dbe.FD_POINT, recnum),
         )
 
     def foundset_recordset_before_record_number(self, recnum, recordset):
-        """Return APIFoundset of records before recnum in recordset."""
-        return _DPTFoundSet(
+        """Return _DPTFoundSet of records before recnum in recordset."""
+        return new_dptfoundset(
             self,
-            self.opencontext.FindRecords(
-                self._dbe.APIFindSpecification(self._dbe.FD_NOT_POINT, recnum),
-                recordset,
-            ),
+            self._dbe.APIFindSpecification(self._dbe.FD_NOT_POINT, recnum),
+            recordset,
         )
 
 
@@ -2437,7 +2407,9 @@ class Cursor(cursor.Cursor):
                 # key, value = record
                 if not record[0].startswith(self.get_converted_partial()):
                     return None
-            except Exception:
+            except TypeError:
+                if record is not None:
+                    raise
                 return None
         return record
 
@@ -2934,7 +2906,7 @@ class _CursorDPT:
             pos = rscursor.LastAdvancedRecNum()
             if pos > key:
                 adv = -1
-            elif pos < key:
+            else:  # adv will not be used if key == pos.
                 adv = 1
             while rscursor.Accessible():
                 if key == rscursor.LastAdvancedRecNum():
@@ -3060,85 +3032,69 @@ class _CursorDPT:
         return None
 
     def _foundset_all_records(self):
-        return _DPTFoundSet(
+        return new_dptfoundset(
             self,
-            self.dptdb.FindRecords(
-                dptapi.APIFindSpecification(
-                    self.dptfieldname,
-                    dptapi.FD_ALLRECS,
-                    dptapi.APIFieldValue(""),
-                )
+            dptapi.APIFindSpecification(
+                self.dptfieldname,
+                dptapi.FD_ALLRECS,
+                dptapi.APIFieldValue(""),
             ),
         )
 
     def _foundset_field_equals_value(self, value):
         if isinstance(value, dptapi.APIFieldValue):
-            return _DPTFoundSet(
+            return new_dptfoundset(
                 self,
-                self.dptdb.FindRecords(
-                    dptapi.APIFindSpecification(
-                        self.dptfieldname, dptapi.FD_EQ, value
-                    )
+                dptapi.APIFindSpecification(
+                    self.dptfieldname, dptapi.FD_EQ, value
                 ),
             )
-        return _DPTFoundSet(
+        return new_dptfoundset(
             self,
-            self.dptdb.FindRecords(
-                dptapi.APIFindSpecification(
-                    self.dptfieldname,
-                    dptapi.FD_EQ,
-                    dptapi.APIFieldValue(value),
-                )
+            dptapi.APIFindSpecification(
+                self.dptfieldname,
+                dptapi.FD_EQ,
+                dptapi.APIFieldValue(value),
             ),
         )
 
     def _foundset_record_number(self, recnum):
-        return _DPTFoundSet(
+        return new_dptfoundset(
             self,
-            self.dptdb.FindRecords(
-                dptapi.APIFindSpecification(dptapi.FD_SINGLEREC, recnum)
-            ),
+            dptapi.APIFindSpecification(dptapi.FD_SINGLEREC, recnum),
         )
 
     def _foundset_records_before_record_number(self, recnum):
-        return _DPTFoundSet(
+        return new_dptfoundset(
             self,
-            self.dptdb.FindRecords(
-                dptapi.APIFindSpecification(dptapi.FD_NOT_POINT, recnum)
-            ),
+            dptapi.APIFindSpecification(dptapi.FD_NOT_POINT, recnum),
         )
 
     def _foundset_records_not_before_record_number(self, recnum):
-        return _DPTFoundSet(
+        return new_dptfoundset(
             self,
-            self.dptdb.FindRecords(
-                dptapi.APIFindSpecification(dptapi.FD_POINT, recnum)
-            ),
+            dptapi.APIFindSpecification(dptapi.FD_POINT, recnum),
         )
 
     def _foundset_recordset_before_record_number(self, recnum, recordset):
-        return _DPTFoundSet(
+        return new_dptfoundset(
             self,
-            self.dptdb.FindRecords(
-                dptapi.APIFindSpecification(dptapi.FD_NOT_POINT, recnum),
-                recordset.recordset,
-            ),
+            dptapi.APIFindSpecification(dptapi.FD_NOT_POINT, recnum),
+            recordset.recordset,
         )
 
     def foundset_all_records(self):
         """Return _DPTFoundSet containg all records."""
         if self._delete_foundset_on_close_cursor:
             return self._foundset_all_records()
-        return _DPTFoundSet(
+        return new_dptfoundset(
             self,
-            self.dptdb.FindRecords(
-                dptapi.APIFindSpecification(
-                    self.dptfieldname,
-                    dptapi.FD_ALLRECS,
-                    dptapi.APIFieldValue(""),
-                ),
-                self._foundset.recordset,
+            dptapi.APIFindSpecification(
+                self.dptfieldname,
+                dptapi.FD_ALLRECS,
+                dptapi.APIFieldValue(""),
             ),
+            self._foundset.recordset,
         )
 
     def foundset_field_equals_value(self, value):
@@ -3149,52 +3105,44 @@ class _CursorDPT:
         """
         if self._delete_foundset_on_close_cursor:
             return self._foundset_field_equals_value(value)
-        return _DPTFoundSet(
+        return new_dptfoundset(
             self,
-            self.dptdb.FindRecords(
-                dptapi.APIFindSpecification(
-                    self.dptfieldname,
-                    dptapi.FD_EQ,
-                    dptapi.APIFieldValue(value),
-                ),
-                self._foundset.recordset,
+            dptapi.APIFindSpecification(
+                self.dptfieldname,
+                dptapi.FD_EQ,
+                dptapi.APIFieldValue(value),
             ),
+            self._foundset.recordset,
         )
 
     def foundset_record_number(self, recnum):
         """Return _DPTFoundSet of record whose record number is recnum."""
         if self._delete_foundset_on_close_cursor:
             return self._foundset_record_number(recnum)
-        return _DPTFoundSet(
+        return new_dptfoundset(
             self,
-            self.dptdb.FindRecords(
-                dptapi.APIFindSpecification(dptapi.FD_SINGLEREC, recnum),
-                self._foundset.recordset,
-            ),
+            dptapi.APIFindSpecification(dptapi.FD_SINGLEREC, recnum),
+            self._foundset.recordset,
         )
 
     def foundset_records_before_record_number(self, recnum):
         """Return _DPTFoundSet of records before recnum."""
         if self._delete_foundset_on_close_cursor:
             return self._foundset_records_before_record_number(recnum)
-        return _DPTFoundSet(
+        return new_dptfoundset(
             self,
-            self.dptdb.FindRecords(
-                dptapi.APIFindSpecification(dptapi.FD_NOT_POINT, recnum),
-                self._foundset.recordset,
-            ),
+            dptapi.APIFindSpecification(dptapi.FD_NOT_POINT, recnum),
+            self._foundset.recordset,
         )
 
     def foundset_records_not_before_record_number(self, recnum):
         """Return _DPTFoundSet of records not before recnum."""
         if self._delete_foundset_on_close_cursor:
             return self._foundset_records_not_before_record_number(recnum)
-        return _DPTFoundSet(
+        return new_dptfoundset(
             self,
-            self.dptdb.FindRecords(
-                dptapi.APIFindSpecification(dptapi.FD_POINT, recnum),
-                self._foundset.recordset,
-            ),
+            dptapi.APIFindSpecification(dptapi.FD_POINT, recnum),
+            self._foundset.recordset,
         )
 
     def foundset_recordset_before_record_number(self, recnum, recordset):
@@ -3203,12 +3151,10 @@ class _CursorDPT:
             return self._foundset_recordset_before_record_number(
                 recnum, recordset
             )
-        return _DPTFoundSet(
+        return new_dptfoundset(
             self,
-            self.dptdb.FindRecords(
-                dptapi.APIFindSpecification(dptapi.FD_NOT_POINT, recnum),
-                recordset.recordset,
-            ),
+            dptapi.APIFindSpecification(dptapi.FD_NOT_POINT, recnum),
+            recordset.recordset,
         )
 
     def _first(self):
@@ -3297,7 +3243,7 @@ class _CursorDPT:
 
 
 class _DPTRecordSet:
-    """Methods common to _DPTRecordList and _DPTFoundSet.
+    """Base class for _DPTRecordList and _DPTFoundSet.
 
     Provide & (__and__),  ^ (__xor__), and | (__or__) operators absent in
     the dptapi interface.
@@ -3306,6 +3252,28 @@ class _DPTRecordSet:
     recordset._RecordSetBase for the other database engines.
     """
 
+    # Default bindings for attributes.
+    _context = None
+    _primary = None
+    recordset = None
+
+    def __init__(self):
+        """Create instance with default state.
+
+        Create instances of subclasses _DPTRecordList and _DPTFoundSet with
+        the new_dptrecordlist and new_dptfoundset functions.
+        """
+
+    @property
+    def table_connection(self):
+        """Return OpenContext object for table."""
+        return self._context
+
+    @property
+    def primary(self):
+        """Return primary field name for table."""
+        return self._primary
+
     def __del__(self):
         """Destroy APIRecordList instance if not done by explicit close()."""
         if self.recordset:
@@ -3313,21 +3281,21 @@ class _DPTRecordSet:
 
     def __or__(self, other):
         """Return _DPTRecordList of records in self or other."""
-        recordlist = new_dptrecordlist(self, self._context.CreateRecordList())
+        recordlist = new_dptrecordlist(self)
         recordlist.recordset.Place(self.recordset)
         recordlist.recordset.Place(other.recordset)
         return recordlist
 
     def __and__(self, other):
         """Return _DPTRecordList of records in self and other."""
-        recordlist = new_dptrecordlist(self, self._context.CreateRecordList())
+        recordlist = new_dptrecordlist(self)
         recordlist.recordset.Place(self.recordset)
         recordlist &= other
         return recordlist
 
     def __xor__(self, other):
         """Return _DPTRecordList of records in self or other, but not both."""
-        recordlist = new_dptrecordlist(self, self._context.CreateRecordList())
+        recordlist = new_dptrecordlist(self)
         recordlist.recordset.Place(self.recordset)
         recordlist ^= other
         return recordlist
@@ -3393,12 +3361,6 @@ class _DPTRecordList(_DPTRecordSet):
     _DPTRecordList is roughly equivalent to recordset.RecordList.
     """
 
-    def __init__(self, database):
-        """Note context and create a _DPTRecordList in context."""
-        self._context = database.table_connection
-        self._primary = database.primary
-        self.recordset = self._context.CreateRecordList()
-
     def __ior__(self, other):
         """Return self with records in self or other."""
         self.recordset.Place(other.recordset)
@@ -3406,7 +3368,7 @@ class _DPTRecordList(_DPTRecordSet):
 
     def __iand__(self, other):
         """Return self with records in self and other."""
-        recordlist = new_dptrecordlist(self, self._context.CreateRecordList())
+        recordlist = new_dptrecordlist(self)
         recordlist.recordset.Place(self.recordset)
         recordlist.recordset.Remove(other.recordset)
         self.recordset.Remove(recordlist.recordset)
@@ -3414,7 +3376,7 @@ class _DPTRecordList(_DPTRecordSet):
 
     def __ixor__(self, other):
         """Return self with records in self or other but not both."""
-        recordlist = new_dptrecordlist(self, self._context.CreateRecordList())
+        recordlist = new_dptrecordlist(self)
         recordlist.recordset.Place(other.recordset)
         recordlist.recordset.Remove(self.recordset)
         self.recordset.Remove(recordlist.recordset)
@@ -3430,9 +3392,7 @@ class _DPTRecordList(_DPTRecordSet):
         """Place record record_number on self, a _DPTRecordList."""
         foundset = new_dptfoundset(
             self,
-            self._context.FindRecords(
-                dptapi.APIFindSpecification(dptapi.FD_SINGLEREC, record_number)
-            ),
+            dptapi.APIFindSpecification(dptapi.FD_SINGLEREC, record_number),
         )
         self.recordset.Place(foundset.recordset)
 
@@ -3442,9 +3402,7 @@ class _DPTRecordList(_DPTRecordSet):
         """Remove record record_number on self, a _DPTRecordList."""
         foundset = new_dptfoundset(
             self,
-            self._context.FindRecords(
-                dptapi.APIFindSpecification(dptapi.FD_SINGLEREC, record_number)
-            ),
+            dptapi.APIFindSpecification(dptapi.FD_SINGLEREC, record_number),
         )
         self.recordset.Remove(foundset.recordset)
 
@@ -3477,42 +3435,41 @@ class _DPTFoundSet(_DPTRecordSet):
     recordset.FoundSet provides similar for non-dpt database engines.
     """
 
-    def __init__(self, database, foundset):
-        """Note foundset and it's owning context."""
-        self._context = database.table_connection
-        self._primary = database.primary
-        self.recordset = foundset
 
-
-def new_dptrecordlist(obj, recordset):
+def new_dptrecordlist(obj):
     """Return a _DPTRecordList for foundset with same file context as obj."""
 
-    class _EmptyDPTRecordList(_DPTRecordList):
+    class _EmptyDPTRecordList(_DPTRecordSet):
         """Subclass which does not invoke superclass __init__()."""
 
-        def __init__(self, recordset):
+        def __init__(self):
             """Initialize the attributes which do not need a deep copy."""
-            self._context = obj._context
-            self._primary = obj._primary
-            self.recordset = recordset
+            self._context = obj.table_connection
+            self._primary = obj.primary
+            self.recordset = obj.table_connection.CreateRecordList()
 
-    new_recordlist = _EmptyDPTRecordList(recordset)
+    new_recordlist = _EmptyDPTRecordList()
     new_recordlist.__class__ = _DPTRecordList
     return new_recordlist
 
 
-def new_dptfoundset(obj, recordset):
-    """Return a _DPTFoundSet for foundset with same file context as obj."""
+def new_dptfoundset(obj, *finder_args):
+    """Return a _DPTFoundSet, with same file context as obj, made by finder.
 
-    class _EmptyDPTFoundSet(_DPTFoundSet):
+    obj is a DPTFile instance.
+    finder is a function which returns an APIFoundset instance.
+
+    """
+
+    class _EmptyDPTFoundSet(_DPTRecordSet):
         """Subclass which does not invoke superclass __init__()."""
 
-        def __init__(self, recordset):
+        def __init__(self):
             """Initialize the attributes which do not need a deep copy."""
-            self._context = obj._context
-            self._primary = obj._primary
-            self.recordset = recordset
+            self._context = obj.table_connection
+            self._primary = obj.primary
+            self.recordset = obj.table_connection.FindRecords(*finder_args)
 
-    new_foundset = _EmptyDPTFoundSet(recordset)
+    new_foundset = _EmptyDPTFoundSet()
     new_foundset.__class__ = _DPTFoundSet
     return new_foundset

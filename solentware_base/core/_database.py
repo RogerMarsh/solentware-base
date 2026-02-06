@@ -332,7 +332,7 @@ class Database:
         # record number only.
         return self.is_primary(file, field)
 
-    def repair_cursor(self, oldcursor, *a):
+    def repair_cursor(self, oldcursor, file, field):
         """Return oldcursor for compatibility with DPT database engine.
 
         When using the DPT database engine an application may need to replace
@@ -344,10 +344,10 @@ class Database:
         cursor in DPT.  The existing cursor will notice the new record in the
         Berkeley DB and SQLite3 database engines.
 
-        *a absorbs the arguments needed by the DPT version of this method.
+        The 'file' and 'field' parameters are ignored.
 
         """
-        del a
+        del file, field
         return oldcursor
 
     def allocate_and_open_contexts(self, files=None):
