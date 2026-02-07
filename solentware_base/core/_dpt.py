@@ -3255,7 +3255,7 @@ class _DPTRecordSet:
     # Default bindings for attributes.
     _context = None
     _primary = None
-    recordset = None
+    _recordset = None
 
     def __init__(self):
         """Create instance with default state.
@@ -3273,6 +3273,11 @@ class _DPTRecordSet:
     def primary(self):
         """Return primary field name for table."""
         return self._primary
+
+    @property
+    def recordset(self):
+        """Return RecordSet on table."""
+        return self._recordset
 
     def __del__(self):
         """Destroy APIRecordList instance if not done by explicit close()."""
@@ -3312,7 +3317,7 @@ class _DPTRecordSet:
 
         # This should cause deletion of the APIRecordSet object, but may not
         # cause deletion of this _DPTRecordSet instance.
-        self.recordset = None
+        self._recordset = None
 
         # This probably does not cause deletion of the APIDatabaseContext but
         # does mean subsequent close() calls will raise an AttributeError.
@@ -3446,7 +3451,7 @@ def new_dptrecordlist(obj):
             """Initialize the attributes which do not need a deep copy."""
             self._context = obj.table_connection
             self._primary = obj.primary
-            self.recordset = obj.table_connection.CreateRecordList()
+            self._recordset = obj.table_connection.CreateRecordList()
 
     new_recordlist = _EmptyDPTRecordList()
     new_recordlist.__class__ = _DPTRecordList
@@ -3468,7 +3473,7 @@ def new_dptfoundset(obj, *finder_args):
             """Initialize the attributes which do not need a deep copy."""
             self._context = obj.table_connection
             self._primary = obj.primary
-            self.recordset = obj.table_connection.FindRecords(*finder_args)
+            self._recordset = obj.table_connection.FindRecords(*finder_args)
 
     new_foundset = _EmptyDPTFoundSet()
     new_foundset.__class__ = _DPTFoundSet
