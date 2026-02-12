@@ -3300,9 +3300,10 @@ class _DPTRecordSet:
 
     def __xor__(self, other):
         """Return _DPTRecordList of records in self or other, but not both."""
-        recordlist = new_dptrecordlist(self)
-        recordlist.recordset.Place(self.recordset)
-        recordlist ^= other
+        recordlist_and = self & other
+        recordlist = self | other
+        recordlist.recordset.Remove(recordlist_and.recordset)
+        recordlist_and.close()
         return recordlist
 
     def close(self):
