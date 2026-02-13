@@ -87,12 +87,12 @@ class Database(_dpt.Database):
         return DPTFile
 
     def set_defer_update(self):
-        """Override. Note Table B pages used at start of dferred update."""
+        """Note Table B pages used at start of dferred update."""
         for table in self.table.values():
             table.set_defer_update()
 
     def unset_defer_update(self):
-        """Override.  Add Table D pages to fit Table B pages added."""
+        """Add Table D pages to fit Table B pages added."""
         for table in self.table.values():
             table.unset_defer_update()
         self.commit()
@@ -243,7 +243,7 @@ class DPTFile(_dpt.DPTFile):
             )
 
     def set_defer_update(self):
-        """Override. Note Table B pages used at start of deferred update.
+        """Note Table B pages used at start of deferred update.
 
         BHIGHPG is proxy for pages used, initialized to -1.
 
@@ -254,7 +254,7 @@ class DPTFile(_dpt.DPTFile):
         )
 
     def unset_defer_update(self):
-        """Override.  Add Table D pages to fit Table B pages added.
+        """Add Table D pages to fit Table B pages added.
 
         BHIGHPG is proxy for pages used, initialized to -1.
 
