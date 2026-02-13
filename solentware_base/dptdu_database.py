@@ -95,6 +95,7 @@ class Database(_dpt.Database):
         """Override.  Add Table D pages to fit Table B pages added."""
         for table in self.table.values():
             table.unset_defer_update()
+        self.commit()
 
     def do_final_segment_deferred_updates(self):
         """Do nothing.  Provided for compatibility with other engines."""
