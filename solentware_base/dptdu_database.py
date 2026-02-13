@@ -88,6 +88,7 @@ class Database(_dpt.Database):
 
     def set_defer_update(self):
         """Note Table B pages used at start of dferred update."""
+        self.start_transaction()
         for table in self.table.values():
             table.set_defer_update()
 
