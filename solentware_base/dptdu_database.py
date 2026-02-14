@@ -384,6 +384,7 @@ class DPTFile(_dpt.DPTFile):
                             dptapi.APIFieldValue(self.prev_key),
                         )
                     self.prev_key = key
+                    self.close_recordlist()
                     self.new_recordlist()
                 place = self.recordlist.Place
                 for number in valuelist:
