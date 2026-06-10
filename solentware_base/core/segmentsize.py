@@ -28,6 +28,7 @@ Normalization converts a list with more than 'upper' records to a bitmap.
 Normalization converts a bitmap with less than 'lower' records to a list.
 
 """
+
 from . import bytebit
 
 

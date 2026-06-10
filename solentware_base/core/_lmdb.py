@@ -3,6 +3,7 @@
 # Licence: See LICENCE (BSD licence)
 
 """Access a Symas Lightning Memory-Mapped Database (LMMD) database."""
+
 import os
 from ast import literal_eval
 import bisect

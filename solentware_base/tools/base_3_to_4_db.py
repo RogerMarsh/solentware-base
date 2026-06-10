@@ -8,6 +8,7 @@ The Berkeley DB databases are moved from their 'one database per file'
 organization to an 'all databases on one file' organization.
 
 """
+
 import os
 
 from ..core.segmentsize import SegmentSize

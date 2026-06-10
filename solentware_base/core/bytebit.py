@@ -14,6 +14,7 @@ Bitarray mostly takes about 4 times longer to do something than bitarray, but
 takes about 100 times longer to count set bits.
 
 """
+
 # The decision is made here, rather than in solentware_base.__init__, because
 # the DPT specific modules in solentware_base do not need a bit array class as
 # DPT provides it's own bit array handling.

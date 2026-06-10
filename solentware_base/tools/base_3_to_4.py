@@ -3,6 +3,7 @@
 # Licence: See LICENCE (BSD licence)
 
 """Upgrade a solentware_base version 3 database to version 4."""
+
 import os
 
 from ..core.filespec import FileSpec

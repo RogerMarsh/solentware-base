@@ -3,6 +3,7 @@
 # Licence: See LICENSE.txt (BSD licence)
 
 """Delete index references kept, not replaced, in deferred update runs."""
+
 import os
 import sys
 

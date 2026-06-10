@@ -9,6 +9,7 @@ updates, which will be a lot quicker when adding lots of new
 records.
 
 """
+
 from .core import _dpt
 
 

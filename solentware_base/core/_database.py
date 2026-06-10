@@ -9,6 +9,7 @@ methods.  The _dpt module's versions of these methods are too different to
 justify making _dpt.Database a subclass of _database.Database.
 
 """
+
 from .segmentsize import SegmentSize
 from .find import Find
 from .where import Where

@@ -9,6 +9,7 @@ The apsw_database module provides the database interface.
 Prefer to use the apsw_database module normally.
 
 """
+
 from . import apsw_database
 from .core import _sqlitedu
 from .core import _sqlite

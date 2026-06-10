@@ -9,6 +9,7 @@ The berkeleydb_database module provides the database interface.
 Prefer to use the berkeleydb_database module normally.
 
 """
+
 from . import berkeleydb_database
 from .core import _dbdu
 from .core import _db

@@ -7,6 +7,7 @@
 When using sqlite3 the Python version must be 3.6 or later.
 
 """
+
 from .constants import (
     SECONDARY,
     SQLITE_SEGMENT_COLUMN,

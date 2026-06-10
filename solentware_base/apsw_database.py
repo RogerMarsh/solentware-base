@@ -10,6 +10,7 @@ Prefer to use the apswdu_database module when adding lots of new
 records.  It will be a lot quicker because it defers index updates.
 
 """
+
 import apsw
 
 from .core import _sqlite

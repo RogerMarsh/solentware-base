@@ -3,6 +3,7 @@
 # Licence: See LICENCE (BSD licence)
 
 """Access a Berkeley DB database with the berkeleydb or bsddb3 modules."""
+
 from .constants import (
     SECONDARY,
     # ACCESS_METHOD,

@@ -3,6 +3,7 @@
 # Licence: See LICENCE (BSD licence)
 
 """Upgrade a solentware_base version 3 database on SQLite 3 to version 4."""
+
 import os
 
 from ..core.segmentsize import SegmentSize

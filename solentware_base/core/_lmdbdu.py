@@ -3,6 +3,7 @@
 # Licence: See LICENCE (BSD licence)
 
 """Deferred update access to Symas Lightning Memory-Mapped Database (LMMD)."""
+
 from .constants import (
     SECONDARY,
     SUBFILE_DELIMITER,

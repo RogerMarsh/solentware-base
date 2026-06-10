@@ -18,6 +18,7 @@ Berkeley DB 4.6 is not compatible with berkeleydb, but can be accessed by
 the _db_tkinter module, a sibling of _db (this module).
 
 """
+
 import os
 from ast import literal_eval
 import bisect

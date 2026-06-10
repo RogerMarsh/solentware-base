@@ -8,6 +8,7 @@ Method names are taken from Berkeley DB to indicate preference for that
 style of cursor.
 
 """
+
 from . import cursor
 
 

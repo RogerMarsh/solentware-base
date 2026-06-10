@@ -10,6 +10,7 @@ See www.dptoolkit.com for details of DPT (No longer exists.  The database
 interface part of DPT is available at www.solentware.co.uk)
 
 """
+
 # Module names of supported database engines (<module>.__name__).
 BERKELEYDB_MODULE = "berkeleydb"
 BSDDB3_MODULE = "bsddb3"

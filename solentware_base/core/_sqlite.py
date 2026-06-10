@@ -7,6 +7,7 @@
 When using sqlite3 the Python version must be 3.6 or later.
 
 """
+
 import os
 from ast import literal_eval
 import re

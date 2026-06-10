@@ -3,6 +3,7 @@
 # Licence: See LICENCE (BSD licence)
 
 """tree tests."""
+
 # The _nosql and test__nosql  modules are written by copying _sqlite and
 # test__sqlite, then change test__nosql to do unqlite or vedis things one test
 # at a time and replace the SQLite things in _nosql as they get hit.

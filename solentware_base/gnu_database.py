@@ -10,6 +10,7 @@ Prefer to use the gnudu_database module when adding lots of new
 records.  It will be a lot quicker because it defers index updates.
 
 """
+
 from . import gnu_module
 from .core import _nosql
 

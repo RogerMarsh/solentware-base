@@ -9,6 +9,7 @@ The ndbm_database module provides the database interface.
 Prefer to use the ndbm_database module normally.
 
 """
+
 from . import ndbm_database
 from .core import _nosqldu
 from .core import _nosql

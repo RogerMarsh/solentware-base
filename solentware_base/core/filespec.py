@@ -7,6 +7,7 @@
 Example database specifications are in the samples directory.
 
 """
+
 import os
 
 from .constants import (

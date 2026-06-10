@@ -9,6 +9,7 @@ The sqlite3_database module provides the database interface.
 Prefer to use the sqlite3_database module normally.
 
 """
+
 from . import sqlite3_database
 from .core import _sqlitedu
 from .core import _sqlite

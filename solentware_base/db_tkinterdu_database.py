@@ -9,6 +9,7 @@ The db_tkinter_database module provides the database interface.
 Prefer to use the tkinter_database module normally.
 
 """
+
 from . import db_tkinter_database
 from .core import _dbdu_tkinter
 from .core import _db_tkinter

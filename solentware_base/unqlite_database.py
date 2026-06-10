@@ -10,6 +10,7 @@ Prefer to use the unqlitedu_database module when adding lots of new
 records.  It will be a lot quicker because it defers index updates.
 
 """
+
 import unqlite
 
 from .core import _nosql

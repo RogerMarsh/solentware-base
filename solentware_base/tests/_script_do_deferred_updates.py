@@ -4,6 +4,5 @@
 
 """Script run by unittests in test_do_deferred_updates."""
 
-
 if __name__ == "__main__":
     pass

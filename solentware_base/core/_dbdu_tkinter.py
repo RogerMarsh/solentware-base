@@ -3,6 +3,7 @@
 # Licence: See LICENCE (BSD licence)
 
 """Access a Berkeley DB database with tcl via the tkinter module."""
+
 from ..db_tcl import tcl_tk_call
 from .constants import (
     SECONDARY,

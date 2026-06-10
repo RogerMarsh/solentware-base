@@ -9,6 +9,7 @@ deferred updates is so different there is no equivalent separate module for
 DPT.
 
 """
+
 from . import _database
 from .segmentsize import SegmentSize
 from .constants import SECONDARY

@@ -3,6 +3,7 @@
 # Licence: See LICENCE (BSD licence)
 
 """Provide Gnu class to fit dbm.gnu API to UnQLite and Vedis API."""
+
 import dbm.gnu
 
 

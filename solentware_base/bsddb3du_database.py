@@ -9,6 +9,7 @@ The bsddb3_database module provides the database interface.
 Prefer to use the bsddb3_database module normally.
 
 """
+
 from . import bsddb3_database
 from .core import _dbdu
 from .core import _db

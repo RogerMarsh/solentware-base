@@ -3,6 +3,7 @@
 # Licence: See LICENCE (BSD licence)
 
 """Provide Ndbm class to fit dbm.ndbm API to UnQLite and Vedis API."""
+
 import dbm.ndbm
 
 

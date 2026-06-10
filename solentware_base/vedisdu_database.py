@@ -9,6 +9,7 @@ The vedis_database module provides the database interface.
 Prefer to use the vedis_database module normally.
 
 """
+
 from . import vedis_database
 from .core import _nosqldu
 from .core import _nosql

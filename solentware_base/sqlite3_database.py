@@ -13,6 +13,7 @@ The Python version must be 3.6 or later.  Use apsw_database on earlier
 versions of Python.
 
 """
+
 import sqlite3
 
 from .core import _sqlite

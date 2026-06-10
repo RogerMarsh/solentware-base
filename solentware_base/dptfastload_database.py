@@ -8,6 +8,7 @@ The DPT fastload interface is used to do updates.  The compressed file
 format defined in Appendix 2 of the DBA Guide is used.
 
 """
+
 import os
 
 from .core import _dpt

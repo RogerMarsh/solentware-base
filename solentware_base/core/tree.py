@@ -8,6 +8,7 @@ This module provides ordered access to indicies stored in databases such as
 UnQLite and Vedis.
 
 """
+
 from bisect import bisect_right, bisect_left
 from ast import literal_eval
 
