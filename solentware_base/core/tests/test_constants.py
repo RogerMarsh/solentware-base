@@ -22,7 +22,7 @@ class ConstantsFunctions(unittest.TestCase):
         ae = self.assertEqual
         ae(constants.BERKELEYDB_MODULE, "berkeleydb")
         ae(constants.BSDDB3_MODULE, "bsddb3")
-        ae(constants.DPT_MODULE, "dptdb.dptapi")
+        ae(constants.DPT_MODULE, "dpt_dbms.dptapi")
         ae(constants.SQLITE3_MODULE, "sqlite3")
         ae(constants.APSW_MODULE, "apsw")
         ae(constants.SQLITE_VALUE_COLUMN, "Value")

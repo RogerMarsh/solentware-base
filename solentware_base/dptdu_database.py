@@ -12,7 +12,7 @@ but adding lots of new records will be a lot slower.
 
 import os
 
-from dptdb import dptapi
+from dpt_dbms import dptapi
 
 from .core import _dpt
 from .core.constants import (

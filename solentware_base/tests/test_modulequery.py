@@ -56,7 +56,7 @@ class Modulequery(unittest.TestCase):
                 self.assertEqual(
                     r,
                     (
-                        "dptdb.dptapi",
+                        "dpt_dbms.dptapi",
                         "berkeleydb",
                         "bsddb3",
                         "solentware_base.db_tcl",
@@ -84,7 +84,7 @@ class Modulequery(unittest.TestCase):
                 self.assertEqual(
                     r,
                     (
-                        "dptdb.dptapi",
+                        "dpt_dbms.dptapi",
                         "berkeleydb",
                         "bsddb3",
                         "solentware_base.db_tcl",
@@ -123,7 +123,7 @@ class Modulequery(unittest.TestCase):
                     "bsddb3",
                     "dbm.gnu",
                     "dbm.ndbm",
-                    "dptdb.dptapi",
+                    "dpt_dbms.dptapi",
                     "lmdb",
                     "sqlite3",
                     "unqlite",

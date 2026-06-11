@@ -31,9 +31,9 @@ class Cursor:
 
     For apsw and sqlite3 (SQLite) dbset will be a Connection() object.
 
-    For dptdb (DPT) dbset will be a core._dpt.DPTFile() object which creates
-    a RecordSetCursor() or DirectValueCursor(), for records and indicies, on
-    an OpenContext() object.
+    For dpt_dbms (DPT) dbset will be a core._dpt.DPTFile() object which
+    creates a RecordSetCursor() or DirectValueCursor(), for records and
+    indicies, on an OpenContext() object.
 
     (A version of the DPT interface is planned where dbset will be an
     OpenContext() object.)

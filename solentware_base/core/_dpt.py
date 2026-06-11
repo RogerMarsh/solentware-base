@@ -2,7 +2,7 @@
 # Copyright 2019 Roger Marsh
 # Licence: See LICENCE (BSD licence)
 
-"""Access a DPT database with the dptdb module.
+"""Access a DPT database with the dpt_dbms module.
 
 The database will have been created from the application's customization
 of the filespec.FileSpec class.
@@ -13,7 +13,7 @@ import os
 from ast import literal_eval
 import re
 
-from dptdb import dptapi
+from dpt_dbms import dptapi
 
 from . import _database
 from . import filespec
@@ -421,7 +421,7 @@ class Database(_database.Database):
         return self.table[file].get_primary_record(key)
 
     def encode_record_number(self, key):
-        """Return repr(key) because this is dptdb version.
+        """Return repr(key) because this is dpt_dbms version.
 
         Typically used to convert primary key, a record number, to secondary
         index format.
@@ -430,7 +430,7 @@ class Database(_database.Database):
         return repr(key)
 
     def decode_record_number(self, skey):
-        """Return literal_eval(skey) because this is dptdb version.
+        """Return literal_eval(skey) because this is dpt_dbms version.
 
         Typically used to convert secondary index reference to primary record,
         a str(int), to a record number.
@@ -439,7 +439,7 @@ class Database(_database.Database):
         return literal_eval(skey)
 
     def encode_record_selector(self, key):
-        """Return key because this is dptdb version.
+        """Return key because this is dpt_dbms version.
 
         Typically used to convert a key being used to search a secondary index
         to the form held on the database.

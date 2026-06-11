@@ -4,7 +4,7 @@
 
 """Provide an identical interface to several Python database modules.
 
-The supported modules, or packages, are apsw, bsbdb3, dbm, dptdb, ndbm,
+The supported modules, or packages, are apsw, bsbdb3, dbm, dpt_dbms, ndbm,
 sqlite3, unqlite, and vedis.
 
 """

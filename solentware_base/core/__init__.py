@@ -16,6 +16,6 @@ The dbm module for dbm.gnu databases is supported.
 
 The ndbm module for ndbm.gnu databases is supported.
 
-The dptdb module for DPT databases is supported.
+The dpt_dbms module for DPT databases is supported.
 
 """

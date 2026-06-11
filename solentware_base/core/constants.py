@@ -14,7 +14,7 @@ interface part of DPT is available at www.solentware.co.uk)
 # Module names of supported database engines (<module>.__name__).
 BERKELEYDB_MODULE = "berkeleydb"
 BSDDB3_MODULE = "bsddb3"
-DPT_MODULE = "dptdb.dptapi"
+DPT_MODULE = "dpt_dbms.dptapi"
 SQLITE3_MODULE = "sqlite3"
 APSW_MODULE = "apsw"
 UNQLITE_MODULE = "unqlite"

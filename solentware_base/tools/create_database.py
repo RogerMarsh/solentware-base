@@ -61,7 +61,7 @@ try:
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     db_tcl = None
 try:
-    from dptdb import dptapi
+    from dpt_dbms import dptapi
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     dptapi = None
 try:

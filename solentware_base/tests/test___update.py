@@ -44,7 +44,7 @@ try:
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     lmdb = None
 try:
-    from dptdb import dptapi
+    from dpt_dbms import dptapi
 except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
     dptapi = None
 
