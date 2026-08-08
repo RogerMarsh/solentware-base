@@ -1975,6 +1975,22 @@ class DatabaseRemoveRecordFieldValue:
         self.assertEqual(db.exists("2_1"), False)
         self.assertEqual(db.exists("2_1_0_indexvalue"), False)
 
+    def t11_remove_record_from_field_value_09(self):
+        # One record number in each gap in list, plus one after high record
+        # number in segment and one before the low record.
+        for key, record_number in (
+            ("tww", 10),
+            ("tww", 50),
+            ("tww", 100),
+        ):
+            with self.subTest(key=key, record_number=record_number):
+                self.assertEqual(
+                    self.database.remove_record_from_field_value(
+                        "file1", "field1", key, 0, record_number
+                    ),
+                    None,
+                )
+
 
 class Database_populate_segment:
     def t01(self):
@@ -3504,13 +3520,11 @@ if gnu_module:
         )
 
     class Database_remove_record_from_field_valueGnu(_NoSQLOpenGnu):
-        test_01 = DatabaseRemoveRecordFieldValue.t01
-        test_02 = (
-            DatabaseRemoveRecordFieldValue.t02_remove_record_tree_field_value
-        )
-        test_03 = (
-            DatabaseRemoveRecordFieldValue.t03_remove_record_hash_field_value
-        )
+        drrfv = DatabaseRemoveRecordFieldValue
+        test_01 = drrfv.t01
+        test_02 = drrfv.t02_remove_record_tree_field_value
+        test_03 = drrfv.t03_remove_record_hash_field_value
+        test_11_09 = drrfv.t11_remove_record_from_field_value_09
 
     class Database_populate_segmentGnu(_NoSQLOpenGnu):
         test_01 = Database_populate_segment.t01
@@ -3967,13 +3981,11 @@ if ndbm_module:
         )
 
     class Database_remove_record_from_field_valueNdbm(_NoSQLOpenNdbm):
-        test_01 = DatabaseRemoveRecordFieldValue.t01
-        test_02 = (
-            DatabaseRemoveRecordFieldValue.t02_remove_record_tree_field_value
-        )
-        test_03 = (
-            DatabaseRemoveRecordFieldValue.t03_remove_record_hash_field_value
-        )
+        drrfv = DatabaseRemoveRecordFieldValue
+        test_01 = drrfv.t01
+        test_02 = drrfv.t02_remove_record_tree_field_value
+        test_03 = drrfv.t03_remove_record_hash_field_value
+        test_11_09 = drrfv.t11_remove_record_from_field_value_09
 
     class Database_populate_segmentNdbm(_NoSQLOpenNdbm):
         test_01 = Database_populate_segment.t01
@@ -4410,13 +4422,11 @@ if unqlite:
         )
 
     class Database_remove_record_from_field_valueUnqlite(_NoSQLOpenUnqlite):
-        test_01 = DatabaseRemoveRecordFieldValue.t01
-        test_02 = (
-            DatabaseRemoveRecordFieldValue.t02_remove_record_tree_field_value
-        )
-        test_03 = (
-            DatabaseRemoveRecordFieldValue.t03_remove_record_hash_field_value
-        )
+        drrfv = DatabaseRemoveRecordFieldValue
+        test_01 = drrfv.t01
+        test_02 = drrfv.t02_remove_record_tree_field_value
+        test_03 = drrfv.t03_remove_record_hash_field_value
+        test_11_09 = drrfv.t11_remove_record_from_field_value_09
 
     class Database_populate_segmentUnqlite(_NoSQLOpenUnqlite):
         test_01 = Database_populate_segment.t01
@@ -4853,13 +4863,11 @@ if vedis:
         )
 
     class Database_remove_record_from_field_valueVedis(_NoSQLOpenVedis):
-        test_01 = DatabaseRemoveRecordFieldValue.t01
-        test_02 = (
-            DatabaseRemoveRecordFieldValue.t02_remove_record_tree_field_value
-        )
-        test_03 = (
-            DatabaseRemoveRecordFieldValue.t03_remove_record_hash_field_value
-        )
+        drrfv = DatabaseRemoveRecordFieldValue
+        test_01 = drrfv.t01
+        test_02 = drrfv.t02_remove_record_tree_field_value
+        test_03 = drrfv.t03_remove_record_hash_field_value
+        test_11_09 = drrfv.t11_remove_record_from_field_value_09
 
     class Database_populate_segmentVedis(_NoSQLOpenVedis):
         test_01 = Database_populate_segment.t01

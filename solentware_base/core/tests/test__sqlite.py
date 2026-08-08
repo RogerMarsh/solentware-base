@@ -1634,6 +1634,22 @@ class Database_make_recordset:
             "file1", "field1", "one", 0, 50
         )
 
+    def t11_remove_record_from_field_value_09(self):
+        # One record number in each gap in list, plus one after high record
+        # number in segment and one before the low record.
+        for key, record_number in (
+            ("tww", 10),
+            ("tww", 50),
+            ("tww", 100),
+        ):
+            with self.subTest(key=key, record_number=record_number):
+                self.assertEqual(
+                    self.database.remove_record_from_field_value(
+                        "file1", "field1", key, 0, record_number
+                    ),
+                    None,
+                )
+
     def t12_populate_segment(self):
         s = self.database.populate_segment(("keyvalue", 2, 1, 3), "file1")
         self.assertIsInstance(s, recordset.RecordsetSegmentInt)
@@ -2737,6 +2753,9 @@ if sqlite3:
         test_09 = Database_make_recordset.t09_remove_record_from_field_value
         test_10 = Database_make_recordset.t10_remove_record_from_field_value
         test_11 = Database_make_recordset.t11_remove_record_from_field_value
+        test_11_09 = (
+            Database_make_recordset.t11_remove_record_from_field_value_09
+        )
         test_12 = Database_make_recordset.t12_populate_segment
         test_13 = Database_make_recordset.t13_populate_segment
         test_14 = Database_make_recordset.t14_populate_segment
@@ -3144,6 +3163,9 @@ if apsw:
         test_09 = Database_make_recordset.t09_remove_record_from_field_value
         test_10 = Database_make_recordset.t10_remove_record_from_field_value
         test_11 = Database_make_recordset.t11_remove_record_from_field_value
+        test_11_09 = (
+            Database_make_recordset.t11_remove_record_from_field_value_09
+        )
         test_12 = Database_make_recordset.t12_populate_segment
         test_13 = Database_make_recordset.t13_populate_segment
         test_14 = Database_make_recordset.t14_populate_segment

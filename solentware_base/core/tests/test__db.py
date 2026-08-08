@@ -1753,6 +1753,22 @@ if berkeleydb:
                 "file1", "field1", "one", 0, 50
             )
 
+        def test_11_remove_record_from_field_value_09(self):
+            # One record number in each gap in list, plus one after high
+            # record number in segment and one before the low record.
+            for key, record_number in (
+                ("tww", 10),
+                ("tww", 50),
+                ("tww", 100),
+            ):
+                with self.subTest(key=key, record_number=record_number):
+                    self.assertEqual(
+                        self.database.remove_record_from_field_value(
+                            "file1", "field1", key, 0, record_number
+                        ),
+                        None,
+                    )
+
         def test_12_populate_segment(self):
             s = self.database.populate_segment(
                 b"\x00\x00\x00\x02\x00\x03", "file1"

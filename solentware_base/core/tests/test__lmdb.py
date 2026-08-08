@@ -2872,6 +2872,22 @@ class Database_make_recordset(_Database_recordset):
         )
         self.verify_records(key, "11_08")
 
+    def test_11_remove_record_from_field_value_09(self):
+        # One record number in each gap in list, plus one after high record
+        # number in segment and one before the low record.
+        for key, record_number in (
+            ("tww", 10),
+            ("tww", 50),
+            ("tww", 100),
+        ):
+            with self.subTest(key=key, record_number=record_number):
+                self.assertEqual(
+                    self.database.remove_record_from_field_value(
+                        "file1", "field1", key, 0, record_number
+                    ),
+                    None,
+                )
+
 
 class Database_populate_recordset(_Database_recordset):
     def setUp(self):
