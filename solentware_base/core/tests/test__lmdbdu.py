@@ -1227,7 +1227,7 @@ class Database_find_value_segments(_DBOpen):
 
 
 # Not memory-only so the folder can hold the sorted index sequential files.
-class _DBOpen(DBdu):
+class _DBOpenDisk(DBdu):
     def setUp(self):
         super().setUp()
         self.folder = os.path.join("/tmp", "merge_test_lmdbdu")
@@ -1248,7 +1248,7 @@ class _DBOpen(DBdu):
         super().tearDown()
 
 
-class Database_merge_import(_DBOpen):
+class Database_merge_import(_DBOpenDisk):
     def test_01(self):
         database = self._D({}, segment_size_bytes=None)
         self.assertRaisesRegex(

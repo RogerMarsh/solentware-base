@@ -2494,7 +2494,18 @@ if sqlite3:
         test_04 = DatabaseInstance.t04_encode_record_selector
         test_05 = DatabaseInstance.t05_make_recordset
 
+    # The apsw equivalent, Database_open_databaseApsw(_SQLiteApsw),
+    # does not need tearDown method.
     class Database_open_databaseSqlite3(_SQLiteSqlite3):
+        # Some 'ResourceWarning: unclosed database in <sqlite3.Connection..>'
+        # messages seen when run by 'python -m unittest' are resolved by
+        # adding tearDown() method.  The method is not needed when run by
+        # 'python -m solentware_base.core.tests.test__sqlite'.
+        # Method is needed at Python3.13 (and later?) but not Python3.11.
+        def tearDown(self):
+            self.database.close_database()
+            super().tearDown()
+
         test_01 = Database_open_database.t01
         test_02 = Database_open_database.t02
         test_03 = Database_open_database.t03
@@ -2526,6 +2537,10 @@ if sqlite3:
 
             self._AD = _AD
 
+        # 'ResourceWarning: unclosed database in <sqlite3.Connection..>'
+        # message seen when run by 'python -m unittest' but not when run
+        # by 'python -m solentware_base.core.tests.test__sqlite'.
+        # The apsw equivalent does not get the ResourceWarning message.
         test_01 = Database_do_database_task.t01_do_database_task
 
     class _SQLiteOpenSqlite3(_SQLiteSqlite3):
@@ -2904,6 +2919,9 @@ if apsw:
         test_04 = DatabaseInstance.t04_encode_record_selector
         test_05 = DatabaseInstance.t05_make_recordset
 
+    # The sqlite3 equivalent, Database_open_databaseSqlite3(_SQLiteSqlite3),
+    # needs a tearDown method to resolve some ResourceWarning messages
+    # when run by 'python -m unittest'.
     class Database_open_databaseApsw(_SQLiteApsw):
         test_01 = Database_open_database.t01
         test_02 = Database_open_database.t02
@@ -2928,7 +2946,7 @@ if apsw:
 
             class _ED(_sqlite.Database):
                 def open_database(self, **k):
-                    super().open_database(sqlite3, **k)
+                    super().open_database(apsw, **k)
 
             class _AD(_ED):
                 def __init__(self, folder, **k):
@@ -2936,6 +2954,8 @@ if apsw:
 
             self._AD = _AD
 
+        # The sqlite3 equivalent gets a ResourceWarning message for
+        # unclosed database in <sqlite3.Connection ...> object.
         test_01 = Database_do_database_task.t01_do_database_task
 
     class _SQLiteOpenApsw(_SQLiteApsw):

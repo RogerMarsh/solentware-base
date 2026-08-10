@@ -732,7 +732,7 @@ class Database_find_value_segments:
 
 
 # Not memory-only so the folder can hold the sorted index sequential files.
-class _SQLiteMerge(_SQLitedu):
+class _SQLiteMerge:
     def setup_detail(self):
         self.folder = os.path.join("/tmp", "merge_test_sqlitedu")
         self.database = self._D(
@@ -745,11 +745,6 @@ class _SQLiteMerge(_SQLitedu):
         os.mkdir(self.sequential)
         self.field = os.path.join(self.sequential, "field1")
         os.mkdir(self.field)
-
-    def tearDown(self):
-        self.database.close_database()
-        shutil.rmtree(self.folder)
-        super().tearDown()
 
 
 class Database_merge_import:

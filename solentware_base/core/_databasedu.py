@@ -250,17 +250,24 @@ class Database(_database.Database):
         writer = self.merge_writer(file, field)
         merger = merge.Merge(index_directory)
         commit_count = None
-        for commit_count, item in enumerate(merger.sorter()):
-            if not commit_count % commit_limit:
-                if commit_count:
-                    writer.close_cursor()
-                    self.commit()
-                    self.deferred_update_housekeeping()
-                    yield commit_count
-                    self.start_transaction()
-                    writer.make_new_cursor()
-            writer.write(item)
-        writer.close_cursor()
+        try:
+            for commit_count, item in enumerate(merger.sorter()):
+                if not commit_count % commit_limit:
+                    if commit_count:
+                        writer.close_cursor()
+                        self.commit()
+                        self.deferred_update_housekeeping()
+                        yield commit_count
+                        self.start_transaction()
+                        writer.make_new_cursor()
+                writer.write(item)
+            writer.close_cursor()
+        finally:
+            # An exception may leave some reader files open.
+            # A 'ResourceWarning: unclosed file <io.TextIOWrapper ...>'
+            # message in *_merge_import tests revealed this.
+            for reader in merger.readers.values():
+                reader.file.close()
         if commit_count is not None:
             self.commit()
             self.deferred_update_housekeeping()

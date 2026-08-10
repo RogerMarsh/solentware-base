@@ -273,16 +273,10 @@ try:
         def __init__(self, sqlite3file):
             """Define Sqlite3 database for tests and extend."""
             names = samplefilespec()
-            try:
-                super().__init__(
-                    names,
-                    sqlite3file,
-                )
-            except Sqlite3apiError:
-                if __name__ == "__main__":
-                    raise
-                else:
-                    raise Sqlite3apiError("sqlite3 description invalid")
+            super().__init__(
+                names,
+                sqlite3file,
+            )
 
         def delete_database(self):
             """Delete Sqlite3 database created for tests."""
@@ -315,16 +309,10 @@ try:
         def __init__(self, sqlite3file):
             """Define Sqlite3 database for tests and extend."""
             names = samplefilespec()
-            try:
-                super().__init__(
-                    names,
-                    sqlite3file,
-                )
-            except Sqlite3apswapiError:
-                if __name__ == "__main__":
-                    raise
-                else:
-                    raise Sqlite3apiError("sqlite3 description invalid")
+            super().__init__(
+                names,
+                sqlite3file,
+            )
 
         def delete_database(self):
             """Delete Sqlite3 database created for tests."""
@@ -358,27 +346,21 @@ try:
             """Define Berkeley DB database for tests and extend."""
             names = samplefilespec()
             bdb = berkeleydb.db
-            try:
-                super().__init__(
-                    names,
-                    DBfile,
-                    DBenvironment={
-                        "flags": (
-                            bdb.DB_CREATE
-                            | bdb.DB_RECOVER
-                            | bdb.DB_INIT_MPOOL
-                            | bdb.DB_INIT_LOCK
-                            | bdb.DB_INIT_LOG
-                            | bdb.DB_INIT_TXN
-                            | bdb.DB_PRIVATE
-                        )
-                    },
-                )
-            except DBapiError:
-                if __name__ == "__main__":
-                    raise
-                else:
-                    raise DBapiError("sqlite3 description invalid")
+            super().__init__(
+                names,
+                DBfile,
+                DBenvironment={
+                    "flags": (
+                        bdb.DB_CREATE
+                        | bdb.DB_RECOVER
+                        | bdb.DB_INIT_MPOOL
+                        | bdb.DB_INIT_LOCK
+                        | bdb.DB_INIT_LOG
+                        | bdb.DB_INIT_TXN
+                        | bdb.DB_PRIVATE
+                    )
+                },
+            )
 
         def delete_database(self):
             """Delete Berkeley DB database created for tests."""
@@ -413,27 +395,21 @@ try:
             """Define Berkeley DB database for tests and extend."""
             names = samplefilespec()
             bdb = bsddb3.db
-            try:
-                super().__init__(
-                    names,
-                    DBfile,
-                    DBenvironment={
-                        "flags": (
-                            bdb.DB_CREATE
-                            | bdb.DB_RECOVER
-                            | bdb.DB_INIT_MPOOL
-                            | bdb.DB_INIT_LOCK
-                            | bdb.DB_INIT_LOG
-                            | bdb.DB_INIT_TXN
-                            | bdb.DB_PRIVATE
-                        )
-                    },
-                )
-            except DBapiError:
-                if __name__ == "__main__":
-                    raise
-                else:
-                    raise DBapiError("sqlite3 description invalid")
+            super().__init__(
+                names,
+                DBfile,
+                DBenvironment={
+                    "flags": (
+                        bdb.DB_CREATE
+                        | bdb.DB_RECOVER
+                        | bdb.DB_INIT_MPOOL
+                        | bdb.DB_INIT_LOCK
+                        | bdb.DB_INIT_LOG
+                        | bdb.DB_INIT_TXN
+                        | bdb.DB_PRIVATE
+                    )
+                },
+            )
 
         def delete_database(self):
             """Delete Berkeley DB database created for tests."""
@@ -467,16 +443,10 @@ try:
         def __init__(self, DPTfile):
             """Define DPT database for tests and extend."""
             names = samplefilespec()
-            try:
-                super().__init__(
-                    names,
-                    DPTfile,
-                )
-            except DpTapiError:
-                if __name__ == "__main__":
-                    raise
-                else:
-                    raise DPTapiError("sqlite3 description invalid")
+            super().__init__(
+                names,
+                DPTfile,
+            )
 
         def delete_database(self):
             """Delete DPT database created for tests."""
