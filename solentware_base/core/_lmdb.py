@@ -1109,7 +1109,10 @@ class Database(_database.Database):
                 recnums = self._get_segment_record_numbers(file, segment_key)
                 if isinstance(recnums, list):
                     discard = bisect.bisect_left(recnums, record_number)
-                    if recnums[discard] == record_number:
+                    if (
+                        discard < len(recnums)
+                        and recnums[discard] == record_number
+                    ):
                         del recnums[discard]
                     count = len(recnums)
                     if count < 2:
