@@ -1164,6 +1164,11 @@ class Database_do_database_task(unittest.TestCase):
         # At this point LMDB_TEST_ROOT does not exist as a directory.
         # d.open_database() gives 'No such file or directory' exception.
         d.open_database()
+        # The tested d.do_database_task(m) call fails on Microsoft Windows
+        # unless the database is closed here.
+        # Closing the database here does not cause the call to fail on
+        # Debian, FreeBSD, or OpenBSD.
+        d.close_database()
         # At this point LMDB_TEST_ROOT exists as a directory.
         # db.open_database() in do_database_task(m)
         # gives 'Not a directory' exception.

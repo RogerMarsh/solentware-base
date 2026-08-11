@@ -734,7 +734,11 @@ class Database_find_value_segments:
 # Not memory-only so the folder can hold the sorted index sequential files.
 class _SQLiteMerge:
     def setup_detail(self):
-        self.folder = os.path.join("/tmp", "merge_test_sqlitedu")
+        # Adjust creation of temporary directory so it works on Microsoft
+        # Windows too (~/__tmp not /tmp).
+        self._testfolder = os.path.expanduser(os.path.join("~", "__tmp"))
+        os.mkdir(self._testfolder)
+        self.folder = os.path.join(self._testfolder, "merge_test_sqlitedu")
         self.database = self._D(
             filespec.FileSpec(**{"file1": {"field1"}}),
             folder=self.folder,
@@ -763,9 +767,15 @@ class Database_merge_import:
         )
 
     def t02_merge_import(self):
+        # Allow for different OS descriptive text for FileNotFoundError.
         self.assertRaisesRegex(
             FileNotFoundError,
-            "No such file or directory: 'ss'$",
+            "".join(
+                (
+                    r"((No such file or directory)|(The system cannot find",
+                    r" the path specified)): 'ss'$",
+                )
+            ),
             next,
             *(self.database.merge_import("ss", "file1", "field1", 10),),
         )
@@ -954,7 +964,7 @@ if sqlite3:
     class _SQLiteMergeSqlite3(_SQLiteduSqlite3):
         def tearDown(self):
             self.database.close_database()
-            shutil.rmtree(self.folder)
+            shutil.rmtree(self._testfolder)
             super().tearDown()
 
     class Database_merge_importSqlite3(_SQLiteMergeSqlite3):
@@ -1068,7 +1078,7 @@ if apsw:
     class _SQLiteMergeApsw(_SQLiteduApsw):
         def tearDown(self):
             self.database.close_database()
-            shutil.rmtree(self.folder)
+            shutil.rmtree(self._testfolder)
             super().tearDown()
 
     class Database_merge_importApsw(_SQLiteMergeApsw):

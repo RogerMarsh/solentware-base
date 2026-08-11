@@ -88,6 +88,7 @@ class Modulequery(unittest.TestCase):
                         "berkeleydb",
                         "bsddb3",
                         "solentware_base.db_tcl",
+                        "lmdb",
                         "vedis",
                         "unqlite",
                         "apsw",

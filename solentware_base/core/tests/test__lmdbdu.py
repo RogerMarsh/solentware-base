@@ -1230,7 +1230,11 @@ class Database_find_value_segments(_DBOpen):
 class _DBOpenDisk(DBdu):
     def setUp(self):
         super().setUp()
-        self.folder = os.path.join("/tmp", "merge_test_lmdbdu")
+        # Adjust creation of temporary directory so it works on Microsoft
+        # Windows too (~/__tmp not /tmp).
+        self._testfolder = os.path.expanduser(os.path.join("~", "__tmp"))
+        os.mkdir(self._testfolder)
+        self.folder = os.path.join(self._testfolder, "merge_test_lmdbdu")
         self.database = self._D(
             filespec.FileSpec(**{"file1": {"field1"}}),
             folder=self.folder,
@@ -1244,7 +1248,7 @@ class _DBOpenDisk(DBdu):
 
     def tearDown(self):
         self.database.close_database()
-        shutil.rmtree(self.folder)
+        shutil.rmtree(self._testfolder)
         super().tearDown()
 
 
@@ -1264,10 +1268,16 @@ class Database_merge_import(_DBOpenDisk):
         )
 
     def test_merge_import_01(self):
+        # Allow for different OS descriptive text for FileNotFoundError.
         self.database.start_transaction()
         self.assertRaisesRegex(
             FileNotFoundError,
-            "No such file or directory: 'ss'$",
+            "".join(
+                (
+                    r"((No such file or directory)|(The system cannot find",
+                    r" the path specified)): 'ss'$",
+                )
+            ),
             next,
             *(self.database.merge_import("ss", "file1", "field1", 10),),
         )
