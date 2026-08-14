@@ -173,45 +173,64 @@ class Database(_database.Database):
         if self.database_file is not None:
             dbenv = dbe.Connection(self.database_file)
             cursor = dbenv.cursor()
-            statement = " ".join(
-                (
-                    "select",
-                    SQLITE_VALUE_COLUMN,
-                    "from",
-                    CONTROL_FILE,
-                    "where",
-                    CONTROL_FILE,
-                    "== ?",
-                )
+            cursor.execute(
+                " ".join(
+                    (
+                        "select name from sqlite_master",
+                        "where type == 'table' and name == ?",
+                    )
+                ),
+                (CONTROL_FILE,),
             )
-            try:
+            if cursor.fetchall():
+                statement = " ".join(
+                    (
+                        "select",
+                        SQLITE_VALUE_COLUMN,
+                        "from",
+                        CONTROL_FILE,
+                        "where",
+                        CONTROL_FILE,
+                        "== ?",
+                    )
+                )
                 cursor.execute(statement, (SPECIFICATION_KEY,))
                 rsk = cursor.fetchall()
-            except Exception:
-                pass
-            try:
                 cursor.execute(statement, (SEGMENT_SIZE_BYTES_KEY,))
                 rssbk = cursor.fetchall()
-            except Exception:
-                pass
             if rsk is not None and rssbk is not None:
                 spec_from_db = literal_eval(rsk[0][0])
-                if self._use_specification_items is not None:
-                    self.specification.is_consistent_with(
-                        {
-                            k: v
-                            for k, v in spec_from_db.items()
-                            if k in self._use_specification_items
-                        }
-                    )
-                else:
-                    self.specification.is_consistent_with(spec_from_db)
+
+                # This 'try ... except ...' prevents 7 of the 16 ERROR reports
+                # produced, ignoring tests in test___do_database_tasks, on
+                # Microsoft Windows when run by
+                # 'py -3.13 -m unittest -k test_deferred_update'.
+                # The expected exception is FileSpecError but catch all to stay
+                # as close as possible to original code.
+                try:
+                    if self._use_specification_items is not None:
+                        self.specification.is_consistent_with(
+                            {
+                                k: v
+                                for k, v in spec_from_db.items()
+                                if k in self._use_specification_items
+                            }
+                        )
+                    else:
+                        self.specification.is_consistent_with(spec_from_db)
+                except:
+                    cursor.close()
+                    dbenv.close()
+                    raise
+
                 segment_size = literal_eval(rssbk[0][0])
                 if self._real_segment_size_bytes is not False:
                     self.segment_size_bytes = self._real_segment_size_bytes
                     self._real_segment_size_bytes = False
                 if segment_size != self.segment_size_bytes:
                     self._real_segment_size_bytes = segment_size
+                    cursor.close()
+                    dbenv.close()
                     raise self.SegmentSizeError(
                         "".join(
                             (
@@ -221,8 +240,12 @@ class Database(_database.Database):
                         )
                     )
             elif rsk is None and rssbk is not None:
+                cursor.close()
+                dbenv.close()
                 raise DatabaseError("No specification recorded in database")
             elif rsk is not None and rssbk is None:
+                cursor.close()
+                dbenv.close()
                 raise DatabaseError("No segment size recorded in database")
         else:
             dbenv = dbe.Connection(":memory:")

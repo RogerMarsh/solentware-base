@@ -276,6 +276,7 @@ class Database(_database.Database):
             )
         except:
             self.table[DESIGN_FILE] = None
+            dbenv.close()
             raise
         try:
             self.table[CONTROL_FILE] = _Datastore(
@@ -285,6 +286,7 @@ class Database(_database.Database):
             )
         except:
             self.table[CONTROL_FILE] = None
+            dbenv.close()
             raise
         if files is None:
             files = self.specification.keys()
@@ -310,6 +312,7 @@ class Database(_database.Database):
                 )
             except:
                 self.segment_table[file] = None
+                dbenv.close()
                 raise
             for field, fieldname in fields.items():
                 if fieldname is None:
@@ -374,16 +377,20 @@ class Database(_database.Database):
         self.end_read_only_transaction()
         self.table[DESIGN_FILE].close_datastore()
         spec_from_db = literal_eval(spec_from_db.decode())
-        if self._use_specification_items is not None:
-            self.specification.is_consistent_with(
-                {
-                    k: v
-                    for k, v in spec_from_db.items()
-                    if k in self._use_specification_items
-                }
-            )
-        else:
-            self.specification.is_consistent_with(spec_from_db)
+        try:
+            if self._use_specification_items is not None:
+                self.specification.is_consistent_with(
+                    {
+                        k: v
+                        for k, v in spec_from_db.items()
+                        if k in self._use_specification_items
+                    }
+                )
+            else:
+                self.specification.is_consistent_with(spec_from_db)
+        except:
+            self.dbenv.close()
+            raise
         segment_size = literal_eval(segment_size.decode())
         if self._real_segment_size_bytes is not False:
             self.segment_size_bytes = self._real_segment_size_bytes

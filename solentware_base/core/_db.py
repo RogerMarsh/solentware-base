@@ -311,8 +311,10 @@ class Database(_database.Database):
             self.dbenv.log_set_config(dbe.DB_LOG_AUTO_REMOVE, 1)
         except AttributeError as exc:
             if not _openbsd_platform:
+                self.dbenv.close()
                 raise
             if "'log_set_config'" not in str(exc):
+                self.dbenv.close()
                 raise
         if gbytes or bytes_:
             self.dbenv.set_cachesize(gbytes, bytes_)
@@ -400,6 +402,7 @@ class Database(_database.Database):
             )
         except:
             self.table[CONTROL_FILE] = None
+            self.dbenv.close()
             raise
         for file, specification in self.specification.items():
             if file not in files:
@@ -416,6 +419,7 @@ class Database(_database.Database):
                 )
             except:
                 self.table[file] = None
+                self.dbenv.close()
                 raise
             self.ebm_control[file] = ExistenceBitmapControl(
                 file, self, dbe, db_create
@@ -432,6 +436,7 @@ class Database(_database.Database):
                 )
             except:
                 self.segment_table[file] = None
+                self.dbenv.close()
                 raise
             fieldprops = specification[FIELDS]
             for field, fieldname in fields.items():
@@ -464,8 +469,10 @@ class Database(_database.Database):
                             ": unexpected file type or format')",
                         )
                     ):
+                        self.dbenv.close()
                         raise
                     if access_method is not dbe.DB_HASH:
+                        self.dbenv.close()
                         raise
 
                     # Accept existing DB_BTREE database if DB_HASH was in the
@@ -482,10 +489,12 @@ class Database(_database.Database):
                         )
                     except:
                         self.table[secondary] = None
+                        self.dbenv.close()
                         raise
 
                 except:
                     self.table[secondary] = None
+                    self.dbenv.close()
                     raise
         if db_create:  # and files:
             self.table[CONTROL_FILE].put(

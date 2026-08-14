@@ -333,16 +333,20 @@ class Database(_database.Database):
                         1
                     ].decode()
                 )
-                if self._use_specification_items is not None:
-                    self.specification.is_consistent_with(
-                        {
-                            k: v
-                            for k, v in spec_from_db.items()
-                            if k in self._use_specification_items
-                        }
-                    )
-                else:
-                    self.specification.is_consistent_with(spec_from_db)
+                try:
+                    if self._use_specification_items is not None:
+                        self.specification.is_consistent_with(
+                            {
+                                k: v
+                                for k, v in spec_from_db.items()
+                                if k in self._use_specification_items
+                            }
+                        )
+                    else:
+                        self.specification.is_consistent_with(spec_from_db)
+                except:
+                    tcl_tk_call((self.dbenv, "close"))
+                    raise
                 segment_size = literal_eval(
                     tcl_tk_call((control, "get", SEGMENT_SIZE_BYTES_KEY))[0][
                         1
@@ -353,6 +357,7 @@ class Database(_database.Database):
                     self._real_segment_size_bytes = False
                 if segment_size != self.segment_size_bytes:
                     self._real_segment_size_bytes = segment_size
+                    tcl_tk_call((self.dbenv, "close"))
                     raise self.SegmentSizeError(
                         "".join(
                             (
@@ -369,6 +374,7 @@ class Database(_database.Database):
             # Assume equivalent to not a DBNoSuchFileError exception if path
             # exists.
             if fnfd and os.path.exists(fnfd):
+                tcl_tk_call((self.dbenv, "close"))
                 raise
             db_create = True
             options = ["-create"]
@@ -493,6 +499,7 @@ class Database(_database.Database):
             self.table[CONTROL_FILE] = tcl_tk_call(tuple(command))
         except TclError:
             self.table[CONTROL_FILE] = None
+            tcl_tk_call((self.dbenv, "close"))
             raise
         for file, specification in self.specification.items():
             if file not in files:
@@ -521,6 +528,7 @@ class Database(_database.Database):
                 self.table[file] = tcl_tk_call(tuple(command))
             except TclError:
                 self.table[file] = None
+                tcl_tk_call((self.dbenv, "close"))
                 raise
             self.ebm_control[file] = ExistenceBitmapControl(
                 file, self, dbe, db_create
@@ -548,6 +556,7 @@ class Database(_database.Database):
                 self.segment_table[file] = tcl_tk_call(tuple(command))
             except TclError:
                 self.segment_table[file] = None
+                tcl_tk_call((self.dbenv, "close"))
                 raise
             fieldprops = specification[FIELDS]
             for field, fieldname in fields.items():
@@ -594,8 +603,10 @@ class Database(_database.Database):
                             )
                         )
                     ):
+                        tcl_tk_call((self.dbenv, "close"))
                         raise
                     if access_method != "-hash":
+                        tcl_tk_call((self.dbenv, "close"))
                         raise
 
                     # Accept existing DB_BTREE database if DB_HASH was in the
@@ -617,10 +628,12 @@ class Database(_database.Database):
                         self.table[secondary] = tcl_tk_call(tuple(command))
                     except:
                         self.table[secondary] = None
+                        tcl_tk_call((self.dbenv, "close"))
                         raise
 
                 except:
                     self.table[secondary] = None
+                    tcl_tk_call((self.dbenv, "close"))
                     raise
         if db_create:  # and files:
             command = [self.table[CONTROL_FILE], "put"]
