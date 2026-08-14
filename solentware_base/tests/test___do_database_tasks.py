@@ -13,6 +13,7 @@ Test behaviour for the simplest possible non-empty specification.
 import unittest
 import os
 from ast import literal_eval
+import gc
 
 try:
     import unqlite
@@ -102,6 +103,7 @@ except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
 
 class _Database(unittest.TestCase):
     def setUp(self):
+        gc.collect()
         self.__ssb = SegmentSize.db_segment_size_bytes
         oda = self._oda
 
