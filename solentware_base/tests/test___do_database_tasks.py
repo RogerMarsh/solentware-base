@@ -337,10 +337,6 @@ if vedis:
             self._oda = vedis, vedis.Vedis, None
             super().setUp()
 
-        def tearDown(self):
-            self._AD = None
-            super().tearDown()
-
     class DatabaseFilesVedis(_DatabaseVedis):
         test_01 = t01_database_names
         test_02 = t02_database_names
@@ -391,10 +387,6 @@ if bsddb3:
             self._interface = bsddb3_database._db
             self._oda = (bsddb3.db,)
             super().setUp()
-
-        def tearDown(self):
-            self._AD = None
-            super().tearDown()
 
     class DatabaseFilesBsddb3(_DatabaseBsddb3):
         test_01 = t01_database_names
@@ -447,10 +439,6 @@ if berkeleydb:
             self._oda = (berkeleydb.db,)
             super().setUp()
 
-        def tearDown(self):
-            self._AD = None
-            super().tearDown()
-
     class DatabaseFilesBerkeleydb(_DatabaseBerkeleydb):
         test_01 = t01_database_names
         test_02 = t02_database_names
@@ -501,10 +489,6 @@ if sqlite3:
             self._interface = sqlite3_database._sqlite
             self._oda = (sqlite3,)
             super().setUp()
-
-        def tearDown(self):
-            self._AD = None
-            super().tearDown()
 
     class DatabaseFilesSqlite3(_DatabaseSqlite3):
         test_01 = t01_database_names
@@ -659,10 +643,6 @@ if dptapi:
             self._oda = (dptapi,)  # Not sure if this is complete.
             super().setUp()
 
-        def tearDown(self):
-            self._AD = None
-            super().tearDown()
-
     class DatabaseFilesDptapi(_DatabaseDptapi):
         test_01 = t01_database_names
         test_02 = t02_database_names
@@ -713,10 +693,6 @@ if ndbm_module:
             self._interface = ndbm_database._nosql
             self._oda = ndbm_module, ndbm_module.Ndbm, None
             super().setUp()
-
-        def tearDown(self):
-            self._AD = None
-            super().tearDown()
 
     class DatabaseFilesNdbm(_DatabaseNdbm):
         test_01 = t01_database_names
