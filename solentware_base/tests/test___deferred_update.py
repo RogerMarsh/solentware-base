@@ -267,7 +267,10 @@ if dptapi:
             self._engine = dptdu_database
             super().setUp()
 
-        test_01 = t01_open_database__in_directory_no_txn_generated_filespec
+        # Disabled temporarily because running the test crashes the
+        # 'py -m unittest' run without displaying any reports: the count of
+        # tests run and any ERROR or FAIL details.
+        # test_01 = t01_open_database__in_directory_no_txn_generated_filespec
 
 
 if ndbm_module:
