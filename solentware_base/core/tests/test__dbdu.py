@@ -1154,15 +1154,15 @@ if berkeleydb:
             )
 
         def test_merge_import_01(self):
-        # Allow for different OS descriptive text for FileNotFoundError.
+            # Allow for different OS descriptive text for FileNotFoundError.
             self.assertRaisesRegex(
                 FileNotFoundError,
-            "".join(
-                (
-                    r"((No such file or directory)|(The system cannot find",
-                    r" the path specified)): 'ss'$",
-                )
-            ),
+                "".join(
+                    (
+                        r"((No such file or directory)|(The system cannot find",
+                        r" the path specified)): 'ss'$",
+                    )
+                ),
                 next,
                 *(self.database.merge_import("ss", "file1", "field1", 10),),
             )
