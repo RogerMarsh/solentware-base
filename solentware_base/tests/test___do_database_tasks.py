@@ -150,6 +150,7 @@ def t01_database_names(self):
     )
     ae(os.path.exists(self.database.home_directory), False)
     self.database.open_database()
+    self.database.close_database()
     ae(os.path.exists(self.database.home_directory), True)
     ae(os.path.basename(self.database.home_directory), self._folder)
     ae(
@@ -494,7 +495,17 @@ if sqlite3:
 
     class DatabaseFilesSqlite3(_DatabaseSqlite3):
         test_01 = t01_database_names
-        test_02 = t02_database_names
+
+        # On Microsoft Windows a PermissionError is reported in tearDown()
+        # when deleting the file if this test is run: also the next sqlite3
+        # test gets a ResourceWarning 'unclosed database' if trying to open
+        # a database with the same name.
+        # On other operating systems the next garbage collection cycle,
+        # probably in gc.collect() call in setUp() for this module's tests,
+        # gets a ResourceWarning 'unclosed database'.
+        # apsw does not have this behaviour.
+        if not os.name == "nt":
+            test_02 = t02_database_names
 
     class DoDatabaseTaskSqlite3(_DatabaseSqlite3):
         def setUp(self):
