@@ -455,8 +455,8 @@ try:
             names.add(self.sysfolder)
             basenames.add(os.path.basename(self.sysfolder))
             for k, v in self.table.items():
-                names.add(v._file)
-                basenames.add(os.path.basename(v._file))
+                names.add(v.file)
+                basenames.add(os.path.basename(v.file))
             listnames = [
                 n
                 for n in os.listdir(self.home_directory)
