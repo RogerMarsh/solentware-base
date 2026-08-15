@@ -95,8 +95,9 @@ except ImportError:  # Not ModuleNotFoundError for Pythons earlier than 3.6
 
 
 class _Database(unittest.TestCase):
+    _folder = "___update_test"
+
     def setUp(self):
-        self._folder = "___update_test"
         self.dg = _data_generator._DataGenerator()
         self.generated_filespec = _data_generator.generate_filespec(self.dg)
         self.__ssb = SegmentSize.db_segment_size_bytes
@@ -196,6 +197,8 @@ class _DatabaseBerkeley(_Database):
 
 
 class _DatabaseDpt(_Database):
+    _folder = "___update_test_dpt"
+
     def tearDown(self):
         super().tearDown()
         if os.path.exists(self._folder):
