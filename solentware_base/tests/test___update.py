@@ -129,7 +129,7 @@ def t01_open_database__in_directory_txn_generated_filespec(self):
             self.database.home_directory,
             os.path.join(os.getcwd(), self._folder),
         )
-        if self._folder != "___update_test_dpt":
+        if self._engine != dpt_database:
             self.assertEqual(SegmentSize.db_segment_size_bytes, 4000)
             self.assertEqual(
                 self.database.database_file,
@@ -151,7 +151,7 @@ def t01_open_database__in_directory_txn_generated_filespec(self):
 def t02_open_database__in_directory_txn_generated_filespec(self):
     # No cachesize problem for bsddb3 when database is not in memory.
     # Transaction for all records.
-    if self._folder == "___update_test_vedis":
+    if self._engine == vedis_database:
         ssb = SegmentSize.db_segment_size_bytes_minimum
     else:
         ssb = 4000
@@ -166,7 +166,7 @@ def t02_open_database__in_directory_txn_generated_filespec(self):
             self.database.home_directory,
             os.path.join(os.getcwd(), self._folder),
         )
-        if self._folder != "___update_test_dpt":
+        if self._engine != dpt_database:
             self.assertEqual(SegmentSize.db_segment_size_bytes, ssb)
             self.assertEqual(
                 self.database.database_file,
@@ -198,15 +198,15 @@ class _DatabaseDpt(_Database):
     def tearDown(self):
         super().tearDown()
         if os.path.exists(self._folder):
-            for dptsys in os.path.join("dptsys", "dptsys"), "dptsys":
-                logdir = os.path.join(self._folder, dptsys)
-                if os.path.exists(logdir):
-                    for f in os.listdir(logdir):
-                        os.remove(os.path.join(logdir, f))
-                    os.rmdir(logdir)
-            for f in os.listdir(self._folder):
-                os.remove(os.path.join(self._folder, f))
-            os.rmdir(self._folder)
+            self._delete_dpt(self._folder)
+
+    def _delete_dpt(self, pathname):
+        if os.path.isdir(pathname):
+            for item in os.listdir(pathname):
+                self._delete_dpt(os.path.join(pathname, item))
+            os.rmdir(pathname)
+        else:
+            os.remove(pathname)
 
 
 class _DatabaseOther(_Database):

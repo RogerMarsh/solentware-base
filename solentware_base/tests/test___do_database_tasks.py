@@ -117,27 +117,6 @@ class _Database(unittest.TestCase):
         self.database = None
         self._ED = None
         SegmentSize.db_segment_size_bytes = self.__ssb
-        if os.path.exists(self._folder):
-            if self._folder in (
-                "___update_test_bsddb3",
-                "___update_test_berkeleydb",
-            ):
-                logdir = os.path.join(self._folder, "___logs_" + self._folder)
-                if os.path.exists(logdir):
-                    for f in os.listdir(logdir):
-                        if f.startswith("log."):
-                            os.remove(os.path.join(logdir, f))
-                    os.rmdir(logdir)
-            if self._folder == "___update_test_dpt":
-                for dptsys in os.path.join("dptsys", "dptsys"), "dptsys":
-                    logdir = os.path.join(self._folder, dptsys)
-                    if os.path.exists(logdir):
-                        for f in os.listdir(logdir):
-                            os.remove(os.path.join(logdir, f))
-                        os.rmdir(logdir)
-            for f in os.listdir(self._folder):
-                os.remove(os.path.join(self._folder, f))
-            os.rmdir(self._folder)
 
     def task(self, *a, **k):
         return
@@ -158,10 +137,7 @@ def t01_database_names(self):
         self._folder,
     )
     files = os.listdir(self.database.home_directory)
-    if self._folder in (
-        "___update_test_bsddb3",
-        "___update_test_berkeleydb",
-    ):
+    if self._module in (bsddb3, berkeleydb):
         ae("___logs_" + self._folder in files, True)
         ae(len(files), 2)
     elif self._oda[0] is lmdb:
@@ -189,10 +165,7 @@ def t02_database_names(self):
         self._folder,
     )
     files = os.listdir(self.database.home_directory)
-    if self._folder in (
-        "___update_test_bsddb3",
-        "___update_test_berkeleydb",
-    ):
+    if self._module in (bsddb3, berkeleydb):
         ae("___logs_" + self._folder in files, True)
         ae(len(files), 2)
     elif self._oda[0] is lmdb:
@@ -280,13 +253,53 @@ def t05_do_database_task_simple_spec(self):
     self.database.close_database()
 
 
+class _DatabaseBerkeley(_Database):
+    def tearDown(self):
+        super().tearDown()
+        if os.path.exists(self._folder):
+            logdir = os.path.join(self._folder, "___logs_" + self._folder)
+            if os.path.exists(logdir):
+                for f in os.listdir(logdir):
+                    if f.startswith("log."):
+                        os.remove(os.path.join(logdir, f))
+                os.rmdir(logdir)
+            for f in os.listdir(self._folder):
+                os.remove(os.path.join(self._folder, f))
+            os.rmdir(self._folder)
+
+
+class _DatabaseDpt(_Database):
+    def tearDown(self):
+        super().tearDown()
+        if os.path.exists(self._folder):
+            self._delete_dpt(self._folder)
+
+    def _delete_dpt(self, pathname):
+        if os.path.isdir(pathname):
+            for item in os.listdir(pathname):
+                self._delete_dpt(os.path.join(pathname, item))
+            os.rmdir(pathname)
+        else:
+            os.remove(pathname)
+
+
+class _DatabaseOther(_Database):
+    def tearDown(self):
+        super().tearDown()
+        if os.path.exists(self._folder):
+            for f in os.listdir(self._folder):
+                os.remove(os.path.join(self._folder, f))
+            os.rmdir(self._folder)
+
+
 if unqlite:
 
-    class _DatabaseUnqlite(_Database):
+    class _DatabaseUnqlite(_DatabaseOther):
         def setUp(self):
             self._folder = "___update_test_unqlite"
             self._interface = unqlite_database._nosql
             self._oda = unqlite, unqlite.UnQLite, unqlite.UnQLiteError
+            self._module = unqlite
             super().setUp()
 
     class DatabaseFilesUnqlite(_DatabaseUnqlite):
@@ -333,11 +346,12 @@ if unqlite:
 
 if vedis:
 
-    class _DatabaseVedis(_Database):
+    class _DatabaseVedis(_DatabaseOther):
         def setUp(self):
             self._folder = "___update_test_vedis"
             self._interface = vedis_database._nosql
             self._oda = vedis, vedis.Vedis, None
+            self._module = vedis
             super().setUp()
 
     class DatabaseFilesVedis(_DatabaseVedis):
@@ -384,11 +398,12 @@ if vedis:
 
 if bsddb3:
 
-    class _DatabaseBsddb3(_Database):
+    class _DatabaseBsddb3(_DatabaseBerkeley):
         def setUp(self):
             self._folder = "___update_test_bsddb3"
             self._interface = bsddb3_database._db
             self._oda = (bsddb3.db,)
+            self._module = bsddb3
             super().setUp()
 
     class DatabaseFilesBsddb3(_DatabaseBsddb3):
@@ -435,11 +450,12 @@ if bsddb3:
 
 if berkeleydb:
 
-    class _DatabaseBerkeleydb(_Database):
+    class _DatabaseBerkeleydb(_DatabaseBerkeley):
         def setUp(self):
             self._folder = "___update_test_berkeleydb"
             self._interface = berkeleydb_database._db
             self._oda = (berkeleydb.db,)
+            self._module = berkeleydb
             super().setUp()
 
     class DatabaseFilesBerkeleydb(_DatabaseBerkeleydb):
@@ -486,11 +502,12 @@ if berkeleydb:
 
 if sqlite3:
 
-    class _DatabaseSqlite3(_Database):
+    class _DatabaseSqlite3(_DatabaseOther):
         def setUp(self):
             self._folder = "___update_test_sqlite3"
             self._interface = sqlite3_database._sqlite
             self._oda = (sqlite3,)
+            self._module = sqlite3
             super().setUp()
 
     class DatabaseFilesSqlite3(_DatabaseSqlite3):
@@ -567,11 +584,12 @@ if sqlite3:
 
 if apsw:
 
-    class _DatabaseApsw(_Database):
+    class _DatabaseApsw(_DatabaseOther):
         def setUp(self):
             self._folder = "___update_test_apsw"
             self._interface = apsw_database._sqlite
             self._oda = (apsw,)
+            self._module = apsw
             super().setUp()
 
     class DatabaseFilesApsw(_DatabaseApsw):
@@ -618,11 +636,12 @@ if apsw:
 
 if lmdb:
 
-    class _DatabaseLmdb(_Database):
+    class _DatabaseLmdb(_DatabaseOther):
         def setUp(self):
             self._folder = "___update_test_lmdb"
             self._interface = lmdb_database._lmdb
             self._oda = (lmdb,)
+            self._module = lmdb
             super().setUp()
 
     class DatabaseFilesLmdb(_DatabaseLmdb):
@@ -691,11 +710,12 @@ if lmdb:
 
 if dptapi:
 
-    class _DatabaseDptapi(_Database):
+    class _DatabaseDptapi(_DatabaseDpt):
         def setUp(self):
             self._folder = "___update_test_dpt"
             self._interface = dpt_database._dpt
             self._oda = (dptapi,)  # Not sure if this is complete.
+            self._module = dptapi
             super().setUp()
 
     class DatabaseFilesDptapi(_DatabaseDptapi):
@@ -742,11 +762,12 @@ if dptapi:
 
 if ndbm_module:
 
-    class _DatabaseNdbm(_Database):
+    class _DatabaseNdbm(_DatabaseOther):
         def setUp(self):
             self._folder = "___update_test_ndbm"
             self._interface = ndbm_database._nosql
             self._oda = ndbm_module, ndbm_module.Ndbm, None
+            self._module = ndbm_module
             super().setUp()
 
     class DatabaseFilesNdbm(_DatabaseNdbm):
@@ -793,11 +814,12 @@ if ndbm_module:
 
 if gnu_module:
 
-    class _DatabaseGnu(_Database):
+    class _DatabaseGnu(_DatabaseOther):
         def setUp(self):
             self._folder = "___update_test_gnu"
             self._interface = gnu_database._nosql
             self._oda = gnu_module, gnu_module.Gnu, None
+            self._module = gnu_module
             super().setUp()
 
     class DatabaseFilesGnu(_DatabaseGnu):

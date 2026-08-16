@@ -229,15 +229,15 @@ class _DatabaseDpt(_Database):
     def tearDown(self):
         super().tearDown()
         if os.path.exists(self._folder):
-            for dptsys in os.path.join("dptsys", "dptsys"), "dptsys":
-                logdir = os.path.join(self._folder, dptsys)
-                if os.path.exists(logdir):
-                    for f in os.listdir(logdir):
-                        os.remove(os.path.join(logdir, f))
-                    os.rmdir(logdir)
-            for f in os.listdir(self._folder):
-                os.remove(os.path.join(self._folder, f))
-            os.rmdir(self._folder)
+            self._delete_dpt(self._folder)
+
+    def _delete_dpt(self, pathname):
+        if os.path.isdir(pathname):
+            for item in os.listdir(pathname):
+                self._delete_dpt(os.path.join(pathname, item))
+            os.rmdir(pathname)
+        else:
+            os.remove(pathname)
 
 
 class _DatabaseOther(_Database):
