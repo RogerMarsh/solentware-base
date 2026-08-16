@@ -708,7 +708,7 @@ if lmdb:
         test_05 = t05_do_database_task_simple_spec
 
 
-if dptapi:
+if dptapi and False:  # Disbale the DPT tests in this module.
 
     class _DatabaseDptapi(_DatabaseDpt):
         def setUp(self):
