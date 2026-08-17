@@ -1966,18 +1966,7 @@ class Database(_database.Database):
                 "glob ?",
             )
         )
-        values = (
-            b"".join(
-                (
-                    (
-                        keystart.encode()
-                        if isinstance(keystart, str)
-                        else keystart
-                    ),
-                    b"*",
-                )
-            ),
-        )
+        values = (keystart + "*",)
         db_segment_size_bytes = SegmentSize.db_segment_size_bytes
         get_segment_records = self.get_segment_records
         cursor = self.dbenv.cursor()
