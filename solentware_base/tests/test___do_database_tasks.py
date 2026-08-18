@@ -105,21 +105,29 @@ class _Database(unittest.TestCase):
     def setUp(self):
         gc.collect()
         self.__ssb = SegmentSize.db_segment_size_bytes
-        oda = self._oda
-
-        class _ED(self._interface.Database):
-            def open_database(self, **k):
-                super().open_database(*oda, **k)
-
-        self._ED = _ED
 
     def tearDown(self):
         self.database = None
         self._ED = None
         SegmentSize.db_segment_size_bytes = self.__ssb
+        if os.path.exists(self._folder):
+            self._delete_test_directories_and_files(self._folder)
+
+    def _delete_test_directories_and_files(self, pathname):
+        if os.path.isdir(pathname):
+            for item in os.listdir(pathname):
+                self._delete_test_directories_and_files(
+                    os.path.join(pathname, item)
+                )
+            os.rmdir(pathname)
+        else:
+            os.remove(pathname)
 
     def task(self, *a, **k):
         return
+
+    names_t01 = None
+    names_t02 = None
 
 
 def t01_database_names(self):
@@ -132,23 +140,7 @@ def t01_database_names(self):
     self.database.close_database()
     ae(os.path.exists(self.database.home_directory), True)
     ae(os.path.basename(self.database.home_directory), self._folder)
-    ae(
-        os.path.splitext(os.path.basename(self.database.database_file))[0],
-        self._folder,
-    )
-    files = os.listdir(self.database.home_directory)
-    if self._module in (bsddb3, berkeleydb):
-        ae("___logs_" + self._folder in files, True)
-        ae(len(files), 2)
-    elif self._oda[0] is lmdb:
-        ae(self._folder + "-lock" in files, True)
-        ae(len(files), 2)
-    else:
-        ae(len(files), 1)
-    if self._oda[0] is ndbm_module:
-        ae(".".join((self._folder, "db")) in files, True)
-    else:
-        ae(self._folder in files, True)
+    self.check_database_names(self.names_t01)
 
 
 def t02_database_names(self):
@@ -160,25 +152,10 @@ def t02_database_names(self):
     self.database.open_database()
     ae(os.path.exists(self.database.home_directory), True)
     ae(os.path.basename(self.database.home_directory), self._folder)
-    ae(
-        os.path.splitext(os.path.basename(self.database.database_file))[0],
-        self._folder,
-    )
-    files = os.listdir(self.database.home_directory)
-    if self._module in (bsddb3, berkeleydb):
-        ae("___logs_" + self._folder in files, True)
-        ae(len(files), 2)
-    elif self._oda[0] is lmdb:
-        ae(self._folder + "-lock" in files, True)
-        ae(len(files), 2)
-    else:
-        ae(len(files), 1)
-    if self._oda[0] is ndbm_module:
-        ae(".".join((self._folder, "db")) in files, True)
-    else:
-        ae(self._folder in files, True)
+    self.check_database_names(self.names_t02)
 
 
+# Overridden in dpt_dbms (imported as dptapi) tests.
 def t01_do_database_task_empty_spec(self):
     ae = self.assertEqual
     self.database = self._AD(folder=self._folder)
@@ -200,6 +177,7 @@ def t03_do_database_task_empty_spec(self):
     ae(self.database.do_database_task(self.task), None)
 
 
+# Overridden in dpt_dbms (imported as dptapi) tests.
 def t04_do_database_task_empty_spec(self):
     ae = self.assertEqual
     self.database = self._AD(folder=self._folder)
@@ -216,6 +194,7 @@ def t05_do_database_task_empty_spec(self):
     self.database.close_database()
 
 
+# Overridden in dpt_dbms (imported as dptapi) tests.
 def t01_do_database_task_simple_spec(self):
     ae = self.assertEqual
     self.database = self._AD(folder=self._folder)
@@ -237,6 +216,7 @@ def t03_do_database_task_simple_spec(self):
     ae(self.database.do_database_task(self.task), None)
 
 
+# Overridden in dpt_dbms (imported as dptapi) tests.
 def t04_do_database_task_simple_spec(self):
     ae = self.assertEqual
     self.database = self._AD(folder=self._folder)
@@ -254,42 +234,65 @@ def t05_do_database_task_simple_spec(self):
 
 
 class _DatabaseBerkeley(_Database):
-    def tearDown(self):
-        super().tearDown()
-        if os.path.exists(self._folder):
-            logdir = os.path.join(self._folder, "___logs_" + self._folder)
-            if os.path.exists(logdir):
-                for f in os.listdir(logdir):
-                    if f.startswith("log."):
-                        os.remove(os.path.join(logdir, f))
-                os.rmdir(logdir)
-            for f in os.listdir(self._folder):
-                os.remove(os.path.join(self._folder, f))
-            os.rmdir(self._folder)
+    def setUp(self):
+        super().setUp()
+        oda = self._oda
 
+        class _ED(self._interface.Database):
+            def open_database(self, **k):
+                super().open_database(*oda, **k)
+
+        self._ED = _ED
+
+    def tearDown(self):
+        # self.database.home_directory is usually the same as self._folder
+        # in BerkeleyDB tests and has likeley been deleted because
+        # self._folder is deleted in a superclass tearDown().
+        database_folder = self.database.home_directory
+        super().tearDown()
+        if os.path.exists(database_folder):
+            self._delete_test_directories_and_files(database_folder)
 
 class _DatabaseDpt(_Database):
-    def tearDown(self):
-        super().tearDown()
-        if os.path.exists(self._folder):
-            self._delete_dpt(self._folder)
+    def setUp(self):
+        super().setUp()
 
-    def _delete_dpt(self, pathname):
-        if os.path.isdir(pathname):
-            for item in os.listdir(pathname):
-                self._delete_dpt(os.path.join(pathname, item))
-            os.rmdir(pathname)
-        else:
-            os.remove(pathname)
+        class _ED(self._interface.Database):
+            def open_database(self, **k):
+                super().open_database(**k)
+
+        self._ED = _ED
+
+    def tearDown(self):
+        # self.database.home_directory is an ancestor of self._folder in
+        # DPT tests and cannot be deleted until the Core Services object
+        # has been destroyed.
+        # self._folder is deleted in a superclass tearDown().
+        database_folder = self.database.home_directory
+        super().tearDown()
+        if os.path.exists(database_folder):
+            self._delete_test_directories_and_files(database_folder)
 
 
 class _DatabaseOther(_Database):
+    def setUp(self):
+        super().setUp()
+        oda = self._oda
+
+        class _ED(self._interface.Database):
+            def open_database(self, **k):
+                super().open_database(*oda, **k)
+
+        self._ED = _ED
+
     def tearDown(self):
+        # self.database.home_directory is usually the same as self._folder
+        # in other database engine tests and has likeley been deleted because
+        # self._folder is deleted in a superclass tearDown().
+        database_folder = self.database.home_directory
         super().tearDown()
-        if os.path.exists(self._folder):
-            for f in os.listdir(self._folder):
-                os.remove(os.path.join(self._folder, f))
-            os.rmdir(self._folder)
+        if os.path.exists(database_folder):
+            self._delete_test_directories_and_files(database_folder)
 
 
 if unqlite:
@@ -305,6 +308,19 @@ if unqlite:
     class DatabaseFilesUnqlite(_DatabaseUnqlite):
         test_01 = t01_database_names
         test_02 = t02_database_names
+
+        def check_database_names(self, names):
+            del names
+            ae = self.assertEqual
+            ae(
+                os.path.splitext(
+                    os.path.basename(self.database.database_file)
+                )[0],
+                self._folder,
+            )
+            files = os.listdir(self.database.home_directory)
+            ae(len(files), 1)
+            ae(self._folder in files, True)
 
     class DoDatabaseTaskUnqlite(_DatabaseUnqlite):
         def setUp(self):
@@ -358,6 +374,19 @@ if vedis:
         test_01 = t01_database_names
         test_02 = t02_database_names
 
+        def check_database_names(self, names):
+            del names
+            ae = self.assertEqual
+            ae(
+                os.path.splitext(
+                    os.path.basename(self.database.database_file)
+                )[0],
+                self._folder,
+            )
+            files = os.listdir(self.database.home_directory)
+            ae(len(files), 1)
+            ae(self._folder in files, True)
+
     class DoDatabaseTaskVedis(_DatabaseVedis):
         def setUp(self):
             super().setUp()
@@ -410,6 +439,20 @@ if bsddb3:
         test_01 = t01_database_names
         test_02 = t02_database_names
 
+        def check_database_names(self, names):
+            del names
+            ae = self.assertEqual
+            ae(
+                os.path.splitext(
+                    os.path.basename(self.database.database_file)
+                )[0],
+                self._folder,
+            )
+            files = os.listdir(self.database.home_directory)
+            ae("___logs_" + self._folder in files, True)
+            ae(len(files), 2)
+            ae(self._folder in files, True)
+
     class DoDatabaseTaskBsddb3(_DatabaseBsddb3):
         def setUp(self):
             super().setUp()
@@ -461,6 +504,20 @@ if berkeleydb:
     class DatabaseFilesBerkeleydb(_DatabaseBerkeleydb):
         test_01 = t01_database_names
         test_02 = t02_database_names
+
+        def check_database_names(self, names):
+            del names
+            ae = self.assertEqual
+            ae(
+                os.path.splitext(
+                    os.path.basename(self.database.database_file)
+                )[0],
+                self._folder,
+            )
+            files = os.listdir(self.database.home_directory)
+            ae("___logs_" + self._folder in files, True)
+            ae(len(files), 2)
+            ae(self._folder in files, True)
 
     class DoDatabaseTaskBerkeleydb(_DatabaseBerkeleydb):
         def setUp(self):
@@ -523,6 +580,19 @@ if sqlite3:
         # apsw does not have this behaviour.
         if not os.name == "nt":
             test_02 = t02_database_names
+
+        def check_database_names(self, names):
+            del names
+            ae = self.assertEqual
+            ae(
+                os.path.splitext(
+                    os.path.basename(self.database.database_file)
+                )[0],
+                self._folder,
+            )
+            files = os.listdir(self.database.home_directory)
+            ae(len(files), 1)
+            ae(self._folder in files, True)
 
     class DoDatabaseTaskSqlite3(_DatabaseSqlite3):
         def setUp(self):
@@ -596,6 +666,19 @@ if apsw:
         test_01 = t01_database_names
         test_02 = t02_database_names
 
+        def check_database_names(self, names):
+            del names
+            ae = self.assertEqual
+            ae(
+                os.path.splitext(
+                    os.path.basename(self.database.database_file)
+                )[0],
+                self._folder,
+            )
+            files = os.listdir(self.database.home_directory)
+            ae(len(files), 1)
+            ae(self._folder in files, True)
+
     class DoDatabaseTaskApsw(_DatabaseApsw):
         def setUp(self):
             super().setUp()
@@ -647,6 +730,20 @@ if lmdb:
     class DatabaseFilesLmdb(_DatabaseLmdb):
         test_01 = t01_database_names
         test_02 = t02_database_names
+
+        def check_database_names(self, names):
+            del names
+            ae = self.assertEqual
+            ae(
+                os.path.splitext(
+                    os.path.basename(self.database.database_file)
+                )[0],
+                self._folder,
+            )
+            files = os.listdir(self.database.home_directory)
+            ae(self._folder + "-lock" in files, True)
+            ae(len(files), 2)
+            ae(self._folder in files, True)
 
     class DoDatabaseTaskLmdb(_DatabaseLmdb):
         def setUp(self):
@@ -708,7 +805,7 @@ if lmdb:
         test_05 = t05_do_database_task_simple_spec
 
 
-if dptapi and False:  # Disbale the DPT tests in this module.
+if dptapi:
 
     class _DatabaseDptapi(_DatabaseDpt):
         def setUp(self):
@@ -721,6 +818,16 @@ if dptapi and False:  # Disbale the DPT tests in this module.
     class DatabaseFilesDptapi(_DatabaseDptapi):
         test_01 = t01_database_names
         test_02 = t02_database_names
+        names_t01 = set(["dptsys", "___control.dpt"])
+        names_t02 = set(["dptsys", "___control.dpt", "file1.dpt"])
+
+        def check_database_names(self, names):
+            ae = self.assertEqual
+            ae(self.database.database_file is None, True)
+            ae(
+                set(os.listdir(self.database.home_directory)),
+                names,
+            )
 
     class DoDatabaseTaskDptapi(_DatabaseDptapi):
         def setUp(self):
@@ -742,10 +849,47 @@ if dptapi and False:  # Disbale the DPT tests in this module.
             self._filespec = empty_filespec
             super().setUp()
 
-        test_01 = t01_do_database_task_empty_spec
+        def t01_do_database_task_empty_spec(self):
+            self.database = self._AD(folder=self._folder)
+            self.database.open_database()
+            self.assertRaisesRegex(
+                RuntimeError,
+                "".join(
+                    (
+                        r"User CoreServices initialization failed - ",
+                        "second API on the same thread is not allowed$",
+                    )
+                ),
+                self.database.do_database_task,
+                *(self.task,),
+            )
+
+        def t04_do_database_task_empty_spec(self):
+            self.database = self._AD(folder=self._folder)
+            self.database.open_database()
+            self.assertRaisesRegex(
+                RuntimeError,
+                "".join(
+                    (
+                        r"User CoreServices initialization failed - ",
+                        "second API on the same thread is not allowed$",
+                    )
+                ),
+                self.database.do_database_task,
+                *(self.task,),
+            )
+
+        # The RuntimeError test succeeds but tearDown() gets PermissionError
+        # when trying to delete the directories and files used in test.
+        # test_01 = t01_do_database_task_empty_spec
+
         test_02 = t02_do_database_task_empty_spec
         test_03 = t03_do_database_task_empty_spec
-        test_04 = t04_do_database_task_empty_spec
+
+        # The RuntimeError test succeeds but tearDown() gets PermissionError
+        # when trying to delete the directories and files used in test.
+        # test_04 = t04_do_database_task_empty_spec
+
         test_05 = t05_do_database_task_empty_spec
 
     class DoDatabaseTaskSimpleSpecDptapi(DoDatabaseTaskDptapi):
@@ -753,10 +897,47 @@ if dptapi and False:  # Disbale the DPT tests in this module.
             self._filespec = simple_filespec
             super().setUp()
 
-        test_01 = t01_do_database_task_simple_spec
+        def t01_do_database_task_simple_spec(self):
+            self.database = self._AD(folder=self._folder)
+            self.database.open_database()
+            self.assertRaisesRegex(
+                RuntimeError,
+                "".join(
+                    (
+                        r"User CoreServices initialization failed - ",
+                        "second API on the same thread is not allowed$",
+                    )
+                ),
+                self.database.do_database_task,
+                *(self.task,),
+            )
+
+        def t04_do_database_task_simple_spec(self):
+            self.database = self._AD(folder=self._folder)
+            self.database.open_database()
+            self.assertRaisesRegex(
+                RuntimeError,
+                "".join(
+                    (
+                        r"User CoreServices initialization failed - ",
+                        "second API on the same thread is not allowed$",
+                    )
+                ),
+                self.database.do_database_task,
+                *(self.task,),
+            )
+
+        # The RuntimeError test succeeds but tearDown() gets PermissionError
+        # when trying to delete the directories and files used in test.
+        # test_01 = t01_do_database_task_simple_spec
+
         test_02 = t02_do_database_task_simple_spec
         test_03 = t03_do_database_task_simple_spec
-        test_04 = t04_do_database_task_simple_spec
+
+        # The RuntimeError test succeeds but tearDown() gets PermissionError
+        # when trying to delete the directories and files used in test.
+        # test_04 = t04_do_database_task_simple_spec
+
         test_05 = t05_do_database_task_simple_spec
 
 
@@ -773,6 +954,19 @@ if ndbm_module:
     class DatabaseFilesNdbm(_DatabaseNdbm):
         test_01 = t01_database_names
         test_02 = t02_database_names
+
+        def check_database_names(self, names):
+            del names
+            ae = self.assertEqual
+            ae(
+                os.path.splitext(
+                    os.path.basename(self.database.database_file)
+                )[0],
+                self._folder,
+            )
+            files = os.listdir(self.database.home_directory)
+            ae(len(files), 1)
+            ae(".".join((self._folder, "db")) in files, True)
 
     class DoDatabaseTaskNdbm(_DatabaseNdbm):
         def setUp(self):
@@ -825,6 +1019,19 @@ if gnu_module:
     class DatabaseFilesGnu(_DatabaseGnu):
         test_01 = t01_database_names
         test_02 = t02_database_names
+
+        def check_database_names(self, names):
+            del names
+            ae = self.assertEqual
+            ae(
+                os.path.splitext(
+                    os.path.basename(self.database.database_file)
+                )[0],
+                self._folder,
+            )
+            files = os.listdir(self.database.home_directory)
+            ae(len(files), 1)
+            ae(self._folder in files, True)
 
     class DoDatabaseTaskGnu(_DatabaseGnu):
         def setUp(self):
