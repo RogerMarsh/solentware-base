@@ -1159,8 +1159,8 @@ if berkeleydb:
                 FileNotFoundError,
                 "".join(
                     (
-                        r"((No such file or directory)|(The system cannot find",
-                        r" the path specified)): 'ss'$",
+                        r"((No such file or directory)|(The system cannot",
+                        r" find the path specified)): 'ss'$",
                     )
                 ),
                 next,

@@ -253,6 +253,7 @@ class _DatabaseBerkeley(_Database):
         if os.path.exists(database_folder):
             self._delete_test_directories_and_files(database_folder)
 
+
 class _DatabaseDpt(_Database):
     def setUp(self):
         super().setUp()
