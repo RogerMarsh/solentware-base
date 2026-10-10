@@ -819,7 +819,7 @@ class Database(_database.Database):
                         yield value
                     dvcursor.Advance()
             else:
-                dvcursor.GotoLast()
+                dvcursor.GotoFirst()
                 while dvcursor.Accessible():
                     value = dvcursor.GetCurrentValue().ExtractString()
                     if valuespec.apply_pattern_and_set_filters_to_value(value):

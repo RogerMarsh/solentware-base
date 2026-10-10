@@ -773,7 +773,7 @@ class Database_merge_import:
             "".join(
                 (
                     r"((No such file or directory)|(The system cannot find",
-                    r" the path specified)): 'ss'$",
+                    r" the path specified)|(Path not found)): 'ss'$",
                 )
             ),
             next,

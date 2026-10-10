@@ -10,16 +10,16 @@ line-length = 79
 
 [project]
 name = "solentware-base"
-version = "5.5.1"
+version = "5.5.2"
 authors = [
   { name="Roger Marsh", email="roger.marsh@solentware.co.uk" },
 ]
 description = "Bitmapped record number databases."
 classifiers = [
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Operating System :: OS Independent",
     "Topic :: Database",
     "Intended Audience :: Developers",
