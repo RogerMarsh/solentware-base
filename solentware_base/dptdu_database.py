@@ -84,19 +84,23 @@ class Database(_dpt.Database):
             "edit_instance not available in deferred update mode"
         )
 
-    def _dptfileclass(self):
+    def _dptfileclass(self, specification, home_directory):
+        """Override and return the DPTFile class."""
+        del specification, home_directory
         return DPTFile
 
     def set_defer_update(self):
-        """Note Table B pages used at start of dferred update."""
+        """Note Table B pages used at start of deferred update."""
         self.start_transaction()
-        for table in self.table.values():
-            table.set_defer_update()
+        for key, table in self.table.items():
+            if key in self.specification:
+                table.set_defer_update()
 
     def unset_defer_update(self):
         """Add Table D pages to fit Table B pages added."""
-        for table in self.table.values():
-            table.unset_defer_update()
+        for key, table in self.table.items():
+            if key in self.specification:
+                table.unset_defer_update()
         self.commit()
 
     def do_final_segment_deferred_updates(self):

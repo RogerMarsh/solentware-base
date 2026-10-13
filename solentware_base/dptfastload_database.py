@@ -90,7 +90,9 @@ class Database(_dpt.Database):
 
     # Same as dptdu_database version.
     # Must return dptfastload_database.DPTFile class.
-    def _dptfileclass(self):
+    def _dptfileclass(self, specification, home_directory):
+        """Override and return the DPTFile class."""
+        del specification, home_directory
         return DPTFile
 
     # Same as dptdu_database version.

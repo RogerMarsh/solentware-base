@@ -98,6 +98,7 @@ class FileSpec(dict):
         """
         super().__init__(**kargs)
 
+        self.__raise_if_filename_prefix_duplicated(kargs)
         if use_specification_items is not None:
             for usi in [
                 k for k in self.keys() if k not in use_specification_items
@@ -650,3 +651,36 @@ class FileSpec(dict):
                     if dbfpam == BTREE and fsfpam == HASH:
                         continue
                     raise FileSpecError(msgam)
+
+    def __raise_if_filename_prefix_duplicated(self, specification):
+        """Raise FileSpecError if any other file name starts file name.
+
+        When multiple files have name starting with a file name in the
+        specification the open database methods will assume these files
+        form a group if DPT is the database engine.
+
+        A full specification dict will have an item '[<file>][FILE]',
+        but this dict can be abbreviated to {<file>: set(<fields>), ...}
+        where specification[key][FILE] is derived from <file>.  The item
+        matters when deciding on file groups for DPT, but the other assumed
+        values probably make the specification impractical for DPT.
+
+        specification is often a dict of sets in unittests for database
+        engines other than DPT.
+
+        """
+        names = tuple(
+            os.path.splitext(specification[key][FILE])[0]
+            if isinstance(specification[key], dict)
+            and FILE in specification[key]
+            else FileSpec.dpt_dsn(key)
+            for key in specification.keys()
+        )
+        for name in names:
+            for other_name in names:
+                if name == other_name:
+                    continue
+                if other_name.startswith(name):
+                    raise FileSpecError(
+                        "".join(("'", other_name, "' starts '", name, "'"))
+                    )

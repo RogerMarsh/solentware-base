@@ -129,7 +129,7 @@ class Database(_database.Database):
         audit=None,
         username=None,
         use_specification_items=None,
-        **soak
+        **soak,
     ):
         """Create definition of database in folder from specification."""
         del soak
@@ -290,7 +290,7 @@ class Database(_database.Database):
                 }
             }
         )["application"]
-        control = self._dptfileclass()(
+        control = DPTFile(
             dbset=CONTROL_FILE,
             default_dataset_folder=self.home_directory,
             **control_specification,
@@ -338,7 +338,9 @@ class Database(_database.Database):
         for i, (file, specification) in enumerate(self.specification.items()):
             if file not in files:
                 continue
-            self.table[file] = self._dptfileclass()(
+            self.table[file] = self._dptfileclass(
+                specification, self.home_directory
+            )(
                 dbset=file,
                 default_dataset_folder=self.home_directory,
                 sfi=i,
@@ -480,25 +482,7 @@ class Database(_database.Database):
         for key, value in files.items():
             if value[0] == 0 and value[1] == 0:
                 continue
-            self.table[key].increase_file_pages(value)
-
-    def initial_database_size(self):
-        """Set initial file sizes as specified in file descriptions."""
-        for table in self.table.values():
-            table.initial_file_size()
-        return True
-
-    def get_database_parameters(self, files=None):
-        """Return file parameters infomation for file names in files."""
-        if files is None:
-            files = ()
-        sizes = {}
-        for file_ in files:
-            if file_ in self.table:
-                sizes[file_] = self.table[file_].get_file_parameters(
-                    self.dbenv
-                )
-        return sizes
+            self.table[key].increase_file_pages(self.dbenv, value)
 
     def get_database_table_sizes(self, files=None, **kwargs):
         """Return Table B and D page sizes and usage for files."""
@@ -506,25 +490,11 @@ class Database(_database.Database):
         if files is None:
             files = set()
         sizes = {}
-        viewer_resetter = self.dbenv.Core().GetViewerResetter()
         for file, table in self.table.items():
             if files and file not in files:
                 continue
-            sizes[file] = table.get_file_table_sizes(viewer_resetter)
+            sizes[file] = table.get_file_table_sizes(self.dbenv)
         return sizes
-
-    def get_database_increase(self, files=None):
-        """Return required file increases for file names in files."""
-        if files is None:
-            files = ()
-        increases = {}
-        dptfiles = self.table
-        for file_ in files:
-            if file_ in dptfiles:
-                increases[file_] = dptfiles[file_].get_tables_increase(
-                    self.dbenv, sizing_record_counts=files[file_]
-                )
-        return increases
 
     def get_database_pages_for_record_counts(self, files=None):
         """Return pages needed for record counts in files."""
@@ -980,8 +950,23 @@ class Database(_database.Database):
         """Return OpenContext object for file."""
         return self.table[file].opencontext
 
-    def _dptfileclass(self):
-        return DPTFile
+    def _dptfileclass(self, specification, home_directory):
+        """Return the DPTFile or DPTGroup class.
+
+        DPTGroup is returned if more than one file exists in home_directory
+        with a name starting with the file name in the specification.
+
+        """
+        ddname = specification[DDNAME]
+        file, ext = os.path.splitext(specification[FILE])
+        files = [
+            os.path.splitext(f)
+            for f in os.listdir(home_directory)
+            if f.startswith(file) and f.endswith(ext)
+        ]
+        if (len(files) == 1 and files[0][0] == file) or not (files):
+            return DPTFile
+        return DPTGroup
 
     # The make_recordset_* methods should first take a FD recordset to lock
     # records while evaluating.  Perhaps DPTFile or _CursorDPT foundset_*
@@ -1345,8 +1330,8 @@ class Database(_database.Database):
             foundset.close()
 
 
-class DPTFile:
-    """This class is used to access files in a DPT database.
+class _DPTFile:
+    """This class is used to access files and groups in a DPT database.
 
     Instances are created as necessary by a Database.open_database() call.
 
@@ -1354,15 +1339,12 @@ class DPTFile:
     Database class.
 
     The sibling modules for Berkeley DB and SQLite3 do not have classes like
-    DPTFile.  (They used to have such but it seems simpler there without.)
-
+    _DPTFile.  (They used to have such but it seems simpler there without.)
     """
 
     def __init__(
         self,
         primary=None,
-        ddname=None,
-        file=None,
         secondary=None,
         fields=None,
         default_records=None,
@@ -1370,17 +1352,14 @@ class DPTFile:
         btod_factor=None,
         btod_constant=None,
         dpt_primary_field_length=None,
-        folder=None,
         default_increase_factor=None,
         dbset=None,
-        default_dataset_folder=None,
         sfi=None,
     ):
-        """Create description of a DPT file."""
+        """Create description of a DPT file or group."""
         self._dbe = None
         self.opencontext = None
         self.primary = primary
-        self.ddname = ddname
         self.default_records = default_records
         self.btod_factor = btod_factor
         self.btod_constant = btod_constant
@@ -1388,12 +1367,8 @@ class DPTFile:
             self.dpt_primary_field_length = SAFE_DPT_FIELD_LENGTH
         else:
             self.dpt_primary_field_length = dpt_primary_field_length
-        if folder is None:
-            folder = default_dataset_folder
-        self.file = os.path.join(folder, file)
         self.default_increase_factor = default_increase_factor
         self.dbset = dbset
-        self.default_dataset_folder = default_dataset_folder
         self.sfi = sfi
         self.secondary = {}
         if secondary is not None:
@@ -1444,350 +1419,6 @@ class DPTFile:
         """Return OpenContext object for table."""
         return self.opencontext
 
-    def close_file(self, dbenv):
-        """Close file if open.
-
-        Any recordsets on the file are destroyed, the context is closed,
-        and the file's dataset is 'free'd.
-        """
-        if self.opencontext is None:
-            return
-        self.opencontext.DestroyAllRecordSets()
-        dbenv.CloseContext(self.opencontext)
-        self.opencontext = None
-        dbenv.Free(self.ddname)
-        self._dbe = None
-
-    def open_file(self, dbenv):
-        """Open file, after creation if file's dataset does not exist.
-
-        os.path.exists() determines if file's dataset exists.
-
-        If the dataset does not exist, the file is allocated in a mode
-        which allows it to be created and then freed and allocated
-        again in a mode for normal use.
-        """
-        # Create the file if it does not exist.
-        foldername, filename = os.path.split(self.file)
-        del filename
-        if os.path.exists(foldername):
-            if not os.path.isdir(foldername):
-                msg = " ".join([foldername, "exists but is not a folder"])
-                raise DatabaseError(msg)
-        else:
-            os.makedirs(foldername)
-        if not os.path.exists(self.file):
-            dbenv.Allocate(self.ddname, self.file, dptapi.FILEDISP_COND)
-            dbenv.Create(
-                self.ddname,
-                self.filedesc[BSIZE],
-                self.filedesc[BRECPPG],
-                self.filedesc[BRESERVE],
-                self.filedesc[BREUSE],
-                self.filedesc[DSIZE],
-                self.filedesc[DRESERVE],
-                self.filedesc[DPGSRES],
-                self.filedesc[FILEORG],
-            )
-            context_specification = dptapi.APIContextSpecification(self.ddname)
-            open_context = dbenv.OpenContext(context_specification)
-            open_context.Initialize()
-            for field, fld in self.fields.items():
-                attributes = dptapi.APIFieldAttributes()
-                if fld[FLT]:
-                    attributes.SetFloatFlag()
-                if fld[INV]:
-                    attributes.SetInvisibleFlag()
-                if fld[UAE]:
-                    attributes.SetUpdateAtEndFlag()
-                if fld[ORD]:
-                    attributes.SetOrderedFlag()
-                if fld[ONM]:
-                    attributes.SetOrdNumFlag()
-                attributes.SetSplitPct(fld[SPT])
-                open_context.DefineField(
-                    self.dpt_field_names[field], attributes
-                )
-            dbenv.CloseContext(open_context)
-            dbenv.Free(self.ddname)
-        if not os.path.isfile(self.file):
-            msg = " ".join([self.file, "exists but is not a file"])
-            raise DatabaseError(msg)
-
-        for field, fld in self.fields.items():
-            if fld[ONM]:
-                self.pyappend[field] = dptapi.pyAppendDouble
-            elif fld[ORD]:
-                self.pyappend[field] = dptapi.pyAppendStdString
-
-        # For compatibility with other database engines.
-        # There are still several 'self._dbe' references within this module
-        # which could be 'dptapi' instead without causing problems.
-        self._dbe = dptapi
-
-        # Open the file for normal use.
-        self.open_existing_file(dbenv)
-
-        # Check requested fields exist.
-        # A RuntimeError is raised by GetFieldAtts() if field does not exist.
-        for field in self.fields:
-            self.opencontext.GetFieldAtts(field)
-
-    def open_existing_file(self, dbenv):
-        """Allocate file and open a context if the file exists."""
-        dbenv.Allocate(self.ddname, self.file, self._dbe.FILEDISP_OLD)
-        context_specification = self._dbe.APIContextSpecification(self.ddname)
-        self.opencontext = self._open_context(dbenv, context_specification)
-
-    def initial_file_size(self):
-        """Set the initial table B and table D sizes.
-
-        Defaults are used if the specification says nothing.
-
-        Defaults are likely to be too small to be usable, or wasteful
-        of space if not.
-        """
-        if not os.path.exists(self.file):
-            filedesc = self.filedesc
-            if filedesc[BSIZE] is None:
-                records = self.default_records
-                bsize = int(round(records / filedesc[BRECPPG]))
-                if bsize * filedesc[BRECPPG] < records:
-                    bsize += 1
-                dsize = int(
-                    round(bsize * self.btod_factor) + self.btod_constant
-                )
-                filedesc[BSIZE] = bsize
-                filedesc[DSIZE] = dsize
-        return True
-
-    def increase_file_pages(self, page_counts):
-        """Increase file size using page_counts.
-
-        page_counts gives two numbers, page counts for table B and table D
-        respectively, which are the extra pages of the two tables to do
-        the increase in size.
-        """
-        if self.opencontext is not None:
-            table_b_needed, table_d_needed = page_counts
-            if len(self.get_extents()) % 2:
-                if table_b_needed:
-                    self.opencontext.Increase(table_b_needed, False)
-                if table_d_needed:
-                    self.opencontext.Increase(table_d_needed, True)
-            elif table_d_needed:
-                self.opencontext.Increase(table_d_needed, True)
-                if table_b_needed:
-                    self.opencontext.Increase(table_b_needed, False)
-            elif table_b_needed:
-                self.opencontext.Increase(table_b_needed, False)
-
-    def increase_file_size(self, dbserv, sizing_record_counts=None):
-        """Increase file size using sizing_record_counts.
-
-        sizing_record_counts gives two numbers, record counts for
-        table B and table D respectively, which determine the size of
-        the two tables after the increase in size.
-        """
-        if self.opencontext is not None:
-            table_b_needed, table_d_needed = self.get_tables_increase(
-                dbserv, sizing_record_counts=sizing_record_counts
-            )
-            if len(self.get_extents()) % 2:
-                if table_b_needed:
-                    self.opencontext.Increase(table_b_needed, False)
-                if table_d_needed:
-                    self.opencontext.Increase(table_d_needed, True)
-            elif table_d_needed:
-                self.opencontext.Increase(table_d_needed, True)
-                if table_b_needed:
-                    self.opencontext.Increase(table_b_needed, False)
-            elif table_b_needed:
-                self.opencontext.Increase(table_b_needed, False)
-
-    def increase_size_of_full_file(self, dbserv, size_before, size_filled):
-        """Increase file size taking file full into account.
-
-        Intended for use when the required size to do a deferred update has
-        been estimated and the update fills a file.  Make Table B and, or,
-        Table D free space at least 20% bigger before trying again.
-
-        It is the caller's responsibility to manage the backups needed, and
-        the collection of 'view tables' information, to enable effective use
-        of this method.
-
-        """
-        del dbserv  # Not needed if self.opencontext active.
-        b_diff_imp = size_filled["BSIZE"] - size_before["BSIZE"]
-        d_diff_imp = size_filled["DSIZE"] - size_before["DSIZE"]
-        b_spare = size_before["BSIZE"] - max((0, size_before["BHIGHPG"]))
-        d_spare = size_before["DSIZE"] - size_before["DPGSUSED"]
-        b_filled = size_filled["FIFLAGS"] & dptapi.FIFLAGS_FULL_TABLEB
-        d_filled = size_filled["FIFLAGS"] & dptapi.FIFLAGS_FULL_TABLED
-        deferred = size_filled["FISTAT"][0] & dptapi.FISTAT_DEFERRED_UPDATES
-        broken = size_filled["FISTAT"][0] & dptapi.FISTAT_PHYS_BROKEN
-        if b_filled:
-            b_increase = ((b_diff_imp + b_spare) * 6) // 5
-            d_increase = max(
-                ((((d_diff_imp + d_spare) * 6) // 5)),
-                int(b_increase * self.btod_factor - d_spare + 1),
-            )
-        elif d_filled:
-            b_increase = b_diff_imp
-            d_increase = max(
-                ((((d_diff_imp + d_spare) * 6) // 5)),
-                int(b_increase * self.btod_factor - d_spare + 1),
-            )
-        elif deferred:
-            if broken:
-                b_increase = 0
-                d_increase = max(
-                    ((((d_diff_imp + d_spare) * 6) // 5)),
-                    int(b_increase * self.btod_factor - d_spare + 1),
-                )
-            else:
-                b_increase = b_diff_imp
-                d_increase = d_diff_imp
-        else:
-            b_increase = 0
-            d_increase = 0
-        if b_increase > 0 and d_increase > 0:
-            if len(self.get_extents()) % 2:
-                self.opencontext.Increase(b_increase, False)
-                self.opencontext.Increase(d_increase, True)
-            else:
-                self.opencontext.Increase(d_increase, True)
-                self.opencontext.Increase(b_increase, False)
-        elif b_increase > 0:
-            self.opencontext.Increase(b_increase, False)
-        elif d_increase > 0:
-            self.opencontext.Increase(d_increase, True)
-
-    def calculate_table_b_increase(
-        self,
-        unused=None,
-        increase=None,
-    ):
-        """Return the number of pages to add to DPT file data area.
-
-        unused - current spare pages in Table B or None
-        increase - number of extra records or None
-        """
-        if unused is not None:
-            unused = unused * self.filedesc[BRECPPG]
-        if unused is None:
-            if increase is not None:
-                return increase
-        elif increase is not None:
-            if increase > unused:
-                return increase
-        increase = int(
-            (1 + self.default_records) * self.default_increase_factor
-        )
-        if unused is None:
-            return increase
-        if increase > unused:
-            return increase - unused
-        return 0
-
-    def calculate_table_d_increase(
-        self,
-        unused=None,
-        increase=None,
-        table_b_increase=None,
-    ):
-        """Return the number of pages to add to DPT file index area.
-
-        unused - current spare pages in Table D or None
-        increase - number of extra records or None
-        table_b_increase - increase index to match extra data pages if not
-                           None.
-        """
-        if unused is not None:
-            unused = (unused * self.filedesc[BRECPPG]) // self.btod_factor
-        if table_b_increase is None:
-            if unused is None:
-                if increase is not None:
-                    return increase
-            elif increase is not None:
-                if increase > unused:
-                    return increase
-            increase = int(
-                (1 + self.default_records) * self.default_increase_factor
-            )
-            if unused is not None:
-                if increase > unused:
-                    return increase - unused
-        else:
-            increase = int(table_b_increase * self.filedesc[BRECPPG])
-            if unused is not None:
-                if increase > unused:
-                    return increase
-        if unused is None:
-            return increase
-        return 0
-
-    def get_tables_increase(self, dbserv, sizing_record_counts=None):
-        """Return tuple (Table B, Table D) increase needed or None."""
-        if self.opencontext is not None:
-            parameter = self.get_file_parameters(dbserv)
-            b_size, b_used, d_size, d_used = (
-                parameter["BSIZE"],
-                max(0, parameter["BHIGHPG"]),
-                parameter["DSIZE"],
-                parameter["DPGSUSED"],
-            )
-            if sizing_record_counts is None:
-                increase_record_counts = (
-                    self.calculate_table_b_increase(unused=b_size - b_used),
-                    self.calculate_table_d_increase(unused=d_size - d_used),
-                )
-            else:
-                increase_record_counts = (
-                    self.calculate_table_b_increase(
-                        unused=(b_size - b_used),
-                        increase=sizing_record_counts[0],
-                    ),
-                    self.calculate_table_d_increase(
-                        unused=(d_size - d_used),
-                        increase=sizing_record_counts[1],
-                    ),
-                )
-            return (
-                increase_record_counts[0] // self.filedesc[BRECPPG],
-                int(
-                    (increase_record_counts[1] * self.btod_factor)
-                    // self.filedesc[BRECPPG]
-                ),
-            )
-        return None
-
-    def get_file_table_sizes(self, viewer_resetter):
-        """Get current values of Table B and D sizes and usage.
-
-        FILE_PARAMETER_LIST has the required parameters, plus a few.
-
-        """
-        view_as_int = viewer_resetter.ViewAsInt
-        parameter = {}
-        for name in FILE_PARAMETER_LIST:
-            parameter[name] = view_as_int(name, self.opencontext)
-        return parameter
-
-    def get_file_parameters(self, dbserv):
-        """Get current values of selected file parameters."""
-        viewer_resetter = dbserv.Core().GetViewerResetter()
-        parameter = {}
-        parameter["FISTAT"] = (
-            viewer_resetter.ViewAsInt("FISTAT", self.opencontext),
-            viewer_resetter.View("FISTAT", self.opencontext),
-        )
-        for name in FILE_PARAMETER_LIST:
-            parameter[name] = viewer_resetter.ViewAsInt(name, self.opencontext)
-        for name in (dptapi.FIFLAGS_FULL_TABLEB, dptapi.FIFLAGS_FULL_TABLED):
-            parameter[name] = bool(parameter["FIFLAGS"] & name)
-        return parameter
-
     def get_pages_for_record_counts(self, counts=(0, 0)):
         """Return Table B and Table D pages needed for record counts."""
         brecppg = self.filedesc[BRECPPG]
@@ -1795,12 +1426,6 @@ class DPTFile:
             counts[0] // brecppg,
             (counts[1] * self.btod_factor) // brecppg,
         )
-
-    def get_extents(self):
-        """Get current extents for file."""
-        extents = dptapi.IntVector()
-        self.opencontext.ShowTableExtents(extents)
-        return extents
 
     def _open_context(self, dbenv, context_specification):
         return dbenv.OpenContext(context_specification)
@@ -2074,6 +1699,342 @@ class DPTFile:
             self._dbe.APIFindSpecification(self._dbe.FD_NOT_POINT, recnum),
             recordset,
         )
+
+
+class DPTFile(_DPTFile):
+    """This class is used to access single files in a DPT database."""
+
+    def __init__(
+        self,
+        ddname=None,
+        file=None,
+        folder=None,
+        default_dataset_folder=None,
+        **kwargs,
+    ):
+        """Create description of a DPT file."""
+        self.ddname = ddname
+        if folder is None:
+            folder = default_dataset_folder
+        self.file = os.path.join(folder, file)
+        self.default_dataset_folder = default_dataset_folder
+        super().__init__(**kwargs)
+
+    def close_file(self, dbenv):
+        """Close file if open.
+
+        Any recordsets on the file are destroyed, the context is closed,
+        and the file's dataset is 'free'd.
+        """
+        if self.opencontext is None:
+            return
+        self.opencontext.DestroyAllRecordSets()
+        allocation = self.opencontext.GetShortName()
+        dbenv.CloseContext(self.opencontext)
+        self.opencontext = None
+        dbenv.Free(allocation)
+        self._dbe = None
+
+    def open_file(self, dbenv):
+        """Open file, after creation if file's dataset does not exist.
+
+        os.path.exists() determines if file's dataset exists.
+
+        If the dataset does not exist, the file is allocated in a mode
+        which allows it to be created and then freed and allocated
+        again in a mode for normal use.
+        """
+        # Create the file if it does not exist.
+        foldername, filename = os.path.split(self.file)
+        del filename
+        if os.path.exists(foldername):
+            if not os.path.isdir(foldername):
+                msg = " ".join([foldername, "exists but is not a folder"])
+                raise DatabaseError(msg)
+        else:
+            os.makedirs(foldername)
+        if not os.path.exists(self.file):
+            dbenv.Allocate(self.ddname, self.file, dptapi.FILEDISP_COND)
+            dbenv.Create(
+                self.ddname,
+                self.filedesc[BSIZE],
+                self.filedesc[BRECPPG],
+                self.filedesc[BRESERVE],
+                self.filedesc[BREUSE],
+                self.filedesc[DSIZE],
+                self.filedesc[DRESERVE],
+                self.filedesc[DPGSRES],
+                self.filedesc[FILEORG],
+            )
+            context_specification = dptapi.APIContextSpecification(self.ddname)
+            open_context = dbenv.OpenContext(context_specification)
+            open_context.Initialize()
+            for field, fld in self.fields.items():
+                attributes = dptapi.APIFieldAttributes()
+                if fld[FLT]:
+                    attributes.SetFloatFlag()
+                if fld[INV]:
+                    attributes.SetInvisibleFlag()
+                if fld[UAE]:
+                    attributes.SetUpdateAtEndFlag()
+                if fld[ORD]:
+                    attributes.SetOrderedFlag()
+                if fld[ONM]:
+                    attributes.SetOrdNumFlag()
+                attributes.SetSplitPct(fld[SPT])
+                open_context.DefineField(
+                    self.dpt_field_names[field], attributes
+                )
+            dbenv.CloseContext(open_context)
+            dbenv.Free(self.ddname)
+        if not os.path.isfile(self.file):
+            msg = " ".join([self.file, "exists but is not a file"])
+            raise DatabaseError(msg)
+
+        for field, fld in self.fields.items():
+            if fld[ONM]:
+                self.pyappend[field] = dptapi.pyAppendDouble
+            elif fld[ORD]:
+                self.pyappend[field] = dptapi.pyAppendStdString
+
+        # For compatibility with other database engines.
+        # There are still several 'self._dbe' references within this module
+        # which could be 'dptapi' instead without causing problems.
+        self._dbe = dptapi
+
+        # Open the file for normal use.
+        self.open_existing_file(dbenv)
+
+        # Check requested fields exist.
+        # A RuntimeError is raised by GetFieldAtts() if field does not exist.
+        for field in self.fields:
+            self.opencontext.GetFieldAtts(field)
+
+    def open_existing_file(self, dbenv):
+        """Allocate file and open a context if the file exists."""
+        dbenv.Allocate(self.ddname, self.file, self._dbe.FILEDISP_OLD)
+        context_specification = self._dbe.APIContextSpecification(self.ddname)
+        self.opencontext = self._open_context(dbenv, context_specification)
+
+    def get_file_parameters(self, dbserv):
+        """Get current values of selected file parameters."""
+        filename = os.path.basename(self.opencontext.GetFullFilePath())
+        return {
+            (filename, key): value
+            for key, value in _get_file_parameters(
+                dbserv, self.opencontext
+            ).items()
+        }
+
+    def increase_file_size(self, dbserv, sizing_record_counts=None):
+        """Increase file size using sizing_record_counts.
+
+        sizing_record_counts gives two numbers, record counts for
+        table B and table D respectively, which determine the size of
+        the two tables after the increase in size.
+        """
+        if self.opencontext is not None:
+            _increase_file_size(
+                self,
+                dbserv,
+                sizing_record_counts=sizing_record_counts,
+                context=self.opencontext,
+            )
+
+    def increase_file_pages(self, dbserv, page_counts):
+        """Increase file size using page_counts.
+
+        page_counts gives two numbers, page counts for table B and table D
+        respectively, which are the extra pages of the two tables to do
+        the increase in size.
+        """
+        del dbserv
+        if self.opencontext is not None:
+            _increase_file_pages(self.opencontext, *page_counts)
+
+    def get_file_table_sizes(self, dbserv):
+        """Get current values of Table B and D sizes and usage.
+
+        FILE_PARAMETER_LIST has the required parameters, plus a few.
+
+        """
+        return _get_file_table_sizes(dbserv, self.opencontext)
+
+    def get_extents(self, dbserv):
+        """Return current extents for file."""
+        del dbserv
+        return _get_extents(self.opencontext)
+
+
+class DPTGroup(_DPTFile):
+    """This class is used to access file groups in a DPT database."""
+
+    def __init__(
+        self,
+        ddname=None,
+        file=None,
+        folder=None,
+        default_dataset_folder=None,
+        **kwargs,
+    ):
+        """Create description of a DPT group."""
+        self.ddname = ddname
+        if folder is None:
+            folder = default_dataset_folder
+        self.file = os.path.join(folder, file)
+        self.default_dataset_folder = default_dataset_folder
+        super().__init__(**kwargs)
+
+        # Class APIGroupServices has methods DisplayType, DisplayUpdtfile,
+        # DisplayMembers, and List, but these require a GroupType instance
+        # as an argument.  GroupType is not in the API.
+        # So keep track of allocated files in group.  Set to a tuple of
+        # FILE allocation names in open_existing_file().
+        self.file_in_group_opencontext = None
+
+    def close_file(self, dbenv):
+        """Close group of files if open.
+
+        Any recordsets on the file are destroyed, the context is closed,
+        and the file's dataset is 'free'd.
+        """
+        if self.opencontext is None:
+            return
+        self.opencontext.DestroyAllRecordSets()
+        allocation = self.opencontext.GetShortName()
+        dbenv.CloseContext(self.opencontext)
+        self.opencontext = None
+        group_api = dbenv.GrpServs()
+        group_api.Delete(allocation, dptapi.PERM_GROUP)
+        for context in self.file_in_group_opencontext:
+            context.DestroyAllRecordSets()
+            allocation = context.GetShortName()
+            dbenv.CloseContext(context)
+            dbenv.Free(allocation)
+        self.file_in_group_opencontext = None
+        self._dbe = None
+
+    def open_file(self, dbenv):
+        """Open file group on existing files."""
+        # Create the file if it does not exist.
+        foldername, filename = os.path.split(self.file)
+        del filename
+        if os.path.exists(foldername):
+            if not os.path.isdir(foldername):
+                msg = " ".join([foldername, "exists but is not a folder"])
+                raise DatabaseError(msg)
+        # Find existing files.
+
+        for field, fld in self.fields.items():
+            if fld[ONM]:
+                self.pyappend[field] = dptapi.pyAppendDouble
+            elif fld[ORD]:
+                self.pyappend[field] = dptapi.pyAppendStdString
+
+        # For compatibility with other database engines.
+        # There are still several 'self._dbe' references within this module
+        # which could be 'dptapi' instead without causing problems.
+        self._dbe = dptapi
+
+        # Open the file for normal use.
+        self.open_existing_file(dbenv)
+
+        # Check requested fields exist.
+        # A RuntimeError is raised by GetFieldAtts() if field does not exist.
+        for field in self.fields:
+            self.opencontext.GetFieldAtts(field)
+
+    def open_existing_file(self, dbenv):
+        """Allocate file and open a context if the file exists."""
+        max_ddname_len = 8
+        number_length = max_ddname_len - len(self.ddname)
+        file, ext = os.path.splitext(os.path.basename(self.file))
+        file_contexts = []
+        for number, name in enumerate(
+            sorted(
+                os.path.splitext(f)
+                for f in os.listdir(os.path.dirname(self.file))
+                if f.startswith(file) and f.endswith(ext)
+            )
+        ):
+            if number:
+                fn = "{:0>8}".format(str(number))[-number_length:]
+                ddname = "".join((self.ddname, fn))[:max_ddname_len]
+            else:
+                ddname = self.ddname
+            dbenv.Allocate(
+                ddname,
+                os.path.join(
+                    os.path.dirname(self.file),
+                    "".join(name),
+                ),
+                self._dbe.FILEDISP_OLD,
+            )
+            context_specification = self._dbe.APIContextSpecification(ddname)
+            file_contexts.append(
+                self._open_context(dbenv, context_specification)
+            )
+        allocations = [context.GetShortName() for context in file_contexts]
+        dbenv.GrpServs().Create(
+            self.ddname, allocations, self._dbe.PERM_GROUP, allocations[0]
+        )
+        context_specification = self._dbe.APIContextSpecification(self.ddname)
+        self.opencontext = self._open_context(dbenv, context_specification)
+        self.file_in_group_opencontext = tuple(file_contexts)
+
+    def get_file_parameters(self, dbserv):
+        """Get values of selected file parameters for files in group."""
+        parameter = {}
+        for context in self.file_in_group_opencontext:
+            filename = os.path.basename(context.GetFullFilePath())
+            parameter.update(
+                {
+                    (filename, key): value
+                    for key, value in _get_file_parameters(
+                        dbserv, context
+                    ).items()
+                }
+            )
+        return parameter
+
+    def increase_file_size(self, dbserv, sizing_record_counts=None):
+        """Increase group update file size using sizing_record_counts.
+
+        sizing_record_counts gives two numbers, record counts for
+        table B and table D respectively, which determine the size of
+        the two tables after the increase in size.
+        """
+        if self.opencontext is not None:
+            _increase_file_size(
+                self,
+                dbserv,
+                sizing_record_counts=sizing_record_counts,
+                context=self.file_in_group_opencontext[0],
+            )
+
+    def increase_file_pages(self, dbserv, page_counts):
+        """Increase group update file size using page_counts.
+
+        page_counts gives two numbers, page counts for table B and table D
+        respectively, which are the extra pages of the two tables to do
+        the increase in size.
+        """
+        if self.opencontext is not None:
+            _increase_file_pages(
+                self.file_in_group_opencontext[0], *page_counts
+            )
+
+    def get_file_table_sizes(self, dbserv):
+        """Get group update file values of Table B and D sizes and usage.
+
+        FILE_PARAMETER_LIST has the required parameters, plus a few.
+
+        """
+        return _get_file_table_sizes(dbserv, self.file_in_group_opencontext[0])
+
+    def get_extents(self, dbserv):
+        """Return current extents for group update file."""
+        return _get_extents(self.file_in_group_opencontext[0])
 
 
 class Cursor(cursor.Cursor):
@@ -3480,3 +3441,184 @@ def new_dptfoundset(obj, *finder_args):
     new_foundset = _EmptyDPTFoundSet()
     new_foundset.__class__ = _DPTFoundSet
     return new_foundset
+
+
+def _increase_file_size(table, dbserv, context, sizing_record_counts=None):
+    """Increase file size using sizing_record_counts.
+
+    table is the _DPTFile instance containing the file definition.
+    dbserv is the APIDatabaseServices instance controlling the database.
+    context is an APIDatabaseFileContext instance.
+    sizing_record_counts is passed to _get_tables_increase.
+
+    """
+    table_b_needed, table_d_needed = _get_tables_increase(
+        table,
+        dbserv,
+        context,
+        sizing_record_counts=sizing_record_counts,
+    )
+    _increase_file_pages(context, table_b_needed, table_d_needed)
+
+
+def _increase_file_pages(context, table_b_needed, table_d_needed):
+    """Increase context size by table_b_needed and table_d_needed pages.
+
+    context is APIDatabaseFileContext instance for a file.
+    table_b_needed is the increase in size of table B.
+    table_d_needed is the increase in size of table D.
+    """
+    extents = _get_extents(context)
+    if len(extents) % 2:
+        if table_b_needed:
+            context.Increase(table_b_needed, False)
+        if table_d_needed:
+            context.Increase(table_d_needed, True)
+    elif table_d_needed:
+        context.Increase(table_d_needed, True)
+        if table_b_needed:
+            context.Increase(table_b_needed, False)
+    elif table_b_needed:
+        context.Increase(table_b_needed, False)
+
+
+def _get_tables_increase(table, dbserv, context, sizing_record_counts=None):
+    """Return tuple (Table B, Table D) increase needed or None.
+
+    table is the _DPTFile instance containing the file definition.
+    dbserv is the APIDatabaseServices instance controlling the database.
+    context is the file to be increased in size.
+    sizing_record_counts gives two numbers, record counts for
+    table B and table D respectively, which determine the size of
+    the two tables after the increase in size.
+
+    """
+    parameter = _get_file_parameters(dbserv, context)
+    b_size, b_used, d_size, d_used = (
+        parameter["BSIZE"],
+        max(0, parameter["BHIGHPG"]),
+        parameter["DSIZE"],
+        parameter["DPGSUSED"],
+    )
+    if sizing_record_counts is None:
+        increase_record_counts = (
+            _calculate_table_b_increase(table, unused=b_size - b_used),
+            _calculate_table_d_increase(table, unused=d_size - d_used),
+        )
+    else:
+        increase_record_counts = (
+            _calculate_table_b_increase(
+                table,
+                unused=(b_size - b_used),
+                increase=sizing_record_counts[0],
+            ),
+            _calculate_table_d_increase(
+                table,
+                unused=(d_size - d_used),
+                increase=sizing_record_counts[1],
+            ),
+        )
+    return (
+        increase_record_counts[0] // table.filedesc[BRECPPG],
+        int(
+            (increase_record_counts[1] * table.btod_factor)
+            // table.filedesc[BRECPPG]
+        ),
+    )
+
+
+def _get_file_parameters(dbserv, context):
+    """Get current values of selected file parameters in context."""
+    viewer_resetter = dbserv.Core().GetViewerResetter()
+    parameter = {}
+    parameter["FISTAT"] = (
+        viewer_resetter.ViewAsInt("FISTAT", context),
+        viewer_resetter.View("FISTAT", context),
+    )
+    for name in FILE_PARAMETER_LIST:
+        parameter[name] = viewer_resetter.ViewAsInt(name, context)
+    for name in (dptapi.FIFLAGS_FULL_TABLEB, dptapi.FIFLAGS_FULL_TABLED):
+        parameter[name] = bool(parameter["FIFLAGS"] & name)
+    return parameter
+
+
+def _calculate_table_b_increase(table, unused=None, increase=None):
+    """Return the number of pages to add to DPT file data area.
+
+    table - _DPTFile instance containing the file definition.
+    unused - current spare pages in Table B or None
+    increase - number of extra records or None
+    """
+    if unused is not None:
+        unused = unused * table.filedesc[BRECPPG]
+    if unused is None:
+        if increase is not None:
+            return increase
+    elif increase is not None:
+        if increase > unused:
+            return increase
+    increase = int((1 + table.default_records) * table.default_increase_factor)
+    if unused is None:
+        return increase
+    if increase > unused:
+        return increase - unused
+    return 0
+
+
+def _calculate_table_d_increase(
+    table,
+    unused=None,
+    increase=None,
+    table_b_increase=None,
+):
+    """Return the number of pages to add to DPT file index area.
+
+    table - _DPTFile instance containing the file definition.
+    unused - current spare pages in Table D or None
+    increase - number of extra records or None
+    table_b_increase - increase index to match extra data pages if not
+                       None.
+    """
+    if unused is not None:
+        unused = (unused * table.filedesc[BRECPPG]) // table.btod_factor
+    if table_b_increase is None:
+        if unused is None:
+            if increase is not None:
+                return increase
+        elif increase is not None:
+            if increase > unused:
+                return increase
+        increase = int(
+            (1 + table.default_records) * table.default_increase_factor
+        )
+        if unused is not None:
+            if increase > unused:
+                return increase - unused
+    else:
+        increase = int(table_b_increase * table.filedesc[BRECPPG])
+        if unused is not None:
+            if increase > unused:
+                return increase
+    if unused is None:
+        return increase
+    return 0
+
+
+def _get_file_table_sizes(dbserv, context):
+    """Get current values of Table B and D sizes and usage.
+
+    FILE_PARAMETER_LIST has the required parameters, plus a few.
+
+    """
+    view_as_int = dbserv.Core().GetViewerResetter().ViewAsInt
+    parameter = {}
+    for name in FILE_PARAMETER_LIST:
+        parameter[name] = view_as_int(name, context)
+    return parameter
+
+
+def _get_extents(context):
+    """Return current extents for file context."""
+    extents = dptapi.IntVector()
+    context.ShowTableExtents(extents)
+    return extents
