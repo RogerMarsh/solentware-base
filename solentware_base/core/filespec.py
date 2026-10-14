@@ -670,10 +670,12 @@ class FileSpec(dict):
 
         """
         names = tuple(
-            os.path.splitext(specification[key][FILE])[0]
-            if isinstance(specification[key], dict)
-            and FILE in specification[key]
-            else FileSpec.dpt_dsn(key)
+            (
+                os.path.splitext(specification[key][FILE])[0]
+                if isinstance(specification[key], dict)
+                and FILE in specification[key]
+                else FileSpec.dpt_dsn(key)
+            )
             for key in specification.keys()
         )
         for name in names:

@@ -1022,7 +1022,7 @@ class Database_find_values__empty:
             TypeError,
             "".join(
                 (
-                    r"find_values\(\) missing 2 required ",
+                    r"find_values_ascending\(\) missing 2 required ",
                     "positional arguments: 'valuespec' and 'file'$",
                 )
             ),
@@ -1174,7 +1174,7 @@ class Database_find_values_ascending__empty:
             TypeError,
             "".join(
                 (
-                    r"find_values\(\) missing 2 required ",
+                    r"find_values_ascending\(\) missing 2 required ",
                     "positional arguments: 'valuespec' and 'file'$",
                 )
             ),

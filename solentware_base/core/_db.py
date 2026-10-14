@@ -1176,7 +1176,7 @@ class Database(_database.Database):
             records=segment_record,
         )
 
-    def find_values(self, valuespec, file):
+    def find_values_ascending(self, valuespec, file):
         """Yield values in range defined in valuespec in index named file."""
         cursor = self.table[
             SUBFILE_DELIMITER.join((file, valuespec.field))
@@ -1270,7 +1270,7 @@ class Database(_database.Database):
             cursor.close()
 
     # Defined for compatibility with _sqlite module.
-    find_values_ascending = find_values
+    find_values = find_values_ascending
 
     def find_values_descending(self, valuespec, file):
         """Yield index file values in valuespec range in descending order."""

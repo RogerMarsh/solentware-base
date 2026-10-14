@@ -993,7 +993,7 @@ if berkeleydb:
                 TypeError,
                 "".join(
                     (
-                        r"find_values\(\) missing 2 required ",
+                        r"find_values_ascending\(\) missing 2 required ",
                         "positional arguments: 'valuespec' and 'file'$",
                     )
                 ),
@@ -1139,7 +1139,7 @@ if berkeleydb:
                 TypeError,
                 "".join(
                     (
-                        r"find_values\(\) missing 2 required ",
+                        r"find_values_ascending\(\) missing 2 required ",
                         "positional arguments: 'valuespec' and 'file'$",
                     )
                 ),
