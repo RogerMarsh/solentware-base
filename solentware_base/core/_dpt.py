@@ -1445,8 +1445,173 @@ class _DPTFile:
             recordset,
         )
 
+
+class DPTFile(_DPTFile):
+    """This class is used to access single files in a DPT database."""
+
+    def __init__(
+        self,
+        ddname=None,
+        file=None,
+        folder=None,
+        default_dataset_folder=None,
+        **kwargs,
+    ):
+        """Create description of a DPT file."""
+        self.ddname = ddname
+        if folder is None:
+            folder = default_dataset_folder
+        self.file = os.path.join(folder, file)
+        self.default_dataset_folder = default_dataset_folder
+        super().__init__(**kwargs)
+
+    def close_file(self, dbenv):
+        """Close file if open.
+
+        Any recordsets on the file are destroyed, the context is closed,
+        and the file's dataset is 'free'd.
+        """
+        if self.opencontext is None:
+            return
+        self.opencontext.DestroyAllRecordSets()
+        allocation = self.opencontext.GetShortName()
+        dbenv.CloseContext(self.opencontext)
+        self.opencontext = None
+        dbenv.Free(allocation)
+        self._dbe = None
+
+    def open_file(self, dbenv):
+        """Open file, after creation if file's dataset does not exist.
+
+        os.path.exists() determines if file's dataset exists.
+
+        If the dataset does not exist, the file is allocated in a mode
+        which allows it to be created and then freed and allocated
+        again in a mode for normal use.
+        """
+        # Create the file if it does not exist.
+        foldername, filename = os.path.split(self.file)
+        del filename
+        if os.path.exists(foldername):
+            if not os.path.isdir(foldername):
+                msg = " ".join([foldername, "exists but is not a folder"])
+                raise DatabaseError(msg)
+        else:
+            os.makedirs(foldername)
+        if not os.path.exists(self.file):
+            dbenv.Allocate(self.ddname, self.file, dptapi.FILEDISP_COND)
+            dbenv.Create(
+                self.ddname,
+                self.filedesc[BSIZE],
+                self.filedesc[BRECPPG],
+                self.filedesc[BRESERVE],
+                self.filedesc[BREUSE],
+                self.filedesc[DSIZE],
+                self.filedesc[DRESERVE],
+                self.filedesc[DPGSRES],
+                self.filedesc[FILEORG],
+            )
+            context_specification = dptapi.APIContextSpecification(self.ddname)
+            open_context = dbenv.OpenContext(context_specification)
+            open_context.Initialize()
+            for field, fld in self.fields.items():
+                attributes = dptapi.APIFieldAttributes()
+                if fld[FLT]:
+                    attributes.SetFloatFlag()
+                if fld[INV]:
+                    attributes.SetInvisibleFlag()
+                if fld[UAE]:
+                    attributes.SetUpdateAtEndFlag()
+                if fld[ORD]:
+                    attributes.SetOrderedFlag()
+                if fld[ONM]:
+                    attributes.SetOrdNumFlag()
+                attributes.SetSplitPct(fld[SPT])
+                open_context.DefineField(
+                    self.dpt_field_names[field], attributes
+                )
+            dbenv.CloseContext(open_context)
+            dbenv.Free(self.ddname)
+        if not os.path.isfile(self.file):
+            msg = " ".join([self.file, "exists but is not a file"])
+            raise DatabaseError(msg)
+
+        for field, fld in self.fields.items():
+            if fld[ONM]:
+                self.pyappend[field] = dptapi.pyAppendDouble
+            elif fld[ORD]:
+                self.pyappend[field] = dptapi.pyAppendStdString
+
+        # For compatibility with other database engines.
+        # There are still several 'self._dbe' references within this module
+        # which could be 'dptapi' instead without causing problems.
+        self._dbe = dptapi
+
+        # Open the file for normal use.
+        self.open_existing_file(dbenv)
+
+        # Check requested fields exist.
+        # A RuntimeError is raised by GetFieldAtts() if field does not exist.
+        for field in self.fields:
+            self.opencontext.GetFieldAtts(field)
+
+    def open_existing_file(self, dbenv):
+        """Allocate file and open a context if the file exists."""
+        dbenv.Allocate(self.ddname, self.file, self._dbe.FILEDISP_OLD)
+        context_specification = self._dbe.APIContextSpecification(self.ddname)
+        self.opencontext = self._open_context(dbenv, context_specification)
+
+    def get_file_parameters(self, dbserv):
+        """Get current values of selected file parameters."""
+        filename = os.path.basename(self.opencontext.GetFullFilePath())
+        return {
+            (filename, key): value
+            for key, value in _get_file_parameters(
+                dbserv, self.opencontext
+            ).items()
+        }
+
+    def increase_file_size(self, dbserv, sizing_record_counts=None):
+        """Increase file size using sizing_record_counts.
+
+        sizing_record_counts gives two numbers, record counts for
+        table B and table D respectively, which determine the size of
+        the two tables after the increase in size.
+        """
+        if self.opencontext is not None:
+            _increase_file_size(
+                self,
+                dbserv,
+                sizing_record_counts=sizing_record_counts,
+                context=self.opencontext,
+            )
+
+    def increase_file_pages(self, dbserv, page_counts):
+        """Increase file size using page_counts.
+
+        page_counts gives two numbers, page counts for table B and table D
+        respectively, which are the extra pages of the two tables to do
+        the increase in size.
+        """
+        del dbserv
+        if self.opencontext is not None:
+            _increase_file_pages(self.opencontext, *page_counts)
+
+    def get_file_table_sizes(self, dbserv):
+        """Get current values of Table B and D sizes and usage.
+
+        FILE_PARAMETER_LIST has the required parameters, plus a few.
+
+        """
+        return _get_file_table_sizes(dbserv, self.opencontext)
+
+    def get_extents(self, dbserv):
+        """Return current extents for file."""
+        del dbserv
+        return _get_extents(self.opencontext)
+
     def find_values_ascending(self, valuespec):
-        """Yield values in range defined in valuespec in index named file."""
+        """Yield index file values in valuespec range in ascending order."""
         # DPT provides two ways of doing this.  The FindValues construct which
         # returns the selected values accessed by a Value Set Cursor, and the
         # direct b-tree cursor construct which walks the database b-tree.
@@ -1645,7 +1810,7 @@ class _DPTFile:
                         yield value
                     dvcursor.Advance()
             elif valuespec.above_value:
-                dvcursor.GotoLast()
+                dvcursor.GotoFirst()
                 while dvcursor.Accessible():
                     value = dvcursor.GetCurrentValue().ExtractString()
                     if value <= valuespec.above_value:
@@ -1654,7 +1819,7 @@ class _DPTFile:
                         yield value
                     dvcursor.Advance()
             elif valuespec.from_value:
-                dvcursor.GotoLast()
+                dvcursor.GotoFirst()
                 while dvcursor.Accessible():
                     value = dvcursor.GetCurrentValue().ExtractString()
                     if value < valuespec.from_value:
@@ -1699,171 +1864,6 @@ class _DPTFile:
                     dvcursor.Advance()
         finally:
             self.opencontext.CloseDirectValueCursor(dvcursor)
-
-
-class DPTFile(_DPTFile):
-    """This class is used to access single files in a DPT database."""
-
-    def __init__(
-        self,
-        ddname=None,
-        file=None,
-        folder=None,
-        default_dataset_folder=None,
-        **kwargs,
-    ):
-        """Create description of a DPT file."""
-        self.ddname = ddname
-        if folder is None:
-            folder = default_dataset_folder
-        self.file = os.path.join(folder, file)
-        self.default_dataset_folder = default_dataset_folder
-        super().__init__(**kwargs)
-
-    def close_file(self, dbenv):
-        """Close file if open.
-
-        Any recordsets on the file are destroyed, the context is closed,
-        and the file's dataset is 'free'd.
-        """
-        if self.opencontext is None:
-            return
-        self.opencontext.DestroyAllRecordSets()
-        allocation = self.opencontext.GetShortName()
-        dbenv.CloseContext(self.opencontext)
-        self.opencontext = None
-        dbenv.Free(allocation)
-        self._dbe = None
-
-    def open_file(self, dbenv):
-        """Open file, after creation if file's dataset does not exist.
-
-        os.path.exists() determines if file's dataset exists.
-
-        If the dataset does not exist, the file is allocated in a mode
-        which allows it to be created and then freed and allocated
-        again in a mode for normal use.
-        """
-        # Create the file if it does not exist.
-        foldername, filename = os.path.split(self.file)
-        del filename
-        if os.path.exists(foldername):
-            if not os.path.isdir(foldername):
-                msg = " ".join([foldername, "exists but is not a folder"])
-                raise DatabaseError(msg)
-        else:
-            os.makedirs(foldername)
-        if not os.path.exists(self.file):
-            dbenv.Allocate(self.ddname, self.file, dptapi.FILEDISP_COND)
-            dbenv.Create(
-                self.ddname,
-                self.filedesc[BSIZE],
-                self.filedesc[BRECPPG],
-                self.filedesc[BRESERVE],
-                self.filedesc[BREUSE],
-                self.filedesc[DSIZE],
-                self.filedesc[DRESERVE],
-                self.filedesc[DPGSRES],
-                self.filedesc[FILEORG],
-            )
-            context_specification = dptapi.APIContextSpecification(self.ddname)
-            open_context = dbenv.OpenContext(context_specification)
-            open_context.Initialize()
-            for field, fld in self.fields.items():
-                attributes = dptapi.APIFieldAttributes()
-                if fld[FLT]:
-                    attributes.SetFloatFlag()
-                if fld[INV]:
-                    attributes.SetInvisibleFlag()
-                if fld[UAE]:
-                    attributes.SetUpdateAtEndFlag()
-                if fld[ORD]:
-                    attributes.SetOrderedFlag()
-                if fld[ONM]:
-                    attributes.SetOrdNumFlag()
-                attributes.SetSplitPct(fld[SPT])
-                open_context.DefineField(
-                    self.dpt_field_names[field], attributes
-                )
-            dbenv.CloseContext(open_context)
-            dbenv.Free(self.ddname)
-        if not os.path.isfile(self.file):
-            msg = " ".join([self.file, "exists but is not a file"])
-            raise DatabaseError(msg)
-
-        for field, fld in self.fields.items():
-            if fld[ONM]:
-                self.pyappend[field] = dptapi.pyAppendDouble
-            elif fld[ORD]:
-                self.pyappend[field] = dptapi.pyAppendStdString
-
-        # For compatibility with other database engines.
-        # There are still several 'self._dbe' references within this module
-        # which could be 'dptapi' instead without causing problems.
-        self._dbe = dptapi
-
-        # Open the file for normal use.
-        self.open_existing_file(dbenv)
-
-        # Check requested fields exist.
-        # A RuntimeError is raised by GetFieldAtts() if field does not exist.
-        for field in self.fields:
-            self.opencontext.GetFieldAtts(field)
-
-    def open_existing_file(self, dbenv):
-        """Allocate file and open a context if the file exists."""
-        dbenv.Allocate(self.ddname, self.file, self._dbe.FILEDISP_OLD)
-        context_specification = self._dbe.APIContextSpecification(self.ddname)
-        self.opencontext = self._open_context(dbenv, context_specification)
-
-    def get_file_parameters(self, dbserv):
-        """Get current values of selected file parameters."""
-        filename = os.path.basename(self.opencontext.GetFullFilePath())
-        return {
-            (filename, key): value
-            for key, value in _get_file_parameters(
-                dbserv, self.opencontext
-            ).items()
-        }
-
-    def increase_file_size(self, dbserv, sizing_record_counts=None):
-        """Increase file size using sizing_record_counts.
-
-        sizing_record_counts gives two numbers, record counts for
-        table B and table D respectively, which determine the size of
-        the two tables after the increase in size.
-        """
-        if self.opencontext is not None:
-            _increase_file_size(
-                self,
-                dbserv,
-                sizing_record_counts=sizing_record_counts,
-                context=self.opencontext,
-            )
-
-    def increase_file_pages(self, dbserv, page_counts):
-        """Increase file size using page_counts.
-
-        page_counts gives two numbers, page counts for table B and table D
-        respectively, which are the extra pages of the two tables to do
-        the increase in size.
-        """
-        del dbserv
-        if self.opencontext is not None:
-            _increase_file_pages(self.opencontext, *page_counts)
-
-    def get_file_table_sizes(self, dbserv):
-        """Get current values of Table B and D sizes and usage.
-
-        FILE_PARAMETER_LIST has the required parameters, plus a few.
-
-        """
-        return _get_file_table_sizes(dbserv, self.opencontext)
-
-    def get_extents(self, dbserv):
-        """Return current extents for file."""
-        del dbserv
-        return _get_extents(self.opencontext)
 
 
 class DPTGroup(_DPTFile):
@@ -2035,6 +2035,319 @@ class DPTGroup(_DPTFile):
     def get_extents(self, dbserv):
         """Return current extents for group update file."""
         return _get_extents(self.file_in_group_opencontext[0])
+
+    def find_values_ascending(self, valuespec):
+        """Yield index file group values for valuespec in ascending order."""
+        dvcursor = self.create_group_direct_value_cursor(valuespec)
+        try:
+            dvcursor.set_option_cursor_posfail_next()
+            if valuespec.above_value and valuespec.below_value:
+                dvcursor.position_at_above_value(valuespec)
+                while dvcursor.accessible():
+                    value = dvcursor.get_current_value_extract_string()
+                    if value >= valuespec.below_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(value):
+                        yield value
+                    dvcursor.advance()
+            elif valuespec.above_value and valuespec.to_value:
+                dvcursor.position_at_above_value(valuespec)
+                while dvcursor.accessible():
+                    value = dvcursor.get_current_value_extract_string()
+                    if value > valuespec.to_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(value):
+                        yield value
+                    dvcursor.advance()
+            elif valuespec.from_value and valuespec.to_value:
+                dvcursor.position_at_from_value(valuespec)
+                while dvcursor.accessible():
+                    value = dvcursor.get_current_value_extract_string()
+                    if value > valuespec.to_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(value):
+                        yield value
+                    dvcursor.advance()
+            elif valuespec.from_value and valuespec.below_value:
+                dvcursor.position_at_from_value(valuespec)
+                while dvcursor.accessible():
+                    value = dvcursor.get_current_value_extract_string()
+                    if value >= valuespec.below_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(value):
+                        yield value
+                    dvcursor.advance()
+            elif valuespec.above_value:
+                dvcursor.position_at_above_value(valuespec)
+                while dvcursor.accessible():
+                    value = dvcursor.get_current_value_extract_string()
+                    if valuespec.apply_pattern_and_set_filters_to_value(value):
+                        yield value
+                    dvcursor.advance()
+            elif valuespec.from_value:
+                dvcursor.position_at_from_value(valuespec)
+                while dvcursor.accessible():
+                    value = dvcursor.get_current_value_extract_string()
+                    if valuespec.apply_pattern_and_set_filters_to_value(value):
+                        yield value
+                    dvcursor.advance()
+            elif valuespec.to_value:
+                dvcursor.position_at_first()
+                while dvcursor.accessible():
+                    value = dvcursor.get_current_value_extract_string()
+                    if value > valuespec.to_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(value):
+                        yield value
+                    dvcursor.advance()
+            elif valuespec.below_value:
+                dvcursor.position_at_first()
+                while dvcursor.accessible():
+                    value = dvcursor.get_current_value_extract_string()
+                    if value >= valuespec.below_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(value):
+                        yield value
+                    dvcursor.advance()
+            else:
+                dvcursor.position_at_first()
+                while dvcursor.accessible():
+                    value = dvcursor.get_current_value_extract_string()
+                    if valuespec.apply_pattern_and_set_filters_to_value(value):
+                        yield value
+                    dvcursor.advance()
+        finally:
+            dvcursor.close_direct_value_cursor(self.file_in_group_opencontext)
+
+    def find_values_descending(self, valuespec):
+        """Yield index file group values for valuespec in descending order."""
+        dvcursor = self.create_group_direct_value_cursor(
+            valuespec, direction=dptapi.CURSOR_DESCENDING
+        )
+        try:
+            dvcursor.set_option_cursor_posfail_next()
+            if valuespec.above_value and valuespec.below_value:
+                dvcursor.position_at_below_value(valuespec)
+                while dvcursor.accessible(reverse=True):
+                    value = dvcursor.get_current_value_extract_string()
+                    if value <= valuespec.above_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(value):
+                        yield value
+                    dvcursor.advance()
+            elif valuespec.above_value and valuespec.to_value:
+                dvcursor.position_at_to_value(valuespec)
+                while dvcursor.accessible(reverse=True):
+                    value = dvcursor.get_current_value_extract_string()
+                    if value <= valuespec.above_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(value):
+                        yield value
+                    dvcursor.advance()
+            elif valuespec.from_value and valuespec.to_value:
+                dvcursor.position_at_to_value(valuespec)
+                while dvcursor.accessible(reverse=True):
+                    value = dvcursor.get_current_value_extract_string()
+                    if value < valuespec.from_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(value):
+                        yield value
+                    dvcursor.advance()
+            elif valuespec.from_value and valuespec.below_value:
+                dvcursor.position_at_below_value(valuespec)
+                while dvcursor.accessible(reverse=True):
+                    value = dvcursor.get_current_value_extract_string()
+                    if value < valuespec.from_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(value):
+                        yield value
+                    dvcursor.advance()
+            elif valuespec.above_value:
+                dvcursor.position_at_first()
+                while dvcursor.accessible(reverse=True):
+                    value = dvcursor.get_current_value_extract_string()
+                    if value <= valuespec.above_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(value):
+                        yield value
+                    dvcursor.advance()
+            elif valuespec.from_value:
+                dvcursor.position_at_first()
+                while dvcursor.accessible(reverse=True):
+                    value = dvcursor.get_current_value_extract_string()
+                    if value < valuespec.from_value:
+                        break
+                    if valuespec.apply_pattern_and_set_filters_to_value(value):
+                        yield value
+                    dvcursor.advance()
+            elif valuespec.to_value:
+                dvcursor.position_at_to_value(valuespec)
+                while dvcursor.accessible(reverse=True):
+                    value = dvcursor.get_current_value_extract_string()
+                    if valuespec.apply_pattern_and_set_filters_to_value(value):
+                        yield value
+                    dvcursor.advance()
+            elif valuespec.below_value:
+                dvcursor.position_at_below_value(valuespec)
+                while dvcursor.accessible(reverse=True):
+                    value = dvcursor.get_current_value_extract_string()
+                    if valuespec.apply_pattern_and_set_filters_to_value(value):
+                        yield value
+                    dvcursor.advance()
+            else:
+                dvcursor.position_at_first()
+                while dvcursor.accessible(reverse=True):
+                    value = dvcursor.get_current_value_extract_string()
+                    if valuespec.apply_pattern_and_set_filters_to_value(value):
+                        yield value
+                    dvcursor.advance()
+        finally:
+            dvcursor.close_direct_value_cursor(self.file_in_group_opencontext)
+
+    def create_group_direct_value_cursor(
+        self, valuespec, direction=dptapi.CURSOR_ASCENDING
+    ):
+        """Return set of direct value cursors for each file in group."""
+        return GroupDVCursor(
+            self.file_in_group_opencontext,
+            dptapi.APIFindValuesSpecification(self.secondary[valuespec.field]),
+            direction,
+        )
+
+
+class GroupDVCursor:
+    """Set of direct value cursors on each file in a file group."""
+
+    def __init__(self, opencontexts, findvaluespec, direction):
+        """Create dvcursor on each context in opencontexts."""
+        self.dvcursors = {}
+        for item, context in enumerate(opencontexts):
+            self.dvcursors[item] = context.OpenDirectValueCursor(
+                findvaluespec, direction
+            )
+        self.dvcursor_values = {}
+        self.__selected_cursor = None
+        self.__current_value = None
+
+    @property
+    def selected_cursor(self):
+        """Return the selected direct value cursor for the file group."""
+        return self.dvcursors[self.__selected_cursor]
+
+    def get_current_value_extract_string(self):
+        """Return current value string of selected direct value cursor."""
+        self.__current_value = (
+            self.selected_cursor.GetCurrentValue().ExtractString()
+        )
+        return self.__current_value
+
+    def set_option_cursor_posfail_next(self):
+        """Set CURSOR_POSFAIL_NEXT for file group direct value cursors."""
+        for dvcursor in self.dvcursors.values():
+            dvcursor.SetOptions(dptapi.CURSOR_POSFAIL_NEXT)
+
+    def close_direct_value_cursor(self, opencontexts):
+        """Close direct value cursors on opencontexts for file group."""
+        for item, context in enumerate(opencontexts):
+            context.CloseDirectValueCursor(self.dvcursors[item])
+
+    def accessible(self, reverse=False):
+        """Select first accessible cursor in order and return status.
+
+        status is True if a cursor is found or False if not.
+
+        reverse is passed as reverse argument to sorted().
+
+        """
+        dvcursors = self.dvcursors
+        dvcursor_values = self.dvcursor_values
+        values = sorted(dvcursor_values, reverse=reverse)
+        for value in values:
+            for item in dvcursor_values[value]:
+                if dvcursors[item].Accessible():
+                    self.__selected_cursor = item
+                    return True
+        self.__selected_cursor = None
+        return False
+
+    def advance(self):
+        """Advance the direct value cursors at the current value.
+
+        Any direct value cursors which become inaccessible while advancing
+        are dropped from the dict of cursors by value.  These remain in
+        the full dict for eventual closure.
+
+        """
+        dvcursors = self.dvcursors
+        dvcursor_values = self.dvcursor_values
+        current_value_dvcursors = dvcursor_values.pop(self.__current_value)
+        for item in current_value_dvcursors:
+            dvcursor = dvcursors[item]
+            if dvcursor.Accessible():
+                dvcursor.Advance()
+                if dvcursor.Accessible():
+                    value = dvcursor.GetCurrentValue().ExtractString()
+                    dvcursor_values.setdefault(value, set()).add(item)
+
+    def __get_dvcursor_initial_values(self):
+        """Set initial values of file group direct value cursors."""
+        dvcursor_values = self.dvcursor_values
+        for item, dvcursor in self.dvcursors.items():
+            if dvcursor.Accessible():
+                value = dvcursor.GetCurrentValue().ExtractString()
+                dvcursor_values.setdefault(value, set()).add(item)
+
+    def position_at_above_value(self, valuespec):
+        """Position all direct value cursors above valuespec.above_value."""
+        api_field_value = dptapi.APIFieldValue(valuespec.above_value)
+        for dvcursor in self.dvcursors.values():
+            dvcursor.SetPosition(api_field_value)
+            if dvcursor.Accessible():
+                if (
+                    dvcursor.GetCurrentValue().ExtractString()
+                    == valuespec.above_value
+                ):
+                    dvcursor.Advance()
+        self.__get_dvcursor_initial_values()
+
+    def position_at_from_value(self, valuespec):
+        """Position all direct value cursors at valuespec.above_value."""
+        api_field_value = dptapi.APIFieldValue(valuespec.from_value)
+        for dvcursor in self.dvcursors.values():
+            dvcursor.SetPosition(api_field_value)
+        self.__get_dvcursor_initial_values()
+
+    def position_at_first(self):
+        """Position all direct value cursors at first value."""
+        for dvcursor in self.dvcursors.values():
+            dvcursor.GotoFirst()
+        self.__get_dvcursor_initial_values()
+
+    def position_at_below_value(self, valuespec):
+        """Position all direct value cursors below valuespec.below_value."""
+        api_field_value = dptapi.APIFieldValue(valuespec.below_value)
+        for dvcursor in self.dvcursors.values():
+            dvcursor.SetPosition(api_field_value)
+            if dvcursor.Accessible():
+                if (
+                    dvcursor.GetCurrentValue().ExtractString()
+                    >= valuespec.below_value
+                ):
+                    dvcursor.Advance()
+        self.__get_dvcursor_initial_values()
+
+    def position_at_to_value(self, valuespec):
+        """Position all direct value cursors below valuespec.below_value."""
+        api_field_value = dptapi.APIFieldValue(valuespec.to_value)
+        for dvcursor in self.dvcursors.values():
+            dvcursor.SetPosition(api_field_value)
+            if dvcursor.Accessible():
+                if (
+                    dvcursor.GetCurrentValue().ExtractString()
+                    > valuespec.to_value
+                ):
+                    dvcursor.Advance()
+        self.__get_dvcursor_initial_values()
 
 
 class Cursor(cursor.Cursor):
